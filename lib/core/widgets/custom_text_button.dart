@@ -1,12 +1,12 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 
-class Customtextbutton extends StatelessWidget {
+class CustomTextbutton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final IconData? icon;
 
-  const Customtextbutton({
+  const CustomTextbutton({
     super.key,
     required this.text,
     required this.onPressed,
@@ -20,6 +20,7 @@ class Customtextbutton extends StatelessWidget {
         foregroundColor: AppColors.primary,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
+      onPressed: onPressed,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -36,7 +37,6 @@ class Customtextbutton extends StatelessWidget {
           ),
         ],
       ),
-      onPressed: () => onPressed,
     );
   }
 }

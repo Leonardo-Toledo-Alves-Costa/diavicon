@@ -1,20 +1,24 @@
+import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 
-class CustomDropdown<T> extends StatelessWidget {
+class CustomTextField extends StatelessWidget {
   final String label;
-  final T? value;
-  final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
   final String hint;
+  final TextEditingController? controller;
+  final bool obscureText;
+  final TextInputType keyboardType;
+  final String? Function(String?)? validator;
+  final String? tooltip;
 
-  const CustomDropdown({
+  const CustomTextField({
     super.key,
     required this.label,
-    required this.items,
-    required this.onChanged,
-    this.value,
-    this.hint = 'Selecione',
+    required this.hint,
+    this.controller,
+    required this.obscureText,
+    required this.keyboardType,
+    this.validator,
+    this.tooltip,
   });
 
   @override
@@ -24,13 +28,17 @@ class CustomDropdown<T> extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
+          style: const TextStyle(
+            color: AppColors.textDark,
+            fontSize: 14,
+          ),
         ),
         const SizedBox(height: 8),
-        DropdownButtonFormField<T>(
-          value: value,
-          items: items,
-          onChanged: onChanged,
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
@@ -50,7 +58,6 @@ class CustomDropdown<T> extends StatelessWidget {
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
         ),
       ],
     );

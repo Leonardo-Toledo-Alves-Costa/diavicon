@@ -1,38 +1,38 @@
-import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 
-class CustomTextField extends StatelessWidget {
+class CustomDropdown<T> extends StatelessWidget {
   final String label;
+  final T? value;
+  final List<DropdownMenuItem<T>> items;
+  final ValueChanged<T?> onChanged;
   final String hint;
-  final TextEditingController? controller;
-  final bool obscureText;
-  final TextInputType keyboardType;
+  final String? tooltip;
 
-  const CustomTextField({
+  const CustomDropdown({
     super.key,
     required this.label,
-    required this.hint,
-    this.controller,
-    required this.obscureText,
-    required this.keyboardType,
+    required this.items,
+    required this.onChanged,
+    this.value,
+    this.hint = 'Selecione',
+    this.tooltip,
   });
 
   @override
   Widget build(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: const TextStyle(
-            color: AppColors.textDark,
-            fontSize: 14,
-          ),
+          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
         ),
         const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          obscureText: obscureText,
-          keyboardType: keyboardType,
+        DropdownButtonFormField<T>(
+          value: value,
+          items: items,
+          onChanged: onChanged,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
@@ -52,6 +52,7 @@ class CustomTextField extends StatelessWidget {
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
           ),
+          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
         ),
       ],
     );

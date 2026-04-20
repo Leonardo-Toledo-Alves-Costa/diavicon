@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/constants/app_colors.dart';
-import 'routes/app_router.dart';
+import 'routes/app_router.dart'; // Importe o arquivo de rotas
 
-class DiaviconApp extends StatelessWidget {
+// 1. Mude para ConsumerWidget
+class DiaviconApp extends ConsumerWidget {
   const DiaviconApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    // .router para o Flutter saber que o GoRouter controla as telas
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 2. Leia o router que acabamos de criar
+    final router = ref.watch(routerProvider);
+
     return MaterialApp.router(
       title: 'Diavicon',
       debugShowCheckedModeBanner: false,
       
-      // Configuração das rotas
-      routerConfig: AppRouter.router,
+      // 3. Passe o router lido para o MaterialApp
+      routerConfig: router, 
       
-      // Configuração de Tema Global da Diavicon
       theme: ThemeData(
         useMaterial3: true,
         primaryColor: AppColors.primary,
@@ -23,12 +26,6 @@ class DiaviconApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,
-        ),
-        
-        // Padronização global dos textos
-        textTheme: const TextTheme(
-          displayLarge: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold),
-          bodyLarge: TextStyle(color: AppColors.textDark),
         ),
       ),
     );

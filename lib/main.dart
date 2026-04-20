@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+// 1. Importe o Riverpod aqui
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'app.dart';
 
 Future<void> main() async {
@@ -14,5 +16,10 @@ Future<void> main() async {
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
 
-  runApp(const DiaviconApp());
+  // 2. Abrace o seu app com o ProviderScope
+  runApp(
+    const ProviderScope(
+      child: DiaviconApp(),
+    ),
+  );
 }

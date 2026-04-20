@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/diavicon_modal.dart';
+import '../../projetos/widgets/new_project_body.dart';
 
 class MainScreen extends StatelessWidget {
   final Widget child;
@@ -9,132 +10,80 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Detecta se o teclado está aberto
+    final bool isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+
     return Scaffold(
-      // O conteúdo da tela (Projetos, Estruturas, etc)
+      backgroundColor: Colors.white,
+      // Impede que o Scaffold tente redimensionar o rodapé
+      resizeToAvoidBottomInset: false, 
+      
       body: child,
 
-      // 1. O BOTÃO DE + (Floating Action Button)
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.primary,
-        shape: const CircleBorder(),
-        elevation: 4,
-        onPressed: () {
-          // TODO: Abrir modal de criação
-        },
-        child: const Icon(Icons.add, color: Colors.white, size: 30),
-      ),
-
-      // 2. POSICIONAMENTO "MORDENDO" O RODAPÉ
+      // Oculta o botão se o teclado abrir
+      floatingActionButton: isKeyboardOpen 
+        ? null 
+        : FloatingActionButton(
+            backgroundColor: AppColors.primary, // #D99100
+            shape: const CircleBorder(),
+            elevation: 4,
+            onPressed: () {
+              showDiaviconModal(
+                context: context,
+                title: 'Novo projeto',
+                body: const NewProjectBody(),
+              );
+            },
+            child: const Icon(Icons.add, color: Colors.white, size: 30),
+          ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
 
-      // 3. O RODAPÉ CUSTOMIZADO
-      bottomNavigationBar: BottomAppBar(
-        shape: const CircularNotchedRectangle(), // Faz o recorte redondo
-        notchMargin: 8.0, // Espaço entre o botão e o recorte
-        color: Colors.white,
-        elevation: 15,
-        child: Container(
-          height: 60,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // GRUPO DA ESQUERDA
-              Row(
+      // Oculta a barra branca do rodapé se o teclado abrir
+      bottomNavigationBar: isKeyboardOpen 
+        ? const SizedBox.shrink() 
+        : BottomAppBar(
+            shape: const CircularNotchedRectangle(),
+            notchMargin: 8.0,
+            color: Colors.white,
+            elevation: 15,
+            child: Container(
+              height: 60,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildNavButton(
-                    context,
-                    icon: Icons.folder_outlined,
-                    label: 'Projetos',
-                    index: 0,
-                    route: '/projetos',
+                  // Lado Esquerdo
+                  Row(
+                    children: [
+                      _buildNavItem(context, Icons.folder_outlined, 'Projetos', '/projetos'),
+                      _buildNavItem(context, Icons.layers_outlined, 'Estruturas', '/estruturas'),
+                    ],
                   ),
-                  _buildNavButton(
-                    context,
-                    icon: Icons.layers_outlined,
-                    label: 'Estruturas',
-                    index: 1,
-                    route: '/estruturas',
+                  const SizedBox(width: 48), // Espaço para o notch
+                  // Lado Direito
+                  Row(
+                    children: [
+                      _buildNavItem(context, Icons.business_outlined, 'Empresa', '/empresa'),
+                      _buildNavItem(context, Icons.school_outlined, 'Educação', '/educacao'),
+                    ],
                   ),
                 ],
               ),
-
-              // ESPAÇO PARA O BOTÃO CENTRAL NÃO ATROPELAR
-              const SizedBox(width: 48),
-
-              // GRUPO DA DIREITA
-              Row(
-                children: [
-                  _buildNavButton(
-                    context,
-                    icon: Icons.business_outlined,
-                    label: 'Empresa',
-                    index: 3,
-                    route: '/empresa',
-                  ),
-                  _buildNavButton(
-                    context,
-                    icon: Icons.school_outlined,
-                    label: 'Educação',
-                    index: 4,
-                    route: '/educacao',
-                  ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
-      ),
     );
   }
 
-  // Lógica de Seleção (Mantida a sua ideia original com GoRouter)
-  int _calculateSelectedIndex(BuildContext context) {
-    final String location = GoRouterState.of(context).uri.toString();
-    if (location.startsWith('/projetos')) return 0;
-    if (location.startsWith('/estruturas')) return 1;
-    if (location.startsWith('/empresa')) return 3;
-    if (location.startsWith('/educacao')) return 4;
-    return 0;
-  }
-
-  // Widget de botão individual para o menu
-  Widget _buildNavButton(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required int index,
-    required String route,
-  }) {
-    final int selectedIndex = _calculateSelectedIndex(context);
-    final bool isActive = selectedIndex == index;
-
-    return InkWell(
-      onTap: () => context.go(route),
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        // Largura fixa para manter a simetria (aprox 20% da tela)
-        width: MediaQuery.of(context).size.width * 0.18,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              color: isActive ? AppColors.primary : Colors.grey.shade400,
-              size: 24,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? AppColors.primary : Colors.grey.shade400,
-              ),
-            ),
-          ],
-        ),
+  Widget _buildNavItem(BuildContext context, IconData icon, String label, String route) {
+    // Lógica simples de cor baseada na rota (simplificada)
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, color: AppColors.hintText, size: 24),
+          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.hintText)),
+        ],
       ),
     );
   }

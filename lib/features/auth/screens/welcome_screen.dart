@@ -40,16 +40,16 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
 
               // 2. LOGO DIAVICON
               Image.asset(
                 'assets/images/logo_diavicon.png',
-                height: 40,
+                height: 80,
                 fit: BoxFit.contain,
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(),
 
               // Linha decorativa laranja oficial: #D99100 
               Container(
@@ -76,7 +76,7 @@ class WelcomeScreen extends StatelessWidget {
                 ),
               ),
 
-              const Spacer(flex: 2),
+              const Spacer(flex: 3),
 
               // 4. BOTÃO COMEÇAR
               CustomButton(
@@ -84,7 +84,7 @@ class WelcomeScreen extends StatelessWidget {
                 onPressed: () => context.go('/login'),
               ),
 
-              const SizedBox(height: 40),
+              const SizedBox(height: 70),
 
               // 5. VERSÃO (Rodapé)
               const Text(

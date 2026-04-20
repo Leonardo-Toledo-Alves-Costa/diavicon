@@ -10,47 +10,85 @@ class MainScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // O conteúdo da tela (Projetos, Estruturas, etc)
       body: child,
+
+      // 1. O BOTÃO DE + (Floating Action Button)
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
-        shape: const CircleBorder(), // Garante que seja redondo
-        elevation: 2,
+        shape: const CircleBorder(),
+        elevation: 4,
         onPressed: () {
-          // TODO: Abrir bottom sheet ou modal de "Novo Projeto / Nova Estrutura"
+          // TODO: Abrir modal de criação
         },
-        child: const Icon(Icons.add, color: Colors.white, size: 28),
+        child: const Icon(Icons.add, color: Colors.white, size: 30),
       ),
+
+      // 2. POSICIONAMENTO "MORDENDO" O RODAPÉ
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: _calculateSelectedIndex(context),
-        onTap: (index) => _onItemTapped(index, context),
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: AppColors.primary,
-        unselectedItemColor: AppColors.hintText,
-        showUnselectedLabels: true,
-        selectedLabelStyle: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 12,
-        ),
-        unselectedLabelStyle: const TextStyle(fontSize: 12),
-        items: [
-          _buildNavItem(Icons.folder_outlined, 'Projetos', 0, context),
-          _buildNavItem(Icons.layers_outlined, 'Estruturas', 1, context),
-          const BottomNavigationBarItem(
-            icon: Icon(
-              Icons.add,
-              color: Colors.transparent,
-            ), // Ícone transparente
-            label: '', // Sem texto
+
+      // 3. O RODAPÉ CUSTOMIZADO
+      bottomNavigationBar: BottomAppBar(
+        shape: const CircularNotchedRectangle(), // Faz o recorte redondo
+        notchMargin: 8.0, // Espaço entre o botão e o recorte
+        color: Colors.white,
+        elevation: 15,
+        child: Container(
+          height: 60,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // GRUPO DA ESQUERDA
+              Row(
+                children: [
+                  _buildNavButton(
+                    context,
+                    icon: Icons.folder_outlined,
+                    label: 'Projetos',
+                    index: 0,
+                    route: '/projetos',
+                  ),
+                  _buildNavButton(
+                    context,
+                    icon: Icons.layers_outlined,
+                    label: 'Estruturas',
+                    index: 1,
+                    route: '/estruturas',
+                  ),
+                ],
+              ),
+
+              // ESPAÇO PARA O BOTÃO CENTRAL NÃO ATROPELAR
+              const SizedBox(width: 48),
+
+              // GRUPO DA DIREITA
+              Row(
+                children: [
+                  _buildNavButton(
+                    context,
+                    icon: Icons.business_outlined,
+                    label: 'Empresa',
+                    index: 3,
+                    route: '/empresa',
+                  ),
+                  _buildNavButton(
+                    context,
+                    icon: Icons.school_outlined,
+                    label: 'Educação',
+                    index: 4,
+                    route: '/educacao',
+                  ),
+                ],
+              ),
+            ],
           ),
-          _buildNavItem(Icons.business_outlined, 'Empresa', 3, context),
-          _buildNavItem(Icons.school_outlined, 'Educação', 4, context),
-        ],
+        ),
       ),
     );
   }
 
-  // Lógica para saber qual aba está ativa com base na rota do GoRouter
+  // Lógica de Seleção (Mantida a sua ideia original com GoRouter)
   int _calculateSelectedIndex(BuildContext context) {
     final String location = GoRouterState.of(context).uri.toString();
     if (location.startsWith('/projetos')) return 0;
@@ -60,43 +98,44 @@ class MainScreen extends StatelessWidget {
     return 0;
   }
 
-  // Navegação disparada pelo clique no rodapé
-  void _onItemTapped(int index, BuildContext context) {
-    switch (index) {
-      case 0:
-        context.go('/projetos');
-        break;
-      case 1:
-        context.go('/estruturas');
-        break;
-      case 3:
-        context.go('/empresa');
-        break;
-      case 4:
-        context.go('/educacao');
-        break;
-    }
-  }
-
-  BottomNavigationBarItem _buildNavItem(
-    IconData icon,
-    String label,
-    int index,
-    BuildContext context,
-  ) {
+  // Widget de botão individual para o menu
+  Widget _buildNavButton(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required int index,
+    required String route,
+  }) {
     final int selectedIndex = _calculateSelectedIndex(context);
     final bool isActive = selectedIndex == index;
 
-    return BottomNavigationBarItem(
-      icon: Container(
-        padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: isActive ? AppColors.primary : Colors.transparent,
-          shape: BoxShape.circle,
+    return InkWell(
+      onTap: () => context.go(route),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        // Largura fixa para manter a simetria (aprox 20% da tela)
+        width: MediaQuery.of(context).size.width * 0.18,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              color: isActive ? AppColors.primary : Colors.grey.shade400,
+              size: 24,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 10,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+                color: isActive ? AppColors.primary : Colors.grey.shade400,
+              ),
+            ),
+          ],
         ),
-        child: Icon(icon, color: isActive ? Colors.white : AppColors.hintText),
       ),
-      label: label,
     );
   }
 }

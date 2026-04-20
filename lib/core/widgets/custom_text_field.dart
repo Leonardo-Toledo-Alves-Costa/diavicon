@@ -1,24 +1,26 @@
-import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import '../constants/app_colors.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
   final String hint;
   final TextEditingController? controller;
-  final bool obscureText;
-  final TextInputType keyboardType;
   final String? Function(String?)? validator;
-  final String? tooltip;
+  
+  // Novas propriedades opcionais (sem a palavra 'required')
+  final bool obscureText; 
+  final TextInputType? keyboardType;
+  final Widget? suffixIcon;
 
   const CustomTextField({
     super.key,
     required this.label,
     required this.hint,
     this.controller,
-    required this.obscureText,
-    required this.keyboardType,
     this.validator,
-    this.tooltip,
+    this.obscureText = false, // Por padrão, não esconde o texto
+    this.keyboardType,
+    this.suffixIcon,
   });
 
   @override
@@ -29,8 +31,9 @@ class CustomTextField extends StatelessWidget {
         Text(
           label,
           style: const TextStyle(
-            color: AppColors.textDark,
             fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
           ),
         ),
         const SizedBox(height: 8),
@@ -41,10 +44,8 @@ class CustomTextField extends StatelessWidget {
           validator: validator,
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            filled: true,
-            fillColor: AppColors.white,
+            hintStyle: const TextStyle(color: AppColors.hintText),
+            suffixIcon: suffixIcon, // Aqui entra o ícone do olhinho
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -55,7 +56,7 @@ class CustomTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+              borderSide: const BorderSide(color: AppColors.primary),
             ),
           ),
         ),

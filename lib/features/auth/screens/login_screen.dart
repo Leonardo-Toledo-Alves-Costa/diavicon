@@ -22,110 +22,176 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _lembrarMe = false;
 
   @override
+  void dispose() {
+    _emailController.dispose();
+    _senhaController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _fazerLogin() async {
+    if (!_formKey.currentState!.validate()) return;
+    try {
+      await ref.read(authControllerProvider.notifier).login(
+        _emailController.text.trim(), 
+        _senhaController.text
+      );
+      if (mounted) context.go('/projetos');
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao entrar. Verifique suas credenciais.'))
+        );
+      }
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authControllerProvider);
 
     return AuthLayout(
-      logoHeight: 220, // Forçando o logo a crescer 0.5x mais
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 35, 28, 20),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Bem vindo!',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.textDark),
-              ),
-              const SizedBox(height: 25),
-              
-              CustomTextField(
-                label: 'Login',
-                hint: 'Seu email',
-                controller: _emailController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
-              ),
-              const SizedBox(height: 12),
-              
-              CustomTextField(
-                label: 'Senha',
-                hint: 'Sua senha',
-                controller: _senhaController,
-                obscureText: _ocultarSenha,
-                suffixIcon: IconButton(
-                  icon: Icon(_ocultarSenha ? Icons.visibility_off : Icons.visibility, size: 20),
-                  onPressed: () => setState(() => _ocultarSenha = !_ocultarSenha),
-                ),
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
-              ),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Checkbox(
-                    value: _lembrarMe,
-                    activeColor: AppColors.primary,
-                    onChanged: (val) => setState(() => _lembrarMe = val!),
-                  ),
-                  TextButton(
-                    onPressed: () {},
-                    child: const Text('Resgatar Senha', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 10),
-
-              CustomButton(
-                text: 'Entrar  →',
-                isLoading: isLoading,
-                onPressed: isLoading ? null : () => _fazerLogin(),
-              ),
-
-              // EM VEZ DE SPACER, USAMOS UM GAP FIXO PARA SUBIR OS BOTÕES
-              const SizedBox(height: 50), 
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset('assets/images/ic_linkedin.png', height: 45),
-                  const SizedBox(width: 35),
-                  Image.asset('assets/images/ic_google.png', height: 45),
-                ],
-              ),
-              
-              const SizedBox(height: 20),
-
-              Column(
-                children: [
-                  const Text('AINDA NÃO POSSUI UMA CONTA?', 
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.8)),
-                  GestureDetector(
-                    onTap: () => context.go('/register'),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('CADASTRE-SE', 
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 16)),
+      logoHeight: 200, // Ajustado para dar mais respiro ao formulário
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          return SingleChildScrollView(
+            // O segredo para evitar o overflow
+            physics: const ClampingScrollPhysics(),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(28, 35, 28, 20),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    const Text(
+                      'Bem vindo!',
+                      style: TextStyle(
+                        fontSize: 28, 
+                        fontWeight: FontWeight.w900, 
+                        color: AppColors.textDark, // #626365 [cite: 85]
+                        fontFamily: 'Lato', // [cite: 80]
+                      ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 25),
+                    
+                    CustomTextField(
+                      label: 'Login',
+                      hint: 'Seu email',
+                      controller: _emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                    ),
+                    const SizedBox(height: 16),
+                    
+                    CustomTextField(
+                      label: 'Senha',
+                      hint: 'Sua senha',
+                      controller: _senhaController,
+                      obscureText: _ocultarSenha,
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _ocultarSenha ? Icons.visibility_off : Icons.visibility, 
+                          size: 20,
+                          color: AppColors.hintText,
+                        ),
+                        onPressed: () => setState(() => _ocultarSenha = !_ocultarSenha),
+                      ),
+                      validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                    ),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            SizedBox(
+                              height: 24,
+                              width: 24,
+                              child: Checkbox(
+                                value: _lembrarMe,
+                                activeColor: AppColors.primary, // #D99100 [cite: 91]
+                                onChanged: (val) => setState(() => _lembrarMe = val!),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Text(
+                              'Lembrar-me',
+                              style: TextStyle(color: AppColors.textDark, fontSize: 14, fontFamily: 'Lato'),
+                            ),
+                          ],
+                        ),
+                        TextButton(
+                          onPressed: () { /* TODO: Resgatar senha */ },
+                          child: const Text(
+                            'Resgatar Senha', 
+                            style: TextStyle(
+                              color: AppColors.primary, 
+                              fontWeight: FontWeight.bold,
+                              fontFamily: 'Lato',
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 20),
+
+                    CustomButton(
+                      text: 'Entrar  →',
+                      isLoading: isLoading,
+                      onPressed: isLoading ? null : _fazerLogin,
+                    ),
+
+                    // Espaçamento flexível para subir os ícones sociais
+                    const SizedBox(height: 40), 
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('assets/images/ic_linkedin.png', height: 40),
+                        const SizedBox(width: 30),
+                        Image.asset('assets/images/ic_google.png', height: 40),
+                      ],
+                    ),
+                    
+                    const SizedBox(height: 24),
+
+                    Column(
+                      children: [
+                        const Text(
+                          'AINDA NÃO POSSUI UMA CONTA?', 
+                          style: TextStyle(
+                            fontSize: 10, 
+                            fontWeight: FontWeight.bold, 
+                            color: Colors.grey, 
+                            letterSpacing: 0.8,
+                            fontFamily: 'Lato',
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () => context.go('/register'),
+                          child: const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Text(
+                              'CADASTRE-SE', 
+                              style: TextStyle(
+                                color: AppColors.primary, 
+                                fontWeight: FontWeight.w900, 
+                                fontSize: 15,
+                                fontFamily: 'Lato',
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
     );
-  }
-
-  // O resto da função _fazerLogin continua igual...
-  Future<void> _fazerLogin() async {
-    if (!_formKey.currentState!.validate()) return;
-    try {
-      await ref.read(authControllerProvider.notifier).login(_emailController.text.trim(), _senhaController.text);
-      if (mounted) context.go('/projetos');
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao entrar.')));
-    }
   }
 }

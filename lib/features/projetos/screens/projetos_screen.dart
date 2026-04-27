@@ -4,7 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart'; // Usando o seu widget padrão
 import '../widgets/project_card.dart';
-import '../providers/projetos_provider.dart';
+import '../../empresa/providers/projetos_provider.dart';
 
 class ProjetosScreen extends ConsumerWidget {
   const ProjetosScreen({super.key});

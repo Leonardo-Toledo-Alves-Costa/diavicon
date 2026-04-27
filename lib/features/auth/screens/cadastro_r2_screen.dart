@@ -1,0 +1,140 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/auth_layout.dart';
+
+/// CadastroR2 — Seleção do perfil do usuário com 3 botões grandes.
+/// Rota: /register/perfil
+class CadastroR2Screen extends ConsumerWidget {
+  final Map<String, dynamic> dadosUsuario;
+
+  const CadastroR2Screen({super.key, required this.dadosUsuario});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return AuthLayout(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(28, 40, 28, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Qual perfil melhor\nte descreve?',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w900,
+                color: AppColors.textDark,
+              ),
+            ),
+            const SizedBox(height: 32),
+
+            // ── Botão: Engenheiro Diagnóstico ────────────────────────────────
+            _PerfilButton(
+              icone: Icons.engineering,
+              texto: 'Engenheiro Diagnóstico',
+              onTap: () => _irParaProximaEtapa(
+                context,
+                'Engenheiro/Pesquisador',
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Botão: Proprietário/gestor de ativos ─────────────────────────
+            _PerfilButton(
+              icone: Icons.domain,
+              texto: 'Proprietário/gestor\nde ativos',
+              onTap: () => _irParaProximaEtapa(
+                context,
+                'Cliente',
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Botão: Pesquisador Acadêmico ──────────────────────────────────
+            _PerfilButton(
+              icone: Icons.school,
+              texto: 'Pesquisador Acadêmico',
+              onTap: () => _irParaProximaEtapa(
+                context,
+                'Acadêmico',
+              ),
+            ),
+
+            const Spacer(),
+
+            // ── Voltar ────────────────────────────────────────────────────────
+            Align(
+              alignment: Alignment.centerLeft,
+              child: TextButton(
+                onPressed: () =>
+                    context.go('/register/dados', extra: dadosUsuario),
+                child: const Text(
+                  '< Voltar',
+                  style: TextStyle(color: AppColors.greyMedium),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _irParaProximaEtapa(BuildContext context, String tipo) {
+    final dadosAtualizados = {...dadosUsuario, 'tipo': tipo};
+
+    if (tipo == 'Acadêmico') {
+      // Fluxo acadêmico: vai para tela específica de dados acadêmicos
+      context.go('/register/academico', extra: dadosAtualizados);
+    } else {
+      // Engenheiro e Proprietário: vão para o fluxo de empresa
+      context.go('/empresa/gate', extra: dadosAtualizados);
+    }
+  }
+}
+
+// ─── Botão de perfil ──────────────────────────────────────────────────────────
+class _PerfilButton extends StatelessWidget {
+  final IconData icone;
+  final String texto;
+  final VoidCallback onTap;
+
+  const _PerfilButton({
+    required this.icone,
+    required this.texto,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
+        decoration: BoxDecoration(
+          color: AppColors.primary,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icone, color: AppColors.white, size: 32),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                texto,
+                style: const TextStyle(
+                  color: AppColors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            const Icon(Icons.arrow_forward_ios,
+                color: AppColors.white, size: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}

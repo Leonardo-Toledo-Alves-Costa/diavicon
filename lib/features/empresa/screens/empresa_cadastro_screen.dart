@@ -104,7 +104,7 @@ class _EmpresaCadastroScreenState
                         child: Image.asset(
                           'assets/images/empresa.png',
                           width: 56,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.domain,
                             size: 44,
                             color: AppColors.greyLight,
@@ -431,7 +431,7 @@ class _DropdownField extends StatelessWidget {
             )),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: valor,
+          initialValue: valor,
           hint: Text(hint,
               style: const TextStyle(color: AppColors.hintText)),
           decoration: InputDecoration(

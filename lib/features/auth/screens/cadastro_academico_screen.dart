@@ -120,7 +120,7 @@ class _CadastroAcademicoScreenState
                 Image.asset(
                   'assets/images/escudo_diavicon.png',
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(
+                  errorBuilder: (_, _, _) => const Icon(
                     Icons.school,
                     size: 120,
                     color: AppColors.greyLight,

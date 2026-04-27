@@ -113,7 +113,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                           'assets/images/user.png',
                           width: 56,
                           height: 56,
-                          errorBuilder: (_, __, ___) => const Icon(
+                          errorBuilder: (_, _, _) => const Icon(
                             Icons.person,
                             size: 48,
                             color: AppColors.greyLight,
@@ -264,7 +264,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                   ),
                   const SizedBox(height: 8),
                   DropdownButtonFormField<String>(
-                    value: _escolaridadeSelecionada,
+                    initialValue: _escolaridadeSelecionada,
                     hint: const Text(
                       'Escolaridade',
                       style: TextStyle(color: AppColors.hintText),

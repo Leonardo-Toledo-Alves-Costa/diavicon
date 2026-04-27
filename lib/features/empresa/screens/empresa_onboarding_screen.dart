@@ -66,7 +66,7 @@ class EmpresaOnboardingScreen extends ConsumerWidget {
                   Image.asset(
                     'assets/images/escudo_diavicon.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
+                    errorBuilder: (_, _, _) => const Icon(
                       Icons.pets,
                       size: 140,
                       color: AppColors.greyLight,

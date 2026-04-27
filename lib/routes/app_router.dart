@@ -1,17 +1,17 @@
-import 'package:diavicon/features/projetos/screens/project_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// Importe suas telas reais
-import '../../features/auth/screens/welcome_screen.dart'; // Tela inicial
+// Importações das suas telas
+import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
+import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/home/screens/main_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  // Assiste o estado do usuário para reagir a logins/logouts automaticamente
+  // Assiste o estado do usuário para o Auth Guard
   final usuarioLogado = ref.watch(currentUserProvider);
   final bool isLoggedIn = usuarioLogado != null;
 
@@ -20,79 +20,86 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/', // O app agora começa na WelcomeScreen
+    initialLocation: '/',
 
-    // REFRESH LISTENER: Faz o GoRouter reavaliar o redirecionamento quando o estado de auth muda
-    // Se o seu authProvider não for um ChangeNotifier, você pode precisar de um listener customizado.
+    // REDIRECT: Proteção de rotas (Auth Guard)
     redirect: (context, state) {
-      // Definimos quais são as rotas públicas (que não precisam de login)
       final isWelcome = state.uri.toString() == '/';
       final isLogin = state.uri.toString() == '/login';
       final isRegister = state.uri.toString() == '/register';
 
       final isPublicRoute = isWelcome || isLogin || isRegister;
 
-      // 1. Caso: Usuário NÃO está logado e tenta acessar rota privada
       if (!isLoggedIn && !isPublicRoute) {
-        return '/login'; // Manda pro login
+        return '/login';
       }
 
-      // 2. Caso: Usuário JÁ está logado e tenta acessar rotas de Auth
-      // Se ele já logou, não precisa mais ver a Welcome, Login ou Register
       if (isLoggedIn && isPublicRoute) {
-        return '/projetos'; // Manda direto para a tela principal
+        return '/projetos';
       }
 
-      return null; // Mantém a navegação atual
+      return null;
     },
 
     routes: [
-      // --- ROTAS FORA DO RODAPÉ (TELA CHEIA) ---
+      // --- ROTAS FORA DO RODAPÉ ---
       GoRoute(
         path: '/',
-        builder: (context, state) =>
-            const WelcomeScreen(), // Sua nova tela inicial
+        builder: (context, state) => const WelcomeScreen(),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+      GoRoute(
+        path: '/login',
+        builder: (context, state) => const LoginScreen(),
+      ),
       GoRoute(
         path: '/register',
-        builder: (context, state) =>
-            const Placeholder(), // Certifique-se de que a tela existe
+        builder: (context, state) => const Placeholder(),
       ),
 
       // --- ROTAS COM RODAPÉ (SHELL ROUTE) ---
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) {
-          return MainScreen(child: child); // O MainScreen contém o BottomAppBar
+          return MainScreen(child: child);
         },
         routes: [
+          // ABA PROJETOS
           GoRoute(
             path: '/projetos',
-            builder: (context, state) =>
-                const ProjetosScreen(), // Tela conectada ao Supabase
+            builder: (context, state) => const ProjetosScreen(),
             routes: [
               GoRoute(
                 path: 'detalhes', // Fica /projetos/detalhes
-                builder: (context, state) => const ProjectDetailScreen(),
+                builder: (context, state) {
+                  // AQUI ESTÁ O SEGREDO:
+                  // Recuperamos o objeto passado no extra. 
+                  // No ProjectCard, você deve usar: context.push('/projetos/detalhes', extra: projeto.id);
+                  final id = state.extra as String?;
+                  
+                  if (id == null) {
+                    return const Scaffold(
+                      body: Center(child: Text('Erro: ID do projeto não encontrado.')),
+                    );
+                  }
+                  
+                  return ProjectDetailScreen(projetoId: id);
+                },
               ),
             ],
           ),
+
+          // OUTRAS ABAS
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Tela de Estruturas'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Estruturas'))),
           ),
           GoRoute(
             path: '/empresa',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Informações da Empresa')),
-            ),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Empresa'))),
           ),
           GoRoute(
             path: '/educacao',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Área de Educação'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Educação'))),
           ),
         ],
       ),

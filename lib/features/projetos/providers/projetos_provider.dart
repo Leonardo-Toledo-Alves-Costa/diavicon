@@ -1,22 +1,31 @@
+import 'package:diavicon/features/projetos/repositories/project_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../auth/providers/auth_provider.dart'; // Importa para sabermos quem está logado
+import 'package:flutter_riverpod/legacy.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/projeto_model.dart';
-import '../repositories/projeto_repository.dart';
 
-// Provider do Repositório
-final projetoRepositoryProvider = Provider((ref) => ProjetoRepository());
+final projectRepositoryProvider = Provider((ref) => ProjectRepository(Supabase.instance.client));
 
-// Provider que busca e guarda a lista de projetos
-final projetosProvider = FutureProvider<List<ProjetoModel>>((ref) async {
-  // 1. Pega o usuário que acabou de fazer login
-  final usuario = ref.watch(currentUserProvider);
-
-  // 2. Se não tem usuário ou ele não tem empresa, retorna lista vazia
-  if (usuario == null || usuario.empresaId == null) {
-    return [];
-  }
-
-  // 3. Se está tudo certo, chama o repositório
-  final repo = ref.watch(projetoRepositoryProvider);
-  return await repo.getProjetosPorEmpresa(usuario.empresaId!);
+// Provider da LISTA
+final projectsListProvider = FutureProvider<List<ProjetoModel>>((ref) {
+  return ref.watch(projectRepositoryProvider).getProjects();
 });
+
+// Provider do DETALHE (Usado na ProjectDetailScreen)
+final projectDetailProvider = FutureProvider.family<ProjetoModel, String>((ref, id) {
+  return ref.watch(projectRepositoryProvider).getProjectById(id);
+});
+
+final searchQueryProvider = StateProvider<String>((ref) => '');
+
+// filtro automático da lista
+final filteredProjectsProvider = Provider<AsyncValue<List<ProjetoModel>>>((ref) {
+  final projectsAsync = ref.watch(projectsListProvider); //lista original do banco
+  final query = ref.watch(searchQueryProvider).toLowerCase();
+
+  return projectsAsync.whenData((lista) {
+    if (query.isEmpty) return lista;
+    // Filtra pelo nome do projeto
+    return lista.where((p) => p.nome.toLowerCase().contains(query)).toList();
+  });
+  });

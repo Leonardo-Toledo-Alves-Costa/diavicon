@@ -1,3 +1,7 @@
+import 'package:diavicon/core/utils/diavicon_modal.dart';
+import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
+import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
+import 'package:diavicon/features/projetos/widgets/new_project_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -36,10 +40,14 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             children: [
               const Text(
                 'Bem vindo!',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.textDark),
+                style: TextStyle(
+                  fontSize: 30,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textDark,
+                ),
               ),
               const SizedBox(height: 25),
-              
+
               CustomTextField(
                 label: 'Login',
                 hint: 'Seu email',
@@ -47,15 +55,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
               ),
               const SizedBox(height: 12),
-              
+
               CustomTextField(
                 label: 'Senha',
                 hint: 'Sua senha',
                 controller: _senhaController,
                 obscureText: _ocultarSenha,
                 suffixIcon: IconButton(
-                  icon: Icon(_ocultarSenha ? Icons.visibility_off : Icons.visibility, size: 20),
-                  onPressed: () => setState(() => _ocultarSenha = !_ocultarSenha),
+                  icon: Icon(
+                    _ocultarSenha ? Icons.visibility_off : Icons.visibility,
+                    size: 20,
+                  ),
+                  onPressed: () =>
+                      setState(() => _ocultarSenha = !_ocultarSenha),
                 ),
                 validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
               ),
@@ -69,12 +81,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onChanged: (val) => setState(() => _lembrarMe = val!),
                   ),
                   TextButton(
-                    onPressed: () {},
-                    child: const Text('Resgatar Senha', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                    },
+                    child: const Text(
+                      'Resgatar Senha',
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
                 ],
               ),
-              
+
               const SizedBox(height: 10),
 
               CustomButton(
@@ -84,7 +103,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
 
               // EM VEZ DE SPACER, USAMOS UM GAP FIXO PARA SUBIR OS BOTÕES
-              const SizedBox(height: 50), 
+              const SizedBox(height: 50),
 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -94,19 +113,32 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   Image.asset('assets/images/ic_google.png', height: 45),
                 ],
               ),
-              
+
               const SizedBox(height: 20),
 
               Column(
                 children: [
-                  const Text('AINDA NÃO POSSUI UMA CONTA?', 
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.grey, letterSpacing: 0.8)),
+                  const Text(
+                    'AINDA NÃO POSSUI UMA CONTA?',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
                   GestureDetector(
                     onTap: () => context.go('/register'),
                     child: const Padding(
                       padding: EdgeInsets.symmetric(vertical: 8),
-                      child: Text('CADASTRE-SE', 
-                        style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w900, fontSize: 16)),
+                      child: Text(
+                        'CADASTRE-SE',
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w900,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -122,10 +154,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   Future<void> _fazerLogin() async {
     if (!_formKey.currentState!.validate()) return;
     try {
-      await ref.read(authControllerProvider.notifier).login(_emailController.text.trim(), _senhaController.text);
+      await ref
+          .read(authControllerProvider.notifier)
+          .login(_emailController.text.trim(), _senhaController.text);
       if (mounted) context.go('/projetos');
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Erro ao entrar.')));
+      if (mounted)
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Erro ao entrar.')));
     }
   }
 }

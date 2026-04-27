@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../auth/providers/auth_provider.dart'; // Importa para sabermos quem está logado
-import '../models/projeto_model.dart';
+import '../../projetos/models/projeto_model.dart';
 import '../repositories/projeto_repository.dart';
 
 // Provider do Repositório

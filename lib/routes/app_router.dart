@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// --- Auth & Cadastro ---
+// ── Auth & Cadastro de Usuário ──────────────────────────────────────────────
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/cadastro_r0_screen.dart';
@@ -10,21 +10,21 @@ import '../../features/auth/screens/cadastro_r1_screen.dart';
 import '../../features/auth/screens/cadastro_r2_screen.dart';
 import '../../features/auth/screens/cadastro_academico_screen.dart';
 
-// --- Onboarding Empresa ---
+// ── Onboarding da Empresa ───────────────────────────────────────────────────
 import '../../features/auth/screens/cadastro0_empresa.dart';
 import '../../features/auth/screens/cadastro1_empresa.dart';
 import '../../features/auth/screens/cadastro2_empresa.dart';
 import '../../features/auth/screens/cadastro3_empresa.dart';
 
-// --- Core ---
+// ── Home / Projetos / Core ──────────────────────────────────────────────────
 import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
 import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
-  final usuarioLogado = ref.watch(currentUserProvider);
-  final bool isLoggedIn = usuarioLogado != null;
+  final usuario = ref.watch(currentUserProvider);
+  final bool isLoggedIn = usuario != null;
 
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -37,25 +37,22 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final path = state.uri.toString();
       
-      // Rotas que não precisam de login (Cadastro e Onboarding inclusos)
-      final bool isPublicRoute = path == '/' || 
-                                 path == '/login' || 
-                                 path.startsWith('/register') || 
-                                 path.startsWith('/empresa');
+      // Define rotas públicas: Login, Cadastro e Onboarding completo
+      final bool isPublic = path == '/' || 
+                           path == '/login' || 
+                           path.startsWith('/register') || 
+                           path.startsWith('/empresa');
 
-      if (!isLoggedIn && !isPublicRoute) {
-        return '/login';
-      }
-
-      if (isLoggedIn && isPublicRoute) {
+      if (!isLoggedIn && !isPublic) return '/login';
+      
+      if (isLoggedIn && (path == '/' || path == '/login' || path.startsWith('/register') || path.startsWith('/empresa'))) {
         return '/projetos';
       }
-
       return null;
     },
 
     routes: [
-      // --- ROTAS PÚBLICAS (FORA DO RODAPÉ) ---
+      // ── ROTAS PÚBLICAS (FORA DO RODAPÉ) ────────────────────────────────────
       GoRoute(
         path: '/',
         builder: (context, state) => const WelcomeScreen(),
@@ -65,13 +62,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const LoginScreen(),
       ),
 
-      // --- FLUXO DE CADASTRO (Sub-rotas para manter organização) ---
+      // ── FLUXO DE CADASTRO DE USUÁRIO ──────────────────────────────────────
       GoRoute(
         path: '/register',
         builder: (context, state) => const CadastroR0Screen(),
         routes: [
           GoRoute(
-            path: 'dados', // vira /register/dados
+            path: 'dados', // /register/dados
             builder: (context, state) {
               final extra = state.extra as Map<String, dynamic>? ?? {};
               return CadastroR1Screen(
@@ -81,14 +78,14 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(
-            path: 'perfil', // vira /register/perfil
+            path: 'perfil', // /register/perfil
             builder: (context, state) {
               final extra = state.extra as Map<String, dynamic>? ?? {};
               return CadastroR2Screen(dadosUsuario: extra);
             },
           ),
           GoRoute(
-            path: 'academico', // vira /register/academico
+            path: 'academico', // /register/academico
             builder: (context, state) {
               final extra = state.extra as Map<String, dynamic>? ?? {};
               return CadastroAcademicoScreen(dadosUsuario: extra);
@@ -97,29 +94,43 @@ final routerProvider = Provider<GoRouter>((ref) {
         ],
       ),
 
-      // --- FLUXO ONBOARDING EMPRESA ---
+      // ── FLUXO DE ONBOARDING DA EMPRESA ────────────────────────────────────
+      // IMPORTANTE: Todas aqui extraem o 'extra' para não quebrar a corrente
       GoRoute(
         path: '/empresa/gate',
-        builder: (context, state) => const Cadastro0Empresa(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return Cadastro0Empresa(dadosUsuario: extra);
+        },
       ),
       GoRoute(
         path: '/empresa/onboarding',
-        builder: (context, state) => const Cadastro1Empresa(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return Cadastro1Empresa(dadosUsuario: extra);
+        },
       ),
       GoRoute(
         path: '/empresa/servicos',
-        builder: (context, state) => const Cadastro2Empresa(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return Cadastro2Empresa(dadosUsuario: extra);
+        },
       ),
       GoRoute(
         path: '/empresa/planos',
-        builder: (context, state) => const Cadastro3Empresa(),
+        builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>? ?? {};
+          return Cadastro3Empresa(dadosUsuario: extra);
+        },
       ),
 
-      // --- ÁREA LOGADA (SHELL ROUTE) ---
+      // ── ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ──────────────────────────────
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => MainScreen(child: child),
         routes: [
+          // ABA PROJETOS
           GoRoute(
             path: '/projetos',
             builder: (context, state) => const ProjetosScreen(),
@@ -129,24 +140,38 @@ final routerProvider = Provider<GoRouter>((ref) {
                 builder: (context, state) {
                   final id = state.extra as String?;
                   if (id == null) {
-                    return const Scaffold(body: Center(child: Text('Erro: ID não encontrado.')));
+                    return const Scaffold(
+                      body: Center(child: Text('Erro: ID do projeto não encontrado.')),
+                    );
                   }
                   return ProjectDetailScreen(projetoId: id);
                 },
               ),
             ],
           ),
+
+          // ABA ESTRUTURAS
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) => const Scaffold(body: Center(child: Text('Estruturas'))),
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Tela de Estruturas')),
+            ),
           ),
+
+          // ABA EMPRESA (Perfil/Gestão)
           GoRoute(
-            path: '/empresa', // Perfil da empresa pós-login
-            builder: (context, state) => const Scaffold(body: Center(child: Text('Perfil Empresa'))),
+            path: '/empresa',
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Perfil da Empresa')),
+            ),
           ),
+
+          // ABA EDUCAÇÃO
           GoRoute(
             path: '/educacao',
-            builder: (context, state) => const Scaffold(body: Center(child: Text('Educação'))),
+            builder: (context, state) => const Scaffold(
+              body: Center(child: Text('Área de Educação')),
+            ),
           ),
         ],
       ),

@@ -1,17 +1,72 @@
-import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../core/constants/app_colors.dart';
+import '../providers/auth_provider.dart';
 
-class Cadastro3Empresa extends StatefulWidget {
-  const Cadastro3Empresa({super.key});
+class Cadastro3Empresa extends ConsumerStatefulWidget {
+  // Recebe o "pacotão" de dados acumulado de todas as telas anteriores (R0, R1, R2)
+  final Map<String, dynamic> dadosUsuario;
+
+  const Cadastro3Empresa({super.key, required this.dadosUsuario});
 
   @override
-  State<Cadastro3Empresa> createState() => _Cadastro3EmpresaState();
+  ConsumerState<Cadastro3Empresa> createState() => _Cadastro3EmpresaState();
 }
 
-class _Cadastro3EmpresaState extends State<Cadastro3Empresa> {
+class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
+  
+  // ESTA É A FUNÇÃO "ENVIAR/FINALIZAR" QUE CONECTA COM O BANCO
+  Future<void> _finalizarCadastroEmpresa(bool isTrial) async {
+    final controller = ref.read(authControllerProvider.notifier);
+
+    // Preparamos o Mapa Final unificando tudo
+    final Map<String, dynamic> payloadFinal = {
+      ...widget.dadosUsuario, // e-mail, senha, nome, sobrenome, telefone, rua, cep...
+      'perfil': 'Empresa',
+      'plano_escolhido': isTrial ? 'Trial' : 'Advanced',
+      'nome_empresa': widget.dadosUsuario['nome_empresa'] ?? widget.dadosUsuario['nome'],
+      'cnpj': widget.dadosUsuario['cnpj'] ?? '00.000.000/0001-00',
+    };
+
+    try {
+      // 1. Chama o processo de registro (Auth + Endereço + Usuário)
+      await controller.registrar(
+        email: widget.dadosUsuario['email'],
+        password: widget.dadosUsuario['senha'],
+        dados: payloadFinal,
+      );
+
+      // 2. Se o await terminou sem erro, o cadastro no Supabase foi um sucesso!
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Empresa cadastrada com sucesso!'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+        
+        // 3. ENTRADA NO APP: Mata o fluxo de cadastro e vai para a Home
+        context.go('/projetos'); 
+      }
+    } catch (e) {
+      if (mounted) {
+        // Se der erro de "Rate Limit" (e-mail) ou Coluna Inexistente, aparece aqui
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro ao finalizar: $e'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Monitora o estado de loading do controller para desabilitar o botão enquanto salva
+    final isLoading = ref.watch(authControllerProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
@@ -19,13 +74,12 @@ class _Cadastro3EmpresaState extends State<Cadastro3Empresa> {
           padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
           child: Column(
             children: [
-              // Logo superior
               Image.asset(
                 'assets/images/logo_diavicon.png',
-                height: 150,
+                height: 120,
                 fit: BoxFit.contain,
               ),
-              
+              const SizedBox(height: 10),
               Expanded(
                 child: Stack(
                   clipBehavior: Clip.none,
@@ -40,148 +94,25 @@ class _Cadastro3EmpresaState extends State<Cadastro3Empresa> {
                         ),
                         child: Column(
                           children: [
-                            // Header: Melhor Oferta
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12),
-                                ),
-                              ),
-                              child: const Text(
-                                'Melhor oferta',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            
-                            // Conteúdo do Plano
+                            _buildCardHeader(),
                             Expanded(
                               child: Padding(
-                                padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+                                padding: const EdgeInsets.all(16.0),
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text(
-                                      'Plano Advanced',
-                                      style: TextStyle(
-                                        color: AppColors.primary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    const Text(
-                                      'Destrave o Potencial da Sua Empresa!',
-                                      style: TextStyle(
-                                        color: AppColors.textDark,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.03,
-                                      ),
-                                    ),
+                                    const Text('Plano Advanced', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
+                                    const SizedBox(height: 8),
+                                    const Text('Destrave o Potencial da Sua Empresa!', style: TextStyle(color: AppColors.textDark, fontSize: 20, fontWeight: FontWeight.w700, height: 1.1)),
                                     const SizedBox(height: 20),
-                                    
-                                    // Lista de Funcionalidades (com a barra lateral laranja)
-                                    Expanded(
-                                      child: Row(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 7,
-                                            decoration: const BoxDecoration(
-                                              color: AppColors.primary,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 20),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                                              children: const [
-                                                _FeatureText(text: 'Acesso a 07 módulos de ensaio'),
-                                                _FeatureText(text: 'Gerenciamento de Equipes'),
-                                                _FeatureText(text: 'Relatórios Automáticos e Personalizáveis'),
-                                                _FeatureText(text: 'Acompanhamento de RDO\'s e Gastos'),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    
-                                    const SizedBox(height: 10),
-                                    
-                                    // Preço
-                                    Center(
-                                      child: RichText(
-                                        text: const TextSpan(
-                                          text: '2499,90',
-                                          style: TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 40,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                          children: [
-                                            TextSpan(
-                                              text: '/mês',
-                                              style: TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    
-                                    const SizedBox(height: 6),
-                                    
-                                    const Center(
-                                      child: Text(
-                                        '+ R\$ 67,92 por usuário adicional da\n empresa(20% Off)',
-                                        textAlign: TextAlign.center,
-                                        style: TextStyle(
-                                          color: AppColors.greyDarkest,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.2,
-                                        ),
-                                      ),
-                                    ),
-                                    
+                                    _buildFeatureItem('Acesso a 07 módulos de ensaio'),
+                                    _buildFeatureItem('Gerenciamento de Equipes'),
+                                    _buildFeatureItem('Relatórios Automáticos'),
+                                    _buildFeatureItem('Acompanhamento de RDO\'s'),
+                                    const Spacer(),
+                                    _buildPriceSection(),
                                     const SizedBox(height: 14),
-                                    
-                                    // Botão Selecionar
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 48,
-                                      child: ElevatedButton(
-                                        onPressed: () => context.go('/projetos'),
-                                        style: ElevatedButton.styleFrom(
-                                          elevation: 0,
-                                          backgroundColor: AppColors.primary,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(8),
-                                          ),
-                                        ),
-                                        child: const Text(
-                                          'Selecionar plano',
-                                          style: TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
+                                    _buildPrimaryButton(isLoading),
                                   ],
                                 ),
                               ),
@@ -190,83 +121,94 @@ class _Cadastro3EmpresaState extends State<Cadastro3Empresa> {
                         ),
                       ),
                     ),
-
-                    // Chevrons laterais (Conforme sua prototipagem)
-                    Positioned(
-                      left: -12,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          onPressed: () {}, // Lógica de carrossel futura
-                          icon: const Icon(Icons.chevron_left_rounded),
-                          iconSize: 32,
-                          color: AppColors.greyMedium,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -12,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          onPressed: () {}, // Lógica de carrossel futura
-                          icon: const Icon(Icons.chevron_right_rounded),
-                          iconSize: 32,
-                          color: AppColors.greyMedium,
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
-              
               const SizedBox(height: 16),
-              
-              // Botão rodapé: Trial
-              SizedBox(
-                width: double.infinity,
-                height: 48,
-                child: ElevatedButton(
-                  onPressed: () => context.go('/projetos'),
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: AppColors.background,
-                    foregroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      side: const BorderSide(color: AppColors.primary, width: 1),
-                    ),
-                  ),
-                  child: const Text(
-                    'Experimente por 1 Mês Grátis',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
+              _buildTrialButton(isLoading),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-// Widget auxiliar para os itens da lista
-class _FeatureText extends StatelessWidget {
-  final String text;
-  const _FeatureText({required this.text});
+  // --- WIDGETS AUXILIARES DE INTERFACE ---
 
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: const TextStyle(
-        color: AppColors.textDark,
-        fontSize: 16,
-        fontWeight: FontWeight.w500,
-        height: 1.2,
+  Widget _buildCardHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: const BoxDecoration(
+        color: AppColors.primary,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+      ),
+      child: const Text('Melhor oferta', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+    );
+  }
+
+  Widget _buildFeatureItem(String text) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPriceSection() {
+    return Center(
+      child: Column(
+        children: [
+          RichText(
+            text: const TextSpan(
+              text: '2499,90',
+              style: TextStyle(color: AppColors.primary, fontSize: 36, fontWeight: FontWeight.w900),
+              children: [
+                TextSpan(text: '/mês', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+          const Text('+ R\$ 67,92 por usuário adicional', style: TextStyle(fontSize: 12, color: Colors.grey)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPrimaryButton(bool isLoading) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: ElevatedButton(
+        onPressed: isLoading ? null : () => _finalizarCadastroEmpresa(false),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.primary,
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: isLoading 
+          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+          : const Text('Selecionar plano', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Widget _buildTrialButton(bool isLoading) {
+    return SizedBox(
+      width: double.infinity,
+      height: 48,
+      child: TextButton(
+        onPressed: isLoading ? null : () => _finalizarCadastroEmpresa(true),
+        style: TextButton.styleFrom(
+          foregroundColor: AppColors.primary,
+          side: const BorderSide(color: AppColors.primary),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        ),
+        child: const Text('Experimente por 1 Mês Grátis', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
       ),
     );
   }

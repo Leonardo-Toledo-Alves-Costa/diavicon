@@ -3,14 +3,17 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Cadastro2Empresa extends StatefulWidget {
-  const Cadastro2Empresa({super.key});
+  // 1. ADICIONADO: Agora a tela recebe os dados acumulados
+  final Map<String, dynamic> dadosUsuario;
+
+  const Cadastro2Empresa({super.key, required this.dadosUsuario});
 
   @override
   State<Cadastro2Empresa> createState() => _Cadastro2EmpresaState();
 }
 
 class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
-  // Lista de serviços para o Checkbox não ficar "vazio"
+  // Lista de serviços para o Checkbox
   final List<String> _servicos = [
     'Vistorias',
     'Laudos Técnicos',
@@ -62,7 +65,6 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
-                    height: 1.1,
                   ),
                 ),
               ),
@@ -75,14 +77,13 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: ListView.builder(
-                    itemCount: _selecionados.length,
-                    padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+                    itemCount: _servicos.length,
+                    padding: const EdgeInsets.all(8),
                     itemBuilder: (context, index) {
-                      return CheckboxListTile( // Usei ListTile para ter o texto ao lado
-                        title: Text(_servicos[index], style: const TextStyle(fontWeight: FontWeight.w500)),
+                      return CheckboxListTile(
+                        title: Text(_servicos[index]),
                         value: _selecionados[index],
                         activeColor: AppColors.primary,
-                        checkColor: Colors.white,
                         controlAffinity: ListTileControlAffinity.leading,
                         onChanged: (value) {
                           setState(() {
@@ -99,25 +100,32 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                 children: [
                   TextButton(
                     onPressed: () => context.pop(),
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                    ),
-                    child: const Text('<   Voltar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+                    child: const Text('<   Voltar', style: TextStyle(color: AppColors.primary, fontSize: 16)),
                   ),
                   const Spacer(),
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
-                      // NAVEGAÇÃO: Vai para a tela de planos
-                      onPressed: () => context.push('/empresa/planos'), 
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
+                      // 2. CORRIGIDO: Passando o extra adiante para a Cadastro3
+                      onPressed: () {
+                        // Opcional: Adicionar os serviços selecionados ao mapa antes de enviar
+                        final servicosFinal = [];
+                        for (var i = 0; i < _selecionados.length; i++) {
+                          if (_selecionados[i]) servicosFinal.add(_servicos[i]);
+                        }
+                        
+                        final dadosAtualizados = {
+                          ...widget.dadosUsuario,
+                          'servicos': servicosFinal,
+                        };
+
+                        context.push('/empresa/planos', extra: dadosAtualizados);
+                      },
                       child: const Text('Avançar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),

@@ -5,26 +5,21 @@ import '../repositories/auth_repository.dart';
 
 final authRepositoryProvider = Provider((ref) => AuthRepository());
 
-final currentUserProvider = 
-    StateNotifierProvider<CurrentUserNotifier, UsuarioModel?>((ref) {
+// Provider que guarda o Usuário Logado
+final currentUserProvider = StateNotifierProvider<CurrentUserNotifier, UsuarioModel?>((ref) {
   return CurrentUserNotifier();
 });
 
-final authControllerProvider = 
-    StateNotifierProvider<AuthController, bool>((ref) {
+// Provider que controla o estado de Loading e as ações
+final authControllerProvider = StateNotifierProvider<AuthController, bool>((ref) {
   return AuthController(ref);
 });
 
 class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   CurrentUserNotifier() : super(null);
 
-  void setUser(UsuarioModel user) {
-    state = user;
-  }
-
-  void clearUser() {
-    state = null;
-  }
+  void setUser(UsuarioModel user) => state = user;
+  void clearUser() => state = null;
 }
 
 class AuthController extends StateNotifier<bool> {
@@ -32,20 +27,55 @@ class AuthController extends StateNotifier<bool> {
 
   AuthController(this._ref) : super(false);
 
+  // MÉTODO DE LOGIN
   Future<void> login(String email, String password) async {
-    state = true; 
+    state = true;
     try {
       final repo = _ref.read(authRepositoryProvider);
       final response = await repo.signIn(email, password);
 
       if (response.user != null) {
         final perfil = await repo.getUsuarioPerfil(response.user!.id);
-        _ref.read(currentUserProvider.notifier).setUser(perfil!);
+        if (perfil != null) {
+          _ref.read(currentUserProvider.notifier).setUser(perfil);
+        }
       }
-    } catch (e) {
-      rethrow;
     } finally {
       state = false;
     }
+  }
+
+  // NOVO: MÉTODO DE CADASTRO (Chame isso no final do R2 ou Onboarding)
+  Future<void> registrar({
+    required String email, 
+    required String password, 
+    required Map<String, dynamic> dados,
+  }) async {
+    state = true;
+    try {
+      final repo = _ref.read(authRepositoryProvider);
+      await repo.signUp(
+        email: email, 
+        password: password, 
+        dadosCompletos: dados,
+      );
+      
+      // Após cadastrar, fazemos o login automático ou buscamos o perfil
+      final userAuth = repo.currentUser;
+      if (userAuth != null) {
+        final perfil = await repo.getUsuarioPerfil(userAuth.id);
+        if (perfil != null) {
+          _ref.read(currentUserProvider.notifier).setUser(perfil);
+        }
+      }
+    } finally {
+      state = false;
+    }
+  }
+
+  // LOGOUT
+  Future<void> logout() async {
+    await _ref.read(authRepositoryProvider).signOut();
+    _ref.read(currentUserProvider.notifier).clearUser();
   }
 }

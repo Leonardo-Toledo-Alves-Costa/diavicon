@@ -29,10 +29,13 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
   void _avancar() {
     if (_formKey.currentState!.validate()) {
       // Passa o email e senha para a próxima tela (R1) via extra
-      context.push('/register/dados', extra: {
-        'email': _emailController.text.trim(),
-        'senha': _senhaController.text.trim(),
-      });
+      context.push(
+        '/register/dados',
+        extra: {
+          'email': _emailController.text.trim(),
+          'senha': _senhaController.text.trim(),
+        },
+      );
     }
   }
 
@@ -58,10 +61,7 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
               const SizedBox(height: 8),
               const Text(
                 'Comece sua jornada na DiaViCon',
-                style: TextStyle(
-                  color: AppColors.greyMedium,
-                  fontSize: 14,
-                ),
+                style: TextStyle(color: AppColors.greyMedium, fontSize: 14),
               ),
               const SizedBox(height: 32),
 
@@ -72,8 +72,21 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (!val.contains('@')) return 'E-mail inválido';
+                  final email = val?.trim() ?? "";
+                  print(
+                    "DEBUG VALIDATOR: '$email' | Tamanho: ${email.length}",
+                  ); // As aspas ajudam a ver espaços
+
+                  if (email.isEmpty) return 'Obrigatório';
+
+                  final emailRegex = RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  );
+
+                  if (!emailRegex.hasMatch(email)) {
+                    return 'E-mail inválido';
+                  }
+
                   return null;
                 },
               ),
@@ -100,18 +113,16 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
                 controller: _confirmarSenhaController,
                 obscureText: true,
                 validator: (val) {
-                  if (val != _senhaController.text) return 'As senhas não batem';
+                  if (val != _senhaController.text)
+                    return 'As senhas não batem';
                   return null;
                 },
               ),
               const SizedBox(height: 40),
 
               // Botão Continuar
-              CustomButton(
-                text: 'Continuar',
-                onPressed: _avancar,
-              ),
-              
+              CustomButton(text: 'Continuar', onPressed: _avancar),
+
               const SizedBox(height: 24),
 
               // Link para Login

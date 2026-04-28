@@ -5,9 +5,11 @@ import 'package:diavicon/core/widgets/custom_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class Cadastro0Empresa extends StatelessWidget {
-  const Cadastro0Empresa({super.key});
+  final Map<String, dynamic> dadosUsuario;
+  const Cadastro0Empresa({super.key, required this.dadosUsuario});
 
   @override
   Widget build(BuildContext context) {
@@ -55,7 +57,9 @@ class Cadastro0Empresa extends StatelessWidget {
                       const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                     ),
                   ),
-                  onPressed: () {},
+                  onPressed: () {
+                    context.push('/empresa/onboarding', extra: dadosUsuario);
+                  },
                   child: Row(
                     mainAxisSize: MainAxisSize.max,
                     crossAxisAlignment: CrossAxisAlignment.center,

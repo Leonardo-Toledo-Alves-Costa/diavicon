@@ -22,7 +22,7 @@ class Cadastro0Empresa extends StatelessWidget {
               Wrap(
                 children: [
                   Text(
-                    'Sua empresa já é cadastrada da ',
+                    'Sua empresa já é cadastrada na ',
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                   ),
                   Text(

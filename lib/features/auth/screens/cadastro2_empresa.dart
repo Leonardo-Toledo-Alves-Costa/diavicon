@@ -10,9 +10,17 @@ class Cadastro2Empresa extends StatefulWidget {
 }
 
 class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
-  late final List<bool> _selecionados = List<bool>.filled(6, false);
-
-
+  // Lista de serviços para o Checkbox não ficar "vazio"
+  final List<String> _servicos = [
+    'Vistorias',
+    'Laudos Técnicos',
+    'Inspeção Predial',
+    'Ensaios Tecnológicos',
+    'Consultoria',
+    'Acompanhamento de Obras'
+  ];
+  
+  late final List<bool> _selecionados = List<bool>.filled(_servicos.length, false);
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +43,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                   value: 0.68,
                   minHeight: 9,
                   backgroundColor: Colors.grey.shade500,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.primary,
-                  ),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               ),
               const SizedBox(height: 14),
@@ -49,12 +55,9 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 child: const Text(
-                  'Quais servicos que você realiza?',
+                  'Quais serviços que você realiza?',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -75,27 +78,17 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                     itemCount: _selecionados.length,
                     padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
                     itemBuilder: (context, index) {
-                      return SizedBox(
-                        height: 50,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Checkbox(
-                            value: _selecionados[index],
-                            onChanged: (value) {
-                              setState(() {
-                                _selecionados[index] = value ?? false;
-                              });
-                            },
-                            activeColor: AppColors.primary,
-                            side: const BorderSide(
-                              color: AppColors.greyMedium,
-                              width: 1.1,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
+                      return CheckboxListTile( // Usei ListTile para ter o texto ao lado
+                        title: Text(_servicos[index], style: const TextStyle(fontWeight: FontWeight.w500)),
+                        value: _selecionados[index],
+                        activeColor: AppColors.primary,
+                        checkColor: Colors.white,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (value) {
+                          setState(() {
+                            _selecionados[index] = value ?? false;
+                          });
+                        },
                       );
                     },
                   ),
@@ -105,50 +98,27 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      }
-                      else {
-                        context.go('/login');
-                      }
-                    },
+                    onPressed: () => context.pop(),
                     style: TextButton.styleFrom(
                       foregroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(horizontal: 6),
                     ),
-                    child: const Text(
-                      '<   Voltar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    child: const Text('<   Voltar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
                   ),
                   const Spacer(),
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: () {},
+                      // NAVEGAÇÃO: Vai para a tela de planos
+                      onPressed: () => context.push('/empresa/planos'), 
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        'Avancar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      child: const Text('Avançar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

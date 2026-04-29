@@ -70,7 +70,7 @@ class MainScreen extends StatelessWidget {
               context,
               Icons.business,
               'Empresa',
-              '/empresa',
+              '/minha-empresa',
               location,
             ),
             _buildNavItem(

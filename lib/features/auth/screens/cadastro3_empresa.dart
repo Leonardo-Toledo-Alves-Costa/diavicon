@@ -15,51 +15,22 @@ class Cadastro3Empresa extends ConsumerStatefulWidget {
 }
 
 class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
-  
-  // ESTA É A FUNÇÃO "ENVIAR/FINALIZAR" QUE CONECTA COM O BANCO
-  Future<void> _finalizarCadastroEmpresa(bool isTrial) async {
-    final controller = ref.read(authControllerProvider.notifier);
-
-    // Preparamos o Mapa Final unificando tudo
-    final Map<String, dynamic> payloadFinal = {
-      ...widget.dadosUsuario, // e-mail, senha, nome, sobrenome, telefone, rua, cep...
+  // Esta função agora serve apenas para NAVEGAR para o formulário de CNPJ/Endereço
+  void _finalizarCadastroEmpresa(bool isTrial) {
+    // 1. Preparamos os dados agregando o plano escolhido
+    final Map<String, dynamic> dadosComPlano = {
+      ...widget.dadosUsuario,
       'perfil': 'Empresa',
       'plano_escolhido': isTrial ? 'Trial' : 'Advanced',
-      'nome_empresa': widget.dadosUsuario['nome_empresa'] ?? widget.dadosUsuario['nome'],
-      'cnpj': widget.dadosUsuario['cnpj'] ?? '00.000.000/0001-00',
+      // Aqui você coloca o UUID real que está na sua tabela 'planos' do Supabase
+      'plano_escolhido_id': isTrial
+          ? 'ID_DO_SEU_PLANO_TRIAL'
+          : 'ID_DO_SEU_PLANO_ADVANCED',
     };
 
-    try {
-      // 1. Chama o processo de registro (Auth + Endereço + Usuário)
-      await controller.registrar(
-        email: widget.dadosUsuario['email'],
-        password: widget.dadosUsuario['senha'],
-        dados: payloadFinal,
-      );
-
-      // 2. Se o await terminou sem erro, o cadastro no Supabase foi um sucesso!
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Empresa cadastrada com sucesso!'),
-            backgroundColor: AppColors.primary,
-          ),
-        );
-        
-        // 3. ENTRADA NO APP: Mata o fluxo de cadastro e vai para a Home
-        context.go('/projetos'); 
-      }
-    } catch (e) {
-      if (mounted) {
-        // Se der erro de "Rate Limit" (e-mail) ou Coluna Inexistente, aparece aqui
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro ao finalizar: $e'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    }
+    // 2. NAVEGAÇÃO: Em vez de ir para /projetos, vamos para o cadastro da empresa
+    // Usamos o 'push' para o usuário poder voltar se quiser mudar o plano
+    context.push('/empresa/cadastro', extra: dadosComPlano);
   }
 
   @override
@@ -101,14 +72,35 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    const Text('Plano Advanced', style: TextStyle(color: AppColors.primary, fontSize: 16, fontWeight: FontWeight.w800)),
+                                    const Text(
+                                      'Plano Advanced',
+                                      style: TextStyle(
+                                        color: AppColors.primary,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
                                     const SizedBox(height: 8),
-                                    const Text('Destrave o Potencial da Sua Empresa!', style: TextStyle(color: AppColors.textDark, fontSize: 20, fontWeight: FontWeight.w700, height: 1.1)),
+                                    const Text(
+                                      'Destrave o Potencial da Sua Empresa!',
+                                      style: TextStyle(
+                                        color: AppColors.textDark,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w700,
+                                        height: 1.1,
+                                      ),
+                                    ),
                                     const SizedBox(height: 20),
-                                    _buildFeatureItem('Acesso a 07 módulos de ensaio'),
-                                    _buildFeatureItem('Gerenciamento de Equipes'),
+                                    _buildFeatureItem(
+                                      'Acesso a 07 módulos de ensaio',
+                                    ),
+                                    _buildFeatureItem(
+                                      'Gerenciamento de Equipes',
+                                    ),
                                     _buildFeatureItem('Relatórios Automáticos'),
-                                    _buildFeatureItem('Acompanhamento de RDO\'s'),
+                                    _buildFeatureItem(
+                                      'Acompanhamento de RDO\'s',
+                                    ),
                                     const Spacer(),
                                     _buildPriceSection(),
                                     const SizedBox(height: 14),
@@ -143,7 +135,15 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
         color: AppColors.primary,
         borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
       ),
-      child: const Text('Melhor oferta', textAlign: TextAlign.center, style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900)),
+      child: const Text(
+        'Melhor oferta',
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 16,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 
@@ -152,9 +152,18 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+          const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.primary,
+            size: 20,
+          ),
           const SizedBox(width: 10),
-          Expanded(child: Text(text, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500))),
+          Expanded(
+            child: Text(
+              text,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
@@ -167,13 +176,27 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
           RichText(
             text: const TextSpan(
               text: '2499,90',
-              style: TextStyle(color: AppColors.primary, fontSize: 36, fontWeight: FontWeight.w900),
+              style: TextStyle(
+                color: AppColors.primary,
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+              ),
               children: [
-                TextSpan(text: '/mês', style: TextStyle(color: Colors.black, fontSize: 16, fontWeight: FontWeight.w500)),
+                TextSpan(
+                  text: '/mês',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
               ],
             ),
           ),
-          const Text('+ R\$ 67,92 por usuário adicional', style: TextStyle(fontSize: 12, color: Colors.grey)),
+          const Text(
+            '+ R\$ 67,92 por usuário adicional',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -190,9 +213,19 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: isLoading 
-          ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-          : const Text('Selecionar plano', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        child: isLoading
+            ? const SizedBox(
+                height: 20,
+                width: 20,
+                child: CircularProgressIndicator(
+                  color: Colors.white,
+                  strokeWidth: 2,
+                ),
+              )
+            : const Text(
+                'Selecionar plano',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
       ),
     );
   }
@@ -208,7 +241,10 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
           side: const BorderSide(color: AppColors.primary),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         ),
-        child: const Text('Experimente por 1 Mês Grátis', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+        child: const Text(
+          'Experimente por 1 Mês Grátis',
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

@@ -340,7 +340,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   }
 }
 
-
 class _SectionTitle extends StatelessWidget {
   final String titulo;
   const _SectionTitle({required this.titulo});

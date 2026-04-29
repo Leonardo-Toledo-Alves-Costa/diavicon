@@ -1,8 +1,8 @@
-import 'package:diavicon/features/projetos/repositories/project_repository.dart';
+import 'package:diavicon/features/empresa/repositories/project_repository.dart';
+import 'package:diavicon/features/projetos/models/projeto_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../models/projeto_model.dart';
 
 final projectRepositoryProvider = Provider((ref) => ProjectRepository(Supabase.instance.client));
 

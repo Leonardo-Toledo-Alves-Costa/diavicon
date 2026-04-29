@@ -15,13 +15,17 @@ final authControllerProvider = StateNotifierProvider<AuthController, bool>((ref)
   return AuthController(ref);
 });
 
+// ── Notifier do usuário logado ─────────────────────────────────────────────
 class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   CurrentUserNotifier() : super(null);
 
   void setUser(UsuarioModel user) => state = user;
   void clearUser() => state = null;
+  void setUser(UsuarioModel user) => state = user;
+  void clearUser() => state = null;
 }
 
+// ── Controller de autenticação ─────────────────────────────────────────────
 class AuthController extends StateNotifier<bool> {
   final Ref _ref;
 
@@ -29,6 +33,7 @@ class AuthController extends StateNotifier<bool> {
 
   // MÉTODO DE LOGIN
   Future<void> login(String email, String password) async {
+    state = true;
     state = true;
     try {
       final repo = _ref.read(authRepositoryProvider);

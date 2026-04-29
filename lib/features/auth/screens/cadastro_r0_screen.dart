@@ -75,7 +75,7 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
                   final email = val?.trim() ?? "";
                   print(
                     "DEBUG VALIDATOR: '$email' | Tamanho: ${email.length}",
-                  ); // As aspas ajudam a ver espaços
+                  ); // aspas ajudam a ver espaços
 
                   if (email.isEmpty) return 'Obrigatório';
 

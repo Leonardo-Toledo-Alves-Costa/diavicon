@@ -21,7 +21,7 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 1. OBTENÇÃO DOS DADOS DO SUPABASE
+    // OBTENÇÃO DOS DADOS DO SUPABASE
     final projetoAsync = ref.watch(projectDetailProvider(projetoId));
 
     return projetoAsync.when(
@@ -36,7 +36,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         // Efeito de sobreposição: o corpo começa no topo absoluto da tela
         extendBodyBehindAppBar: true, 
 
-        // 2. CONFIGURAÇÃO DO MENU LATERAL (DRAWER)
+        //  (DRAWER)
         endDrawer: MenuDrawerAppBar(
           title: 'Menu do\nProjeto',
           items: [
@@ -53,7 +53,7 @@ class ProjectDetailScreen extends ConsumerWidget {
           ],
         ),
 
-        // 3. APPBAR PADRÃO (TÍTULO DA FEATURE)
+        // APPBAR PADRÃO (TÍTULO DA FEATURE)
         resizeToAvoidBottomInset: false,
         appBar: const CustomAppBar(
           title: 'Projetos', 
@@ -64,7 +64,7 @@ class ProjectDetailScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // 4. HEADER COM IMAGEM (Cobre o topo atrás da AppBar)
+              // HEADER COM IMAGEM (Cobre o topo atrás da AppBar)
               _buildHeader(projeto),
 
               Padding(
@@ -72,7 +72,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TÍTULO DO PROJETO (PROJETO ABC)
+                    // TÍTULO DO PROJETO 
                     Text(
                       projeto.nome,
                       style: const TextStyle(
@@ -115,7 +115,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  // --- MÉTODOS AUXILIARES ---
+  // MÉTODOS AUXILIARES 
 
   Widget _buildHeader(ProjetoModel projeto) {
     return Stack(

@@ -47,7 +47,7 @@ class EmpresaModel {
     );
   }
 
-  // Converte o Objeto Dart para JSON (útil para Updates)
+  // Converte o Objeto Dart para JSON
   Map<String, dynamic> toMap() {
     return {
       'id': id,
@@ -61,7 +61,6 @@ class EmpresaModel {
       'tamanho': tamanho,
       'foto_url': fotoUrl,
       'site': site,
-      // O Supabase costuma gerenciar o criado_em automaticamente (DEFAULT NOW())
     };
   }
 

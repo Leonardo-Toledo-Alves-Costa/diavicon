@@ -1,3 +1,4 @@
+import 'package:diavicon/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -14,22 +15,20 @@ class EmpresaCadastroScreen extends ConsumerStatefulWidget {
   const EmpresaCadastroScreen({super.key, required this.dadosUsuario});
 
   @override
-  ConsumerState<EmpresaCadastroScreen> createState() => _EmpresaCadastroScreenState();
+  ConsumerState<EmpresaCadastroScreen> createState() =>
+      _EmpresaCadastroScreenState();
 }
 
 class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // ── Controllers de Dados Básicos ──────────────────────────────────────────
   final _cnpjController = TextEditingController();
   final _nomeFantasiaController = TextEditingController();
   String? _nColaboradores;
 
-  // ── Controllers de Cargo ──────────────────────────────────────────────────
   final _cargoController = TextEditingController();
   String? _nivelSelecionado;
 
-  // ── Controllers de Endereço ───────────────────────────────────────────────
   final _cepController = TextEditingController();
   final _cidadeController = TextEditingController();
   final _ruaController = TextEditingController();
@@ -39,13 +38,25 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _estadoController = TextEditingController();
   final _paisController = TextEditingController(text: 'Brasil');
 
-  // ── Controllers de Redes Sociais ──────────────────────────────────────────
   final _siteController = TextEditingController();
   final _linkedinController = TextEditingController();
   final _instagramController = TextEditingController();
 
-  static const _opcoesColaboradores = ['1 - 5', '6 - 20', '21 - 50', '51 - 100', '100+'];
-  static const _niveisCargo = ['Júnior', 'Pleno', 'Sênior', 'Gerente', 'Diretor', 'CEO'];
+  static const _opcoesColaboradores = [
+    '1 - 5',
+    '6 - 20',
+    '21 - 50',
+    '51 - 100',
+    '100+',
+  ];
+  static const _niveisCargo = [
+    'Júnior',
+    'Pleno',
+    'Sênior',
+    'Gerente',
+    'Diretor',
+    'CEO',
+  ];
 
   @override
   void dispose() {
@@ -66,13 +77,13 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     super.dispose();
   }
 
-  // ── FUNÇÃO PRINCIPAL DE SALVAMENTO ─────────────────────────────────────────
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Preparamos o objeto final que contém TUDO
+    // Preparao objeto final que contém TUDO
     final dadosCompletos = {
-      ...widget.dadosUsuario, // Traz email, senha, nome, sobrenome, telefone e plano_id
+      ...widget
+          .dadosUsuario, // Traz email, senha, nome, sobrenome, telefone e plano_id
       'empresa': {
         'cnpj': _cnpjController.text.trim(),
         'nome': _nomeFantasiaController.text.trim(),
@@ -94,19 +105,35 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     };
 
     try {
-      // Dispara o Controller que faz: Auth -> Endereço -> Empresa -> Vínculo
-      await ref.read(empresaControllerProvider.notifier).cadastrarEmpresa(dadosCompletos);
+      // Salva no banco
+      await ref
+          .read(empresaControllerProvider.notifier)
+          .cadastrarEmpresa(dadosCompletos);
 
+      print("✅ BANCO SALVOU! Tentando navegar...");
+
+      // Tenta navegar
       if (mounted) {
-        // Se tudo deu certo, vai para a tela de Boas-vindas
-        context.go('/empresa/bemvinda', extra: dadosCompletos);
+        print("🚀 TELA ATIVA! Executando context.go para Bem-vinda...");
+        ref.read(routerProvider).go('/empresa/bemvinda', extra: dadosCompletos);
+      } else {
+        print(
+          "❌ ERRO: A tela 'morreu' (unmounted) antes de conseguir navegar.",
+        );
       }
     } catch (e) {
+      print('=========================================');
+      print('🚨 ERRO FATAL AO CRIAR EMPRESA: $e');
+      print('=========================================');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Erro ao cadastrar empresa: $e'),
-            backgroundColor: Colors.redAccent,
+            content: Text('Erro no banco: $e'),
+            backgroundColor: Colors.red,
+            duration: const Duration(
+              seconds: 5,
+            ), // Tempo extra pra você conseguir ler
           ),
         );
       }
@@ -128,104 +155,152 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
             children: [
               const StepProgressBar(currentStep: 3, totalSteps: 3),
               const SizedBox(height: 20),
-              
+
               _buildLogoPicker(),
               const SizedBox(height: 20),
 
-              const Text('Cadastre sua empresa', 
-                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textDark)),
+              const Text(
+                'Cadastre sua empresa',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textDark,
+                ),
+              ),
               const SizedBox(height: 20),
 
               // ── SEÇÃO: DADOS BÁSICOS ───────────────────────────────────────
               const _SectionTitle(titulo: 'Dados básicos'),
               const SizedBox(height: 12),
               CustomTextField(
-                label: 'CNPJ', 
-                hint: '00.000.000/0001-00', 
-                controller: _cnpjController, 
+                label: 'CNPJ',
+                hint: '00.000.000/0001-00',
+                controller: _cnpjController,
                 keyboardType: TextInputType.number,
-                validator: (val) => (val?.length ?? 0) < 14 ? 'CNPJ inválido' : null,
+                validator: (val) =>
+                    (val?.length ?? 0) < 14 ? 'CNPJ inválido' : null,
               ),
               const SizedBox(height: 12),
               CustomTextField(
-                label: 'Nome Fantasia', 
-                hint: 'Ex: Diavicon Engenharia', 
+                label: 'Nome Fantasia',
+                hint: 'Ex: Diavicon Engenharia',
                 controller: _nomeFantasiaController,
                 validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
               ),
               const SizedBox(height: 12),
               _DropdownField(
-                label: 'Nº Colaboradores', 
-                hint: 'Selecione', 
-                valor: _nColaboradores, 
-                opcoes: _opcoesColaboradores, 
+                label: 'Nº Colaboradores',
+                hint: 'Selecione',
+                valor: _nColaboradores,
+                opcoes: _opcoesColaboradores,
                 onChanged: (val) => setState(() => _nColaboradores = val),
               ),
 
               const SizedBox(height: 24),
 
-              // ── SEÇÃO: CARGO ───────────────────────────────────────────────
               const _SectionTitle(titulo: 'Seu Cargo'),
-              const Text('Você terá permissões de administrador automaticamente.', 
-                style: TextStyle(fontSize: 11, color: AppColors.greyMedium)),
+              const Text(
+                'Você terá permissões de administrador automaticamente.',
+                style: TextStyle(fontSize: 11, color: AppColors.greyMedium),
+              ),
               const SizedBox(height: 12),
               CustomTextField(
-                label: 'Cargo', 
-                hint: 'Ex: Engenheiro Diagnóstico', 
+                label: 'Cargo',
+                hint: 'Ex: Engenheiro Diagnóstico',
                 controller: _cargoController,
                 validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
               ),
               const SizedBox(height: 12),
               _DropdownField(
-                label: 'Nível', 
-                hint: 'Selecione seu nível', 
-                valor: _nivelSelecionado, 
-                opcoes: _niveisCargo, 
+                label: 'Nível',
+                hint: 'Selecione seu nível',
+                valor: _nivelSelecionado,
+                opcoes: _niveisCargo,
                 onChanged: (val) => setState(() => _nivelSelecionado = val),
               ),
 
               const SizedBox(height: 24),
 
-              // ── SEÇÃO: ENDEREÇO ────────────────────────────────────────────
               const _SectionTitle(titulo: 'Endereço Comercial'),
               const SizedBox(height: 12),
-              CustomTextField(label: 'CEP', hint: '00000-000', controller: _cepController, keyboardType: TextInputType.number),
+              CustomTextField(
+                label: 'CEP',
+                hint: '00000-000',
+                controller: _cepController,
+                keyboardType: TextInputType.number,
+              ),
               const SizedBox(height: 12),
-              CustomTextField(label: 'Cidade', hint: 'Cidade', controller: _cidadeController),
+              CustomTextField(
+                label: 'Cidade',
+                hint: 'Cidade',
+                controller: _cidadeController,
+              ),
               const SizedBox(height: 12),
-              CustomTextField(label: 'Rua', hint: 'Logradouro', controller: _ruaController),
+              CustomTextField(
+                label: 'Rua',
+                hint: 'Logradouro',
+                controller: _ruaController,
+              ),
               const SizedBox(height: 12),
               Row(
                 children: [
-                  Expanded(flex: 2, child: CustomTextField(label: 'Número', hint: '123', controller: _numeroController, keyboardType: TextInputType.number)),
+                  Expanded(
+                    flex: 2,
+                    child: CustomTextField(
+                      label: 'Número',
+                      hint: '123',
+                      controller: _numeroController,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
                   const SizedBox(width: 12),
-                  Expanded(flex: 3, child: CustomTextField(label: 'Bairro', hint: 'Bairro', controller: _bairroController)),
+                  Expanded(
+                    flex: 3,
+                    child: CustomTextField(
+                      label: 'Bairro',
+                      hint: 'Bairro',
+                      controller: _bairroController,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
-              CustomTextField(label: 'Estado', hint: 'Ex: São Paulo', controller: _estadoController),
+              CustomTextField(
+                label: 'Estado',
+                hint: 'Ex: São Paulo',
+                controller: _estadoController,
+              ),
 
               const SizedBox(height: 24),
 
-              // ── SEÇÃO: REDES SOCIAIS ───────────────────────────────────────
               const _SectionTitle(titulo: 'Redes Sociais (Opcional)'),
               const SizedBox(height: 12),
-              CustomTextField(label: 'Site', hint: 'www.empresa.com', controller: _siteController),
+              CustomTextField(
+                label: 'Site',
+                hint: 'www.empresa.com',
+                controller: _siteController,
+              ),
               const SizedBox(height: 12),
-              CustomTextField(label: 'LinkedIn', hint: 'linkedin.com/company/...', controller: _linkedinController),
+              CustomTextField(
+                label: 'LinkedIn',
+                hint: 'linkedin.com/company/...',
+                controller: _linkedinController,
+              ),
 
               const SizedBox(height: 32),
 
-              // ── BOTÕES FINAIS ──────────────────────────────────────────────
               CustomButton(
-                text: 'Começar', 
+                text: 'Começar',
                 isLoading: isLoading,
                 onPressed: isLoading ? null : _salvar,
               ),
               const SizedBox(height: 12),
               TextButton(
                 onPressed: () => context.pop(),
-                child: const Text('< Voltar', style: TextStyle(color: AppColors.greyMedium)),
+                child: const Text(
+                  '< Voltar',
+                  style: TextStyle(color: AppColors.greyMedium),
+                ),
               ),
             ],
           ),
@@ -243,12 +318,18 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
             CircleAvatar(
               radius: 44,
               backgroundColor: AppColors.greyVeryLight,
-              child: const Icon(Icons.domain, size: 40, color: AppColors.greyLight),
+              child: const Icon(
+                Icons.domain,
+                size: 40,
+                color: AppColors.greyLight,
+              ),
             ),
             Positioned(
-              bottom: 0, right: 0,
+              bottom: 0,
+              right: 0,
               child: CircleAvatar(
-                radius: 14, backgroundColor: AppColors.primary,
+                radius: 14,
+                backgroundColor: AppColors.primary,
                 child: const Icon(Icons.edit, size: 14, color: Colors.white),
               ),
             ),
@@ -259,7 +340,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   }
 }
 
-// ─── WIDGETS AUXILIARES INTERNOS ─────────────────────────────────────────────
 
 class _SectionTitle extends StatelessWidget {
   final String titulo;
@@ -267,10 +347,18 @@ class _SectionTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Text(titulo, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.textDark));
+    return Text(
+      titulo,
+      style: const TextStyle(
+        fontSize: 16,
+        fontWeight: FontWeight.w900,
+        color: AppColors.textDark,
+      ),
+    );
   }
 }
 
+//widgets internos
 class _DropdownField extends StatelessWidget {
   final String label;
   final String hint;
@@ -278,25 +366,52 @@ class _DropdownField extends StatelessWidget {
   final List<String> opcoes;
   final void Function(String?) onChanged;
 
-  const _DropdownField({required this.label, required this.hint, required this.valor, required this.opcoes, required this.onChanged});
+  const _DropdownField({
+    required this.label,
+    required this.hint,
+    required this.valor,
+    required this.opcoes,
+    required this.onChanged,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: valor,
           hint: Text(hint, style: const TextStyle(color: AppColors.hintText)),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
-            enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
-            focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
           ),
-          items: opcoes.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          items: opcoes
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
           onChanged: onChanged,
         ),
       ],

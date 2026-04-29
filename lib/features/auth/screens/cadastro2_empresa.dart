@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Cadastro2Empresa extends StatefulWidget {
-  // 1. ADICIONADO: Agora a tela recebe os dados acumulados
   final Map<String, dynamic> dadosUsuario;
 
   const Cadastro2Empresa({super.key, required this.dadosUsuario});
@@ -111,9 +110,9 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                         foregroundColor: Colors.white,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      // 2. CORRIGIDO: Passando o extra adiante para a Cadastro3
+                      // Passando o extra adiante para a Cadastro3
                       onPressed: () {
-                        // Opcional: Adicionar os serviços selecionados ao mapa antes de enviar
+                        // Adicionar os serviços selecionados ao mapa antes de enviar
                         final servicosFinal = [];
                         for (var i = 0; i < _selecionados.length; i++) {
                           if (_selecionados[i]) servicosFinal.add(_servicos[i]);

@@ -15,27 +15,23 @@ class Cadastro3Empresa extends ConsumerStatefulWidget {
 }
 
 class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
-  // Esta função agora serve apenas para NAVEGAR para o formulário de CNPJ/Endereço
+  // NAVEGAR para o formulário de CNPJ/Endereço
   void _finalizarCadastroEmpresa(bool isTrial) {
-    // 1. Preparamos os dados agregando o plano escolhido
+    // Prepar os dados agregando o plano escolhido
     final Map<String, dynamic> dadosComPlano = {
       ...widget.dadosUsuario,
       'perfil': 'Empresa',
       'plano_escolhido': isTrial ? 'Trial' : 'Advanced',
       // Aqui você coloca o UUID real que está na sua tabela 'planos' do Supabase
-      'plano_escolhido_id': isTrial
-          ? 'ID_DO_SEU_PLANO_TRIAL'
-          : 'ID_DO_SEU_PLANO_ADVANCED',
+      'plano_escolhido_id': null,
     };
 
-    // 2. NAVEGAÇÃO: Em vez de ir para /projetos, vamos para o cadastro da empresa
-    // Usamos o 'push' para o usuário poder voltar se quiser mudar o plano
+    
     context.push('/empresa/cadastro', extra: dadosComPlano);
   }
 
   @override
   Widget build(BuildContext context) {
-    // Monitora o estado de loading do controller para desabilitar o botão enquanto salva
     final isLoading = ref.watch(authControllerProvider);
 
     return Scaffold(
@@ -125,7 +121,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
     );
   }
 
-  // --- WIDGETS AUXILIARES DE INTERFACE ---
+  // WIDGETS AUXILIARES DE INTERFACE 
 
   Widget _buildCardHeader() {
     return Container(

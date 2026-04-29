@@ -9,13 +9,12 @@ class EmpresaRepository {
   ///   1. Insere endereço na tabela 'enderecos' → pega o ID.
   ///   2. Insere empresa na tabela 'empresas' vinculado ao endereço.
   ///   3. Atualiza o perfil do usuário na tabela 'usuarios' com o ID da empresa.
-  // lib/features/auth/repositories/empresa_repository.dart
   Future<String> salvarEmpresa({
     required Map<String, dynamic>
     dadosEmpresa, // Recebe o mapa 'empresa' da Screen
     required String userId,
   }) async {
-    // 1. Salva o endereço comercial
+    // Salva o endereço comercial
     final enderecoData = await _supabase
         .from('enderecos')
         .insert({
@@ -32,13 +31,12 @@ class EmpresaRepository {
 
     final String idEndereco = enderecoData['id'];
 
-    // 2. Salva a empresa com os dados corretos (evita o CNPJ null)
+    // Salva a empresa com os dados corretos
     final empresaData = await _supabase
         .from('empresas')
         .insert({
           'nome': dadosEmpresa['nome'],
-          'cnpj': dadosEmpresa['cnpj'], // Agora pegando da chave correta
-          'endereco_id': idEndereco,
+          'cnpj': dadosEmpresa['cnpj'],
           'plano_id': dadosEmpresa['plano_id'],
           'tamanho': dadosEmpresa['colaboradores'],
           'ativo': true,
@@ -48,11 +46,11 @@ class EmpresaRepository {
 
     final String idEmpresa = empresaData['id'];
 
-    // 3. O VÍNCULO CRÍTICO: Atualiza o usuário com o ID da empresa
+    // O VÍNCULO CRÍTICO: Atualiza o usuário com o ID da empresa
     await _supabase
         .from('usuarios')
         .update({
-          'empresa_id': idEmpresa, // Preenche o que estava vindo null
+          'empresa_id': idEmpresa,
           'cargo': dadosEmpresa['cargo'],
           'titulo_principal': dadosEmpresa['nivel'],
         })
@@ -61,7 +59,7 @@ class EmpresaRepository {
     return idEmpresa;
   }
 
-  /// Busca os dados da empresa para manter no estado global do app.
+  /// Busca os dados da empresa para manter no estado global do app
   Future<EmpresaModel?> getEmpresa(String empresaId) async {
     try {
       final data = await _supabase

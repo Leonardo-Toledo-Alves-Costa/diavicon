@@ -27,7 +27,6 @@ class _CadastroAcademicoScreenState
     extends ConsumerState<CadastroAcademicoScreen> {
   int _etapaAtual = 0;
 
-  // ── Etapa 2 ────────────────────────────────────────────────────────────────
   final List<String> _servicos = [
     'Pesquisa em Patologias',
     'Ensaios Não Destrutivos',
@@ -38,7 +37,6 @@ class _CadastroAcademicoScreenState
   ];
   final Set<String> _selecionados = {};
 
-  // ── Etapa 3 ────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
   final _universidadeController = TextEditingController();
   final _motivoController = TextEditingController();
@@ -76,7 +74,7 @@ class _CadastroAcademicoScreenState
     }
   }
 
-  // ── ETAPA 1: Onboarding ────────────────────────────────────────────────────
+  // Onboarding
   Widget _buildEtapa1() {
     return Padding(
       key: const ValueKey('etapa1'),
@@ -184,7 +182,7 @@ class _CadastroAcademicoScreenState
     );
   }
 
-  // ── ETAPA 2: Checkboxes ────────────────────────────────────────────────────
+  // Checkboxes 
   Widget _buildEtapa2() {
     return Padding(
       key: const ValueKey('etapa2'),
@@ -320,7 +318,7 @@ class _CadastroAcademicoScreenState
     );
   }
 
-  // ── ETAPA 3: Dados acadêmicos ──────────────────────────────────────────────
+  //  Dados acadêmicos
   Widget _buildEtapa3() {
     return SingleChildScrollView(
       key: const ValueKey('etapa3'),
@@ -370,7 +368,6 @@ class _CadastroAcademicoScreenState
             ),
             const SizedBox(height: 16),
 
-            // Textarea: Por que usar o DIAVICON?
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -450,7 +447,7 @@ class _CadastroAcademicoScreenState
   Future<void> _enviar() async {
     final controller = ref.read(authControllerProvider.notifier);
 
-    // 1. Preparamos o MAPA com todos os dados coletados desde a R0
+    // Preparamos o MAPA com todos os dados coletados desde a R0
     // Certifique-se que as chaves batem com o que o Repositorio espera
     final Map<String, dynamic> dadosParaSalvar = {
       ...widget.dadosUsuario, // Traz e-mail, senha, nome, sobrenome, etc.
@@ -466,14 +463,14 @@ class _CadastroAcademicoScreenState
     };
 
     try {
-      // 2. Dispara o processo de salvamento (Auth -> Endereço -> Usuário)
+      //  Dispara o processo de salvamento (Auth -> Endereço -> Usuário)
       await controller.registrar(
         email: widget.dadosUsuario['email'],
         password: widget.dadosUsuario['senha'],
         dados: dadosParaSalvar,
       );
 
-      // 3. SE DEU CERTO: Navega para a Home
+      // SE DEU CERTO: Navega para a Home
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -486,7 +483,7 @@ class _CadastroAcademicoScreenState
         context.go('/projetos');
       }
     } catch (e) {
-      // 4. TRATAMENTO DE ERRO
+      // TRATAMENTO DE ERRO
       if (mounted) {
         String erroMsg = 'Erro ao salvar dados.';
         if (e.toString().contains('429'))

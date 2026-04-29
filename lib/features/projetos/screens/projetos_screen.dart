@@ -1,6 +1,8 @@
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../widgets/project_card.dart';
@@ -12,8 +14,8 @@ class ProjetosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final topPadding = MediaQuery.of(context).padding.top;
-    
-    // 1. Escuta a lista filtrada (Cérebro da busca)
+
+    //Escuta a lista filtrada
     final projetosAsync = ref.watch(filteredProjectsProvider);
 
     return Scaffold(
@@ -22,43 +24,53 @@ class ProjetosScreen extends ConsumerWidget {
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
-          // 2. HEADER CUSTOMIZADO (Laranja com busca)
+          // HEADER
           _buildHeader(context, ref, topPadding),
-          
+
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 40), // Espaço para a search bar que flutua
-                  
-                  // 3. FILTROS (Dropdown e Sort)
+                  const SizedBox(
+                    height: 40,
+                  ), // Espaço para a search bar que flutua
+                  // FILTROS (Dropdown e Sort)
                   _buildFilterRow(),
-                  
+
                   const SizedBox(height: 16),
-                  
-                  // 4. LISTA DE CARDS
+
+                  // LISTA DE CARDS
                   Expanded(
                     child: projetosAsync.when(
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       ),
-                      error: (err, stack) => Center(child: Text('Erro ao carregar: $err')),
+                      error: (err, stack) =>
+                          Center(child: Text('Erro ao carregar: $err')),
                       data: (lista) {
                         if (lista.isEmpty) {
                           return const Center(
                             child: Text('Nenhum projeto encontrado.'),
                           );
                         }
-                        
+
                         return ListView.builder(
                           itemCount: lista.length,
-                          padding: const EdgeInsets.only(top: 8, bottom: 100), // Espaço pro FAB global
+                          padding: const EdgeInsets.only(
+                            top: 8,
+                            bottom: 100,
+                          ), // Espaço pro FAB global
                           itemBuilder: (context, index) {
                             final projeto = lista[index];
                             return InkWell(
                               // Envia o ID para a tela de detalhes
-                              onTap: () => context.push('/projetos/detalhes', extra: projeto.id),
+                              onTap: () => context.push(
+                                '/projetos/detalhes',
+                                extra: projeto.id,
+                              ),
                               child: ProjectCard(
                                 title: projeto.nome,
                                 progress: projeto.progresso,
@@ -81,7 +93,6 @@ class ProjetosScreen extends ConsumerWidget {
     );
   }
 
-  // --- MÉTODOS AUXILIARES ---
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, double topPadding) {
     return Stack(
@@ -113,9 +124,29 @@ class ProjetosScreen extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none, color: Colors.white),
+                    icon: const Icon(
+                      Icons.notifications_none,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
                       // Ação de notificações
+                    },
+                  ),
+
+                  // BOTÃO DE LOGOUT PROVISÓRIO
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.red),
+                    tooltip: 'Sair (Teste)',
+                    onPressed: () async {
+                      //logout noSupabase
+                      await Supabase.instance.client.auth.signOut();
+
+                      // AVISA O RIVERPOD QUE A SESSÃO ACABOU
+                      ref.invalidate(currentUserProvider);
+
+                      if (context.mounted) {
+                        context.go('/login');
+                      }
                     },
                   ),
                 ],
@@ -123,13 +154,16 @@ class ProjetosScreen extends ConsumerWidget {
               const SizedBox(height: 4),
               const Text(
                 'Acompanhe o progresso das suas iniciativas',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Lato'),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontFamily: 'Lato',
+                ),
               ),
             ],
           ),
         ),
-        
-        // Search Bar posicionada entre o Header e o Body
+
         Positioned(
           bottom: -24,
           left: 24,
@@ -164,13 +198,19 @@ class ProjetosScreen extends ConsumerWidget {
         DropdownButton<String>(
           value: 'Todos',
           underline: const SizedBox(),
-          icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.textDark),
+          icon: const Icon(
+            Icons.keyboard_arrow_down,
+            color: AppColors.textDark,
+          ),
           items: const [
             DropdownMenuItem(
-              value: 'Todos', 
+              value: 'Todos',
               child: Text(
-                'Todos', 
-                style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)
+                'Todos',
+                style: TextStyle(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ],

@@ -11,23 +11,19 @@ class MainScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 1. OBTÉM A ROTA ATUAL PARA PINTAR OS ÍCONES
+    // OBTÉM A ROTA ATUAL
     final String location = GoRouterState.of(context).uri.toString();
 
     return Scaffold(
-      // 2. APPBAR REMOVIDA
-      // Agora cada tela (Projetos, Detalhes, etc.) cuida do seu próprio topo.
-      resizeToAvoidBottomInset: false,
+      resizeToAvoidBottomInset: false,//pra quando o teclado subir nao bugar tudo
       appBar: null,
 
-      body: child, // Onde as telas de conteúdo são renderizadas
-      // 3. BOTÃO CENTRAL (FAB)
+      body: child,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
         elevation: 4,
         onPressed: () {
-          // Verificamos se estamos na aba de projetos para abrir o modal certo
           if (location.startsWith('/projetos')) {
             showDiaviconModal(
               context: context,
@@ -39,9 +35,9 @@ class MainScreen extends StatelessWidget {
         child: const Icon(Icons.add, color: Colors.white, size: 32),
       ),
 
-      // 4. RODAPÉ (BOTTOM BAR)
+      // RODAPÉ 
       bottomNavigationBar: BottomAppBar(
-        color: Colors.white, // REQUISITO: Fundo Branco
+        color: Colors.white,
         shape: const CircularNotchedRectangle(),
         notchMargin: 8,
         elevation: 10,
@@ -86,7 +82,7 @@ class MainScreen extends StatelessWidget {
     );
   }
 
-  // --- WIDGET AUXILIAR PARA OS ITENS DO MENU ---
+  // WIDGET AUXILIAR PARA OS ITENS DO MENU 
 
   Widget _buildNavItem(
     BuildContext context,
@@ -103,7 +99,6 @@ class MainScreen extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // REQUISITO: Laranja se selecionado, Cinza se não
           Icon(
             icon,
             color: isSelected ? AppColors.primary : Colors.grey[400],

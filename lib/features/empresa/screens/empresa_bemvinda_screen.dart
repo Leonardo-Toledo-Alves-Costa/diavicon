@@ -5,8 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 
-/// Tela final de boas-vindas após o cadastro completo da empresa no Supabase.
-/// Rota: /empresa/bemvinda
+/// Tela final de boas-vindas após o cadastro completo da empresa no Supabase
 class EmpresaBemVindaScreen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
 
@@ -14,7 +13,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Extração segura dos dados para exibição nos cards
+    // Extração dos dados para exibição nos cards
     final nome = dadosUsuario['nome'] as String? ?? '';
     final sobrenome = dadosUsuario['sobrenome'] as String? ?? '';
     
@@ -30,7 +29,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // ── CARD 1: CABEÇALHO DA EMPRESA ─────────────────────────────────
+            // CABEÇALHO DA EMPRESA 
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -79,7 +78,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 20),
 
-            // ── CARD 2: PERFIL DO USUÁRIO RESPONSÁVEL ────────────────────────
+            // PERFIL DO USUÁRIO RESPONSÁVEL
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -123,7 +122,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // ── SEÇÃO VISUAL: MASCOTE/GUIA ────────────────────────────────────
+            //MASCOTE/GUIA 
             Expanded(
               child: Stack(
                 alignment: Alignment.center,
@@ -159,11 +158,11 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // ── BOTÃO DE ENTRADA NO APP ──────────────────────────────────────
+            // BOTÃO DE ENTRADA NO APP 
             CustomButton(
               text: '✓  Começar',
               onPressed: () {
-                // Aqui o GoRouter mata toda a pilha de cadastro e abre a Home
+                // GoRouter mata toda a pilha de cadastro e abre a Home
                 context.go('/projetos');
               },
             ),

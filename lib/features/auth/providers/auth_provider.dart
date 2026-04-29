@@ -45,7 +45,7 @@ class AuthController extends StateNotifier<bool> {
     }
   }
 
-  // NOVO: MÉTODO DE CADASTRO (Chame isso no final do R2 ou Onboarding)
+  // MÉTODO DE CADASTRO 
   Future<void> registrar({
     required String email, 
     required String password, 

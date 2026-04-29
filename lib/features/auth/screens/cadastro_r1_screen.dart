@@ -22,12 +22,12 @@ class CadastroR1Screen extends ConsumerStatefulWidget {
 class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
   final _formKey = GlobalKey<FormState>();
 
-  // ── Controllers Dados Pessoais ─────────────────────────────────────────────
+  // Controllers Dados Pessoais
   final _nomeController = TextEditingController();
   final _sobrenomeController = TextEditingController();
   final _telefoneController = TextEditingController();
 
-  // ── Controllers Endereço ───────────────────────────────────────────────────
+  // Controllers Endereço
   final _cepController = TextEditingController();
   final _cidadeController = TextEditingController();
   final _ruaController = TextEditingController();
@@ -37,7 +37,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
   final _estadoController = TextEditingController();
   final _paisController = TextEditingController(text: 'Brasil');
 
-  // ── Escolaridade ──────────────────────────────────────────────────────────
+  // Escolaridade
   final _formacaoController = TextEditingController();
   String? _escolaridadeSelecionada;
 
@@ -105,11 +105,11 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
               _buildTitle(),
               const SizedBox(height: 24),
               
-              // --- Foto de Perfil ---
+              // Foto de Perfil 
               _buildPhotoPicker(),
               const SizedBox(height: 32),
 
-              // --- Seção: Pessoal ---
+              // Pessoal 
               _SectionTitle(titulo: 'Informações Pessoais'),
               const SizedBox(height: 12),
               CustomTextField(label: 'Nome', hint: 'João', controller: _nomeController),
@@ -119,7 +119,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
               CustomTextField(label: 'Telefone', hint: '(31) 9 9191-9191', controller: _telefoneController, keyboardType: TextInputType.phone),
               const SizedBox(height: 32),
 
-              // --- Seção: Endereço ---
+              // Endereço 
               _SectionTitle(titulo: 'Endereço'),
               const SizedBox(height: 12),
               CustomTextField(label: 'CEP', hint: '31333-000', controller: _cepController),
@@ -137,7 +137,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
               ),
               const SizedBox(height: 32),
 
-              // --- Seção: Acadêmico ---
+              // Acadêmico 
               _SectionTitle(titulo: 'Título e Escolaridade'),
               const SizedBox(height: 12),
               _buildDropdownEscolaridade(),
@@ -146,7 +146,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
               
               const SizedBox(height: 40),
 
-              // --- Botões ---
+              // Botões
               Row(
                 children: [
                   TextButton(

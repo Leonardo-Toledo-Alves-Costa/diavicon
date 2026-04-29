@@ -12,20 +12,19 @@ class AuthRepository {
     );
   }
 
-  // lib/features/auth/repositories/auth_repository.dart
   Future<void> signUp({
     required String email,
     required String password,
     required Map<String, dynamic> dadosCompletos,
   }) async {
-    // 1. Cria apenas a credencial de login
+    // Cria apenas a credencial de login
     final response = await _supabase.auth.signUp(
       email: email,
       password: password,
     );
 
     if (response.user != null) {
-      // 2. Salva APENAS o perfil básico do humano na tabela 'usuarios'
+      // Salva APENAS o perfil básico na tabela 'usuarios'
       await _supabase.from('usuarios').insert({
         'id': response.user!.id,
         'nome': dadosCompletos['nome'],

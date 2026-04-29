@@ -4,13 +4,12 @@ import 'package:flutter_riverpod/legacy.dart';
 import '../models/empresa_model.dart';
 import '../repositories/empresa_repository.dart';
 
-// 1. O Provedor do Repositório
 final empresaRepositoryProvider = Provider((ref) => EmpresaRepository());
 
-// 2. O Estado da Empresa Atual (para usar no resto do app via ref.watch)
+// O Estado da Empresa Atual (para usar no resto do app via ref.watch)
 final empresaAtualProvider = StateProvider<EmpresaModel?>((ref) => null);
 
-// 3. O Controller que gerencia o estado de loading (bool) e a lógica de cadastro
+// O Controller que gerencia o estado de loading (bool) e a lógica de cadastro
 final empresaControllerProvider =
     StateNotifierProvider<EmpresaController, bool>((ref) {
       return EmpresaController(ref);
@@ -21,12 +20,11 @@ class EmpresaController extends StateNotifier<bool> {
 
   EmpresaController(this._ref) : super(false);
 
-  // No seu EmpresaController (empresa_provider.dart)
 
   Future<void> cadastrarEmpresa(Map<String, dynamic> dados) async {
     state = true;
     try {
-      // 1. Cria o usuário (Auth + Tabela Usuarios)
+      // Cria o usuário (Auth + Tabela Usuarios)
       await _ref
           .read(authControllerProvider.notifier)
           .registrar(
@@ -35,15 +33,15 @@ class EmpresaController extends StateNotifier<bool> {
             dados: dados,
           );
 
-      // 2. Recupera o ID do usuário recém-criado
+      // Recupera o ID do usuário recém-criado
       final usuario = _ref.read(currentUserProvider);
       if (usuario == null)
         throw Exception('Usuário não autenticado após registro.');
 
-      // 3. Pega o mapa da empresa (onde estão CNPJ, Rua, etc)
+      // Pega o mapa da empresa (onde estão CNPJ, Rua, etc)
       final empresaDados = dados['empresa'] as Map<String, dynamic>;
 
-      // 4. Salva Empresa + Endereço e ATUALIZA o empresa_id no usuário
+      // Salva Empresa + Endereço e ATUALIZA o empresa_id no usuário
       final repo = _ref.read(empresaRepositoryProvider);
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
@@ -54,7 +52,7 @@ class EmpresaController extends StateNotifier<bool> {
         userId: usuario.id,
       );
 
-      // 5. Atualiza o estado global
+      // Atualiza o estado global
       final empresa = await repo.getEmpresa(empresaId);
       if (empresa != null) {
         _ref.read(empresaAtualProvider.notifier).state = empresa;

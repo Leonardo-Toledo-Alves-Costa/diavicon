@@ -27,7 +27,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
 
-            // 1. Engenheiro Diagnóstico
+            //Engenheiro Diagnóstico
             _PerfilButton(
               icone: Icons.engineering,
               texto: 'Engenheiro Diagnóstico',
@@ -38,7 +38,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 2. Proprietário/gestor de ativos
+            // Proprietário/gestor de ativos
             _PerfilButton(
               icone: Icons.domain,
               texto: 'Proprietário/gestor\nde ativos',
@@ -49,7 +49,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // 3. Pesquisador Acadêmico
+            // Pesquisador Acadêmico
             _PerfilButton(
               icone: Icons.school,
               texto: 'Pesquisador Acadêmico',

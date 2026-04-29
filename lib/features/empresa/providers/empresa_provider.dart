@@ -1,53 +1,64 @@
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/empresa_model.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import '../models/empresa_model.dart';
 import '../repositories/empresa_repository.dart';
-import '../../auth/providers/auth_provider.dart';
 
 final empresaRepositoryProvider = Provider((ref) => EmpresaRepository());
 
+// O Estado da Empresa Atual (para usar no resto do app via ref.watch)
+final empresaAtualProvider = StateProvider<EmpresaModel?>((ref) => null);
+
+// O Controller que gerencia o estado de loading (bool) e a lógica de cadastro
 final empresaControllerProvider =
     StateNotifierProvider<EmpresaController, bool>((ref) {
-  return EmpresaController(ref);
-});
-
-final empresaAtualProvider = StateProvider<EmpresaModel?>((ref) => null);
+      return EmpresaController(ref);
+    });
 
 class EmpresaController extends StateNotifier<bool> {
   final Ref _ref;
 
   EmpresaController(this._ref) : super(false);
 
-  /// Cadastra o usuário + empresa de forma integrada.
-  /// Chamado na última tela do fluxo (EmpresaCadastroScreen).
+
   Future<void> cadastrarEmpresa(Map<String, dynamic> dados) async {
     state = true;
     try {
-      // 1. Registra o usuário no Supabase Auth e salva perfil
-      await _ref.read(authControllerProvider.notifier).register(dados);
+      // Cria o usuário (Auth + Tabela Usuarios)
+      await _ref
+          .read(authControllerProvider.notifier)
+          .registrar(
+            email: dados['email'],
+            password: dados['senha'],
+            dados: dados,
+          );
 
-      // 2. Pega o ID do usuário recém-criado
+      // Recupera o ID do usuário recém-criado
       final usuario = _ref.read(currentUserProvider);
-      if (usuario == null) throw Exception('Usuário não encontrado.');
+      if (usuario == null)
+        throw Exception('Usuário não autenticado após registro.');
 
-      // 3. Salva a empresa e vincula ao usuário
+      // Pega o mapa da empresa (onde estão CNPJ, Rua, etc)
+      final empresaDados = dados['empresa'] as Map<String, dynamic>;
+
+      // Salva Empresa + Endereço e ATUALIZA o empresa_id no usuário
       final repo = _ref.read(empresaRepositoryProvider);
-      final empresaDados = dados['empresa'] as Map<String, dynamic>? ?? {};
-
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
           ...empresaDados,
+          'plano_id': dados['plano_escolhido_id'], // Vem da tela de planos
           'tipo': dados['tipo'] ?? 'Profissional',
         },
         userId: usuario.id,
       );
 
-      // 4. Busca e armazena a empresa no provider
+      // Atualiza o estado global
       final empresa = await repo.getEmpresa(empresaId);
       if (empresa != null) {
         _ref.read(empresaAtualProvider.notifier).state = empresa;
       }
     } catch (e) {
+      print("ERRO NO FLUXO: $e");
       rethrow;
     } finally {
       state = false;

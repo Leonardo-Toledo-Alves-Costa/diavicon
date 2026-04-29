@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
-/// Barra de progresso por etapas usada nas telas de cadastro.
-/// Exemplo de uso: StepProgressBar(currentStep: 1, totalSteps: 3)
 class StepProgressBar extends StatelessWidget {
-  final int currentStep;  // etapa atual (começa em 1)
-  final int totalSteps;   // total de etapas
+  final int currentStep;
+  final int totalSteps;
 
   const StepProgressBar({
     super.key,
@@ -17,15 +15,14 @@ class StepProgressBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: List.generate(totalSteps, (index) {
-        final isCompleted = index < currentStep;
+        bool isCompleted = index < currentStep;
         return Expanded(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 300),
-            height: 4,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
+          child: Container(
+            height: 6,
+            margin: EdgeInsets.only(right: index == totalSteps - 1 ? 0 : 8),
             decoration: BoxDecoration(
-              color: isCompleted ? AppColors.primary : AppColors.greyVeryLight,
-              borderRadius: BorderRadius.circular(2),
+              color: isCompleted ? AppColors.primary : AppColors.greyLight,
+              borderRadius: BorderRadius.circular(10),
             ),
           ),
         );

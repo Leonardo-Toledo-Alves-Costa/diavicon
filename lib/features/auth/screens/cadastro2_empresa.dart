@@ -3,16 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Cadastro2Empresa extends StatefulWidget {
-  const Cadastro2Empresa({super.key});
+  final Map<String, dynamic> dadosUsuario;
+
+  const Cadastro2Empresa({super.key, required this.dadosUsuario});
 
   @override
   State<Cadastro2Empresa> createState() => _Cadastro2EmpresaState();
 }
 
 class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
-  late final List<bool> _selecionados = List<bool>.filled(6, false);
-
-
+  // Lista de serviços para o Checkbox
+  final List<String> _servicos = [
+    'Vistorias',
+    'Laudos Técnicos',
+    'Inspeção Predial',
+    'Ensaios Tecnológicos',
+    'Consultoria',
+    'Acompanhamento de Obras'
+  ];
+  
+  late final List<bool> _selecionados = List<bool>.filled(_servicos.length, false);
 
   @override
   Widget build(BuildContext context) {
@@ -35,9 +45,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                   value: 0.68,
                   minHeight: 9,
                   backgroundColor: Colors.grey.shade500,
-                  valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.primary,
-                  ),
+                  valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                 ),
               ),
               const SizedBox(height: 14),
@@ -49,17 +57,13 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(9),
                 ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 14,
-                ),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
                 child: const Text(
-                  'Quais servicos que você realiza?',
+                  'Quais serviços que você realiza?',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                     color: Colors.black,
-                    height: 1.1,
                   ),
                 ),
               ),
@@ -72,30 +76,19 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: ListView.builder(
-                    itemCount: _selecionados.length,
-                    padding: const EdgeInsets.fromLTRB(6, 8, 6, 8),
+                    itemCount: _servicos.length,
+                    padding: const EdgeInsets.all(8),
                     itemBuilder: (context, index) {
-                      return SizedBox(
-                        height: 50,
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: Checkbox(
-                            value: _selecionados[index],
-                            onChanged: (value) {
-                              setState(() {
-                                _selecionados[index] = value ?? false;
-                              });
-                            },
-                            activeColor: AppColors.primary,
-                            side: const BorderSide(
-                              color: AppColors.greyMedium,
-                              width: 1.1,
-                            ),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                          ),
-                        ),
+                      return CheckboxListTile(
+                        title: Text(_servicos[index]),
+                        value: _selecionados[index],
+                        activeColor: AppColors.primary,
+                        controlAffinity: ListTileControlAffinity.leading,
+                        onChanged: (value) {
+                          setState(() {
+                            _selecionados[index] = value ?? false;
+                          });
+                        },
                       );
                     },
                   ),
@@ -105,50 +98,34 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
               Row(
                 children: [
                   TextButton(
-                    onPressed: () {
-                      if (context.canPop()) {
-                        context.pop();
-                      }
-                      else {
-                        context.go('/login');
-                      }
-                    },
-                    style: TextButton.styleFrom(
-                      foregroundColor: AppColors.primary,
-                      padding: const EdgeInsets.symmetric(horizontal: 6),
-                    ),
-                    child: const Text(
-                      '<   Voltar',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                    onPressed: () => context.pop(),
+                    child: const Text('<   Voltar', style: TextStyle(color: AppColors.primary, fontSize: 16)),
                   ),
                   const Spacer(),
                   SizedBox(
                     height: 44,
                     child: ElevatedButton(
-                      onPressed: () {},
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
                         foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 28,
-                          vertical: 14,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                       ),
-                      child: const Text(
-                        'Avancar',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
+                      // Passando o extra adiante para a Cadastro3
+                      onPressed: () {
+                        // Adicionar os serviços selecionados ao mapa antes de enviar
+                        final servicosFinal = [];
+                        for (var i = 0; i < _selecionados.length; i++) {
+                          if (_selecionados[i]) servicosFinal.add(_servicos[i]);
+                        }
+                        
+                        final dadosAtualizados = {
+                          ...widget.dadosUsuario,
+                          'servicos': servicosFinal,
+                        };
+
+                        context.push('/empresa/planos', extra: dadosAtualizados);
+                      },
+                      child: const Text('Avançar', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

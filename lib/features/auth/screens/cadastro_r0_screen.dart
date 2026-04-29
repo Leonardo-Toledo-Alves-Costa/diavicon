@@ -1,175 +1,152 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
-import '../../../core/widgets/auth_layout.dart';
 
-/// CadastroR0 — E-mail, senha e confirmação.
-/// Rota: /register
-class CadastroR0Screen extends ConsumerStatefulWidget {
+class CadastroR0Screen extends StatefulWidget {
   const CadastroR0Screen({super.key});
 
   @override
-  ConsumerState<CadastroR0Screen> createState() => _CadastroR0ScreenState();
+  State<CadastroR0Screen> createState() => _CadastroR0ScreenState();
 }
 
-class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
+class _CadastroR0ScreenState extends State<CadastroR0Screen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _senhaController = TextEditingController();
-  final _confirmarController = TextEditingController();
-
-  bool _ocultarSenha = true;
-  bool _ocultarConfirmar = true;
+  final _confirmarSenhaController = TextEditingController();
 
   @override
   void dispose() {
     _emailController.dispose();
     _senhaController.dispose();
-    _confirmarController.dispose();
+    _confirmarSenhaController.dispose();
     super.dispose();
+  }
+
+  void _avancar() {
+    if (_formKey.currentState!.validate()) {
+      // Passa o email e senha para a próxima tela (R1) via extra
+      context.push(
+        '/register/dados',
+        extra: {
+          'email': _emailController.text.trim(),
+          'senha': _senhaController.text.trim(),
+        },
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(28, 35, 28, 20),
-        child: Form(
-          key: _formKey,
+      child: Form(
+        key: _formKey,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Título ────────────────────────────────────────────────────
-              RichText(
-                text: const TextSpan(
-                  style: TextStyle(
-                    fontSize: 26,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textDark,
-                  ),
-                  children: [
-                    TextSpan(text: 'Seja Bem Vindo à\n'),
-                    TextSpan(
-                      text: 'DIAVICON!',
-                      style: TextStyle(color: AppColors.primary),
-                    ),
-                  ],
+              const SizedBox(height: 40),
+              const Text(
+                'Crie sua conta',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                  color: AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 8),
               const Text(
-                'Vamos iniciar o seu cadastro',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.textDark,
-                ),
+                'Comece sua jornada na DiaViCon',
+                style: TextStyle(color: AppColors.greyMedium, fontSize: 14),
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 32),
 
-              // ── E-mail ────────────────────────────────────────────────────
+              // Campo de E-mail
               CustomTextField(
-                label: 'Seu melhor e-mail',
-                hint: 'seuemail@email.com',
+                label: 'E-mail',
+                hint: 'exemplo@email.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(val)) {
+                  final email = val?.trim() ?? "";
+                  print(
+                    "DEBUG VALIDATOR: '$email' | Tamanho: ${email.length}",
+                  ); // aspas ajudam a ver espaços
+
+                  if (email.isEmpty) return 'Obrigatório';
+
+                  final emailRegex = RegExp(
+                    r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                  );
+
+                  if (!emailRegex.hasMatch(email)) {
                     return 'E-mail inválido';
                   }
+
                   return null;
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
 
-              // ── Senha ─────────────────────────────────────────────────────
+              // Campo de Senha
               CustomTextField(
                 label: 'Senha',
-                hint: 'Sua senha',
+                hint: '••••••••',
                 controller: _senhaController,
-                obscureText: _ocultarSenha,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _ocultarSenha ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                    color: AppColors.greyMedium,
-                  ),
-                  onPressed: () =>
-                      setState(() => _ocultarSenha = !_ocultarSenha),
-                ),
+                obscureText: true,
                 validator: (val) {
                   if (val == null || val.isEmpty) return 'Obrigatório';
                   if (val.length < 6) return 'Mínimo 6 caracteres';
                   return null;
                 },
               ),
-              const SizedBox(height: 14),
+              const SizedBox(height: 20),
 
-              // ── Confirmar Senha ───────────────────────────────────────────
+              // Confirmar Senha
               CustomTextField(
-                label: 'Confirme a senha',
-                hint: 'Sua senha',
-                controller: _confirmarController,
-                obscureText: _ocultarConfirmar,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _ocultarConfirmar ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                    color: AppColors.greyMedium,
-                  ),
-                  onPressed: () =>
-                      setState(() => _ocultarConfirmar = !_ocultarConfirmar),
-                ),
+                label: 'Confirmar Senha',
+                hint: '••••••••',
+                controller: _confirmarSenhaController,
+                obscureText: true,
                 validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (val != _senhaController.text) return 'Senhas não conferem';
+                  if (val != _senhaController.text)
+                    return 'As senhas não batem';
                   return null;
                 },
               ),
-              const SizedBox(height: 28),
+              const SizedBox(height: 40),
 
-              CustomButton(
-                text: 'Avançar',
-                onPressed: _avancar,
-              ),
-              const SizedBox(height: 20),
+              // Botão Continuar
+              CustomButton(text: 'Continuar', onPressed: _avancar),
 
+              const SizedBox(height: 24),
+
+              // Link para Login
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
-                    'Já possui uma conta? ',
-                    style: TextStyle(color: AppColors.greyMedium, fontSize: 13),
-                  ),
+                  const Text('Já tem uma conta? '),
                   GestureDetector(
                     onTap: () => context.go('/login'),
                     child: const Text(
-                      'Entrar',
+                      'Faça login',
                       style: TextStyle(
                         color: AppColors.primary,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                 ],
               ),
+              const SizedBox(height: 20),
             ],
           ),
         ),
       ),
     );
-  }
-
-  void _avancar() {
-    if (!_formKey.currentState!.validate()) return;
-    context.go('/register/dados', extra: {
-      'email': _emailController.text.trim(),
-      'senha': _senhaController.text,
-    });
   }
 }

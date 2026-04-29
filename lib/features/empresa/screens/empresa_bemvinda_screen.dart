@@ -5,8 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 
-/// Tela final de boas-vindas após cadastro completo da empresa.
-/// Rota: /empresa/bemvinda
+/// Tela final de boas-vindas após o cadastro completo da empresa no Supabase
 class EmpresaBemVindaScreen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
 
@@ -14,13 +13,15 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Extração dos dados para exibição nos cards
     final nome = dadosUsuario['nome'] as String? ?? '';
     final sobrenome = dadosUsuario['sobrenome'] as String? ?? '';
-    final cargo = (dadosUsuario['empresa'] as Map?)?['cargo'] as String? ??
-        dadosUsuario['cargo'] as String? ?? '';
-    final nivel = (dadosUsuario['empresa'] as Map?)?['nivel'] as String? ?? '';
-    final nomeEmpresa =
-        (dadosUsuario['empresa'] as Map?)?['nome'] as String? ?? 'Sua Empresa';
+    
+    // Pegando dados de dentro do mapa 'empresa' que criamos na tela anterior
+    final empresaMap = dadosUsuario['empresa'] as Map?;
+    final cargo = empresaMap?['cargo'] as String? ?? 'Gestor';
+    final nivel = empresaMap?['nivel'] as String? ?? '';
+    final nomeEmpresa = empresaMap?['nome'] as String? ?? 'Sua Empresa';
 
     return AuthLayout(
       child: Padding(
@@ -28,7 +29,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Card de boas-vindas com nome da empresa
+            // CABEÇALHO DA EMPRESA 
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -37,15 +38,14 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
               ),
               child: Column(
                 children: [
-                  // Logo placeholder da empresa
+                  // Logo Placeholder
                   Container(
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       shape: BoxShape.circle,
-                      border:
-                          Border.all(color: AppColors.inputBorder, width: 2),
+                      border: Border.all(color: AppColors.inputBorder, width: 2),
                     ),
                     child: const Icon(
                       Icons.domain,
@@ -55,7 +55,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 12),
                   const Text(
-                    'BEM VINDA!',
+                    'BEM-VINDA!',
                     style: TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w900,
@@ -66,19 +66,19 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                   const SizedBox(height: 4),
                   Text(
                     nomeEmpresa.toUpperCase(),
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textDark,
                     ),
-                    textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 20),
 
-            // Card do usuário responsável
+            // PERFIL DO USUÁRIO RESPONSÁVEL
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -88,15 +88,10 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
               ),
               child: Row(
                 children: [
-                  // Avatar do usuário
                   CircleAvatar(
                     radius: 28,
                     backgroundColor: AppColors.greyVeryLight,
-                    child: const Icon(
-                      Icons.person,
-                      size: 30,
-                      color: AppColors.greyLight,
-                    ),
+                    child: const Icon(Icons.person, size: 30, color: AppColors.greyLight),
                   ),
                   const SizedBox(width: 14),
                   Column(
@@ -113,18 +108,12 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                       const SizedBox(height: 2),
                       Text(
                         cargo,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.greyMedium,
-                        ),
+                        style: const TextStyle(fontSize: 13, color: AppColors.greyMedium),
                       ),
                       if (nivel.isNotEmpty)
                         Text(
                           nivel,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.greyMedium,
-                          ),
+                          style: const TextStyle(fontSize: 13, color: AppColors.greyMedium),
                         ),
                     ],
                   ),
@@ -133,38 +122,34 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
-            // Mascote com balão
+            //MASCOTE/GUIA 
             Expanded(
               child: Stack(
                 alignment: Alignment.center,
                 children: [
+                  // Substitua pelo seu asset real ou mantenha o ícone de fallback
                   Image.asset(
                     'assets/images/escudo_diavicon.png',
                     fit: BoxFit.contain,
-                    errorBuilder: (_, _, _) => const Icon(
-                      Icons.pets,
-                      size: 100,
-                      color: AppColors.greyLight,
+                    errorBuilder: (_, __, ___) => const Icon(
+                      Icons.shield_rounded, 
+                      size: 100, 
+                      color: AppColors.greyLight
                     ),
                   ),
                   Positioned(
-                    right: 20,
-                    top: 20,
+                    right: 10,
+                    top: 10,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 14, vertical: 10),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       decoration: BoxDecoration(
                         color: AppColors.greyVeryLight,
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: const Text(
                         'Hora de começar a\nacompanhar suas\nestruturas! Serei o\nseu guia!',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: AppColors.textDark,
-                          height: 1.4,
-                        ),
                         textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 11, color: AppColors.textDark, height: 1.4),
                       ),
                     ),
                   ),
@@ -173,9 +158,13 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 24),
 
+            // BOTÃO DE ENTRADA NO APP 
             CustomButton(
               text: '✓  Começar',
-              onPressed: () => context.go('/projetos'),
+              onPressed: () {
+                // GoRouter mata toda a pilha de cadastro e abre a Home
+                context.go('/projetos');
+              },
             ),
           ],
         ),

@@ -4,8 +4,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/auth_layout.dart';
 
-/// CadastroR2 — Seleção do perfil do usuário com 3 botões grandes.
-/// Rota: /register/perfil
 class CadastroR2Screen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
 
@@ -29,7 +27,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 32),
 
-            // ── Botão: Engenheiro Diagnóstico ────────────────────────────────
+            //Engenheiro Diagnóstico
             _PerfilButton(
               icone: Icons.engineering,
               texto: 'Engenheiro Diagnóstico',
@@ -40,7 +38,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // ── Botão: Proprietário/gestor de ativos ─────────────────────────
+            // Proprietário/gestor de ativos
             _PerfilButton(
               icone: Icons.domain,
               texto: 'Proprietário/gestor\nde ativos',
@@ -51,7 +49,7 @@ class CadastroR2Screen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
 
-            // ── Botão: Pesquisador Acadêmico ──────────────────────────────────
+            // Pesquisador Acadêmico
             _PerfilButton(
               icone: Icons.school,
               texto: 'Pesquisador Acadêmico',
@@ -63,12 +61,11 @@ class CadastroR2Screen extends ConsumerWidget {
 
             const Spacer(),
 
-            // ── Voltar ────────────────────────────────────────────────────────
+            // Botão Voltar
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton(
-                onPressed: () =>
-                    context.go('/register/dados', extra: dadosUsuario),
+                onPressed: () => context.pop(),
                 child: const Text(
                   '< Voltar',
                   style: TextStyle(color: AppColors.greyMedium),
@@ -82,19 +79,20 @@ class CadastroR2Screen extends ConsumerWidget {
   }
 
   void _irParaProximaEtapa(BuildContext context, String tipo) {
+    // Adiciona o tipo escolhido ao mapa de dados que veio das telas anteriores
     final dadosAtualizados = {...dadosUsuario, 'tipo': tipo};
 
     if (tipo == 'Acadêmico') {
-      // Fluxo acadêmico: vai para tela específica de dados acadêmicos
+      // Vai para a tela de dados acadêmicos
       context.go('/register/academico', extra: dadosAtualizados);
     } else {
-      // Engenheiro e Proprietário: vão para o fluxo de empresa
+      // Engenheiro e Proprietário seguem para o Onboarding de Empresa
       context.go('/empresa/gate', extra: dadosAtualizados);
     }
   }
 }
 
-// ─── Botão de perfil ──────────────────────────────────────────────────────────
+// Widget auxiliar para os botões grandes de perfil
 class _PerfilButton extends StatelessWidget {
   final IconData icone;
   final String texto;
@@ -118,20 +116,19 @@ class _PerfilButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icone, color: AppColors.white, size: 32),
+            Icon(icone, color: Colors.white, size: 32),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
                 texto,
                 style: const TextStyle(
-                  color: AppColors.white,
+                  color: Colors.white,
                   fontWeight: FontWeight.bold,
                   fontSize: 15,
                 ),
               ),
             ),
-            const Icon(Icons.arrow_forward_ios,
-                color: AppColors.white, size: 16),
+            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
           ],
         ),
       ),

@@ -4,9 +4,11 @@ import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 class Cadastro1Empresa extends StatelessWidget {
-  const Cadastro1Empresa({super.key});
+  final Map<String, dynamic> dadosUsuario; // Adicione isso
+  const Cadastro1Empresa({super.key, required this.dadosUsuario});
 
   @override
   Widget build(BuildContext context) {
@@ -62,14 +64,22 @@ class Cadastro1Empresa extends StatelessWidget {
                 width: double.infinity,
                 height: screenheight * 0.30,
                 color: AppColors.background,
-                child: Image.asset('assets/images/escudo_diavicon.png', fit: BoxFit.contain),
+                child: Image.asset(
+                  'assets/images/escudo_diavicon.png',
+                  fit: BoxFit.contain,
+                ),
               ),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CustomTextbutton(text: '<   Voltar', onPressed: () {}),
                   SizedBox(width: screenwidth * 0.2),
-                  CompactButton(text: 'Começar', onPressed: () {}),
+                  CompactButton(
+                    text: 'Começar',
+                    onPressed: () => context.push(
+                      '/empresa/servicos', extra: dadosUsuario,
+                    ), // Leva para os Checkboxes (Cadastro2)
+                  ),
                 ],
               ),
             ],

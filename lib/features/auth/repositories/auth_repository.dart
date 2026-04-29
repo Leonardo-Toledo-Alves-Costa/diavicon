@@ -4,7 +4,7 @@ import '../models/usuario_model.dart';
 class AuthRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // ── Login ──────────────────────────────────────────────────────────────────
+  // Login
   Future<AuthResponse> signIn(String email, String password) async {
     return await _supabase.auth.signInWithPassword(
       email: email,
@@ -12,20 +12,32 @@ class AuthRepository {
     );
   }
 
-  // ── Cadastro: cria usuário no Supabase Auth ────────────────────────────────
-  Future<AuthResponse> signUp(String email, String password) async {
-    return await _supabase.auth.signUp(
+  Future<void> signUp({
+    required String email,
+    required String password,
+    required Map<String, dynamic> dadosCompletos,
+  }) async {
+    // Cria apenas a credencial de login
+    final response = await _supabase.auth.signUp(
       email: email,
       password: password,
     );
+
+    if (response.user != null) {
+      // Salva APENAS o perfil básico na tabela 'usuarios'
+      await _supabase.from('usuarios').insert({
+        'id': response.user!.id,
+        'nome': dadosCompletos['nome'],
+        'sobrenome': dadosCompletos['sobrenome'],
+        'email': email,
+        'celular': dadosCompletos['telefone'],
+        'perfil': dadosCompletos['perfil'], // 'Empresa'
+        'ativo': true,
+      });
+    }
   }
 
-  // ── Salva dados do perfil na tabela 'usuarios' ────────────────────────────
-  Future<void> salvarPerfil(UsuarioModel usuario) async {
-    await _supabase.from('usuarios').upsert(usuario.toMap());
-  }
-
-  // ── Busca perfil do usuário na tabela 'usuarios' ──────────────────────────
+  // Busca perfil
   Future<UsuarioModel?> getUsuarioPerfil(String userId) async {
     final data = await _supabase
         .from('usuarios')
@@ -37,6 +49,9 @@ class AuthRepository {
     return UsuarioModel.fromMap(data);
   }
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
+  // Logout
   Future<void> signOut() async => await _supabase.auth.signOut();
+
+  // Pega a sessão atual (para o app abrir já logado)
+  User? get currentUser => _supabase.auth.currentUser;
 }

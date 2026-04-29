@@ -1,3 +1,4 @@
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,7 +27,6 @@ class _CadastroAcademicoScreenState
     extends ConsumerState<CadastroAcademicoScreen> {
   int _etapaAtual = 0;
 
-  // ── Etapa 2 ────────────────────────────────────────────────────────────────
   final List<String> _servicos = [
     'Pesquisa em Patologias',
     'Ensaios Não Destrutivos',
@@ -37,7 +37,6 @@ class _CadastroAcademicoScreenState
   ];
   final Set<String> _selecionados = {};
 
-  // ── Etapa 3 ────────────────────────────────────────────────────────────────
   final _formKey = GlobalKey<FormState>();
   final _universidadeController = TextEditingController();
   final _motivoController = TextEditingController();
@@ -64,14 +63,18 @@ class _CadastroAcademicoScreenState
 
   Widget _buildEtapa(int etapa) {
     switch (etapa) {
-      case 0: return _buildEtapa1();
-      case 1: return _buildEtapa2();
-      case 2: return _buildEtapa3();
-      default: return _buildEtapa1();
+      case 0:
+        return _buildEtapa1();
+      case 1:
+        return _buildEtapa2();
+      case 2:
+        return _buildEtapa3();
+      default:
+        return _buildEtapa1();
     }
   }
 
-  // ── ETAPA 1: Onboarding ────────────────────────────────────────────────────
+  // Onboarding
   Widget _buildEtapa1() {
     return Padding(
       key: const ValueKey('etapa1'),
@@ -131,7 +134,9 @@ class _CadastroAcademicoScreenState
                   top: 30,
                   child: Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 14, vertical: 10),
+                      horizontal: 14,
+                      vertical: 10,
+                    ),
                     decoration: BoxDecoration(
                       color: AppColors.greyVeryLight,
                       borderRadius: BorderRadius.circular(12),
@@ -155,10 +160,8 @@ class _CadastroAcademicoScreenState
           Row(
             children: [
               TextButton(
-                onPressed: () => context.go(
-                  '/register/perfil',
-                  extra: widget.dadosUsuario,
-                ),
+                onPressed: () =>
+                    context.go('/register/perfil', extra: widget.dadosUsuario),
                 child: const Text(
                   '< Voltar',
                   style: TextStyle(color: AppColors.greyMedium),
@@ -179,7 +182,7 @@ class _CadastroAcademicoScreenState
     );
   }
 
-  // ── ETAPA 2: Checkboxes ────────────────────────────────────────────────────
+  // Checkboxes 
   Widget _buildEtapa2() {
     return Padding(
       key: const ValueKey('etapa2'),
@@ -215,7 +218,9 @@ class _CadastroAcademicoScreenState
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 14),
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     decoration: BoxDecoration(
                       color: selecionado
                           ? AppColors.primary.withValues(alpha: 0.08)
@@ -246,8 +251,11 @@ class _CadastroAcademicoScreenState
                             ),
                           ),
                           child: selecionado
-                              ? const Icon(Icons.check,
-                                  color: AppColors.white, size: 14)
+                              ? const Icon(
+                                  Icons.check,
+                                  color: AppColors.white,
+                                  size: 14,
+                                )
                               : null,
                         ),
                         const SizedBox(width: 12),
@@ -293,7 +301,8 @@ class _CadastroAcademicoScreenState
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
                           content: Text(
-                              'Selecione pelo menos um item para continuar.'),
+                            'Selecione pelo menos um item para continuar.',
+                          ),
                         ),
                       );
                       return;
@@ -309,7 +318,7 @@ class _CadastroAcademicoScreenState
     );
   }
 
-  // ── ETAPA 3: Dados acadêmicos ──────────────────────────────────────────────
+  //  Dados acadêmicos
   Widget _buildEtapa3() {
     return SingleChildScrollView(
       key: const ValueKey('etapa3'),
@@ -359,7 +368,6 @@ class _CadastroAcademicoScreenState
             ),
             const SizedBox(height: 16),
 
-            // Textarea: Por que usar o DIAVICON?
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -380,16 +388,20 @@ class _CadastroAcademicoScreenState
                   decoration: InputDecoration(
                     hintText: 'Descreva sua pesquisa ou objetivo...',
                     hintStyle: const TextStyle(
-                        color: AppColors.hintText, fontSize: 13),
+                      color: AppColors.hintText,
+                      fontSize: 13,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          const BorderSide(color: AppColors.inputBorder),
+                      borderSide: const BorderSide(
+                        color: AppColors.inputBorder,
+                      ),
                     ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
-                      borderSide:
-                          const BorderSide(color: AppColors.inputBorder),
+                      borderSide: const BorderSide(
+                        color: AppColors.inputBorder,
+                      ),
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(8),
@@ -430,30 +442,58 @@ class _CadastroAcademicoScreenState
     );
   }
 
+  // Esta função vai dentro da sua Screen (CadastroAcademico ou Cadastro3)
+
   Future<void> _enviar() async {
-    if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
+    final controller = ref.read(authControllerProvider.notifier);
+
+    // Preparamos o MAPA com todos os dados coletados desde a R0
+    // Certifique-se que as chaves batem com o que o Repositorio espera
+    final Map<String, dynamic> dadosParaSalvar = {
+      ...widget.dadosUsuario, // Traz e-mail, senha, nome, sobrenome, etc.
+      // Dados de Endereço (Vêm dos controllers da R2)
+      'rua': widget.dadosUsuario['rua'],
+      'cidade': widget.dadosUsuario['cidade'],
+      'estado': widget.dadosUsuario['estado'],
+      'cep': widget.dadosUsuario['cep'],
+
+      // Dados específicos desta tela final
+      'formacao': _universidadeController.text, // ou o que for o caso
+      'perfil': widget.dadosUsuario['perfil'], // 'Acadêmico' ou 'Empresa'
+    };
+
     try {
-      // TODO: salvar solicitação acadêmica no Supabase
-      await Future.delayed(const Duration(seconds: 1));
+      //  Dispara o processo de salvamento (Auth -> Endereço -> Usuário)
+      await controller.registrar(
+        email: widget.dadosUsuario['email'],
+        password: widget.dadosUsuario['senha'],
+        dados: dadosParaSalvar,
+      );
+
+      // SE DEU CERTO: Navega para a Home
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text(
-                'Solicitação enviada! Aguarde a aprovação do administrador.'),
+            content: Text('Cadastro finalizado com sucesso!'),
             backgroundColor: AppColors.primary,
           ),
         );
-        context.go('/login');
+
+        // context.go mata a pilha de cadastro e te joga no app
+        context.go('/projetos');
       }
     } catch (e) {
+      // TRATAMENTO DE ERRO
       if (mounted) {
+        String erroMsg = 'Erro ao salvar dados.';
+        if (e.toString().contains('429'))
+          erroMsg = 'Muitas tentativas. Aguarde 1h.';
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao enviar solicitação.')),
+          SnackBar(content: Text(erroMsg), backgroundColor: Colors.redAccent),
         );
+        print("ERRO COMPLETO: $e");
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 }

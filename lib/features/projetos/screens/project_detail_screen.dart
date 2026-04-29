@@ -1,3 +1,4 @@
+import 'package:diavicon/features/empresa/providers/projetos_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -8,7 +9,6 @@ import '../../../core/widgets/compact_search_bar.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../providers/projetos_provider.dart';
 import '../widgets/team_member_item.dart';
 import '../widgets/structure_card.dart';
 import '../widgets/team_edit_body.dart';

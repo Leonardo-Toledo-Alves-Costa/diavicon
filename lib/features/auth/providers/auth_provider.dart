@@ -21,8 +21,6 @@ class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
 
   void setUser(UsuarioModel user) => state = user;
   void clearUser() => state = null;
-  void setUser(UsuarioModel user) => state = user;
-  void clearUser() => state = null;
 }
 
 // ── Controller de autenticação ─────────────────────────────────────────────
@@ -31,9 +29,7 @@ class AuthController extends StateNotifier<bool> {
 
   AuthController(this._ref) : super(false);
 
-  // MÉTODO DE LOGIN
   Future<void> login(String email, String password) async {
-    state = true;
     state = true;
     try {
       final repo = _ref.read(authRepositoryProvider);
@@ -76,11 +72,5 @@ class AuthController extends StateNotifier<bool> {
     } finally {
       state = false;
     }
-  }
-
-  // LOGOUT
-  Future<void> logout() async {
-    await _ref.read(authRepositoryProvider).signOut();
-    _ref.read(currentUserProvider.notifier).clearUser();
   }
 }

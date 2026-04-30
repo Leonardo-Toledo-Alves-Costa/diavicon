@@ -1,10 +1,11 @@
+import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
+import 'package:diavicon/features/estrutura/widgets/nova_estrutura_body.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/compact_search_bar.dart'; 
-import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/compact_search_bar.dart';
 import 'package:diavicon/features/estrutura/widgets/card_estrutura.dart';
-// import '../../models/estrutura_model.dart'; 
+// import '../../models/estrutura_model.dart';
 
 class IncluirEstruturaBody extends StatefulWidget {
   final String empresaNome;
@@ -26,7 +27,7 @@ class IncluirEstruturaBody extends StatefulWidget {
 
 class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
   final Set<String> _selectedStructures = {};
-  
+
   // Variavel que guarda o texto na barra de pesquisa
   String _searchQuery = '';
 
@@ -34,12 +35,14 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
   Widget build(BuildContext context) {
     // logica do filtro
     final estruturasFiltradas = widget.estruturas.where((est) {
-      if (_searchQuery.isEmpty) return true; // Se a busca estiver vazia, mostra tudo
-      
+      if (_searchQuery.isEmpty)
+        return true; // Se a busca estiver vazia, mostra tudo
+
       final nomeEstrutura = (est.nome ?? '').toLowerCase(); //pega o nome
-      final tituloEstrutura = (est.tipo ?? '').toLowerCase(); //pega o titulo do edificio
+      final tituloEstrutura = (est.tipo ?? '')
+          .toLowerCase(); //pega o titulo do edificio
       final busca = _searchQuery.toLowerCase();
-      
+
       return nomeEstrutura.contains(busca) || tituloEstrutura.contains(busca);
     }).toList();
 
@@ -58,9 +61,9 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
               child: CircleAvatar(
                 radius: 24,
                 backgroundColor: Colors.white,
-                backgroundImage: widget.empresaLogoUrl != null 
+                backgroundImage: widget.empresaLogoUrl != null
                     ? NetworkImage(widget.empresaLogoUrl!) as ImageProvider
-                    : const AssetImage('assets/images/logo_diavicon.png'), 
+                    : const AssetImage('assets/images/logo_diavicon.png'),
               ),
             ),
             const SizedBox(width: 16),
@@ -70,11 +73,18 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
                 children: [
                   Text(
                     widget.empresaNome,
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textDark,
+                    ),
                   ),
                   Text(
                     widget.clienteNome,
-                    style: const TextStyle(fontSize: 14, color: AppColors.hintText),
+                    style: const TextStyle(
+                      fontSize: 14,
+                      color: AppColors.hintText,
+                    ),
                   ),
                 ],
               ),
@@ -102,8 +112,6 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
         ),
         const SizedBox(height: 16),
 
-        
-        
         Expanded(
           child: estruturasFiltradas.isEmpty
               // Se não tiver nada, mostra o texto centralizado no espaço vazio
@@ -115,7 +123,7 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
                 )
               // Se tiver, mostra a lista que ocupa o espaço vazio e rola se precisar
               : ListView.builder(
-                  padding: EdgeInsets.zero, 
+                  padding: EdgeInsets.zero,
                   itemCount: estruturasFiltradas.length,
                   itemBuilder: (context, index) {
                     final est = estruturasFiltradas[index];
@@ -128,15 +136,17 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
                       isSelected: _selectedStructures.contains(est.id),
                       onChanged: (val) {
                         setState(() {
-                          if (val == true) _selectedStructures.add(est.id);
-                          else _selectedStructures.remove(est.id);
+                          if (val == true)
+                            _selectedStructures.add(est.id);
+                          else
+                            _selectedStructures.remove(est.id);
                         });
                       },
                     );
                   },
                 ),
         ),
-        
+
         const SizedBox(height: 24),
 
         // Utilização dos Botões Padrão
@@ -152,17 +162,24 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
             ),
             const SizedBox(width: 16),
             Expanded(
-              child: CustomButton(
+              child: CompactButton(
                 text: 'Nova',
-                showArrow: false,
                 onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NovaEstruturaScreen(),
+                      fullscreenDialog:
+                          true, // Isso faz a tela subir como um modal
+                    ),
+                  );
                   // Lógica para nova estrutura
                 },
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10), 
+        const SizedBox(height: 10),
       ],
     );
   }

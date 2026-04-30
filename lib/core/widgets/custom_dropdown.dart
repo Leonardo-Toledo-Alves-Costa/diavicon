@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'custom_label.dart'; // Importando o seu CustomLabel
 
 class CustomDropdown<T> extends StatelessWidget {
   final String label;
@@ -24,11 +25,10 @@ class CustomDropdown<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
+        if (label.isNotEmpty) ...[
+          CustomLabel(text: label, tooltip: tooltip),
+          const SizedBox(height: 8),
+        ],
         DropdownButtonFormField<T>(
           value: value,
           items: items,

@@ -14,12 +14,13 @@ class Cadastro2Empresa extends StatefulWidget {
 class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
   // Lista de serviços para o Checkbox
   final List<String> _servicos = [
-    'Vistorias',
-    'Laudos Técnicos',
-    'Inspeção Predial',
-    'Ensaios Tecnológicos',
-    'Consultoria',
-    'Acompanhamento de Obras'
+    'Execução de intervenções estruturais de reparo ou reforço, bem como manutenção',
+    'Ensaios Não Destrutivos (END)',
+    'Gerenciamento e monitoramento de estruturas',
+    'Elaboração de planos de ensaio',
+    'Gerenciamento de outras empresas de ensaios',
+    'Consultoria acerca de estruturas',
+    'Projeto de intervenções como recuperação e/ou reforço estrutural',
   ];
   
   late final List<bool> _selecionados = List<bool>.filled(_servicos.length, false);

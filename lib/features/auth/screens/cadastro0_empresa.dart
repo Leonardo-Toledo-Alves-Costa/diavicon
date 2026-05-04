@@ -147,7 +147,7 @@ class Cadastro0Empresa extends StatelessWidget {
               SizedBox(height: screenheight * 0.1),
               CustomTextbutton(
                 text: '<   Voltar',
-                onPressed: () {},
+                onPressed: () => context.go('/register/perfil', extra: dadosUsuario)
               ),
             ],
           ),

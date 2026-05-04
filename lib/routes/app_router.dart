@@ -1,3 +1,7 @@
+import 'package:diavicon/features/auth/screens/cadastro0_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro1_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
 import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
 import 'package:flutter/material.dart';
@@ -50,7 +54,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (isLoggedIn) {
         //Se ele estiver em QUALQUER parte do fluxo de empresa, 
         // NÃO interrompa o fluxo dele. Deixe ele terminar o onboarding.
-        if (path.startsWith('/empresa/')) {
+        if (path.startsWith('/empresa/') ) {
           return null; 
         }
 
@@ -93,6 +97,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               return CadastroAcademicoScreen(dadosUsuario: extra);
             },
           ),
+          GoRoute(path: 'cliente/gate',
+        builder: (context, state) => Cadastro0Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/checkboxes',
+        builder: (context, state) => Cadastro1Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/planos',
+        builder: (context, state) => Cadastro2Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/welcome',
+        builder: (context, state) => Cadastro3Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
         ],
       ),
 
@@ -121,6 +133,8 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/empresa/bemvinda',
         builder: (context, state) => EmpresaBemVindaScreen(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
       ),
+
+
 
       // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
       ShellRoute(

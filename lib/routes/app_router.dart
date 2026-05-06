@@ -1,98 +1,153 @@
-import 'package:diavicon/features/projetos/screens/project_detail_screen.dart';
+import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
+import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-// Importe suas telas reais
-import '../../features/auth/screens/welcome_screen.dart'; // Tela inicial
+import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
-import '../../features/projetos/screens/projetos_screen.dart';
+import '../../features/auth/screens/cadastro_r0_screen.dart';
+import '../../features/auth/screens/cadastro_r1_screen.dart';
+import '../../features/auth/screens/cadastro_r2_screen.dart';
+import '../../features/auth/screens/cadastro_academico_screen.dart';
+
+import '../../features/auth/screens/cadastro0_empresa.dart';
+import '../../features/auth/screens/cadastro1_empresa.dart';
+import '../../features/auth/screens/cadastro2_empresa.dart';
+import '../../features/auth/screens/cadastro3_empresa.dart';
+
 import '../../features/home/screens/main_screen.dart';
+import '../../features/projetos/screens/projetos_screen.dart';
+import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
 
-final routerProvider = Provider<GoRouter>((ref) {
-  // Assiste o estado do usuário para reagir a logins/logouts automaticamente
-  final usuarioLogado = ref.watch(currentUserProvider);
-  final bool isLoggedIn = usuarioLogado != null;
 
+final routerProvider = Provider<GoRouter>((ref) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final shellNavigatorKey = GlobalKey<NavigatorState>();
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/', // O app agora começa na WelcomeScreen
+    initialLocation: '/',
 
-    // REFRESH LISTENER: Faz o GoRouter reavaliar o redirecionamento quando o estado de auth muda
-    // Se o seu authProvider não for um ChangeNotifier, você pode precisar de um listener customizado.
     redirect: (context, state) {
-      // Definimos quais são as rotas públicas (que não precisam de login)
-      final isWelcome = state.uri.toString() == '/';
-      final isLogin = state.uri.toString() == '/login';
-      final isRegister = state.uri.toString() == '/register';
+      final path = state.uri.toString();
+    
+      final bool isLoggedIn = ref.read(currentUserProvider) != null;
 
-      final isPublicRoute = isWelcome || isLogin || isRegister;
-
-      // 1. Caso: Usuário NÃO está logado e tenta acessar rota privada
-      if (!isLoggedIn && !isPublicRoute) {
-        return '/login'; // Manda pro login
+      // Se NÃO está logado e tenta acessar área restrita
+      if (!isLoggedIn) {
+        final bool isPublic = path == '/' || 
+                              path == '/login' || 
+                              path.startsWith('/register') || 
+                              path.startsWith('/empresa/'); 
+        
+        if (!isPublic) return '/login';
+        return null;
       }
 
-      // 2. Caso: Usuário JÁ está logado e tenta acessar rotas de Auth
-      // Se ele já logou, não precisa mais ver a Welcome, Login ou Register
-      if (isLoggedIn && isPublicRoute) {
-        return '/projetos'; // Manda direto para a tela principal
+      //  Se ESTÁ logado
+      if (isLoggedIn) {
+        //Se ele estiver em QUALQUER parte do fluxo de empresa, 
+        // NÃO interrompa o fluxo dele. Deixe ele terminar o onboarding.
+        if (path.startsWith('/empresa/')) {
+          return null; 
+        }
+
+        // Se ele estiver em telas de login/boas-vindas iniciais, manda pros projetos
+        if (path == '/' || path == '/login' || path.startsWith('/register')) {
+          return '/projetos';
+        }
       }
 
-      return null; // Mantém a navegação atual
+      return null;
     },
 
     routes: [
-      // --- ROTAS FORA DO RODAPÉ (TELA CHEIA) ---
-      GoRoute(
-        path: '/',
-        builder: (context, state) =>
-            const WelcomeScreen(), // Sua nova tela inicial
-      ),
+      GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
+
+      // --- FLUXO DE CADASTRO ACADÊMICO ---
       GoRoute(
         path: '/register',
-        builder: (context, state) =>
-            const Placeholder(), // Certifique-se de que a tela existe
+        builder: (context, state) => const CadastroR0Screen(),
+        routes: [
+          GoRoute(
+            path: 'dados',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CadastroR1Screen(email: extra['email'] ?? '', senha: extra['senha'] ?? '');
+            },
+          ),
+          GoRoute(
+            path: 'perfil',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CadastroR2Screen(dadosUsuario: extra);
+            },
+          ),
+          GoRoute(
+            path: 'academico',
+            builder: (context, state) {
+              final extra = state.extra as Map<String, dynamic>? ?? {};
+              return CadastroAcademicoScreen(dadosUsuario: extra);
+            },
+          ),
+        ],
       ),
 
-      // --- ROTAS COM RODAPÉ (SHELL ROUTE) ---
+      // --- FLUXO DE ONBOARDING EMPRESA (FORA DO SHELL) ---
+      GoRoute(
+        path: '/empresa/gate',
+        builder: (context, state) => Cadastro0Empresa(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+      GoRoute(
+        path: '/empresa/onboarding',
+        builder: (context, state) => Cadastro1Empresa(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+      GoRoute(
+        path: '/empresa/servicos',
+        builder: (context, state) => Cadastro2Empresa(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+      GoRoute(
+        path: '/empresa/planos',
+        builder: (context, state) => Cadastro3Empresa(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+      GoRoute(
+        path: '/empresa/cadastro',
+        builder: (context, state) => EmpresaCadastroScreen(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+      GoRoute(
+        path: '/empresa/bemvinda',
+        builder: (context, state) => EmpresaBemVindaScreen(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),
+      ),
+
+      // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
       ShellRoute(
         navigatorKey: shellNavigatorKey,
-        builder: (context, state, child) {
-          return MainScreen(child: child); // O MainScreen contém o BottomAppBar
-        },
+        builder: (context, state, child) => MainScreen(child: child),
         routes: [
           GoRoute(
             path: '/projetos',
-            builder: (context, state) =>
-                const ProjetosScreen(), // Tela conectada ao Supabase
+            builder: (context, state) => const ProjetosScreen(),
             routes: [
               GoRoute(
-                path: 'detalhes', // Fica /projetos/detalhes
-                builder: (context, state) => const ProjectDetailScreen(),
+                path: 'detalhes',
+                builder: (context, state) => ProjectDetailScreen(projetoId: state.extra as String? ?? ''),
               ),
             ],
           ),
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Tela de Estruturas'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Estruturas'))),
           ),
           GoRoute(
-            path: '/empresa',
-            builder: (context, state) => const Scaffold(
-              body: Center(child: Text('Informações da Empresa')),
-            ),
+            path: '/minha-empresa', 
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
           ),
           GoRoute(
             path: '/educacao',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Área de Educação'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Educação'))),
           ),
         ],
       ),

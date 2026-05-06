@@ -9,7 +9,6 @@ class WelcomeScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Cor de fundo oficial: #E6E7E8 
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: Padding(
@@ -19,7 +18,7 @@ class WelcomeScreen extends StatelessWidget {
             children: [
               const Spacer(flex: 2),
 
-              // 1. O ESCUDO (Destaque Central)
+              // O ESCUDO
               Container(
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -51,7 +50,6 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(),
 
-              // Linha decorativa laranja oficial: #D99100 
               Container(
                 width: 60,
                 height: 4,
@@ -63,7 +61,6 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 48),
 
-              // 3. TAGLINE (Fonte Lato conforme manual )
               const Text(
                 'Soluções para o diagnóstico da vida útil das construções',
                 textAlign: TextAlign.center,
@@ -71,14 +68,13 @@ class WelcomeScreen extends StatelessWidget {
                   fontFamily: 'Lato',
                   fontSize: 18,
                   fontWeight: FontWeight.w500,
-                  color: AppColors.textDark, // #626365 [cite: 85]
+                  color: AppColors.textDark, 
                   height: 1.4,
                 ),
               ),
 
               const Spacer(flex: 3),
 
-              // 4. BOTÃO COMEÇAR
               CustomButton(
                 text: 'Começar  →',
                 onPressed: () => context.go('/login'),
@@ -86,7 +82,6 @@ class WelcomeScreen extends StatelessWidget {
 
               const SizedBox(height: 70),
 
-              // 5. VERSÃO (Rodapé)
               const Text(
                 'Versão 1.0',
                 style: TextStyle(

@@ -1,4 +1,7 @@
+import 'package:diavicon/core/widgets/custom_appbar.dart';
+import 'package:diavicon/core/widgets/diavicon_menu_item.dart';
 import 'package:diavicon/core/widgets/menu_app_bar.dart';
+import 'package:diavicon/core/widgets/menu_drawer_app_bar.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
@@ -31,10 +34,38 @@ class _NovaEstruturaScreenState extends State<NovaEstruturaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const MenuAppBar(
-        title: 'Projeto',
-        showBackButton: true,
-      ),
+       endDrawer: MenuDrawerAppBar(
+          title: 'Menu da\nEstrutura',
+          items: [
+            DiaviconMenuItem(
+              icon: Icons.info_outline,
+              label: 'Informações',
+              onTap: () => Navigator.pop(context),
+            ),
+            DiaviconMenuItem(
+              icon: Icons.layers_outlined,
+              label: 'Planejamento',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.science_outlined,
+              label: 'Ensaios',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.description_outlined,
+              label: 'Relatórios',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.pie_chart_outline,
+              label: 'Dashboard',
+              onTap: () {},
+            ),
+          ],
+        ),
+      appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
+      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(

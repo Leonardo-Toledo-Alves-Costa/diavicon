@@ -1,6 +1,9 @@
+import 'package:diavicon/core/utils/diavicon_modal.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
+import 'package:diavicon/features/estrutura/widgets/estrutura_adicionada_body.dart';
 import 'package:diavicon/features/estrutura/widgets/nova_estrutura_body.dart';
+import 'package:diavicon/features/estrutura/widgets/solicitacao_acesso_body.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_search_bar.dart';
@@ -136,10 +139,30 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
                       isSelected: _selectedStructures.contains(est.id),
                       onChanged: (val) {
                         setState(() {
-                          if (val == true)
-                            _selectedStructures.add(est.id);
-                          else
-                            _selectedStructures.remove(est.id);
+                          if (val == true) {
+                            _selectedStructures.add(est.id); // Marca o checkbox
+                            
+                            // Abre o modal de sucesso no centro da tela
+                            // Abre o modal de sucesso no centro da tela
+                            showDiaviconModal(
+                              context: context,
+                              title: '', 
+                              alignment: Alignment.center, 
+                              margin: const EdgeInsets.symmetric(horizontal: 40), 
+                              isScrollable: false,
+                              
+                              contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 0), 
+                              
+                              
+                              body: Transform.translate(
+                                offset: const Offset(0, -35), 
+                                child: const EstruturaAdicionadaBody(),
+                              ),
+                            );
+                            
+                          } else {
+                            _selectedStructures.remove(est.id); // Desmarca o checkbox
+                          }
                         });
                       },
                     );
@@ -156,7 +179,15 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
               child: CustomTextbutton(
                 text: 'Solicitar acesso',
                 onPressed: () {
-                  // Lógica de solicitação
+                  // Reutilizando seu componente padronizado para agir como Dialog flutuante
+                  showDiaviconModal(
+                    context: context,
+                    title: 'Solicitação de acesso à\nestruturas',
+                    centerTitle: true, // Centraliza o texto do título
+                    alignment: Alignment.center, // Faz ele flutuar no meio da tela
+                    margin: const EdgeInsets.symmetric(horizontal: 24), // Desgruda das bordas laterais
+                    body: const SolicitacaoAcessoBody(),
+                  );
                 },
               ),
             ),
@@ -165,15 +196,31 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
               child: CompactButton(
                 text: 'Nova',
                 onPressed: () {
+                  // fecha o outro modal
+                  Navigator.pop(context);
+
+                  // abre o modal de nova estrutura com uma animação subindo
                   Navigator.push(
                     context,
-                    MaterialPageRoute(
-                      builder: (context) => const NovaEstruturaScreen(),
-                      fullscreenDialog:
-                          true, // Isso faz a tela subir como um modal
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) => 
+                          const NovaEstruturaScreen(),
+                      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                        const begin = Offset(0.0, 1.0); 
+                        const end = Offset.zero;        
+                        const curve = Curves.easeInOutCubic; 
+
+                        var tween = Tween(begin: begin, end: end).chain(CurveTween(curve: curve));
+                        var offsetAnimation = animation.drive(tween);
+
+                        return SlideTransition(
+                          position: offsetAnimation,
+                          child: child,
+                        );
+                      },
+                      transitionDuration: const Duration(milliseconds: 750), // Tempo da animação
                     ),
                   );
-                  // Lógica para nova estrutura
                 },
               ),
             ),
@@ -189,12 +236,11 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
 //para chamar esse moda:
 /*
 showDiaviconModal(
-                        context: context,
-                        title: 'Incluir Estrutura',
-                        height: MediaQuery.of(context).size.height * 0.80,
-                        isScrollable: false,
-                        margin: const EdgeInsets.fromLTRB(18, 0, 18, 0),
-                        centerTitle: true,
-                        body: 
-                         IncluirEstruturaBody(),
+                  context: context,
+                  title: 'Incluir Estrutura',
+                  height: MediaQuery.of(context).size.height * 0.80,
+                  isScrollable: false,
+                  margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
+                  centerTitle: true,
+                  body: IncluirEstruturaBody(),
 */

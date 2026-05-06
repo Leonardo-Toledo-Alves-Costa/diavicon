@@ -1,48 +1,43 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 
 class MenuAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
-  final bool showBackButton;
+  final VoidCallback? onMenuPressed; // O parâmetro que faltava
 
   const MenuAppBar({
     super.key,
     required this.title,
-    this.showBackButton = true,
+    this.onMenuPressed, // Recebe a função da tela pai
   });
 
   @override
   Widget build(BuildContext context) {
     return AppBar(
-      backgroundColor: AppColors.primary, // #D99100 oficial
+      backgroundColor: Colors.transparent, // Essencial para o extendBodyBehindAppBar
       elevation: 0,
       centerTitle: true,
-      // Curvatura profunda conforme prototipagem
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
+        onPressed: () => Navigator.maybePop(context),
       ),
-      leading: showBackButton 
-        ? IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          )
-        : null,
       title: Text(
         title,
         style: const TextStyle(
           color: Colors.white,
-          fontSize: 20,
+          fontSize: 18,
           fontWeight: FontWeight.bold,
-          fontFamily: 'Lato',
         ),
       ),
       actions: [
-        IconButton(icon: const Icon(Icons.notifications_none, color: Colors.white), onPressed: () {}),
-        IconButton(icon: const Icon(Icons.menu, color: Colors.white), onPressed: () {}),
+        // O botão que vai abrir o seu MenuDrawerAppBar
+        IconButton(
+          icon: const Icon(Icons.menu, color: Colors.white),
+          onPressed: onMenuPressed, // Quando clicado, executa o comando do Scaffold
+        ),
       ],
     );
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(70); // Altura aumentada para a curva
+  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

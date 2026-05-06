@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/status_badge.dart';
+import '../../../core/widgets/status_badge.dart'; // Onde está o seu Enum
 
 class ProjectCard extends StatelessWidget {
   final String title;
   final double progress;
-  final BadgeStatus status; // Agora usando o seu Enum
+  final BadgeStatus status;
   final String priority;
   final String imageUrl;
 
@@ -21,132 +21,93 @@ class ProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 24),
+      margin: const EdgeInsets.only(bottom: 20),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(32), // Bordas bem arredondadas como no design
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          )
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. ÁREA DA FOTO COM BADGES OVERLAY
+          // PARTE SUPERIOR: Imagem + Badges
           Stack(
-            clipBehavior: Clip.none,
             children: [
-              // Imagem da Obra
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
                 child: Image.asset(
-                  imageUrl, // Se for do assets, ou use Image.network se vier do Supabase
-                  height: 160,
+                  imageUrl,
+                  height: 140,
                   width: double.infinity,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => Container(
-                    height: 160,
-                    color: Colors.grey.shade100,
-                    child: const Icon(Icons.image_outlined, color: Colors.grey),
-                  ),
                 ),
               ),
-              
-              // O SEU STATUS BADGE (Esquerda)
+              // Badge de Status (Esquerda)
               Positioned(
-                top: 16,
-                left: 16,
-                child: StatusBadge(status: status),
+                top: 12,
+                left: 12,
+                child: _buildStatusLabel(),
               ),
-
-              // BADGE DE PRIORIDADE (Direita - Branco com Ícone Laranja)
+              // Badge de Prioridade (Direita)
               Positioned(
-                top: 16,
-                right: 16,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(0.9),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info, color: Colors.orange, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        priority,
-                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
-                      ),
-                    ],
-                  ),
-                ),
+                top: 12,
+                right: 12,
+                child: _buildPriorityLabel(),
               ),
-
-              // LOGO DIAVICON FLUTUANTE (O "selo" no canto inferior da imagem)
+              // Logo da Empresa Gestora (Sobreposta)
               Positioned(
-                bottom: -12,
-                right: 20,
+                bottom: -15,
+                right: 12,
                 child: Container(
                   padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
-                  ),
-                  child: Image.asset('assets/images/logo_diavicon.png', height: 24),
+                  decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
+                  child: Image.asset('assets/images/empresa.png', height: 40),
                 ),
               ),
             ],
           ),
 
-          // 2. CONTEÚDO (Texto e Progresso)
+          // PARTE INFERIOR: Texto + Progresso
           Padding(
-            padding: const EdgeInsets.all(24.0),
+            padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 20, 
-                    fontWeight: FontWeight.w900, 
-                    color: AppColors.textDark
-                  ),
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
                 ),
-                const SizedBox(height: 24),
-                
+                const SizedBox(height: 16),
+                const Text('Progresso', style: TextStyle(fontSize: 12, color: AppColors.hintText)),
+                const SizedBox(height: 8),
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    const Text('Progresso', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
-                    Text('${(progress * 100).toInt()}%', 
-                      style: const TextStyle(fontWeight: FontWeight.w900)),
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: const Color(0xFFEEEEEE),
+                          color: _getProgressColor(),
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 8),
-                
-                // Barra de Progresso Arredondada
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey.shade100,
-                    color: AppColors.primary,
-                    minHeight: 8,
-                  ),
-                ),
-                
-                const SizedBox(height: 12),
-
-                // Stack de Avatares da Equipe (Canto inferior direito)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildTeamStack(),
-                ),
+                const SizedBox(height: 16),
+                // Aqui entraria a Row de Avatares da Equipe
               ],
             ),
           ),
@@ -155,37 +116,40 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  Widget _buildTeamStack() {
-    return SizedBox(
-      width: 100,
-      height: 32,
-      child: Stack(
-        children: [
-          _positionedAvatar(0, 'assets/images/user.png'),
-          _positionedAvatar(18, 'assets/images/user.png'),
-          _positionedAvatar(36, 'assets/images/user.png'),
-          Positioned(
-            left: 54,
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: Colors.orange,
-              child: const Text('+2', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-            ),
-          ),
-        ],
+  // Helpers Visuais
+  Color _getProgressColor() {
+    if (status == BadgeStatus.concluido) return Colors.green;
+    if (status == BadgeStatus.cancelado) return Colors.red;
+    return AppColors.primary;
+  }
+
+  Widget _buildStatusLabel() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        status == BadgeStatus.concluido ? 'Concluído' : 'Em andamento',
+        style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _positionedAvatar(double left, String asset) {
-    return Positioned(
-      left: left,
-      child: Container(
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
-        ),
-        child: CircleAvatar(radius: 12, backgroundImage: AssetImage(asset)),
+  Widget _buildPriorityLabel() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.9),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.info, size: 12, color: AppColors.primary),
+          const SizedBox(width: 4),
+          Text(priority, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+        ],
       ),
     );
   }

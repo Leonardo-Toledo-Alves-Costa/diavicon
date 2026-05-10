@@ -13,6 +13,8 @@ import '../widgets/team_member_item.dart';
 import '../widgets/structure_card.dart';
 import '../widgets/team_edit_body.dart';
 import '../models/projeto_model.dart';
+import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
+import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -26,39 +28,57 @@ class ProjectDetailScreen extends ConsumerWidget {
 
     return projetoAsync.when(
       loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        body: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       ),
-      error: (err, stack) => Scaffold(
-        body: Center(child: Text('Erro ao carregar projeto: $err')),
-      ),
+      error: (err, stack) =>
+          Scaffold(body: Center(child: Text('Erro ao carregar projeto: $err'))),
       data: (projeto) => Scaffold(
         backgroundColor: Colors.white,
         // Efeito de sobreposição: o corpo começa no topo absoluto da tela
-        extendBodyBehindAppBar: true, 
+        extendBodyBehindAppBar: true,
 
         //  (DRAWER)
         endDrawer: MenuDrawerAppBar(
           title: 'Menu do\nProjeto',
           items: [
             DiaviconMenuItem(
-              icon: Icons.info_outline, 
-              label: 'Informações', 
+              icon: Icons.info_outline,
+              label: 'Informações',
               onTap: () => Navigator.pop(context),
             ),
-            DiaviconMenuItem(icon: Icons.assignment_outlined, label: 'RDO', onTap: () {}),
-            DiaviconMenuItem(icon: Icons.business_outlined, label: 'Empresas', onTap: () {}),
-            DiaviconMenuItem(icon: Icons.description_outlined, label: 'Relatórios', onTap: () {}),
-            DiaviconMenuItem(icon: Icons.payments_outlined, label: 'Gastos', onTap: () {}),
-            DiaviconMenuItem(icon: Icons.pie_chart_outline, label: 'Dashboard', onTap: () {}),
+            DiaviconMenuItem(
+              icon: Icons.assignment_outlined,
+              label: 'RDO',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.business_outlined,
+              label: 'Empresas',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.description_outlined,
+              label: 'Relatórios',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.payments_outlined,
+              label: 'Gastos',
+              onTap: () {},
+            ),
+            DiaviconMenuItem(
+              icon: Icons.pie_chart_outline,
+              label: 'Dashboard',
+              onTap: () {},
+            ),
           ],
         ),
 
         // APPBAR PADRÃO (TÍTULO DA FEATURE)
         resizeToAvoidBottomInset: false,
-        appBar: const CustomAppBar(
-          title: 'Projetos', 
-          showBackButton: true,
-        ),
+        appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
 
         body: SingleChildScrollView(
           child: Column(
@@ -72,7 +92,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TÍTULO DO PROJETO 
+                    // TÍTULO DO PROJETO
                     Text(
                       projeto.nome,
                       style: const TextStyle(
@@ -92,16 +112,16 @@ class ProjectDetailScreen extends ConsumerWidget {
                     const Text(
                       'Equipe',
                       style: TextStyle(
-                        fontSize: 18, 
-                        fontWeight: FontWeight.bold, 
-                        color: AppColors.textDark
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
                       ),
                     ),
                     const SizedBox(height: 12),
                     _buildTeamSection(context),
                     const SizedBox(height: 32),
 
-                    _buildStructuresSection(),
+                    _buildStructuresSection(context, ref),
 
                     // Espaço para não bater no BottomAppBar da MainScreen
                     const SizedBox(height: 140),
@@ -115,7 +135,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  // MÉTODOS AUXILIARES 
+  // MÉTODOS AUXILIARES
 
   Widget _buildHeader(ProjetoModel projeto) {
     return Stack(
@@ -134,10 +154,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.4],
-                colors: [
-                  Colors.black.withOpacity(0.5),
-                  Colors.transparent,
-                ],
+                colors: [Colors.black.withOpacity(0.5), Colors.transparent],
               ),
             ),
           ),
@@ -148,7 +165,11 @@ class ProjectDetailScreen extends ConsumerWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _buildBadge(projeto.prioridadeNome, AppColors.primary, Icons.info),
+              _buildBadge(
+                projeto.prioridadeNome,
+                AppColors.primary,
+                Icons.info,
+              ),
               const SizedBox(height: 8),
               _buildStatusBadge(projeto.statusBadge),
             ],
@@ -173,7 +194,11 @@ class ProjectDetailScreen extends ConsumerWidget {
           if (icon != null) const SizedBox(width: 4),
           Text(
             label,
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: color),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
           ),
         ],
       ),
@@ -193,7 +218,11 @@ class ProjectDetailScreen extends ConsumerWidget {
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.bold),
+        style: const TextStyle(
+          fontSize: 10,
+          color: AppColors.primary,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }
@@ -206,8 +235,17 @@ class ProjectDetailScreen extends ConsumerWidget {
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(empresaNome, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
-            const Text('Gestora', style: TextStyle(color: AppColors.hintText, fontSize: 12)),
+            Text(
+              empresaNome,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
+            const Text(
+              'Gestora',
+              style: TextStyle(color: AppColors.hintText, fontSize: 12),
+            ),
           ],
         ),
       ],
@@ -226,8 +264,20 @@ class ProjectDetailScreen extends ConsumerWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Progresso', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
-              Text('${(value * 100).toInt()}%', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+              const Text(
+                'Progresso',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
+              Text(
+                '${(value * 100).toInt()}%',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.textDark,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -251,9 +301,21 @@ class ProjectDetailScreen extends ConsumerWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          const TeamMemberItem(name: 'Fulano', role: 'Engenheiro', imagePath: 'assets/images/user.png'),
-          const TeamMemberItem(name: 'Ciclana', role: 'Estagiária', imagePath: 'assets/images/user.png'),
-          const TeamMemberItem(name: 'Fulano', role: 'Engenheiro', imagePath: 'assets/images/user.png'),
+          const TeamMemberItem(
+            name: 'Fulano',
+            role: 'Engenheiro',
+            imagePath: 'assets/images/user.png',
+          ),
+          const TeamMemberItem(
+            name: 'Ciclana',
+            role: 'Estagiária',
+            imagePath: 'assets/images/user.png',
+          ),
+          const TeamMemberItem(
+            name: 'Fulano',
+            role: 'Engenheiro',
+            imagePath: 'assets/images/user.png',
+          ),
           Padding(
             padding: const EdgeInsets.only(bottom: 25, left: 8),
             child: GestureDetector(
@@ -266,7 +328,10 @@ class ProjectDetailScreen extends ConsumerWidget {
               },
               child: Container(
                 padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                ),
                 child: const Icon(Icons.add, color: Colors.white, size: 20),
               ),
             ),
@@ -276,27 +341,71 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStructuresSection() {
+  Widget _buildStructuresSection(BuildContext context, WidgetRef ref) {
+    //Escuta as estruturas do Supabase em tempo real
+    final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
+
     return Column(
       children: [
         Row(
           children: [
-            const Text('Estruturas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+            const Text(
+              'Estruturas',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
             const SizedBox(width: 12),
-            const Expanded(child: CompactSearchBar(hintText: 'Nome da estrutura')),
+            const Expanded(
+              child: CompactSearchBar(hintText: 'Nome da estrutura'),
+            ),
             const SizedBox(width: 8),
-            CompactButton(text: 'Incluir', onPressed: () {}),
+            CompactButton(
+              text: 'Incluir',
+              onPressed: () {
+                showDiaviconModal(
+                  context: context,
+                  title: 'Incluir Estrutura',
+                  height: MediaQuery.of(context).size.height * 0.80,
+                  isScrollable: false,
+                  margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
+                  centerTitle: true,
+                  // Passe o projetoId para o body!
+                  body: IncluirEstruturaBody(
+                    clienteNome: '',
+                    empresaNome: '',
+                    estruturas: [],
+                    projetoId: projetoId,
+                  ),
+                );
+              },
+            ),
           ],
         ),
         const SizedBox(height: 16),
+
+        // Renderiza a lista dinamicamente
         SizedBox(
           height: 200,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: const [
-              StructureCard(),
-              StructureCard(),
-            ],
+          child: estruturasAsync.when(
+            data: (estruturas) {
+              if (estruturas.isEmpty) {
+                return const Center(
+                  child: Text('Nenhuma estrutura encontrada.'),
+                );
+              }
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: estruturas.length,
+                itemBuilder: (context, index) {
+                  return StructureCard(estrutura: estruturas[index]);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Erro: $err')),
           ),
         ),
       ],

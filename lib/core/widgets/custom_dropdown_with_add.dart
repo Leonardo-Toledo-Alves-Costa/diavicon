@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart'; 
+import 'custom_label.dart'; 
 
 class CustomDropdownWithAdd<T> extends StatelessWidget {
   final String label;
@@ -8,6 +9,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final String hint;
   final VoidCallback onAddPressed; 
+  final String? tooltip; 
 
   const CustomDropdownWithAdd({
     super.key,
@@ -17,6 +19,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     required this.onAddPressed,
     this.value,
     this.hint = 'Selecione',
+    this.tooltip, // Adicionado ao construtor
   });
 
   @override
@@ -24,11 +27,10 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
+        if (label.isNotEmpty) ...[
+          CustomLabel(text: label, tooltip: tooltip),
+          const SizedBox(height: 8),
+        ],
         Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [

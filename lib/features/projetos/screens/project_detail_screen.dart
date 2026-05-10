@@ -1,6 +1,4 @@
 import 'package:diavicon/features/empresa/providers/projetos_provider.dart';
-import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
-import 'package:diavicon/features/estrutura/screens/estrutura_informacao_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -16,6 +14,7 @@ import '../widgets/structure_card.dart';
 import '../widgets/team_edit_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
+import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -122,7 +121,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                     _buildTeamSection(context),
                     const SizedBox(height: 32),
 
-                    _buildStructuresSection(context),
+                    _buildStructuresSection(context, ref),
 
                     // Espaço para não bater no BottomAppBar da MainScreen
                     const SizedBox(height: 140),
@@ -342,7 +341,10 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStructuresSection(BuildContext context) {
+  Widget _buildStructuresSection(BuildContext context, WidgetRef ref) {
+    //Escuta as estruturas do Supabase em tempo real
+    final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
+
     return Column(
       children: [
         Row(
@@ -370,38 +372,43 @@ class ProjectDetailScreen extends ConsumerWidget {
                   isScrollable: false,
                   margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
                   centerTitle: true,
-                  body: IncluirEstruturaBody(clienteNome: '',empresaNome: '',estruturas: [],),
+                  // Passe o projetoId para o body!
+                  body: IncluirEstruturaBody(
+                    clienteNome: '',
+                    empresaNome: '',
+                    estruturas: [],
+                    projetoId: projetoId,
+                  ),
                 );
               },
             ),
           ],
         ),
         const SizedBox(height: 16),
+
+        // Renderiza a lista dinamicamente
         SizedBox(
           height: 200,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            children: const [StructureCard(), StructureCard()],
+          child: estruturasAsync.when(
+            data: (estruturas) {
+              if (estruturas.isEmpty) {
+                return const Center(
+                  child: Text('Nenhuma estrutura encontrada.'),
+                );
+              }
+              return ListView.builder(
+                scrollDirection: Axis.horizontal,
+                itemCount: estruturas.length,
+                itemBuilder: (context, index) {
+                  return StructureCard(estrutura: estruturas[index]);
+                },
+              );
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, stack) => Center(child: Text('Erro: $err')),
           ),
         ),
       ],
     );
   }
-}
-
-//estrutura para o mock de estruturas
-class EstruturaMock {
-  final String id;
-  final String? nome;
-  final String? tipo;
-  final String? descricao;
-  final String? imageUrl;
-
-  EstruturaMock({
-    required this.id,
-    this.nome,
-    this.tipo,
-    this.descricao,
-    this.imageUrl,
-  });
 }

@@ -34,8 +34,20 @@ Future<T?> showDiaviconModal<T>({
     backgroundColor: Colors.transparent,
     builder: (BuildContext context) {
       
+      // Descobre se o teclado subiu
+      final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+      final bool isKeyboardOpen = bottomInset > 0;
+
+      //Proteção contra esmagamento: se o teclado abrir, reduz a margem do topo para apenas 16px
+      final effectiveMargin = EdgeInsets.fromLTRB(
+        margin.left,
+        isKeyboardOpen ? 16.0 : margin.top, 
+        margin.right,
+        margin.bottom,
+      );
+
       // Só arredondo todos os cantos se o modal não estiver colado na base da tela
-      final bool isTouchingBottom = alignment == Alignment.bottomCenter && margin.bottom == 0;
+      final bool isTouchingBottom = alignment == Alignment.bottomCenter && effectiveMargin.bottom == 0;
       final effectivePadding = contentPadding ?? const EdgeInsets.fromLTRB(24, 8, 24, 24);
       final effectiveBorderRadius = borderRadius ??
           (isTouchingBottom
@@ -47,11 +59,11 @@ Future<T?> showDiaviconModal<T>({
 
       return Padding(
         // Garante que o teclado não vai cobrir o modal quando abrir
-        padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+        padding: EdgeInsets.only(bottom: bottomInset),
         child: Align(
           alignment: alignment,
           child: Padding(
-            padding: margin,
+            padding: effectiveMargin, 
             child: Container(
               height: height,
               constraints: BoxConstraints(
@@ -65,6 +77,7 @@ Future<T?> showDiaviconModal<T>({
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
+
                   
                   // Header: Título + Botão de fechar
                   Padding(

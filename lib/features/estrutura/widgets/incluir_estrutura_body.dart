@@ -14,7 +14,8 @@ class IncluirEstruturaBody extends StatefulWidget {
   final String empresaNome;
   final String clienteNome;
   final String? empresaLogoUrl;
-  final List<dynamic> estruturas; // Substituir por EstruturaModel futuramente
+  final List<dynamic> estruturas;
+  final String projetoId;
 
   const IncluirEstruturaBody({
     super.key,
@@ -22,6 +23,7 @@ class IncluirEstruturaBody extends StatefulWidget {
     required this.clienteNome,
     this.empresaLogoUrl,
     required this.estruturas,
+    required this.projetoId,
   });
 
   @override
@@ -204,7 +206,7 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
                     context,
                     PageRouteBuilder(
                       pageBuilder: (context, animation, secondaryAnimation) => 
-                          const NovaEstruturaScreen(),
+                          NovaEstruturaScreen(projetoId: widget.projetoId),
                       transitionsBuilder: (context, animation, secondaryAnimation, child) {
                         const begin = Offset(0.0, 1.0); 
                         const end = Offset.zero;        

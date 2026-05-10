@@ -7,9 +7,12 @@ import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/compact_search_bar.dart';
 import '../widgets/elemento_estrutural_card.dart';
 import 'estrutura_informacao_screen.dart';
+import '../models/estrutura_model.dart'; 
 
 class EstruturaHomeScreen extends StatelessWidget {
-  const EstruturaHomeScreen({super.key});
+  final EstruturaModel estrutura; 
+
+  const EstruturaHomeScreen({super.key, required this.estrutura});
 
   @override
   Widget build(BuildContext context) {
@@ -22,10 +25,8 @@ class EstruturaHomeScreen extends StatelessWidget {
               icon: Icons.info_outline,
               label: 'Informações',
               onTap: () {
-                // 1. Fecha o menu lateral PRIMEIRO, liberando o foco
                 Navigator.pop(context); 
                 
-                // 2. Depois abre a tela de Informações tranquilamente
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -61,7 +62,7 @@ class EstruturaHomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Imagem de Cabeçalho com o selo "Em Andamento"
+            // 1. Imagem de Cabeçalho dinâmica
             _buildHeaderImage(),
 
             Padding(
@@ -69,19 +70,19 @@ class EstruturaHomeScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 2. Informações Principais
-                  const Text(
-                    'Edf. Ouro Negro Res.',
-                    style: TextStyle(
+                  // Informações Principais Dinâmicas
+                  Text(
+                    estrutura.nome ?? 'Sem nome', 
+                    style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                       color: AppColors.textDark,
                     ),
                   ),
                   const SizedBox(height: 4),
-                  const Text(
-                    'Edifício - Concreto Armado\n25 Anos CAA II',
-                    style: TextStyle(
+                  Text(
+                    '${estrutura.tipologiaEstrutural ?? 'Sem tipologia'} - ${estrutura.tipo ?? 'Sem tipo'}\n${estrutura.idadeAnos ?? '-'} Anos  CAA ${estrutura.caa ?? '-'}', 
+                    style: const TextStyle(
                       fontSize: 14,
                       color: AppColors.hintText,
                       height: 1.4,
@@ -89,11 +90,11 @@ class EstruturaHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // 3. Card de Progresso Reutilizável
-                  _buildProgressCard(0.90), // 90%
+                  // Card de Progresso Reutilizável
+                  _buildProgressCard(0.90), 
                   const SizedBox(height: 32),
 
-                  // 4. Seção de Título + Botão
+                  // Seção de Título + Botão
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -115,7 +116,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // 5. Filtros (Search e Dropdown)
+                  // Filtros (Search e Dropdown)
                   Row(
                     children: [
                       const Expanded(
@@ -126,9 +127,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                       Expanded(
                         flex: 3,
                         child: GestureDetector(
-                          onTap: () {
-                            // TODO: Abrir filtro de "Todos"
-                          },
+                          onTap: () {},
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [
@@ -153,7 +152,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // 6. Lista de Cards (Mockados como no Figma)
+                  // Lista de Cards (Mockados)
                   const ElementoEstruturalCard(
                     titulo: 'V201',
                     tipo: 'Viga - Concreto armado',
@@ -181,16 +180,28 @@ class EstruturaHomeScreen extends StatelessWidget {
     );
   }
 
-  // Método auxiliar: Imagem do Prédio
+  // Método auxiliar: Imagem Dinâmica
+  Widget _buildImage() {
+    const String defaultAsset = 'assets/images/empresa.png';
+
+    if (estrutura.imageUrl == null || estrutura.imageUrl!.isEmpty) {
+      return Image.asset(defaultAsset, width: double.infinity, height: 160, fit: BoxFit.cover);
+    }
+
+    return Image.network(
+      estrutura.imageUrl!,
+      width: double.infinity,
+      height: 160,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => Image.asset(defaultAsset, width: double.infinity, height: 160, fit: BoxFit.cover),
+    );
+  }
+
+  // Método auxiliar: Imagem do Prédio + Badge
   Widget _buildHeaderImage() {
     return Stack(
       children: [
-        Image.asset(
-          'assets/images/empresa.png', // Lembre-se de colocar a imagem correta do prédio aqui depois
-          width: double.infinity,
-          height: 160,
-          fit: BoxFit.cover,
-        ),
+        _buildImage(),
         Positioned(
           bottom: 16,
           right: 16,
@@ -200,9 +211,9 @@ class EstruturaHomeScreen extends StatelessWidget {
               color: const Color(0xFFFFF3E0),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text(
-              'Em Andamento',
-              style: TextStyle(
+            child: Text(
+              estrutura.status ?? 'Em Andamento', // <-- Status dinâmico
+              style: const TextStyle(
                 fontSize: 10,
                 fontWeight: FontWeight.bold,
                 color: AppColors.primary,
@@ -219,7 +230,7 @@ class EstruturaHomeScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0), // Laranja clarinho
+        color: const Color(0xFFFFF3E0), 
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(

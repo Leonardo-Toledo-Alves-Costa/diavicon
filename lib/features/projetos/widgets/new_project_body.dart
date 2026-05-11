@@ -1,37 +1,123 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 
-class NewProjectBody extends StatefulWidget {
+// Providers
+import '../providers/projeto_form_provider.dart';
+import '../providers/projetos_provider.dart';
+import '../providers/clientes_provider.dart';
+import '../../auth/providers/auth_provider.dart';
+
+// Modais
+import 'busca_cliente_modal.dart';
+
+class NewProjectBody extends ConsumerStatefulWidget {
   const NewProjectBody({super.key});
 
   @override
-  State<NewProjectBody> createState() => _NewProjectBodyState();
+  ConsumerState<NewProjectBody> createState() => _NewProjectBodyState();
 }
 
-class _NewProjectBodyState extends State<NewProjectBody> {
+class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   final _nomeController = TextEditingController();
-  String? _clienteSelecionado;
+  bool _estaSalvando = false;
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    super.dispose();
+  }
+
+  /// Função que consolida os dados do rascunho e envia para o repositório
+  Future<void> _salvarProjetoCompleto() async {
+    final formState = ref.read(projetoFormProvider);
+    final user = ref.read(currentUserProvider);
+
+    // Validações de segurança
+    if (user == null || user.empresaId == null) {
+      _showSnackBar('Erro: Usuário ou Empresa não identificados.', isError: true);
+      return;
+    }
+
+    if (_nomeController.text.trim().isEmpty) {
+      _showSnackBar('Dê um nome ao projeto.', isError: true);
+      return;
+    }
+
+    if (formState.clienteNome == null) {
+      _showSnackBar('Selecione ou cadastre um cliente.', isError: true);
+      return;
+    }
+
+    setState(() => _estaSalvando = true);
+
+    try {
+      final repo = ref.read(projetoRepositoryProvider);
+      
+      await repo.createProject(
+        nome: _nomeController.text.trim(),
+        empresaGestoraId: user.empresaId!, 
+        usuarioId: user.id, 
+        empresaClienteId: formState.clienteId, 
+        isNovoCliente: formState.isNovoCliente,
+        emailNovoCliente: formState.emailNovoCliente,
+        nomeNovoCliente: formState.clienteNome,
+      );
+
+      // Sucesso: Reseta o rascunho e atualiza a lista de projetos da Home
+      ref.invalidate(projetoFormProvider);
+      ref.invalidate(projectsListProvider);
+
+      if (mounted) {
+        Navigator.pop(context);
+        _showSnackBar('Projeto criado com sucesso!');
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('Erro ao salvar: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _estaSalvando = false);
+    }
+  }
+
+  void _showSnackBar(String mensagem, {bool isError = false}) {
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text(mensagem),
+      backgroundColor: isError ? AppColors.error : Colors.green,
+      behavior: SnackBarBehavior.floating, 
+      margin: const EdgeInsets.all(16), 
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
-    // Captura o padding inferior do sistema (barra de navegação)
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    
+    // Escuta o rascunho (estado global do formulário)
+    final rascunho = ref.watch(projetoFormProvider);
+    
+    // Escuta o provider COMBINADO (Carteira + Cliente Selecionado na Busca Global)
+    final clientesDropdownAsync = ref.watch(dropdownClientesProvider); 
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. SELETOR DE IMAGEM (Usando o asset empresa.png que você adicionou)
+        // HEADER / IMAGEM DO PROJETO
         Center(
           child: Stack(
             children: [
-              CircleAvatar(
+              const CircleAvatar(
                 radius: 55,
-                backgroundColor: const Color(0xFFE6E7E8), // Cinza oficial
-                backgroundImage: const AssetImage('assets/images/empresa.png'),
+                backgroundColor: AppColors.greyVeryLight,
+                backgroundImage: AssetImage('assets/images/empresa.png'),
               ),
               Positioned(
                 bottom: 0,
@@ -51,43 +137,63 @@ class _NewProjectBodyState extends State<NewProjectBody> {
         ),
         const SizedBox(height: 32),
 
-        // 2. NOME DO PROJETO (Usando seu CustomTextField que já tem label interno)
         CustomTextField(
           label: 'Nome do projeto*',
-          hint: 'Projeto ABC',
+          hint: 'Ex: Reforma Galpão Industrial',
           controller: _nomeController,
-          validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+          enabled: !_estaSalvando,
         ),
         const SizedBox(height: 20),
 
-        // 3. CLIENTE (Usando seu CustomDropdownWithAdd)
-        CustomDropdownWithAdd<String>(
-          label: 'Cliente*',
-          hint: 'Selecione',
-          value: _clienteSelecionado,
-          items: const [
-            DropdownMenuItem(value: '1', child: Text('Empresa Engenharia')),
-          ],
-          onChanged: (val) => setState(() => _clienteSelecionado = val),
-          onAddPressed: () {
-            // TODO: Lógica para novo cliente
-          },
+        clientesDropdownAsync.when(
+          data: (listaClientes) => CustomDropdownWithAdd<String>(
+            label: 'Cliente*',
+            hint: rascunho.clienteNome ?? 'Selecione ou pesquise',
+            value: rascunho.clienteId, 
+            items: listaClientes.map((c) => DropdownMenuItem(
+              value: c['id'].toString(),
+              child: Text(c['nome'].toString()),
+            )).toList(),
+            onChanged: (val) {
+              if (val != null) {
+                final selecionado = listaClientes.firstWhere((c) => c['id'] == val);
+                ref.read(projetoFormProvider.notifier).update((state) => state.copyWith(
+                  clienteId: val,
+                  clienteNome: selecionado['nome'],
+                  isNovoCliente: false,
+                ));
+              }
+            },
+            onAddPressed: _estaSalvando ? null : () {
+              // Abre o modal de busca global (Lupinha)
+              showDialog(
+                context: context,
+                builder: (context) => const BuscaClienteModal(),
+              );
+            },
+          ),
+          loading: () => const Center(
+            child: Padding(
+              padding: EdgeInsets.all(8.0),
+              child: CircularProgressIndicator(color: AppColors.primary),
+            ),
+          ),
+          error: (err, stack) => Text(
+            'Erro ao carregar clientes: $err',
+            style: const TextStyle(color: AppColors.error, fontSize: 12),
+          ),
         ),
         
         const SizedBox(height: 40),
 
-        // 4. BOTÃO CRIAR (Usando seu CustomButton padronizado)
+        // CRIAR
         CustomButton(
-          text: 'Criar',
-          showArrow: false, // Conforme a print
-          onPressed: () {
-            // Lógica de salvamento
-            Navigator.pop(context);
-          },
+          text: _estaSalvando ? 'Salvando...' : 'Criar',
+          showArrow: false,
+          onPressed: _estaSalvando ? null : _salvarProjetoCompleto,
         ),
 
-        // 5. ESPAÇAMENTO DE SEGURANÇA (Para não ficar sob os botões do celular)
-        // Se o bottomPadding for 0 (celulares com botões físicos), usamos 16 por padrão.
+        // Ajuste de espaçamento para teclados e safe area
         SizedBox(height: bottomPadding > 0 ? bottomPadding : 16),
       ],
     );

@@ -6,7 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../widgets/project_card.dart';
-import '../../empresa/providers/projetos_provider.dart';
+import '../providers/projetos_provider.dart';
 
 class ProjetosScreen extends ConsumerWidget {
   const ProjetosScreen({super.key});

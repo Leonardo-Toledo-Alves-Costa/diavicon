@@ -5,16 +5,16 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final String label;
   final T? value;
   final List<DropdownMenuItem<T>> items;
-  final ValueChanged<T?> onChanged;
+  final ValueChanged<T?>? onChanged; 
   final String hint;
-  final VoidCallback onAddPressed; 
+  final VoidCallback? onAddPressed; 
 
   const CustomDropdownWithAdd({
     super.key,
     required this.label,
     required this.items,
-    required this.onChanged,
-    required this.onAddPressed,
+    this.onAddPressed,
+    this.onChanged,
     this.value,
     this.hint = 'Selecione',
   });
@@ -26,7 +26,11 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
+          style: const TextStyle(
+            color: AppColors.textDark, 
+            fontSize: 14, 
+            fontWeight: FontWeight.bold
+          ),
         ),
         const SizedBox(height: 8),
         Row(
@@ -34,7 +38,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
           children: [
             Expanded(
               child: DropdownButtonFormField<T>(
-                initialValue: value,
+                value: value,
                 items: items,
                 onChanged: onChanged,
                 decoration: InputDecoration(
@@ -42,7 +46,8 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                   hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                   filled: true,
-                  fillColor: AppColors.white,
+                  // Se o onChanged for null, o campo fica com cor de desativado
+                  fillColor: onChanged != null ? AppColors.white : Colors.grey[100],
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -55,20 +60,29 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                     borderRadius: BorderRadius.circular(8),
                     borderSide: const BorderSide(color: AppColors.primary, width: 2),
                   ),
+                  disabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: AppColors.inputBorder),
+                  ),
                 ),
                 icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
+                style: TextStyle(
+                  color: onChanged != null ? AppColors.textDark : Colors.grey[600],
+                  fontSize: 16,
+                ),
               ),
             ),
             const SizedBox(width: 12),
             
+            // Botão Circular de Adicionar
             InkWell(
-              onTap: onAddPressed,
+              onTap: onChanged != null ? onAddPressed : null,
               borderRadius: BorderRadius.circular(24),
               child: Container(
                 width: 48,
                 height: 48,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
+                decoration: BoxDecoration(
+                  color: onChanged != null ? AppColors.primary : Colors.grey[400],
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(

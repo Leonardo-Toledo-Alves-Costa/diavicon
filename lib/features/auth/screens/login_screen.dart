@@ -52,7 +52,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return AuthLayout(
       logoHeight: 220,
-      // Envolvemos o Padding com o SingleChildScrollView para permitir a rolagem
       child: SingleChildScrollView(
         // BouncingScrollPhysics dá aquele efeito elástico legal no iOS
         physics: const BouncingScrollPhysics(),
@@ -126,7 +125,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: isLoading ? null : _fazerLogin,
                 ),
 
-                // Mantemos o gap fixo que você criou
                 const SizedBox(height: 50),
 
                 Row(

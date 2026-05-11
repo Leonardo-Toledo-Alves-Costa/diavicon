@@ -1,4 +1,4 @@
-import 'package:diavicon/features/empresa/providers/projetos_provider.dart';
+import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -36,8 +36,7 @@ class ProjectDetailScreen extends ConsumerWidget {
           Scaffold(body: Center(child: Text('Erro ao carregar projeto: $err'))),
       data: (projeto) => Scaffold(
         backgroundColor: Colors.white,
-        // Efeito de sobreposição: o corpo começa no topo absoluto da tela
-        extendBodyBehindAppBar: true,
+        extendBodyBehindAppBar: true, 
 
         //  (DRAWER)
         endDrawer: MenuDrawerAppBar(

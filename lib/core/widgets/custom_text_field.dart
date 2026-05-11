@@ -6,11 +6,10 @@ class CustomTextField extends StatelessWidget {
   final String hint;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
-  
-  // Novas propriedades opcionais (sem a palavra 'required')
-  final bool obscureText; 
+  final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
+  final bool? enabled;
 
   const CustomTextField({
     super.key,
@@ -18,9 +17,10 @@ class CustomTextField extends StatelessWidget {
     required this.hint,
     this.controller,
     this.validator,
-    this.obscureText = false, // Por padrão, não esconde o texto
+    this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
+    this.enabled,
   });
 
   @override
@@ -42,10 +42,13 @@ class CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          enabled: enabled, // Controla se o campo pode ser editado
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText),
-            suffixIcon: suffixIcon, // Aqui entra o ícone do olhinho
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: (enabled ?? true) ? Colors.white : Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -56,7 +59,12 @@ class CustomTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            // Estilo de quando o campo está desativado (_isLoading = true)
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
             ),
           ),
         ),

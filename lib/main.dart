@@ -10,7 +10,8 @@ Future<void> main() async {
 
   // Inicializações de Infra
   await dotenv.load(fileName: ".env");
-
+  final supabaseUrl = dotenv.env['SUPABASE_URL'];
+  print('--- DEBUG SUPABASE URL: "$supabaseUrl" ---');
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,

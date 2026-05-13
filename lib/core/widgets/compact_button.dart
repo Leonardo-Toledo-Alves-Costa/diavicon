@@ -4,23 +4,49 @@ import '../constants/app_colors.dart';
 class CompactButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
+  final IconData? icon; 
+  final double? width;  
 
-  const CompactButton({super.key, required this.text, required this.onPressed});
+  const CompactButton({
+    super.key, 
+    required this.text, 
+    required this.onPressed,
+    this.icon,
+    this.width,
+  });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 36, // Mesma altura da barra de busca
+      height: 40,
+      width: width,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary, // #D99100
+          backgroundColor: AppColors.primary, 
           foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          elevation: 2,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
+          shape: const StadiumBorder(), 
         ),
         onPressed: onPressed,
-        child: Text(text, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, fontFamily: 'Lato')),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (icon != null) ...[
+              Icon(icon, size: 18), 
+              const SizedBox(width: 8),
+            ],
+            Text(
+              text, 
+              style: const TextStyle(
+                fontSize: 14, 
+                fontWeight: FontWeight.w400, 
+                fontFamily: 'Lato',
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

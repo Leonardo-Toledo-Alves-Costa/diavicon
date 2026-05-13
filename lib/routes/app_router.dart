@@ -147,6 +147,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'detalhes',
+                parentNavigatorKey: rootNavigatorKey, 
                 builder: (context, state) => ProjectDetailScreen(
                   projetoId: state.extra as String? ?? '',
                 ),

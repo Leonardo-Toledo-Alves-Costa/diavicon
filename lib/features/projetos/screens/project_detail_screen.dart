@@ -1,6 +1,7 @@
 import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter/services.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
@@ -10,7 +11,7 @@ import '../../../core/widgets/compact_button.dart';
 import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../widgets/team_member_item.dart';
-import '../widgets/structure_card.dart';
+import '../../estrutura/widgets/structure_card.dart';
 import '../widgets/team_edit_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
@@ -23,6 +24,8 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+
     // OBTENÇÃO DOS DADOS DO SUPABASE
     final projetoAsync = ref.watch(projectDetailProvider(projetoId));
 
@@ -34,118 +37,143 @@ class ProjectDetailScreen extends ConsumerWidget {
       ),
       error: (err, stack) =>
           Scaffold(body: Center(child: Text('Erro ao carregar projeto: $err'))),
-      data: (projeto) => Scaffold(
-        backgroundColor: Colors.white,
-        extendBodyBehindAppBar: true, 
+      data: (projeto) => GestureDetector(
+        //Clicou fora, o teclado fecha e o foco some
+        onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
+        child: AnnotatedRegion<SystemUiOverlayStyle>(
+          value: SystemUiOverlayStyle.light.copyWith(
+            systemNavigationBarColor: Colors.white,
+            systemNavigationBarIconBrightness: Brightness.dark,
+            systemNavigationBarDividerColor: Colors.transparent,
+          ),
+          child: Scaffold(
+            backgroundColor: Colors.white,
+            extendBodyBehindAppBar: true, 
+            
+            //PERMITE QUE A TELA SE AJUSTE AO TECLADO
+            resizeToAvoidBottomInset: true,
 
-        //  (DRAWER)
-        endDrawer: MenuDrawerAppBar(
-          title: 'Menu do\nProjeto',
-          items: [
-            DiaviconMenuItem(
-              icon: Icons.info_outline,
-              label: 'Informações',
-              onTap: () => Navigator.pop(context),
+            // BARRA DE NAVEGAÇÃO DO SISTEMA
+            bottomNavigationBar: Container(
+              color: Colors.white,
+              child: const SafeArea(
+                top: false,
+                child: SizedBox.shrink(), 
+              ),
             ),
-            DiaviconMenuItem(
-              icon: Icons.assignment_outlined,
-              label: 'RDO',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.business_outlined,
-              label: 'Empresas',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.description_outlined,
-              label: 'Relatórios',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.payments_outlined,
-              label: 'Gastos',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.pie_chart_outline,
-              label: 'Dashboard',
-              onTap: () {},
-            ),
-          ],
-        ),
 
-        // APPBAR PADRÃO (TÍTULO DA FEATURE)
-        resizeToAvoidBottomInset: false,
-        appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
-
-        body: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // HEADER COM IMAGEM (Cobre o topo atrás da AppBar)
-              _buildHeader(projeto),
-
-              Padding(
-                padding: const EdgeInsets.all(20.0),
+            // MENU LATERAL (DRAWER)
+            endDrawer: MenuDrawerAppBar(
+              title: 'Menu do\nProjeto',
+              items: [
+                DiaviconMenuItem(
+                  icon: Icons.info_outline,
+                  label: 'Informações',
+                  onTap: () => Navigator.pop(context),
+                ),
+                DiaviconMenuItem(
+                  icon: Icons.assignment_outlined,
+                  label: 'RDO',
+                  onTap: () {},
+                ),
+                DiaviconMenuItem(
+                  icon: Icons.business_outlined,
+                  label: 'Empresas',
+                  onTap: () {},
+                ),
+                DiaviconMenuItem(
+                  icon: Icons.description_outlined,
+                  label: 'Relatórios',
+                  onTap: () {},
+                ),
+                DiaviconMenuItem(
+                  icon: Icons.payments_outlined,
+                  label: 'Gastos',
+                  onTap: () {},
+                ),
+                DiaviconMenuItem(
+                  icon: Icons.pie_chart_outline,
+                  label: 'Dashboard',
+                  onTap: () {},
+                ),
+              ],
+            ),
+          
+            appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
+          
+            body: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              //PADDING DINÂMICO QUE RESPONDE AO TECLADO
+              child: Padding(
+                padding: EdgeInsets.only(bottom: keyboardHeight > 0 ? 20 : 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // TÍTULO DO PROJETO
-                    Text(
-                      projeto.nome,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textDark,
+                    // HEADER COM IMAGEM
+                    _buildHeader(projeto),
+          
+                    Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // TÍTULO DO PROJETO
+                          Text(
+                            projeto.nome,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+            
+                          _buildGestoraSection(projeto.empresaNome),
+                          const SizedBox(height: 24),
+            
+                          _buildProgressCard(projeto.progresso),
+                          const SizedBox(height: 32),
+            
+                          const Text(
+                            'Equipe',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.textDark,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildTeamSection(context),
+                          const SizedBox(height: 32),
+            
+                          // SEÇÃO DE ESTRUTURAS
+                          _buildStructuresSection(context, ref),
+            
+                          const SizedBox(height: 24),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
-
-                    _buildGestoraSection(projeto.empresaNome),
-                    const SizedBox(height: 24),
-
-                    _buildProgressCard(projeto.progresso),
-                    const SizedBox(height: 32),
-
-                    const Text(
-                      'Equipe',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    _buildTeamSection(context),
-                    const SizedBox(height: 32),
-
-                    _buildStructuresSection(context, ref),
-
-                    // Espaço para não bater no BottomAppBar da MainScreen
-                    const SizedBox(height: 140),
                   ],
                 ),
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  // MÉTODOS AUXILIARES
+  // --- MÉTODOS AUXILIARES ---
 
   Widget _buildHeader(ProjetoModel projeto) {
     return Stack(
       children: [
         Image.asset(
           projeto.imageUrl,
-          height: 280, // Altura suficiente para passar por baixo da AppBar
+          height: 280,
           width: double.infinity,
           fit: BoxFit.cover,
         ),
-        // Overlay gradiente para garantir que os botões brancos da AppBar sejam lidos
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -341,7 +369,6 @@ class ProjectDetailScreen extends ConsumerWidget {
   }
 
   Widget _buildStructuresSection(BuildContext context, WidgetRef ref) {
-    //Escuta as estruturas do Supabase em tempo real
     final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
 
     return Column(
@@ -351,16 +378,16 @@ class ProjectDetailScreen extends ConsumerWidget {
             const Text(
               'Estruturas',
               style: TextStyle(
-                fontSize: 18,
+                fontSize: 16,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 8), 
             const Expanded(
-              child: CompactSearchBar(hintText: 'Nome da estrutura'),
+              child: CompactSearchBar(), 
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             CompactButton(
               text: 'Incluir',
               onPressed: () {
@@ -371,7 +398,6 @@ class ProjectDetailScreen extends ConsumerWidget {
                   isScrollable: false,
                   margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
                   centerTitle: true,
-                  // Passe o projetoId para o body!
                   body: IncluirEstruturaBody(
                     clienteNome: '',
                     empresaNome: '',
@@ -385,7 +411,6 @@ class ProjectDetailScreen extends ConsumerWidget {
         ),
         const SizedBox(height: 16),
 
-        // Renderiza a lista dinamicamente
         SizedBox(
           height: 200,
           child: estruturasAsync.when(

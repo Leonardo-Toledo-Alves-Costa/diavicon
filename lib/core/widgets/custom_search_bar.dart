@@ -5,7 +5,7 @@ class CustomSearchBar extends StatelessWidget {
   final String hintText;
   final TextEditingController? controller;
   final ValueChanged<String>? onChanged;
-  final Widget? trailing;//para colocar o filtro ou botão do lado
+  final Widget? trailing;
 
   const CustomSearchBar({
     super.key,
@@ -19,10 +19,9 @@ class CustomSearchBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        
         Expanded(
           child: SizedBox(
-            height: 48,
+            height: 52,
             child: TextField(
               controller: controller,
               onChanged: onChanged,
@@ -30,20 +29,20 @@ class CustomSearchBar extends StatelessWidget {
                 hintText: hintText,
                 hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
                 prefixIcon: const Icon(Icons.search, color: AppColors.hintText),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
                 filled: true,
                 fillColor: AppColors.white, 
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.inputBorder),
+                  borderRadius: BorderRadius.circular(50),
+                  borderSide: BorderSide.none, 
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.inputBorder),
+                  borderRadius: BorderRadius.circular(50),
+                  borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                  borderRadius: BorderRadius.circular(50),
+                  borderSide: BorderSide.none, 
                 ),
               ),
             ),

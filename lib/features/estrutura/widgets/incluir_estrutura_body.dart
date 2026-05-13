@@ -117,60 +117,57 @@ class _IncluirEstruturaBodyState extends State<IncluirEstruturaBody> {
         ),
         const SizedBox(height: 16),
 
-        Expanded(
-          child: estruturasFiltradas.isEmpty
-              // Se não tiver nada, mostra o texto centralizado no espaço vazio
-              ? const Center(
-                  child: Text(
-                    'Nenhuma estrutura encontrada.',
-                    style: TextStyle(color: AppColors.hintText),
-                  ),
-                )
-              // Se tiver, mostra a lista que ocupa o espaço vazio e rola se precisar
-              : ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: estruturasFiltradas.length,
-                  itemBuilder: (context, index) {
-                    final est = estruturasFiltradas[index];
-                    return CardEstrutura(
-                      title: est.nome ?? 'Sem nome',
-                      type: est.tipo ?? 'Tipo não definido',
-                      details: est.descricao ?? '',
-                      group: 'Conjunto Padrão',
-                      imageUrl: est.imageUrl ?? '',
-                      isSelected: _selectedStructures.contains(est.id),
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true) {
-                            _selectedStructures.add(est.id); // Marca o checkbox
-                            
-                            // Abre o modal de sucesso no centro da tela
-                            // Abre o modal de sucesso no centro da tela
-                            showDiaviconModal(
-                              context: context,
-                              title: '', 
-                              alignment: Alignment.center, 
-                              margin: const EdgeInsets.symmetric(horizontal: 40), 
-                              isScrollable: false,
-                              
-                              contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 0), 
-                              
-                              
-                              body: Transform.translate(
-                                offset: const Offset(0, -35), 
-                                child: const EstruturaAdicionadaBody(),
-                              ),
-                            );
-                            
-                          } else {
-                            _selectedStructures.remove(est.id); // Desmarca o checkbox
-                          }
-                        });
-                      },
-                    );
-                  },
+        estruturasFiltradas.isEmpty
+            // Se não tiver nada, mostra o texto centralizado no espaço vazio
+            ? const Center(
+                child: Text(
+                  'Nenhuma estrutura encontrada.',
+                  style: TextStyle(color: AppColors.hintText),
                 ),
-        ),
+              )
+            : ListView.builder(
+                padding: EdgeInsets.zero,
+                itemCount: estruturasFiltradas.length,
+                itemBuilder: (context, index) {
+                  final est = estruturasFiltradas[index];
+                  return CardEstrutura(
+                    title: est.nome ?? 'Sem nome',
+                    type: est.tipo ?? 'Tipo não definido',
+                    details: est.descricao ?? '',
+                    group: 'Conjunto Padrão',
+                    imageUrl: est.imageUrl ?? '',
+                    isSelected: _selectedStructures.contains(est.id),
+                    onChanged: (val) {
+                      setState(() {
+                        if (val == true) {
+                          _selectedStructures.add(est.id); // Marca o checkbox
+                          
+                          // Abre o modal de sucesso no centro da tela
+                          // Abre o modal de sucesso no centro da tela
+                          showDiaviconModal(
+                            context: context,
+                            title: '', 
+                            alignment: Alignment.center, 
+                            margin: const EdgeInsets.symmetric(horizontal: 40), 
+                            isScrollable: false,
+                            
+                            contentPadding: const EdgeInsets.fromLTRB(24, 0, 24, 0), 
+                            
+                            
+                            body: Transform.translate(
+                              offset: const Offset(0, -35), 
+                              child: const EstruturaAdicionadaBody(),
+                            ),
+                          );
+                          
+                        } else {
+                          _selectedStructures.remove(est.id); // Desmarca o checkbox
+                        }
+                      });
+                    },
+                  );
+                },
+              ),
 
         const SizedBox(height: 24),
 

@@ -179,7 +179,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
               const SizedBox(height: 12),
               CustomTextField(
                 label: 'CNPJ',
-                hint: '00.000.000/0001-00',
+                hint: '123.456.789-10',
                 controller: _cnpjController,
                 keyboardType: TextInputType.number,
                 inputFormatters: [CnpjFormatter.mask],

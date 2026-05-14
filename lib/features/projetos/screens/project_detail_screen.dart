@@ -399,7 +399,8 @@ class ProjectDetailScreen extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 itemCount: estruturas.length,
                 itemBuilder: (context, index) {
-                  return StructureCard(estrutura: estruturas[index]);
+                  return StructureCard(estrutura: estruturas[index],
+                  projetoId: projetoId,);
                 },
               );
             },

@@ -62,37 +62,8 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-       endDrawer: MenuDrawerAppBar(
-          title: 'Menu da\nEstrutura',
-          items: [
-            DiaviconMenuItem(
-              icon: Icons.info_outline,
-              label: 'Informações',
-              onTap: () => Navigator.pop(context),
-            ),
-            DiaviconMenuItem(
-              icon: Icons.layers_outlined,
-              label: 'Planejamento',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.science_outlined,
-              label: 'Ensaios',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.description_outlined,
-              label: 'Relatórios',
-              onTap: () {},
-            ),
-            DiaviconMenuItem(
-              icon: Icons.pie_chart_outline,
-              label: 'Dashboard',
-              onTap: () {},
-            ),
-          ],
-        ),
-      appBar: const CustomAppBar(title: 'Projeto', showBackButton: true), 
+       
+      appBar: const CustomAppBar(title: 'Projeto', showBackButton: true,), 
       
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -269,7 +240,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
             SizedBox(height: _fieldSpacing),
 
             // campos de endereço
-            CustomTextField(label: 'CEP', hint: '000000-000', controller: _cepController),
+            CustomTextField(label: 'CEP', hint: '000.000.000-00', controller: _cepController, keyboardType: TextInputType.number),
             SizedBox(height: _fieldSpacing),
             CustomTextField(label: 'Endereço', hint: 'Rua....', controller: _enderecoController),
             SizedBox(height: _fieldSpacing),

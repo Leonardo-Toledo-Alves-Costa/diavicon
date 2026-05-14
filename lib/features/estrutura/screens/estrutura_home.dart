@@ -11,8 +11,9 @@ import '../models/estrutura_model.dart';
 
 class EstruturaHomeScreen extends StatelessWidget {
   final EstruturaModel estrutura; 
+  final String projetoId;
 
-  const EstruturaHomeScreen({super.key, required this.estrutura});
+  const EstruturaHomeScreen({super.key, required this.estrutura, required this.projetoId});
 
   @override
   Widget build(BuildContext context) {
@@ -30,7 +31,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => const EstruturaInformacaoScreen(),
+                    builder: (context) => EstruturaInformacaoScreen(estrutura: estrutura, projetoId: projetoId,),
                   ),
                 );
               },

@@ -6,8 +6,9 @@ import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
 
 class StructureCard extends StatelessWidget {
   final EstruturaModel estrutura;
+  final String projetoId;
 
-  const StructureCard({super.key, required this.estrutura});
+  const StructureCard({super.key, required this.estrutura, required this.projetoId});
 
   // Função inteligente para gerir imagens da web ou assets locais
   Widget _buildImage() {
@@ -44,7 +45,7 @@ class StructureCard extends StatelessWidget {
         // Navegação simples para a Home de Estrutura
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) =>  EstruturaHomeScreen(estrutura: estrutura)),
+          MaterialPageRoute(builder: (context) =>  EstruturaHomeScreen(estrutura: estrutura, projetoId: projetoId,)),
         );
       },
       child: Container(

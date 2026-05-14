@@ -165,16 +165,17 @@ class ProjetosScreen extends ConsumerWidget {
         ),
 
         Positioned(
-          bottom: -24,
+          bottom: -26, 
           left: 24,
           right: 24,
           child: Container(
             decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(50), 
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 5),
+                  color: Colors.black.withOpacity(0.08), 
+                  blurRadius: 15,
+                  offset: const Offset(0, 6), 
                 ),
               ],
             ),

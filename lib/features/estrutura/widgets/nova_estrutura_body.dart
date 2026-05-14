@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/rodape_seguro.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:diavicon/core/widgets/diavicon_menu_item.dart';

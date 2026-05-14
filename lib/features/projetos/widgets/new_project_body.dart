@@ -1,18 +1,14 @@
+import 'package:diavicon/features/projetos/widgets/selecao_cliente_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
-
-// Providers
 import '../providers/projeto_form_provider.dart';
 import '../providers/projetos_provider.dart';
 import '../providers/clientes_provider.dart';
 import '../../auth/providers/auth_provider.dart';
-
-// Modais
-import 'busca_cliente_modal.dart';
 
 class NewProjectBody extends ConsumerStatefulWidget {
   const NewProjectBody({super.key});
@@ -36,9 +32,11 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     final formState = ref.read(projetoFormProvider);
     final user = ref.read(currentUserProvider);
 
-    // Validações de segurança
     if (user == null || user.empresaId == null) {
-      _showSnackBar('Erro: Usuário ou Empresa não identificados.', isError: true);
+      _showSnackBar(
+        'Erro: Empresa não identificada no seu perfil.',
+        isError: true,
+      );
       return;
     }
 
@@ -56,12 +54,12 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
 
     try {
       final repo = ref.read(projetoRepositoryProvider);
-      
+
       await repo.createProject(
         nome: _nomeController.text.trim(),
-        empresaGestoraId: user.empresaId!, 
-        usuarioId: user.id, 
-        empresaClienteId: formState.clienteId, 
+        empresaGestoraId: user.empresaId!,
+        usuarioId: user.id,
+        empresaClienteId: formState.clienteId,
         isNovoCliente: formState.isNovoCliente,
         emailNovoCliente: formState.emailNovoCliente,
         nomeNovoCliente: formState.clienteNome,
@@ -85,16 +83,16 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   }
 
   void _showSnackBar(String mensagem, {bool isError = false}) {
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(
-      content: Text(mensagem),
-      backgroundColor: isError ? AppColors.error : Colors.green,
-      behavior: SnackBarBehavior.floating, 
-      margin: const EdgeInsets.all(16), 
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-    ),
-  );
-}
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(mensagem),
+        backgroundColor: isError ? AppColors.error : Colors.green,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,9 +100,9 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     
     // Escuta o rascunho (estado global do formulário)
     final rascunho = ref.watch(projetoFormProvider);
-    
+
     // Escuta o provider COMBINADO (Carteira + Cliente Selecionado na Busca Global)
-    final clientesDropdownAsync = ref.watch(dropdownClientesProvider); 
+    final clientesDropdownAsync = ref.watch(dropdownClientesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -127,9 +125,15 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    boxShadow: [
+                      BoxShadow(color: Colors.black12, blurRadius: 4),
+                    ],
                   ),
-                  child: const Icon(Icons.edit_note, color: AppColors.textDark, size: 24),
+                  child: const Icon(
+                    Icons.edit_note,
+                    color: AppColors.textDark,
+                    size: 24,
+                  ),
                 ),
               ),
             ],
@@ -149,26 +153,44 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
           data: (listaClientes) => CustomDropdownWithAdd<String>(
             label: 'Cliente*',
             hint: rascunho.clienteNome ?? 'Selecione ou pesquise',
-            value: rascunho.clienteId, 
-            items: listaClientes.map((c) => DropdownMenuItem(
-              value: c['id'].toString(),
-              child: Text(c['nome'].toString()),
-            )).toList(),
+            value: rascunho.clienteId,
+            items: listaClientes
+                .map(
+                  (c) => DropdownMenuItem(
+                    value: c['id'].toString(),
+                    child: Text(c['nome'].toString()),
+                  ),
+                )
+                .toList(),
             onChanged: (val) {
               if (val != null) {
-                final selecionado = listaClientes.firstWhere((c) => c['id'] == val);
-                ref.read(projetoFormProvider.notifier).update((state) => state.copyWith(
-                  clienteId: val,
-                  clienteNome: selecionado['nome'],
-                  isNovoCliente: false,
-                ));
+                final selecionado = listaClientes.firstWhere(
+                  (c) => c['id'] == val,
+                );
+                ref
+                    .read(projetoFormProvider.notifier)
+                    .update(
+                      (state) => state.copyWith(
+                        clienteId: val,
+                        clienteNome: selecionado['nome'],
+                        isNovoCliente: false,
+                      ),
+                    );
               }
             },
-            onAddPressed: _estaSalvando ? null : () {
-              // Abre o modal de busca global (Lupinha)
-              showDialog(
+            onAddPressed: () {
+              if (_estaSalvando) return; 
+
+              showModalBottomSheet(
                 context: context,
-                builder: (context) => const BuscaClienteModal(),
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => Padding(
+                  padding: EdgeInsets.only(
+                    bottom: MediaQuery.of(context).viewInsets.bottom,
+                  ),
+                  child: const SelecaoClienteModal(),
+                ),
               );
             },
           ),
@@ -183,7 +205,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
             style: const TextStyle(color: AppColors.error, fontSize: 12),
           ),
         ),
-        
+
         const SizedBox(height: 40),
 
         // CRIAR

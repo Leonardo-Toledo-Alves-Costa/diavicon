@@ -194,7 +194,6 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
     }
 
     final respostas = _respostasSelecionadas();
-    print('Respostas do questionário: $respostas');
     final dadosAtualizados = {
       ...widget.dadosUsuario,
       ...respostas,
@@ -285,12 +284,22 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                           passoAtual.id,
                         );
                         final estaSelecionado = selecionados.contains(opcao);
+                        final isSingleChoice = passoAtual.multiplaEscolha == false;
 
                         return GestureDetector(
                           onTap: () => setState(() {
+                            if (isSingleChoice) {
+                              if (!estaSelecionado) {
+                                selecionados
+                                  ..clear()
+                                  ..add(opcao);
+                              }
+                              return;
+                            }
+
                             if (estaSelecionado) {
                               selecionados.remove(opcao);
-                            } else if (passoAtual.multiplaEscolha == true || (passoAtual.multiplaEscolha == false && selecionados.isEmpty)) {
+                            } else {
                               selecionados.add(opcao);
                             }
                           }),
@@ -314,29 +323,60 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                             ),
                             child: Row(
                               children: [
-                                AnimatedContainer(
-                                  duration: const Duration(milliseconds: 200),
-                                  width: 22,
-                                  height: 22,
-                                  decoration: BoxDecoration(
-                                    color: estaSelecionado
-                                        ? AppColors.primary
-                                        : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(4),
-                                    border: Border.all(
-                                      color: estaSelecionado
-                                          ? AppColors.primary
-                                          : AppColors.greyLight,
-                                    ),
-                                  ),
-                                  child: estaSelecionado
-                                      ? const Icon(
-                                          Icons.check,
-                                          color: AppColors.white,
-                                          size: 14,
-                                        )
-                                      : null,
-                                ),
+                                isSingleChoice
+                                    ? AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.transparent,
+                                          border: Border.all(
+                                            color: estaSelecionado
+                                                ? AppColors.primary
+                                                : AppColors.greyLight,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: AnimatedContainer(
+                                            duration: const Duration(
+                                              milliseconds: 200,
+                                            ),
+                                            width: estaSelecionado ? 10 : 0,
+                                            height: estaSelecionado ? 10 : 0,
+                                            decoration: const BoxDecoration(
+                                              shape: BoxShape.circle,
+                                              color: AppColors.primary,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                    : AnimatedContainer(
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        width: 22,
+                                        height: 22,
+                                        decoration: BoxDecoration(
+                                          color: estaSelecionado
+                                              ? AppColors.primary
+                                              : Colors.transparent,
+                                          borderRadius:
+                                              BorderRadius.circular(4),
+                                          border: Border.all(
+                                            color: estaSelecionado
+                                                ? AppColors.primary
+                                                : AppColors.greyLight,
+                                          ),
+                                        ),
+                                        child: estaSelecionado
+                                            ? const Icon(
+                                                Icons.check,
+                                                color: AppColors.white,
+                                                size: 14,
+                                              )
+                                            : null,
+                                      ),
                                 const SizedBox(width: 12),
                                 Expanded(
                                   child: Text(

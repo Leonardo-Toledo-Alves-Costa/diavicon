@@ -8,7 +8,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final ValueChanged<T?>? onChanged;
   final String hint;
   final VoidCallback onAddPressed;
-  final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final bool isRequired; 
 
   const CustomDropdownWithAdd({
     super.key,
@@ -18,7 +18,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     required this.onAddPressed,
     this.value,
     this.hint = 'Selecione',
-    this.isRequired = false, // 🚨 Padrão é falso
+    this.isRequired = false,
   });
 
   @override
@@ -28,7 +28,6 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🚨 RICH TEXT PARA O ASTERISCO COLORIDO
         RichText(
           text: TextSpan(
             text: label.replaceAll('*', '').trim(),

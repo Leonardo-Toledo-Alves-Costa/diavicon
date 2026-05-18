@@ -1,6 +1,8 @@
+import 'dart:io';
 import 'package:diavicon/features/projetos/widgets/selecao_cliente_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -25,6 +27,21 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   void dispose() {
     _nomeController.dispose();
     super.dispose();
+  }
+
+  Future<void> _escolherImagem() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 40, 
+      maxWidth: 1080,   
+    ); 
+    
+    if (pickedFile != null) {
+      ref.read(projetoFormProvider.notifier).update(
+        (state) => state.copyWith(imagemProjeto: File(pickedFile.path)),
+      );
+    }
   }
 
   /// Função que consolida os dados do rascunho e envia para o repositório
@@ -63,6 +80,10 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
         isNovoCliente: formState.isNovoCliente,
         emailNovoCliente: formState.emailNovoCliente,
         nomeNovoCliente: formState.clienteNome,
+        imagemProjeto: formState.imagemProjeto,
+        fotoNovoCliente: formState.clienteFotoUrl != null 
+            ? File(formState.clienteFotoUrl!) 
+            : null,
       );
 
       // Sucesso: Reseta o rascunho e atualiza a lista de projetos da Home
@@ -109,34 +130,40 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
       mainAxisSize: MainAxisSize.min,
       children: [
         // HEADER / IMAGEM DO PROJETO
-        Center(
-          child: Stack(
-            children: [
-              const CircleAvatar(
-                radius: 55,
-                backgroundColor: AppColors.greyVeryLight,
-                backgroundImage: AssetImage('assets/images/empresa.png'),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(color: Colors.black12, blurRadius: 4),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.edit_note,
-                    color: AppColors.textDark,
-                    size: 24,
+        GestureDetector(
+          onTap: _estaSalvando ? null : _escolherImagem,
+          child: Center(
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 55,
+                  backgroundColor: AppColors.greyVeryLight,
+                  // 🚨 AQUI A MÁGICA ACONTECE: Usa a foto do Riverpod ou o placeholder padrão
+                  backgroundImage: rascunho.imagemProjeto != null
+                      ? FileImage(rascunho.imagemProjeto!) as ImageProvider
+                      : const AssetImage('assets/images/empresa.png'),
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined, // Mais intuitivo para troca de foto
+                      color: AppColors.textDark,
+                      size: 20,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -146,14 +173,16 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
           hint: 'Ex: Reforma Galpão Industrial',
           controller: _nomeController,
           enabled: !_estaSalvando,
+          isRequired: true,
         ),
         const SizedBox(height: 20),
 
         clientesDropdownAsync.when(
           data: (listaClientes) => CustomDropdownWithAdd<String>(
-            label: 'Cliente*',
+            label: 'Cliente',
             hint: rascunho.clienteNome ?? 'Selecione ou pesquise',
             value: rascunho.clienteId,
+            isRequired: true,
             items: listaClientes
                 .map(
                   (c) => DropdownMenuItem(

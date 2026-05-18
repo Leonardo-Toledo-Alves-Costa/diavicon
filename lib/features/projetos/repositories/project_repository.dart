@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:diavicon/features/projetos/models/projeto_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -83,64 +85,75 @@ class ProjectRepository {
     required String empresaGestoraId,
     required String usuarioId,
     String? empresaClienteId,
-    bool isNovoCliente = false,
+    required bool isNovoCliente,
     String? emailNovoCliente,
     String? nomeNovoCliente,
+    File? imagemProjeto, 
+    File? fotoNovoCliente, // 🚨 ADICIONADO AQUI
   }) async {
     try {
-      // DEFINIR O STATUS DO VÍNCULO
-      // Se não informou cliente, assume que a gestora é a própria cliente ('proprio')
-      // Se informou um cliente novo, fica 'pendente'. Se for um ID existente, 'vinculado'.
-      String statusVinculo = 'proprio';
-      if (isNovoCliente) {
-        statusVinculo = 'pendente';
-      } else if (empresaClienteId != null &&
-          empresaClienteId != empresaGestoraId) {
-        statusVinculo = 'vinculado';
+      String? imageUrl;
+      String? clienteFotoUrl; // 🚨 Para guardar o link da foto do cliente
+
+      final timestamp = DateTime.now().millisecondsSinceEpoch;
+
+      // 1. UPLOAD DA CAPA DO PROJETO
+      if (imagemProjeto != null) {
+        try {
+          final extensao = imagemProjeto.path.split('.').last;
+          final caminhoStorage = 'capas/$timestamp.$extensao';
+          await _supabase.storage.from('projetos').upload(caminhoStorage, imagemProjeto);
+          imageUrl = _supabase.storage.from('projetos').getPublicUrl(caminhoStorage);
+        } catch (e) {
+          print('⚠️ Erro no upload da capa do projeto: $e');
+        }
       }
 
-      //  CRIAR O PROJETO
-      final projectResponse = await _supabase
-          .from('projetos')
-          .insert({
-            'nome': nome,
-            'empresa_gestora_id': empresaGestoraId,
-            'empresa_cliente_id': isNovoCliente
-                ? null
-                : (empresaClienteId ?? empresaGestoraId),
-            'status_vinculo_cliente': statusVinculo,
-            'status_id':
-                'bfcbba38-b20a-4e50-98b0-cc36f9c17d9a', 
-            'prioridade_id':
-                '57434e9b-2825-4b8e-9fb2-4d8b9e03283f',
-            'progresso': 0.0,
-          })
-          .select()
-          .single();
+      // 🚨 2. NOVO: UPLOAD DA FOTO DO CLIENTE NOVO
+      if (isNovoCliente && fotoNovoCliente != null) {
+        try {
+          final extensao = fotoNovoCliente.path.split('.').last;
+          // Salva na pasta 'clientes/' dentro do mesmo bucket para organizar
+          final caminhoStorage = 'clientes/$timestamp.$extensao';
+          await _supabase.storage.from('projetos').upload(caminhoStorage, fotoNovoCliente);
+          clienteFotoUrl = _supabase.storage.from('projetos').getPublicUrl(caminhoStorage);
+        } catch (e) {
+          print('⚠️ Erro no upload da foto do cliente: $e');
+        }
+      }
 
-      final String newProjectId = projectResponse['id'];
+      // 3. Cria o Projeto no Banco
+      final respostaProjeto = await _supabase.from('projetos').insert({
+        'nome': nome,
+        'empresa_gestora_id': empresaGestoraId,
+        'empresa_cliente_id': isNovoCliente ? null : empresaClienteId,
+        'status_vinculo_cliente': isNovoCliente ? 'nao_vinculado' : 'ativo',
+        'image_url': imageUrl, 
+      }).select('id').single();
 
-      // TRATAR NOVO CLIENTE (CONVITE)
-      // Se for um novo cliente, salvamos na tabela de convites que criamos no SQL
+      final String novoProjetoId = respostaProjeto['id'];
+
+      // 4. Cria o Convite com o link da foto do cliente
       if (isNovoCliente && emailNovoCliente != null) {
         await _supabase.from('projeto_convites').insert({
-          'projeto_id': newProjectId,
+          'projeto_id': novoProjetoId,
           'email_convidado': emailNovoCliente,
           'empresa_nome_temp': nomeNovoCliente,
           'criado_por': usuarioId,
+          'aceito': false,
+          'foto_url': clienteFotoUrl, // 🚨 SALVA O LINK GERADO NA SUA NOVA COLUNA
         });
       }
 
-      // VINCULAR O CRIADOR COMO COLABORADOR
-      // Isso garante que o projeto apareça na lista de quem criou imediatamente
+      // 5. Adiciona o Gestor à equipe
       await _supabase.from('projeto_colaboradores').insert({
-        'projeto_id': newProjectId,
-        'usuario_id': usuarioId,
-        'empresa_id': empresaGestoraId,
+        'projeto_id': novoProjetoId,
+        'usuario_id': usuarioId, 
+        'empresa_id': empresaGestoraId, 
       });
+
     } catch (e) {
-      print('🚨 ERRO AO CRIAR PROJETO: $e');
-      rethrow;
+      throw Exception('Erro crítico ao salvar projeto no banco: $e');
     }
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io'; // 🚨 IMPORTANTE: Adicionado para ler a foto local
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -10,13 +11,22 @@ import 'busca_cliente_modal.dart';
 class SelecaoClienteModal extends ConsumerWidget {
   const SelecaoClienteModal({super.key});
 
+  ImageProvider _obterImagemCliente(String? imageUrl) {
+    if (imageUrl == null || imageUrl.isEmpty) {
+      return const AssetImage('assets/images/empresa.png');
+    }
+    if (imageUrl.startsWith('http')) {
+      return NetworkImage(imageUrl);
+    }
+    return FileImage(File(imageUrl));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     // Monitora o estado do formulário para saber se um cliente foi selecionado
     final projetoForm = ref.watch(projetoFormProvider);
 
     return ModalSelecaoBase(
-      // Título em duas linhas com alinhamento à esquerda
       titulo: SizedBox(
         width: double.infinity,
         child: Column(
@@ -102,7 +112,6 @@ class SelecaoClienteModal extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               
-              // TextField que abre o modal de busca ao ser clicado
               TextField(
                 readOnly: true,
                 onTap: () {
@@ -143,10 +152,10 @@ class SelecaoClienteModal extends ConsumerWidget {
                   ),
                   child: Row(
                     children: [
-                      const CircleAvatar(
+                      CircleAvatar(
                         radius: 20, 
                         backgroundColor: AppColors.white,
-                        backgroundImage: AssetImage('assets/images/empresa_placeholder.png'),
+                        backgroundImage: _obterImagemCliente(projetoForm.clienteFotoUrl),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -159,7 +168,7 @@ class SelecaoClienteModal extends ConsumerWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              projetoForm.localCliente ?? '', 
+                              projetoForm.localCliente ?? 'Sem localização', 
                               style: AppTextStyles.corpoSubtextoBranco.copyWith(fontSize: 11),
                             ),
                           ],

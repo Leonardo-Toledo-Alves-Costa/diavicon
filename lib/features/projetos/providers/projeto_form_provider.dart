@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter_riverpod/legacy.dart';
 
 /// Representa o estado temporário do formulário de criação de projeto
@@ -9,6 +11,7 @@ class ProjetoFormState {
   final String? clienteNome;
   final String? localCliente; 
   final String? clienteFotoUrl;
+  final File? imagemProjeto;
 
   // Dados para Convite/Novo Cliente (Se não existir)
   final bool isNovoCliente;
@@ -26,6 +29,7 @@ class ProjetoFormState {
     this.emailNovoCliente,
     this.tipoNovoCliente,
     this.areaAtuacaoNovoCliente,
+    this.imagemProjeto,
   });
 
   /// Método para atualizar apenas partes do estado sem perder o resto
@@ -39,6 +43,7 @@ class ProjetoFormState {
     String? emailNovoCliente,
     String? tipoNovoCliente,
     String? areaAtuacaoNovoCliente,
+    File? imagemProjeto,
   }) {
     return ProjetoFormState(
       nome: nome ?? this.nome,
@@ -50,6 +55,7 @@ class ProjetoFormState {
       emailNovoCliente: emailNovoCliente ?? this.emailNovoCliente,
       tipoNovoCliente: tipoNovoCliente ?? this.tipoNovoCliente,
       areaAtuacaoNovoCliente: areaAtuacaoNovoCliente ?? this.areaAtuacaoNovoCliente,
+      imagemProjeto: imagemProjeto ?? this.imagemProjeto,
     );
   }
 

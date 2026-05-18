@@ -5,272 +5,323 @@ class Cadastro3Empresa extends StatefulWidget {
   const Cadastro3Empresa({super.key});
 
   @override
-  State<Cadastro3Empresa> createState() => _Cadastro3EmpresaState();
+  State<Cadastro3Empresa> createState() =>
+      _Cadastro3EmpresaState();
 }
 
-class _Cadastro3EmpresaState extends State<Cadastro3Empresa> {
+class _Cadastro3EmpresaState
+    extends State<Cadastro3Empresa> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-          child: Column(
-            children: [
-              Image.asset(
-                'assets/images/logo_diavicon.png',
-                height: 150,
-                fit: BoxFit.contain,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                18,
+                14,
+                18,
+                MediaQuery.of(context).padding.bottom + 24,
               ),
-              Expanded(
-                child: Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          children: [
-                            Container(
-                              width: double.infinity,
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primary,
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    children: [
+                      Image.asset(
+                        'assets/images/logo_diavicon.png',
+                        height: 120,
+                        fit: BoxFit.contain,
+                      ),
+
+                      const SizedBox(height: 10),
+
+                      Expanded(
+                        child: Container(
+                          width: double.infinity,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius:
+                                BorderRadius.circular(14),
+                          ),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: double.infinity,
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                  vertical: 10,
+                                ),
+                                decoration:
+                                    const BoxDecoration(
+                                  color: AppColors.primary,
+                                  borderRadius:
+                                      BorderRadius.vertical(
+                                    top: Radius.circular(14),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Melhor oferta',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight:
+                                        FontWeight.w800,
+                                  ),
                                 ),
                               ),
-                              child: Text(
-                                'Melhor offerta',
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  14,
-                                  14,
-                                  14,
-                                  12,
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      'Plano Advanced',
-                                      style: const TextStyle(
-                                        color: AppColors.primary,
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w800,
+
+                              Expanded(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.all(18),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment
+                                            .start,
+                                    children: [
+                                      const Text(
+                                        'Plano Advanced',
+                                        style: TextStyle(
+                                          color:
+                                              AppColors.primary,
+                                          fontSize: 18,
+                                          fontWeight:
+                                              FontWeight.w800,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 14),
-                                    Text(
-                                      'Destrave o Potencial da Sua Empresa!',
-                                      style: const TextStyle(
-                                        color: AppColors.textDark,
-                                        fontSize: 22,
-                                        fontWeight: FontWeight.w700,
-                                        height: 1.03,
+
+                                      const SizedBox(
+                                          height: 16),
+
+                                      const Text(
+                                        'Destrave o Potencial da Sua Empresa!',
+                                        style: TextStyle(
+                                          color:
+                                              AppColors.textDark,
+                                          fontSize: 24,
+                                          fontWeight:
+                                              FontWeight.w700,
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    Expanded(
-                                      child: Row(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Container(
-                                            width: 7,
-                                            decoration: BoxDecoration(
-                                              color: AppColors.primary,
+
+                                      const SizedBox(
+                                          height: 24),
+
+                                      const _BeneficioItem(
+                                        texto:
+                                            'Acesso a 07 módulos de ensaio',
+                                      ),
+
+                                      const _BeneficioItem(
+                                        texto:
+                                            'Gerenciamento de Equipes',
+                                      ),
+
+                                      const _BeneficioItem(
+                                        texto:
+                                            'Relatórios Automáticos e Personalizáveis',
+                                      ),
+
+                                      const _BeneficioItem(
+                                        texto:
+                                            'Acompanhamento de RDOs e Gastos',
+                                      ),
+
+                                      const Spacer(),
+
+                                      Center(
+                                        child: RichText(
+                                          text: const TextSpan(
+                                            text: '2499,90',
+                                            style:
+                                                TextStyle(
+                                              color:
+                                                  AppColors
+                                                      .primary,
+                                              fontSize: 42,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w900,
                                             ),
+                                            children: [
+                                              TextSpan(
+                                                text:
+                                                    '/mês',
+                                                style:
+                                                    TextStyle(
+                                                  color: Colors
+                                                      .black,
+                                                  fontSize:
+                                                      18,
+                                                  fontWeight:
+                                                      FontWeight
+                                                          .w500,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                          const SizedBox(width: 20),
-                                          Expanded(
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              children: [
-                                                Text(
-                                                  'Acesso a 07 módulos de ensaio',
-                                                  style: TextStyle(
-                                                    color: AppColors.textDark,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 45),
-                                                Text(
-                                                  'Gerenciamento de Equipes',
-                                                  style: TextStyle(
-                                                    color: AppColors.textDark,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 45),
-                                                Text(
-                                                  'Relatórios Automáticos e Personalizáveis',
-                                                  style: TextStyle(
-                                                    color: AppColors.textDark,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                                SizedBox(height: 45),
-                                                Text(
-                                                  'Acompanhamento de RDO\'s e Gastos',
-                                                  style: TextStyle(
-                                                    color: AppColors.textDark,
-                                                    fontSize: 16,
-                                                    fontWeight: FontWeight.w500,
-                                                    height: 1.4,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ],
+                                        ),
                                       ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Center(
-                                      child: RichText(
-                                        text: TextSpan(
-                                          text: '2499,90',
-                                          style: const TextStyle(
-                                            color: AppColors.primary,
-                                            fontSize: 40,
-                                            fontWeight: FontWeight.w900,
+
+                                      const SizedBox(
+                                          height: 10),
+
+                                      const Center(
+                                        child: Text(
+                                          '+ R\$ 67,92 por usuário adicional da empresa\n(20% OFF)',
+                                          textAlign:
+                                              TextAlign.center,
+                                          style: TextStyle(
+                                            color: AppColors
+                                                .greyDarkest,
+                                            fontSize: 14,
+                                            fontWeight:
+                                                FontWeight
+                                                    .w500,
                                           ),
-                                          children: [
-                                            TextSpan(
-                                              text: '/mês',
-                                              style: const TextStyle(
-                                                color: Colors.black,
-                                                fontSize: 18,
-                                                fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+
+                                      const SizedBox(
+                                          height: 20),
+
+                                      SizedBox(
+                                        width:
+                                            double.infinity,
+                                        height: 52,
+                                        child:
+                                            ElevatedButton(
+                                          onPressed: () {},
+                                          style:
+                                              ElevatedButton
+                                                  .styleFrom(
+                                            backgroundColor:
+                                                AppColors
+                                                    .primary,
+                                            foregroundColor:
+                                                Colors.white,
+                                            elevation: 0,
+                                            shape:
+                                                RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(
+                                                10,
                                               ),
                                             ),
-                                          ],
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Center(
-                                      child: Text(
-                                        '+ R\$ 67,92 por usuário adicional da\n empresa(20% Off)',
-                                        textAlign: TextAlign.center,
-                                        style: const TextStyle(
-                                          color: AppColors.greyDarkest,
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w500,
-                                          height: 1.2,
-                                        ),
-                                      ),
-                                    ),
-                                    const SizedBox(height: 10),
-                                    SizedBox(
-                                      width: double.infinity,
-                                      height: 44,
-                                      child: ElevatedButton(
-                                        onPressed: () {},
-                                        style: ElevatedButton.styleFrom(
-                                          elevation: 0,
-                                          backgroundColor: AppColors.primary,
-                                          foregroundColor: Colors.white,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
+                                          ),
+                                          child: const Text(
+                                            'Selecionar plano',
+                                            style:
+                                                TextStyle(
+                                              fontSize: 18,
+                                              fontWeight:
+                                                  FontWeight
+                                                      .w700,
                                             ),
                                           ),
                                         ),
-                                        child: const Text(
-                                          'Selecionar plano',
-                                          style: TextStyle(
-                                            fontSize: 28,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 18),
+
+                      SizedBox(
+                        width: double.infinity,
+                        height: 52,
+                        child: ElevatedButton(
+                          onPressed: () {},
+                          style:
+                              ElevatedButton.styleFrom(
+                            elevation: 0,
+                            backgroundColor:
+                                Colors.transparent,
+                            foregroundColor:
+                                AppColors.primary,
+                            shadowColor:
+                                Colors.transparent,
+                            shape:
+                                RoundedRectangleBorder(
+                              borderRadius:
+                                  BorderRadius.circular(10),
+                              side: const BorderSide(
+                                color: AppColors.primary,
+                              ),
                             ),
-                          ],
+                          ),
+                          child: const Text(
+                            'Experimente por 1 Mês',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight:
+                                  FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    Positioned(
-                      left: -12,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_left_rounded),
-                          iconSize: 28,
-                          color: AppColors.greyMedium,
-                          splashRadius: 18,
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      right: -12,
-                      top: 0,
-                      bottom: 0,
-                      child: Center(
-                        child: IconButton(
-                          onPressed: () {},
-                          icon: const Icon(Icons.chevron_right_rounded),
-                          iconSize: 28,
-                          color: AppColors.greyMedium,
-                          splashRadius: 18,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                height: 44,
-                child: ElevatedButton(
-                  onPressed: () {},
-                  style: ElevatedButton.styleFrom(
-                    elevation: 0,
-                    backgroundColor: AppColors.background,
-                    foregroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Experimente por 1 Mês',
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
+            );
+          },
         ),
+      ),
+    );
+  }
+}
+
+class _BeneficioItem extends StatelessWidget {
+  final String texto;
+
+  const _BeneficioItem({
+    required this.texto,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 18),
+      child: Row(
+        crossAxisAlignment:
+            CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            margin: const EdgeInsets.only(
+              top: 6,
+            ),
+            decoration: const BoxDecoration(
+              color: AppColors.primary,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              texto,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

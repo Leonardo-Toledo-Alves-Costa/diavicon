@@ -7,6 +7,8 @@ class ProjectRepository {
   final SupabaseClient _supabase;
   ProjectRepository(this._supabase);
 
+  
+
   // BUSCA A LISTA PARA A HOME
   Future<List<ProjetoModel>> getProjects() async {
     final response = await _supabase
@@ -89,15 +91,15 @@ class ProjectRepository {
     String? emailNovoCliente,
     String? nomeNovoCliente,
     File? imagemProjeto, 
-    File? fotoNovoCliente, // 🚨 ADICIONADO AQUI
+    File? fotoNovoCliente,
   }) async {
     try {
       String? imageUrl;
-      String? clienteFotoUrl; // 🚨 Para guardar o link da foto do cliente
+      String? clienteFotoUrl; 
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-      // 1. UPLOAD DA CAPA DO PROJETO
+      //  UPLOAD DA CAPA DO PROJETO
       if (imagemProjeto != null) {
         try {
           final extensao = imagemProjeto.path.split('.').last;
@@ -109,7 +111,7 @@ class ProjectRepository {
         }
       }
 
-      // 🚨 2. NOVO: UPLOAD DA FOTO DO CLIENTE NOVO
+      // UPLOAD DA FOTO DO CLIENTE NOVO
       if (isNovoCliente && fotoNovoCliente != null) {
         try {
           final extensao = fotoNovoCliente.path.split('.').last;
@@ -122,7 +124,7 @@ class ProjectRepository {
         }
       }
 
-      // 3. Cria o Projeto no Banco
+      // Cria o Projeto no Banco
       final respostaProjeto = await _supabase.from('projetos').insert({
         'nome': nome,
         'empresa_gestora_id': empresaGestoraId,
@@ -133,7 +135,7 @@ class ProjectRepository {
 
       final String novoProjetoId = respostaProjeto['id'];
 
-      // 4. Cria o Convite com o link da foto do cliente
+      //  Cria o Convite com o link da foto do cliente
       if (isNovoCliente && emailNovoCliente != null) {
         await _supabase.from('projeto_convites').insert({
           'projeto_id': novoProjetoId,
@@ -141,11 +143,11 @@ class ProjectRepository {
           'empresa_nome_temp': nomeNovoCliente,
           'criado_por': usuarioId,
           'aceito': false,
-          'foto_url': clienteFotoUrl, // 🚨 SALVA O LINK GERADO NA SUA NOVA COLUNA
+          'foto_url': clienteFotoUrl, // SALVA O LINK GERADO NA SUA NOVA COLUNA
         });
       }
 
-      // 5. Adiciona o Gestor à equipe
+      //  Adiciona o Gestor à equipe
       await _supabase.from('projeto_colaboradores').insert({
         'projeto_id': novoProjetoId,
         'usuario_id': usuarioId, 

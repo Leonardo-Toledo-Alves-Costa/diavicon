@@ -15,7 +15,7 @@ class ProjetosScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final topPadding = MediaQuery.of(context).padding.top;
 
-    //Escuta a lista filtrada
+    //Escuta a lista filtrada (Reage automaticamente aos filtros e busca!)
     final projetosAsync = ref.watch(filteredProjectsProvider);
 
     return Scaffold(
@@ -35,8 +35,8 @@ class ProjetosScreen extends ConsumerWidget {
                   const SizedBox(
                     height: 40,
                   ), // Espaço para a search bar que flutua
-                  // FILTROS (Dropdown e Sort)
-                  _buildFilterRow(),
+
+                  _buildFilterRow(ref),
 
                   const SizedBox(height: 16),
 
@@ -52,8 +52,28 @@ class ProjetosScreen extends ConsumerWidget {
                           Center(child: Text('Erro ao carregar: $err')),
                       data: (lista) {
                         if (lista.isEmpty) {
-                          return const Center(
-                            child: Text('Nenhum projeto encontrado.'),
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.error_outline,
+                                  size: 60,
+                                  color: Colors.grey.shade400,
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Nenhum projeto encontrado',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    color: Colors.grey.shade400,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                // Esse espaço extra ajuda a compensar visualmente o FAB que flutua embaixo
+                                const SizedBox(height: 80),
+                              ],
+                            ),
                           );
                         }
 
@@ -62,7 +82,7 @@ class ProjetosScreen extends ConsumerWidget {
                           padding: const EdgeInsets.only(
                             top: 8,
                             bottom: 100,
-                          ), // Espaço pro FAB global
+                          ), // Espaço pro FAB
                           itemBuilder: (context, index) {
                             final projeto = lista[index];
                             return InkWell(
@@ -92,7 +112,6 @@ class ProjetosScreen extends ConsumerWidget {
       ),
     );
   }
-
 
   Widget _buildHeader(BuildContext context, WidgetRef ref, double topPadding) {
     return Stack(
@@ -128,22 +147,15 @@ class ProjetosScreen extends ConsumerWidget {
                       Icons.notifications_none,
                       color: Colors.white,
                     ),
-                    onPressed: () {
-                      // Ação de notificações
-                    },
+                    onPressed: () {},
                   ),
-
                   // BOTÃO DE LOGOUT PROVISÓRIO
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.red),
                     tooltip: 'Sair (Teste)',
                     onPressed: () async {
-                      //logout noSupabase
                       await Supabase.instance.client.auth.signOut();
-
-                      // AVISA O RIVERPOD QUE A SESSÃO ACABOU
                       ref.invalidate(currentUserProvider);
-
                       if (context.mounted) {
                         context.go('/login');
                       }
@@ -163,19 +175,18 @@ class ProjetosScreen extends ConsumerWidget {
             ],
           ),
         ),
-
         Positioned(
-          bottom: -26, 
+          bottom: -26,
           left: 24,
           right: 24,
           child: Container(
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(50), 
+              borderRadius: BorderRadius.circular(50),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08), 
+                  color: Colors.black.withOpacity(0.08),
                   blurRadius: 15,
-                  offset: const Offset(0, 6), 
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
@@ -192,19 +203,24 @@ class ProjetosScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildFilterRow() {
+  Widget _buildFilterRow(WidgetRef ref) {
+    final statusAtual = ref.watch(filtroStatusProvider);
+    final isRecente = ref.watch(filtroRecentesProvider);
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        DropdownButton<String>(
-          value: 'Todos',
-          underline: const SizedBox(),
-          icon: const Icon(
-            Icons.keyboard_arrow_down,
-            color: AppColors.textDark,
+        PopupMenuButton<String>(
+          initialValue: statusAtual,
+          color: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
-          items: const [
-            DropdownMenuItem(
+          onSelected: (val) {
+            ref.read(filtroStatusProvider.notifier).state = val;
+          },
+          itemBuilder: (context) => const [
+            PopupMenuItem(
               value: 'Todos',
               child: Text(
                 'Todos',
@@ -214,12 +230,79 @@ class ProjetosScreen extends ConsumerWidget {
                 ),
               ),
             ),
+            PopupMenuItem(
+              value: 'Em andamento',
+              child: Text(
+                'Em andamento',
+                style: TextStyle(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            PopupMenuItem(
+              value: 'Concluído',
+              child: Text(
+                'Concluído',
+                style: TextStyle(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
-          onChanged: (val) {
-            // Futura lógica de filtro por status
-          },
+
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  statusAtual,
+                  style: const TextStyle(
+                    color: AppColors.textDark,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppColors.textDark,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
         ),
-        const Icon(Icons.swap_vert, color: AppColors.primary),
+
+        InkWell(
+          onTap: () {
+            ref.read(filtroRecentesProvider.notifier).state = !isRecente;
+          },
+          borderRadius: BorderRadius.circular(8),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
+            child: Row(
+              children: [
+                Text(
+                  isRecente ? 'Recentes' : 'Antigos',
+                  style: const TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  isRecente ? Icons.arrow_downward : Icons.arrow_upward,
+                  color: AppColors.primary,
+                  size: 18,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }

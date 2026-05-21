@@ -48,18 +48,15 @@ class ProjectDetailScreen extends ConsumerWidget {
           ),
           child: Scaffold(
             backgroundColor: Colors.white,
-            extendBodyBehindAppBar: true, 
-            
+            extendBodyBehindAppBar: true,
+
             //PERMITE QUE A TELA SE AJUSTE AO TECLADO
             resizeToAvoidBottomInset: true,
 
             // BARRA DE NAVEGAÇÃO DO SISTEMA
             bottomNavigationBar: Container(
               color: Colors.white,
-              child: const SafeArea(
-                top: false,
-                child: SizedBox.shrink(), 
-              ),
+              child: const SafeArea(top: false, child: SizedBox.shrink()),
             ),
 
             // MENU LATERAL (DRAWER)
@@ -98,9 +95,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-          
+
             appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
-          
+
             body: SingleChildScrollView(
               padding: EdgeInsets.zero,
               //PADDING DINÂMICO QUE RESPONDE AO TECLADO
@@ -111,7 +108,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                   children: [
                     // HEADER COM IMAGEM
                     _buildHeader(projeto),
-          
+
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -127,13 +124,13 @@ class ProjectDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-            
+
                           _buildGestoraSection(projeto.empresaNome),
                           const SizedBox(height: 24),
-            
+
                           _buildProgressCard(projeto.progresso),
                           const SizedBox(height: 32),
-            
+
                           const Text(
                             'Equipe',
                             style: TextStyle(
@@ -145,10 +142,10 @@ class ProjectDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 12),
                           _buildTeamSection(context),
                           const SizedBox(height: 32),
-            
+
                           // SEÇÃO DE ESTRUTURAS
                           _buildStructuresSection(context, ref),
-            
+
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -168,12 +165,26 @@ class ProjectDetailScreen extends ConsumerWidget {
   Widget _buildHeader(ProjetoModel projeto) {
     return Stack(
       children: [
-        Image.asset(
-          projeto.imageUrl,
-          height: 280,
-          width: double.infinity,
-          fit: BoxFit.cover,
-        ),
+        projeto.imageUrl.startsWith('http')
+            ? Image.network(
+                projeto.imageUrl,
+                height: 280,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                // Fallback: Se o link estiver quebrado ou sem internet, mostra a imagem padrão
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  'assets/images/project_placeholder1.png',
+                  height: 280,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Image.asset(
+                projeto.imageUrl,
+                height: 280,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -383,10 +394,8 @@ class ProjectDetailScreen extends ConsumerWidget {
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(width: 8), 
-            const Expanded(
-              child: CompactSearchBar(), 
-            ),
+            const SizedBox(width: 8),
+            const Expanded(child: CompactSearchBar()),
             const SizedBox(width: 6),
             CompactButton(
               text: 'Incluir',
@@ -416,8 +425,26 @@ class ProjectDetailScreen extends ConsumerWidget {
           child: estruturasAsync.when(
             data: (estruturas) {
               if (estruturas.isEmpty) {
-                return const Center(
-                  child: Text('Nenhuma estrutura encontrada.'),
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 50,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Projeto sem estruturas incluídas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
               return ListView.builder(

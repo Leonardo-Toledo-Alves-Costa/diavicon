@@ -1,3 +1,4 @@
+import 'package:diavicon/features/auth/controller/auth_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../models/usuario_model.dart';
@@ -15,7 +16,7 @@ final authControllerProvider = StateNotifierProvider<AuthController, bool>((ref)
   return AuthController(ref);
 });
 
-// ── Notifier do usuário logado ─────────────────────────────────────────────
+//Notifier do usuário logado 
 class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   CurrentUserNotifier() : super(null);
 
@@ -23,54 +24,3 @@ class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   void clearUser() => state = null;
 }
 
-// ── Controller de autenticação ─────────────────────────────────────────────
-class AuthController extends StateNotifier<bool> {
-  final Ref _ref;
-
-  AuthController(this._ref) : super(false);
-
-  Future<void> login(String email, String password) async {
-    state = true;
-    try {
-      final repo = _ref.read(authRepositoryProvider);
-      final response = await repo.signIn(email, password);
-
-      if (response.user != null) {
-        final perfil = await repo.getUsuarioPerfil(response.user!.id);
-        if (perfil != null) {
-          _ref.read(currentUserProvider.notifier).setUser(perfil);
-        }
-      }
-    } finally {
-      state = false;
-    }
-  }
-
-  // MÉTODO DE CADASTRO 
-  Future<void> registrar({
-    required String email, 
-    required String password, 
-    required Map<String, dynamic> dados,
-  }) async {
-    state = true;
-    try {
-      final repo = _ref.read(authRepositoryProvider);
-      await repo.signUp(
-        email: email, 
-        password: password, 
-        dadosCompletos: dados,
-      );
-      
-      // Após cadastrar, fazemos o login automático ou buscamos o perfil
-      final userAuth = repo.currentUser;
-      if (userAuth != null) {
-        final perfil = await repo.getUsuarioPerfil(userAuth.id);
-        if (perfil != null) {
-          _ref.read(currentUserProvider.notifier).setUser(perfil);
-        }
-      }
-    } finally {
-      state = false;
-    }
-  }
-}

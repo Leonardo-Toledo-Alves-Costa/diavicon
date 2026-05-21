@@ -42,7 +42,6 @@ class ProjectCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                // 🚨 A MÁGICA: Função inteligente que decide como renderizar a imagem
                 child: _buildCapaProjeto(),
               ),
               // Badge de Status (Esquerda)
@@ -64,7 +63,6 @@ class ProjectCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.all(4),
                   decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle),
-                  // 💡 No futuro, isso aqui também pode virar um _buildLogo() recebendo URL
                   child: Image.asset('assets/images/empresa.png', height: 40),
                 ),
               ),
@@ -80,7 +78,7 @@ class ProjectCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
-                  maxLines: 1, // 🚨 Proteção para nomes gigantes não quebrarem o layout
+                  maxLines: 1, 
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
@@ -120,14 +118,12 @@ class ProjectCard extends StatelessWidget {
 
   /// Renderiza a imagem baseado se é um link do banco, um asset padrão ou um arquivo local
   Widget _buildCapaProjeto() {
-    // 1. Se for um link da internet (Supabase Storage)
     if (imageUrl.startsWith('http')) {
       return Image.network(
         imageUrl,
         height: 140,
         width: double.infinity,
         fit: BoxFit.cover,
-        // Mostra o asset padrão se der erro de internet
         errorBuilder: (context, error, stackTrace) => _fallbackImage(),
       );
     } 
@@ -140,7 +136,6 @@ class ProjectCard extends StatelessWidget {
         fit: BoxFit.cover,
       );
     } 
-    // 3. Se for o asset padrão mockado
     else {
       return _fallbackImage();
     }
@@ -148,7 +143,7 @@ class ProjectCard extends StatelessWidget {
 
   Widget _fallbackImage() {
     return Image.asset(
-      'assets/images/empresa.png', // Ou um 'assets/images/projeto_placeholder.png'
+      'assets/images/project_placeholder1.png', // Ou um 'assets/images/projeto_placeholder.png'
       height: 140,
       width: double.infinity,
       fit: BoxFit.cover,

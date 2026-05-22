@@ -5,6 +5,7 @@ class PlanosModel {
   final double valor;
   final int vigenciaDias;
   final int armazenamentoMb;
+  final List<String>? features;
 
   PlanosModel({
     required this.id,
@@ -13,6 +14,7 @@ class PlanosModel {
     required this.valor,
     required this.vigenciaDias,
     required this.armazenamentoMb,
+    this.features,
   });
 
   // Converte o JSON do Supabase para o Objeto Dart
@@ -24,6 +26,9 @@ class PlanosModel {
       valor: map['valor'] != null ? (map['valor'] as num).toDouble() : 0.0,
       vigenciaDias: map['vigencia_dias'] ?? 0,
       armazenamentoMb: map['armazenamento_mb'] ?? 0,
+      features: map['features'] != null
+          ? List<String>.from(map['features'])
+          : null,
     );
   }
 
@@ -36,6 +41,7 @@ class PlanosModel {
       'valor': valor,
       'vigencia_dias': vigenciaDias,
       'armazenamento_mb': armazenamentoMb,
+      'features': features,
     };
   }
 
@@ -46,6 +52,7 @@ class PlanosModel {
     double? valor,
     int? vigenciaDias,
     int? armazenamentoMb,
+    List<String>? features,
   }) {
     return PlanosModel(
       id: id ?? this.id,
@@ -54,6 +61,7 @@ class PlanosModel {
       valor: valor ?? this.valor,
       vigenciaDias: vigenciaDias ?? this.vigenciaDias,
       armazenamentoMb: armazenamentoMb ?? this.armazenamentoMb,
+      features: features ?? this.features,
     );
   }
 }

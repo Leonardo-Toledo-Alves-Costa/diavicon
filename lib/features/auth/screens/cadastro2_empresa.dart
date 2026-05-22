@@ -200,7 +200,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
       'questionario_empresa': respostas,
     };
 
-    context.go('/empresa/planos', extra: dadosAtualizados);
+    context.push('/empresa/planos', extra: dadosAtualizados);
   }
 
   @override

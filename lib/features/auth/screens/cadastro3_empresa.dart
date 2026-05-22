@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -95,6 +96,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_valor': plano.valor,
       'plano_escolhido_vigencia_dias': plano.vigenciaDias,
       'plano_escolhido_armazenamento_mb': plano.armazenamentoMb,
+      'plano_escolhido_features': plano.features,
     };
 
     context.push('/empresa/cadastro', extra: dadosComPlano);
@@ -107,6 +109,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano': 'freemium',
       'plano_escolhido': 'freemium',
       'plano_escolhido_id': null,
+      'plano_escolhido_features': null,
     };
 
     context.push('/empresa/cadastro', extra: dadosComPlano);
@@ -320,7 +323,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                     ),
                   ),
                   const SizedBox(height: 18),
-                  _buildFeatureList(),
+                  _buildFeatureList(plano),
                   const SizedBox(height: 18),
                   Center(
                     child: RichText(
@@ -353,6 +356,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
             child: _buildPrimaryButton(isLoading, plano),
           ),
+          CustomTextbutton(text: '<   Voltar', onPressed: () => context.pop()),
         ],
       ),
     );
@@ -378,21 +382,17 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
     );
   }
 
-  Widget _buildFeatureList() {
+  Widget _buildFeatureList(PlanosModel plano) {
     return Container(
       decoration: const BoxDecoration(
-        border: Border(
-          left: BorderSide(color: AppColors.primary, width: 8),
-        ),
+        border: Border(left: BorderSide(color: AppColors.primary, width: 8)),
       ),
       padding: const EdgeInsets.only(left: 14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildFeatureItem('Acesso a 07 módulos de ensaio'),
-          _buildFeatureItem('Gerenciamento de Equipes'),
-          _buildFeatureItem('Relatórios Automáticos'),
-          _buildFeatureItem('Acompanhamento de RDO\'s'),
+          for (final feature in plano.features ?? [])
+            _buildFeatureItem(feature),
         ],
       ),
     );
@@ -447,9 +447,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       height: 48,
       child: TextButton(
         onPressed: isLoading ? null : _finalizarTrial,
-        style: TextButton.styleFrom(
-          foregroundColor: AppColors.primary,
-        ),
+        style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         child: const Text(
           'Experimente por 1 Mês',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),

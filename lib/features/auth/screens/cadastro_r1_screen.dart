@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/auth_layout.dart';
+import '../../../core/utils/validators/validators_cadastro.dart';
+import '../../../core/utils/formatters/formatters_cadastro.dart';
 
 /// CadastroR1 — Foto, dados pessoais, endereço, título e escolaridade.
 /// Rota: /register/dados
@@ -23,6 +27,8 @@ class CadastroR1Screen extends ConsumerStatefulWidget {
 
 class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
   final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
+  File? _fotoSelecionada;
 
   // ── Dados pessoais ─────────────────────────────────────────────────────────
   final _nomeController = TextEditingController();
@@ -81,7 +87,6 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ── Título ─────────────────────────────────────────────────────
               RichText(
                 text: const TextSpan(
                   style: TextStyle(
@@ -109,16 +114,21 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                       CircleAvatar(
                         radius: 44,
                         backgroundColor: AppColors.greyVeryLight,
-                        child: Image.asset(
-                          'assets/images/user.png',
-                          width: 56,
-                          height: 56,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.person,
-                            size: 48,
-                            color: AppColors.greyLight,
-                          ),
-                        ),
+                        backgroundImage: _fotoSelecionada != null
+                            ? FileImage(_fotoSelecionada!)
+                            : null,
+                        child: _fotoSelecionada == null
+                            ? Image.asset(
+                                'assets/images/user.png',
+                                width: 56,
+                                height: 56,
+                                errorBuilder: (_, __, ___) => const Icon(
+                                  Icons.person,
+                                  size: 48,
+                                  color: AppColors.greyLight,
+                                ),
+                              )
+                            : null,
                       ),
                       Positioned(
                         bottom: 0,
@@ -127,7 +137,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                           radius: 14,
                           backgroundColor: AppColors.primary,
                           child: const Icon(
-                            Icons.edit,
+                            Icons.camera_alt,
                             size: 14,
                             color: AppColors.white,
                           ),
@@ -137,17 +147,27 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                   ),
                 ),
               ),
+              const SizedBox(height: 6),
+              const Center(
+                child: Text(
+                  'Toque para adicionar foto',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: AppColors.greyMedium,
+                  ),
+                ),
+              ),
               const SizedBox(height: 20),
 
               // ── Informações Pessoais ───────────────────────────────────────
-              _SectionTitle(titulo: 'Informações Pessoais'),
+              const _SectionTitle(titulo: 'Informações Pessoais'),
               const SizedBox(height: 12),
 
               CustomTextField(
                 label: 'Nome',
                 hint: 'João',
                 controller: _nomeController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -155,7 +175,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Sobrenome',
                 hint: 'Silva',
                 controller: _sobrenomeController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -164,12 +184,13 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 hint: '(31) 9 9191-9191',
                 controller: _telefoneController,
                 keyboardType: TextInputType.phone,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                inputFormatters: [FormattersCadastro.telefone],
+                validator: ValidatorsCadastro.telefone,
               ),
               const SizedBox(height: 20),
 
               // ── Endereço ───────────────────────────────────────────────────
-              _SectionTitle(titulo: 'Endereço'),
+              const _SectionTitle(titulo: 'Endereço'),
               const SizedBox(height: 12),
 
               CustomTextField(
@@ -177,7 +198,8 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 hint: '31.333-000',
                 controller: _cepController,
                 keyboardType: TextInputType.number,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                inputFormatters: [FormattersCadastro.cep],
+                validator: ValidatorsCadastro.cep,
               ),
               const SizedBox(height: 12),
 
@@ -185,7 +207,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Cidade',
                 hint: 'Belo Horizonte',
                 controller: _cidadeController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -193,7 +215,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Rua',
                 hint: 'Rua Abc',
                 controller: _ruaController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -201,7 +223,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Bairro',
                 hint: 'Bairro Xyz',
                 controller: _bairroController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -214,8 +236,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                       hint: '123',
                       controller: _numeroController,
                       keyboardType: TextInputType.number,
-                      validator: (val) =>
-                          val!.isEmpty ? 'Obrigatório' : null,
+                      validator: ValidatorsCadastro.obrigatorio,
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -223,7 +244,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                     flex: 3,
                     child: CustomTextField(
                       label: 'Complemento',
-                      hint: 'Apto123',
+                      hint: 'Apto 123',
                       controller: _complementoController,
                     ),
                   ),
@@ -235,7 +256,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Estado',
                 hint: 'Minas Gerais',
                 controller: _estadoController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 12),
 
@@ -243,61 +264,23 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'País',
                 hint: 'Brasil',
                 controller: _paisController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 20),
 
               // ── Título e Escolaridade ──────────────────────────────────────
-              _SectionTitle(titulo: 'Título e Escolaridade'),
+              const _SectionTitle(titulo: 'Título e Escolaridade'),
               const SizedBox(height: 12),
 
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Escolaridade',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.textDark,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<String>(
-                    initialValue: _escolaridadeSelecionada,
-                    hint: const Text(
-                      'Escolaridade',
-                      style: TextStyle(color: AppColors.hintText),
-                    ),
-                    decoration: InputDecoration(
-                      contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 14),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: AppColors.inputBorder),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: AppColors.inputBorder),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide:
-                            const BorderSide(color: AppColors.primary),
-                      ),
-                    ),
-                    items: _escolaridades
-                        .map((e) =>
-                            DropdownMenuItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (val) =>
-                        setState(() => _escolaridadeSelecionada = val),
-                    validator: (val) =>
-                        val == null ? 'Selecione a escolaridade' : null,
-                  ),
-                ],
+              _DropdownEscolaridade(
+                valor: _escolaridadeSelecionada,
+                opcoes: _escolaridades,
+                onChanged: (val) =>
+                    setState(() => _escolaridadeSelecionada = val),
+                validator: (val) => ValidatorsCadastro.dropdown(
+                  val,
+                  mensagem: 'Selecione a escolaridade',
+                ),
               ),
               const SizedBox(height: 12),
 
@@ -305,7 +288,7 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
                 label: 'Formação',
                 hint: 'Ex: Engenharia Civil',
                 controller: _formacaoController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                validator: ValidatorsCadastro.obrigatorio,
               ),
               const SizedBox(height: 30),
 
@@ -351,6 +334,19 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
     );
   }
 
+  // ── Selecionar foto ────────────────────────────────────────────────────────
+  Future<void> _selecionarFoto() async {
+    final picked = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+      maxWidth: 512,
+      maxHeight: 512,
+    );
+    if (picked != null) {
+      setState(() => _fotoSelecionada = File(picked.path));
+    }
+  }
+
   void _avancar() {
     if (!_formKey.currentState!.validate()) return;
     context.go('/register/perfil', extra: {
@@ -369,16 +365,12 @@ class _CadastroR1ScreenState extends ConsumerState<CadastroR1Screen> {
       'pais': _paisController.text.trim(),
       'escolaridade': _escolaridadeSelecionada,
       'formacao': _formacaoController.text.trim(),
+      'fotoPath': _fotoSelecionada?.path,
     });
-  }
-
-  void _selecionarFoto() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Seleção de foto em breve.')),
-    );
   }
 }
 
+// ─── Widgets auxiliares ───────────────────────────────────────────────────────
 class _SectionTitle extends StatelessWidget {
   final String titulo;
   const _SectionTitle({required this.titulo});
@@ -392,6 +384,66 @@ class _SectionTitle extends StatelessWidget {
         fontWeight: FontWeight.w900,
         color: AppColors.textDark,
       ),
+    );
+  }
+}
+
+class _DropdownEscolaridade extends StatelessWidget {
+  final String? valor;
+  final List<String> opcoes;
+  final void Function(String?) onChanged;
+  final String? Function(String?)? validator;
+
+  const _DropdownEscolaridade({
+    required this.valor,
+    required this.opcoes,
+    required this.onChanged,
+    this.validator,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Escolaridade',
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
+        ),
+        const SizedBox(height: 8),
+        DropdownButtonFormField<String>(
+          value: valor,
+          hint: const Text(
+            'Escolaridade',
+            style: TextStyle(color: AppColors.hintText),
+          ),
+          decoration: InputDecoration(
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.primary),
+            ),
+          ),
+          items: opcoes
+              .map((e) => DropdownMenuItem(value: e, child: Text(e)))
+              .toList(),
+          onChanged: onChanged,
+          validator: validator,
+        ),
+      ],
     );
   }
 }

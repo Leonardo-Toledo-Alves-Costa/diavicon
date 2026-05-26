@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
+import '../../../core/utils/validators/validators_cadastro.dart';
 
 /// CadastroR0 — E-mail, senha e confirmação.
 /// Rota: /register
@@ -76,13 +77,7 @@ class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
                 hint: 'seuemail@email.com',
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (!RegExp(r'^[\w-.]+@([\w-]+\.)+[\w-]{2,}$').hasMatch(val)) {
-                    return 'E-mail inválido';
-                  }
-                  return null;
-                },
+                validator: ValidatorsCadastro.email,
               ),
               const SizedBox(height: 14),
 
@@ -92,20 +87,12 @@ class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
                 hint: 'Sua senha',
                 controller: _senhaController,
                 obscureText: _ocultarSenha,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _ocultarSenha ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                    color: AppColors.greyMedium,
-                  ),
-                  onPressed: () =>
+                suffixIcon: _buildEyeIcon(
+                  ocultar: _ocultarSenha,
+                  onTap: () =>
                       setState(() => _ocultarSenha = !_ocultarSenha),
                 ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (val.length < 6) return 'Mínimo 6 caracteres';
-                  return null;
-                },
+                validator: ValidatorsCadastro.senha,
               ),
               const SizedBox(height: 14),
 
@@ -115,20 +102,15 @@ class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
                 hint: 'Sua senha',
                 controller: _confirmarController,
                 obscureText: _ocultarConfirmar,
-                suffixIcon: IconButton(
-                  icon: Icon(
-                    _ocultarConfirmar ? Icons.visibility_off : Icons.visibility,
-                    size: 20,
-                    color: AppColors.greyMedium,
-                  ),
-                  onPressed: () =>
-                      setState(() => _ocultarConfirmar = !_ocultarConfirmar),
+                suffixIcon: _buildEyeIcon(
+                  ocultar: _ocultarConfirmar,
+                  onTap: () => setState(
+                      () => _ocultarConfirmar = !_ocultarConfirmar),
                 ),
-                validator: (val) {
-                  if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (val != _senhaController.text) return 'Senhas não conferem';
-                  return null;
-                },
+                validator: (val) => ValidatorsCadastro.confirmarSenha(
+                  val,
+                  _senhaController.text,
+                ),
               ),
               const SizedBox(height: 28),
 
@@ -143,7 +125,8 @@ class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
                 children: [
                   const Text(
                     'Já possui uma conta? ',
-                    style: TextStyle(color: AppColors.greyMedium, fontSize: 13),
+                    style: TextStyle(
+                        color: AppColors.greyMedium, fontSize: 13),
                   ),
                   GestureDetector(
                     onTap: () => context.go('/login'),
@@ -162,6 +145,20 @@ class _CadastroR0ScreenState extends ConsumerState<CadastroR0Screen> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildEyeIcon({
+    required bool ocultar,
+    required VoidCallback onTap,
+  }) {
+    return IconButton(
+      icon: Icon(
+        ocultar ? Icons.visibility_off : Icons.visibility,
+        size: 20,
+        color: AppColors.greyMedium,
+      ),
+      onPressed: onTap,
     );
   }
 

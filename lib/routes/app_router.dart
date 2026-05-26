@@ -1,5 +1,6 @@
 import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
+import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -35,7 +36,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       // Redirecionamento para usuários NÃO logados
       if (!isLoggedIn) {
-        final bool isPublic = path == '/' ||
+        final bool isPublic =
+            path == '/' ||
             path == '/login' ||
             path.startsWith('/register') ||
             path.startsWith('/empresa/');
@@ -147,7 +149,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: 'detalhes',
-                parentNavigatorKey: rootNavigatorKey, 
+                parentNavigatorKey: rootNavigatorKey,
                 builder: (context, state) => ProjectDetailScreen(
                   projetoId: state.extra as String? ?? '',
                 ),
@@ -169,6 +171,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/educacao',
             builder: (context, state) =>
                 const Scaffold(body: Center(child: Text('Educação'))),
+          ),
+
+          // NOTIICACOES
+          GoRoute(
+            path: '/notificacoes',
+            builder: (context, state) => const NotificacoesScreen(),
           ),
         ],
       ),

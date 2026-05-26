@@ -12,10 +12,13 @@ import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../widgets/team_member_item.dart';
 import '../../estrutura/widgets/structure_card.dart';
-import '../widgets/team_edit_body.dart';
+import '../widgets/edit_team_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
 import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
+
+// Certifique-se de importar o provider da equipe
+import '../providers/equipe_provider.dart'; 
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -48,18 +51,15 @@ class ProjectDetailScreen extends ConsumerWidget {
           ),
           child: Scaffold(
             backgroundColor: Colors.white,
-            extendBodyBehindAppBar: true, 
-            
+            extendBodyBehindAppBar: true,
+
             //PERMITE QUE A TELA SE AJUSTE AO TECLADO
             resizeToAvoidBottomInset: true,
 
             // BARRA DE NAVEGAÇÃO DO SISTEMA
             bottomNavigationBar: Container(
               color: Colors.white,
-              child: const SafeArea(
-                top: false,
-                child: SizedBox.shrink(), 
-              ),
+              child: const SafeArea(top: false, child: SizedBox.shrink()),
             ),
 
             // MENU LATERAL (DRAWER)
@@ -98,9 +98,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-          
+
             appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
-          
+
             body: SingleChildScrollView(
               padding: EdgeInsets.zero,
               //PADDING DINÂMICO QUE RESPONDE AO TECLADO
@@ -111,7 +111,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                   children: [
                     // HEADER COM IMAGEM
                     _buildHeader(projeto),
-          
+
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -127,13 +127,13 @@ class ProjectDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-            
+
                           _buildGestoraSection(projeto.empresaNome),
                           const SizedBox(height: 24),
-            
+
                           _buildProgressCard(projeto.progresso),
                           const SizedBox(height: 32),
-            
+
                           const Text(
                             'Equipe',
                             style: TextStyle(
@@ -143,12 +143,12 @@ class ProjectDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          _buildTeamSection(context),
+                          _buildTeamSection(context, ref),
                           const SizedBox(height: 32),
-            
+
                           // SEÇÃO DE ESTRUTURAS
                           _buildStructuresSection(context, ref),
-            
+
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -168,12 +168,26 @@ class ProjectDetailScreen extends ConsumerWidget {
   Widget _buildHeader(ProjetoModel projeto) {
     return Stack(
       children: [
-        Image.asset(
-          projeto.imageUrl,
-          height: 280,
-          width: double.infinity,
-          fit: BoxFit.cover,
-        ),
+        projeto.imageUrl.startsWith('http')
+            ? Image.network(
+                projeto.imageUrl,
+                height: 280,
+                width: double.infinity,
+                fit: BoxFit.cover,
+                // Fallback: Se o link estiver quebrado ou sem internet, mostra a imagem padrão
+                errorBuilder: (context, error, stackTrace) => Image.asset(
+                  'assets/images/project_placeholder1.png',
+                  height: 280,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                ),
+              )
+            : Image.asset(
+                projeto.imageUrl,
+                height: 280,
+                width: double.infinity,
+                fit: BoxFit.cover,
+              ),
         Positioned.fill(
           child: Container(
             decoration: BoxDecoration(
@@ -322,49 +336,64 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTeamSection(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const TeamMemberItem(
-            name: 'Fulano',
-            role: 'Engenheiro',
-            imagePath: 'assets/images/user.png',
-          ),
-          const TeamMemberItem(
-            name: 'Ciclana',
-            role: 'Estagiária',
-            imagePath: 'assets/images/user.png',
-          ),
-          const TeamMemberItem(
-            name: 'Fulano',
-            role: 'Engenheiro',
-            imagePath: 'assets/images/user.png',
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 25, left: 8),
-            child: GestureDetector(
-              onTap: () {
-                showDiaviconModal(
-                  context: context,
-                  title: 'Edite a equipe',
-                  body: const EditTeamBody(),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildTeamSection(BuildContext context, WidgetRef ref) {
+    // 🔥 AQUI ESTÁ A MÁGICA: Agora escutamos o provider filtrado!
+    final colaboradoresAsync = ref.watch(colaboradoresAtivosProjetoProvider(projetoId));
+
+    return colaboradoresAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       ),
+      error: (err, stack) => const Text(
+        'Erro ao carregar equipe',
+        style: TextStyle(color: Colors.red),
+      ),
+      data: (listaColaboradores) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Mapeia APENAS os utilizadores ATIVOS reais vindos do Supabase
+              ...listaColaboradores.map((item) {
+                final usuario = item['usuario'] as Map<String, dynamic>;
+                final nome = usuario['nome'] ?? 'Sem nome';
+                final cargo = usuario['cargo'] ?? 'Colaborador';
+                final fotoUrl = usuario['foto_url'] ?? 'assets/images/user.png';
+
+                return TeamMemberItem(
+                  name: nome,
+                  role: cargo,
+                  imagePath: fotoUrl,
+                );
+              }),
+              
+              // Botão Laranja de Editar/Adicionar (+) continua sempre aqui
+              Padding(
+                padding: const EdgeInsets.only(bottom: 25, left: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    showDiaviconModal(
+                      context: context,
+                      title: 'Edite a equipe',
+                      body: EditTeamBody(projetoId: projetoId),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -383,10 +412,8 @@ class ProjectDetailScreen extends ConsumerWidget {
                 color: AppColors.textDark,
               ),
             ),
-            const SizedBox(width: 8), 
-            const Expanded(
-              child: CompactSearchBar(), 
-            ),
+            const SizedBox(width: 8),
+            const Expanded(child: CompactSearchBar()),
             const SizedBox(width: 6),
             CompactButton(
               text: 'Incluir',
@@ -416,8 +443,26 @@ class ProjectDetailScreen extends ConsumerWidget {
           child: estruturasAsync.when(
             data: (estruturas) {
               if (estruturas.isEmpty) {
-                return const Center(
-                  child: Text('Nenhuma estrutura encontrada.'),
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: 50,
+                        color: Colors.grey.shade400,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Projeto sem estruturas incluídas',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey.shade400,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 );
               }
               return ListView.builder(

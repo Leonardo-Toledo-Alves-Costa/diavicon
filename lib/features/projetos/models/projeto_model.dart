@@ -10,6 +10,7 @@ class ProjetoModel {
   final String? empresaClienteId;
   final String? statusVinculoCliente;
   final String? clienteNome;
+  
 
   // Atributos para facilitar a UI (Preenchidos via Joins na query)
   final double progresso;
@@ -17,6 +18,7 @@ class ProjetoModel {
   final String prioridadeNome;
   final String empresaNome;
   final BadgeStatus statusBadge;
+  final DateTime criadoEm;
 
   ProjetoModel({
     required this.id,
@@ -32,7 +34,8 @@ class ProjetoModel {
     this.statusBadge = BadgeStatus.emAndamento,
     this.empresaClienteId,
     this.statusVinculoCliente,
-    this.clienteNome,
+    this.clienteNome, 
+    required this.criadoEm,
   });
 
   /// Converte o JSON do Supabase para o Model
@@ -65,6 +68,7 @@ class ProjetoModel {
       empresaClienteId: map['empresa_cliente_id'],
       statusVinculoCliente: map['status_vinculo_cliente'],
       clienteNome: clienteData?['nome'] ?? 'Cliente não definido',
+      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : DateTime.now(),
     );
   }
 
@@ -123,7 +127,8 @@ class ProjetoModel {
       statusBadge: statusBadge ?? this.statusBadge,
       empresaGestoraId: empresaGestoraId,
       statusId: statusId,
-      prioridadeId: prioridadeId,
+      prioridadeId: prioridadeId, 
+      criadoEm: criadoEm,
     );
   }
 }

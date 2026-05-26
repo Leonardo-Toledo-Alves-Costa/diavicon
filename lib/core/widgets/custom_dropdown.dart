@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import 'custom_label.dart'; // Importando o seu CustomLabel
 
 class CustomDropdown<T> extends StatelessWidget {
   final String label;
@@ -9,6 +8,7 @@ class CustomDropdown<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final String hint;
   final String? tooltip;
+  final bool isRequired; // 🚨 NOVO PARÂMETRO
 
   const CustomDropdown({
     super.key,
@@ -18,6 +18,7 @@ class CustomDropdown<T> extends StatelessWidget {
     this.value,
     this.hint = 'Selecione',
     this.tooltip,
+    this.isRequired = false, // 🚨 Padrão é falso
   });
 
   @override
@@ -26,7 +27,36 @@ class CustomDropdown<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
-          CustomLabel(text: label, tooltip: tooltip),
+          // 🚨 RICH TEXT COM SUPORTE A TOOLTIP
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: label.replaceAll('*', '').trim(),
+                  style: const TextStyle(
+                    color: AppColors.textDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    if (isRequired || label.contains('*'))
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                  ],
+                ),
+              ),
+              if (tooltip != null) ...[
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: tooltip!,
+                  child: const Icon(Icons.info_outline, size: 16, color: AppColors.greyLight),
+                ),
+              ],
+            ],
+          ),
           const SizedBox(height: 8),
         ],
         DropdownButtonFormField<T>(

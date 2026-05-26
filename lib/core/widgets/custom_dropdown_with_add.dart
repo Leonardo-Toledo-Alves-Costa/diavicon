@@ -8,6 +8,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final ValueChanged<T?>? onChanged;
   final String hint;
   final VoidCallback onAddPressed;
+  final bool isRequired; 
 
   const CustomDropdownWithAdd({
     super.key,
@@ -17,22 +18,32 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     required this.onAddPressed,
     this.value,
     this.hint = 'Selecione',
+    this.isRequired = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    // 🚨 A MÁGICA: Detecta se o teclado está ocupando espaço na tela
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: AppColors.textDark,
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
+        RichText(
+          text: TextSpan(
+            text: label.replaceAll('*', '').trim(),
+            style: const TextStyle(
+              color: AppColors.textDark,
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              fontFamily: 'Inter', // Caso use fonte customizada, o RichText pede
+            ),
+            children: [
+              if (isRequired || label.contains('*'))
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.primary),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -40,16 +51,12 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
             Expanded(
-              // 1. O GestureDetector captura o clique se o AbsorbPointer estiver ativo
               child: GestureDetector(
                 onTap: () {
                   if (isKeyboardOpen) {
-                    // Recolhe o teclado à força
                     FocusManager.instance.primaryFocus?.unfocus();
                   }
                 },
-                // 2. O AbsorbPointer bloqueia o clique de chegar no Dropdown
-                // enquanto a variável isKeyboardOpen for verdadeira
                 child: AbsorbPointer(
                   absorbing: isKeyboardOpen,
                   child: DropdownButtonFormField<T>(
@@ -89,8 +96,6 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            
-            // Botão Circular de Adicionar (MANTIDO INTACTO)
             InkWell(
               onTap: onChanged != null ? onAddPressed : null,
               borderRadius: BorderRadius.circular(24),

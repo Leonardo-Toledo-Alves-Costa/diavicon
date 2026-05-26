@@ -1,3 +1,5 @@
+import 'dart:io';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -5,9 +7,6 @@ import '../../../core/constants/app_text_styles.dart';
 import '../../../core/widgets/modal_selecao_base.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../providers/projeto_form_provider.dart';
-import '../providers/clientes_provider.dart';
-import '../services/cliente_service.dart';
-import '../../auth/providers/auth_provider.dart';
 
 class NovoClienteModal extends ConsumerStatefulWidget {
   const NovoClienteModal({super.key});
@@ -22,6 +21,7 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
   String? _tipoSelecionado;
   String? _areaSelecionada;
   bool _isLoading = false;
+  File? _fotoSelecionada; 
 
   @override
   void dispose() {
@@ -30,53 +30,42 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
     super.dispose();
   }
 
+  Future<void> _escolherFotoCliente() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 40, 
+      maxWidth: 500, 
+    );
+
+    if (pickedFile != null) {
+      setState(() {
+        _fotoSelecionada = File(pickedFile.path);
+      });
+    }
+  }
+
   Future<void> _confirmarCadastro() async {
-    // Validação de campos obrigatórios
-    if (_nomeController.text.trim().isEmpty || _tipoSelecionado == null || _areaSelecionada == null) {
-      _showSnackBar('Preencha os campos obrigatórios (*)', isError: true);
+    if (_nomeController.text.trim().isEmpty || _emailController.text.trim().isEmpty) {
+      _showSnackBar('Preencha o nome e o e-mail do cliente (*)', isError: true);
       return;
     }
 
-    final usuario = ref.read(currentUserProvider);
-    if (usuario == null || usuario.empresaId == null) {
-      _showSnackBar('Erro: Usuário não autenticado.', isError: true);
-      return;
-    }
+    final novoEstadoForm = ref.read(projetoFormProvider).copyWith(
+          clienteNome: _nomeController.text.trim(),
+          emailNovoCliente: _emailController.text.trim(),
+          tipoNovoCliente: _tipoSelecionado,
+          areaAtuacaoNovoCliente: _areaSelecionada,
+          isNovoCliente: true,
+          clienteId: null,
+          clienteFotoUrl: _fotoSelecionada?.path, 
+        );
 
-    setState(() => _isLoading = true);
+    ref.read(projetoFormProvider.notifier).update((state) => novoEstadoForm);
 
-    try {
-      // Prepara o estado do rascunho
-      final novoEstadoForm = ref.read(projetoFormProvider).copyWith(
-            clienteNome: _nomeController.text.trim(),
-            emailNovoCliente: _emailController.text.trim(),
-            tipoNovoCliente: _tipoSelecionado,
-            areaAtuacaoNovoCliente: _areaSelecionada,
-            isNovoCliente: true,
-          );
-
-      //  Salva no banco de dados e cria o vínculo automático
-      await ClienteService().criarClienteComVinculo(
-        form: novoEstadoForm,
-        empresaGestoraId: usuario.empresaId!,
-      );
-
-      // Invalida os providers de lista para o dropdown e a busca atualizarem
-      ref.invalidate(clientesListaProvider);
-      
-      // Atualiza o rascunho global para o modal anterior já exibir o novo cliente
-      ref.read(projetoFormProvider.notifier).update((state) => novoEstadoForm);
-
-      if (mounted) {
-        Navigator.pop(context);
-        _showSnackBar('✅ Cliente cadastrado e vinculado!');
-      }
-    } catch (e) {
-      if (mounted) {
-        _showSnackBar('❌ Erro ao salvar: $e', isError: true);
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      Navigator.pop(context);
+      _showSnackBar('✅ Cliente pré-cadastrado para convite!');
     }
   }
 
@@ -101,43 +90,54 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
       iconeBotao: _isLoading ? null : Icons.add,
       aoPressionarBotao: _isLoading ? null : _confirmarCadastro,
       filhos: [
-        // SEÇÃO DO AVATAR 
         Center(
-          child: Stack(
-            children: [
-              Container(
-                width: 110,
-                height: 110,
-                decoration: const BoxDecoration(
-                  color: AppColors.greyVeryLight,
-                  shape: BoxShape.circle,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(25.0),
-                  child: Image.asset(
-                    'assets/images/empresa.png', 
-                    fit: BoxFit.contain,
-                  ),
-                ),
-              ),
-              Positioned(
-                bottom: 0,
-                right: 0,
-                child: Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: const BoxDecoration(
-                    color: AppColors.white,
+          child: GestureDetector(
+            onTap: _escolherFotoCliente, 
+            child: Stack(
+              children: [
+                Container(
+                  width: 110,
+                  height: 110,
+                  decoration: BoxDecoration(
+                    color: AppColors.greyVeryLight,
                     shape: BoxShape.circle,
-                    boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    // Se escolheu foto, exibe a foto
+                    image: _fotoSelecionada != null
+                        ? DecorationImage(
+                            image: FileImage(_fotoSelecionada!),
+                            fit: BoxFit.cover,
+                          )
+                        : null,
                   ),
-                  child: const Icon(
-                    Icons.edit_note_outlined,
-                    color: AppColors.greyDarkest,
-                    size: 28,
+                  child: _fotoSelecionada == null
+                      ? Padding(
+                          padding: const EdgeInsets.all(25.0),
+                          child: Image.asset(
+                            'assets/images/empresa.png', 
+                            fit: BoxFit.contain,
+                          ),
+                        )
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: const BoxDecoration(
+                      color: AppColors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
+                    ),
+                    child: const Icon(
+                      Icons.camera_alt_outlined, 
+                      color: AppColors.greyDarkest,
+                      size: 20,
+                    ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -164,7 +164,7 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
         const SizedBox(height: 16),
 
         _buildCampoTexto(
-          rotulo: 'Email de contato',
+          rotulo: 'Email de contato*',
           dica: 'contato@empresa.com',
           controller: _emailController,
         ),

@@ -8,6 +8,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final ValueChanged<T?>? onChanged;
   final String hint;
   final VoidCallback onAddPressed;
+  final String? Function(T?)? validator;
 
   const CustomDropdownWithAdd({
     super.key,
@@ -17,6 +18,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     required this.onAddPressed,
     this.value,
     this.hint = 'Selecione',
+    this.validator,
   });
 
   @override
@@ -56,6 +58,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                     value: value,
                     items: items,
                     onChanged: onChanged,
+                    validator: validator,
                     decoration: InputDecoration(
                       hintText: hint,
                       hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),

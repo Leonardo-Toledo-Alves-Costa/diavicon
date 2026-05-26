@@ -147,7 +147,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 32),
             
                           // SEÇÃO DE ESTRUTURAS
-                          _buildStructuresSection(context, ref),
+                          _buildStructuresSection(context, ref, projeto),
             
                           const SizedBox(height: 24),
                         ],
@@ -368,7 +368,7 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStructuresSection(BuildContext context, WidgetRef ref) {
+  Widget _buildStructuresSection(BuildContext context, WidgetRef ref, ProjetoModel projeto) {
     final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
 
     return Column(
@@ -396,13 +396,13 @@ class ProjectDetailScreen extends ConsumerWidget {
                   title: 'Incluir Estrutura',
                   height: MediaQuery.of(context).size.height * 0.80,
                   isScrollable: false,
-                  margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
+                  margin:  EdgeInsets.fromLTRB(18, 150, 18, 0),
                   centerTitle: true,
                   body: IncluirEstruturaBody(
-                    clienteNome: '',
-                    empresaNome: '',
-                    estruturas: [],
+                    clienteNome: projeto.clienteNome ?? 'Cliente não definido',
+                    empresaNome: projeto.empresaNome,
                     projetoId: projetoId,
+                  
                   ),
                 );
               },

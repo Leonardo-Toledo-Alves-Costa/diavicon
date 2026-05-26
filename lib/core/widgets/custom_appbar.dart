@@ -5,12 +5,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
   final bool showBackButton;
   final List<Widget>? extraActions;
+  final Widget? titleWidget;
+
+  final bool showMenuButton;
 
   const CustomAppBar({
     super.key,
     required this.title,
     this.showBackButton = false,
     this.extraActions,
+    this.titleWidget,
+    this.showMenuButton = true,
   });
 
   @override
@@ -34,13 +39,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             )
           : null,
           
-      title: Text(
+      title: titleWidget ?? Text(
         title,
         style: const TextStyle(
           color: Colors.white,
           fontSize: 18,
-          fontWeight: FontWeight.w600,
-          fontFamily: 'Lato',
+          fontWeight: FontWeight.bold,
         ),
       ),
       
@@ -57,17 +61,17 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
         ),
 
         // 3. Ícone de Menu (Hambúrguer) com o Builder Salvador
-        Builder(
-          builder: (context) {
-            return IconButton(
-              icon: const Icon(Icons.menu, color: Colors.white),
-              onPressed: () {
-                // Agora ele encontra o endDrawer do Scaffold da tela atual!
-                Scaffold.of(context).openEndDrawer();
-              },
-            );
-          },
-        ),
+        if (showMenuButton)
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.menu, color: Colors.white),
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer();
+                },
+              );
+            },
+          ),
         
         const SizedBox(width: 8), // Pequeno respiro na borda direita
       ],

@@ -12,10 +12,13 @@ import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../widgets/team_member_item.dart';
 import '../../estrutura/widgets/structure_card.dart';
-import '../widgets/team_edit_body.dart';
+import '../widgets/edit_team_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
 import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
+
+// Certifique-se de importar o provider da equipe
+import '../providers/equipe_provider.dart'; 
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -140,7 +143,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          _buildTeamSection(context),
+                          _buildTeamSection(context, ref),
                           const SizedBox(height: 32),
 
                           // SEÇÃO DE ESTRUTURAS
@@ -333,49 +336,64 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildTeamSection(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          const TeamMemberItem(
-            name: 'Fulano',
-            role: 'Engenheiro',
-            imagePath: 'assets/images/user.png',
-          ),
-          const TeamMemberItem(
-            name: 'Ciclana',
-            role: 'Estagiária',
-            imagePath: 'assets/images/user.png',
-          ),
-          const TeamMemberItem(
-            name: 'Fulano',
-            role: 'Engenheiro',
-            imagePath: 'assets/images/user.png',
-          ),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 25, left: 8),
-            child: GestureDetector(
-              onTap: () {
-                showDiaviconModal(
-                  context: context,
-                  title: 'Edite a equipe',
-                  body: const EditTeamBody(),
-                );
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.add, color: Colors.white, size: 20),
-              ),
-            ),
-          ),
-        ],
+  Widget _buildTeamSection(BuildContext context, WidgetRef ref) {
+    // 🔥 AQUI ESTÁ A MÁGICA: Agora escutamos o provider filtrado!
+    final colaboradoresAsync = ref.watch(colaboradoresAtivosProjetoProvider(projetoId));
+
+    return colaboradoresAsync.when(
+      loading: () => const Padding(
+        padding: EdgeInsets.symmetric(vertical: 20),
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
       ),
+      error: (err, stack) => const Text(
+        'Erro ao carregar equipe',
+        style: TextStyle(color: Colors.red),
+      ),
+      data: (listaColaboradores) {
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              // Mapeia APENAS os utilizadores ATIVOS reais vindos do Supabase
+              ...listaColaboradores.map((item) {
+                final usuario = item['usuario'] as Map<String, dynamic>;
+                final nome = usuario['nome'] ?? 'Sem nome';
+                final cargo = usuario['cargo'] ?? 'Colaborador';
+                final fotoUrl = usuario['foto_url'] ?? 'assets/images/user.png';
+
+                return TeamMemberItem(
+                  name: nome,
+                  role: cargo,
+                  imagePath: fotoUrl,
+                );
+              }),
+              
+              // Botão Laranja de Editar/Adicionar (+) continua sempre aqui
+              Padding(
+                padding: const EdgeInsets.only(bottom: 25, left: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    showDiaviconModal(
+                      context: context,
+                      title: 'Edite a equipe',
+                      body: EditTeamBody(projetoId: projetoId),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: const BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add, color: Colors.white, size: 20),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

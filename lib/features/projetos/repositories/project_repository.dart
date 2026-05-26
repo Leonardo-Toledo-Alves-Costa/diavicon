@@ -7,8 +7,6 @@ class ProjectRepository {
   final SupabaseClient _supabase;
   ProjectRepository(this._supabase);
 
-  
-
   // BUSCA A LISTA PARA A HOME
   Future<List<ProjetoModel>> getProjects() async {
     final response = await _supabase
@@ -43,8 +41,6 @@ class ProjectRepository {
   /// Realiza joins para trazer nomes de status, prioridade e empresa gestora.
   Future<List<ProjetoModel>> fetchUserProjects(String userId) async {
     try {
-      //  A query usa !inner na tabela de relação para filtrar apenas os que o usuário participa.
-      //  Usa aliases (nome:coluna) para bater com as chaves do ProjetoModel.fromMap.
       final response = await _supabase
           .from('projetos')
           .select('''
@@ -60,7 +56,6 @@ class ProjectRepository {
       final List data = response as List;
       return data.map((json) => ProjetoModel.fromMap(json)).toList();
     } catch (e) {
-      // Log de erro para facilitar o debug em ambiente de desenvolvimento
       print('🚨 ERRO ProjetoRepository.fetchUserProjects: $e');
       rethrow;
     }
@@ -72,7 +67,7 @@ class ProjectRepository {
       final response = await _supabase
           .from('empresas')
           .select('id, nome, foto_url')
-          .or('cnpj.eq.$filtro, id.eq.$filtro') // Busca por CNPJ ou ID (Código)
+          .or('cnpj.eq.$filtro, id.eq.$filtro')
           .maybeSingle();
       return response;
     } catch (e) {
@@ -99,7 +94,7 @@ class ProjectRepository {
 
       final timestamp = DateTime.now().millisecondsSinceEpoch;
 
-      //  UPLOAD DA CAPA DO PROJETO
+      // UPLOAD DA CAPA DO PROJETO
       if (imagemProjeto != null) {
         try {
           final extensao = imagemProjeto.path.split('.').last;
@@ -115,7 +110,6 @@ class ProjectRepository {
       if (isNovoCliente && fotoNovoCliente != null) {
         try {
           final extensao = fotoNovoCliente.path.split('.').last;
-          // Salva na pasta 'clientes/' dentro do mesmo bucket para organizar
           final caminhoStorage = 'clientes/$timestamp.$extensao';
           await _supabase.storage.from('projetos').upload(caminhoStorage, fotoNovoCliente);
           clienteFotoUrl = _supabase.storage.from('projetos').getPublicUrl(caminhoStorage);
@@ -135,7 +129,7 @@ class ProjectRepository {
 
       final String novoProjetoId = respostaProjeto['id'];
 
-      //  Cria o Convite com o link da foto do cliente
+      // Cria o Convite com o link da foto do cliente
       if (isNovoCliente && emailNovoCliente != null) {
         await _supabase.from('projeto_convites').insert({
           'projeto_id': novoProjetoId,
@@ -143,15 +137,16 @@ class ProjectRepository {
           'empresa_nome_temp': nomeNovoCliente,
           'criado_por': usuarioId,
           'aceito': false,
-          'foto_url': clienteFotoUrl, // SALVA O LINK GERADO NA SUA NOVA COLUNA
+          'foto_url': clienteFotoUrl,
         });
       }
 
-      //  Adiciona o Gestor à equipe
+      // Adiciona o Gestor à equipe
       await _supabase.from('projeto_colaboradores').insert({
         'projeto_id': novoProjetoId,
         'usuario_id': usuarioId, 
         'empresa_id': empresaGestoraId, 
+        'ativo': true, // 🔥 SOLUÇÃO AQUI: Agora a gestora já nasce com acesso ativado!
       });
 
     } catch (e) {

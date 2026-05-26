@@ -7,8 +7,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
+
 import '../providers/projeto_form_provider.dart';
-import '../providers/projetos_provider.dart';
+import '../providers/projetos_provider.dart'; 
 import '../providers/clientes_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -86,9 +87,9 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
             : null,
       );
 
-      // Sucesso: Reseta o rascunho e atualiza a lista de projetos da Home
+      // 🔥 CORREÇÃO AQUI: Usa o nome novo do provider principal de lista
       ref.invalidate(projetoFormProvider);
-      ref.invalidate(projectsListProvider);
+      ref.invalidate(filteredProjectsProvider); // Antes estava projectsListProvider
 
       if (mounted) {
         Navigator.pop(context);
@@ -138,7 +139,6 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                 CircleAvatar(
                   radius: 55,
                   backgroundColor: AppColors.greyVeryLight,
-                  // 🚨 AQUI A MÁGICA ACONTECE: Usa a foto do Riverpod ou o placeholder padrão
                   backgroundImage: rascunho.imagemProjeto != null
                       ? FileImage(rascunho.imagemProjeto!) as ImageProvider
                       : const AssetImage('assets/images/empresa.png'),
@@ -156,7 +156,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                       ],
                     ),
                     child: const Icon(
-                      Icons.camera_alt_outlined, // Mais intuitivo para troca de foto
+                      Icons.camera_alt_outlined, 
                       color: AppColors.textDark,
                       size: 20,
                     ),

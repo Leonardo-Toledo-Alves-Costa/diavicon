@@ -147,7 +147,7 @@ class ProjetosScreen extends ConsumerWidget {
                       Icons.notifications_none,
                       color: Colors.white,
                     ),
-                    onPressed: () {},
+                    onPressed: () => context.push('/notificacoes'),
                   ),
                   // BOTÃO DE LOGOUT PROVISÓRIO
                   IconButton(

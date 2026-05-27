@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
@@ -11,6 +12,7 @@ class CustomTextField extends StatelessWidget {
   final Widget? suffixIcon;
   final bool? enabled;
   final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
     super.key,
@@ -23,6 +25,7 @@ class CustomTextField extends StatelessWidget {
     this.suffixIcon,
     this.enabled,
     this.isRequired = false, // 🚨 Padrão é falso
+    this.inputFormatters,
   });
 
   @override
@@ -50,6 +53,7 @@ class CustomTextField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
+          inputFormatters: inputFormatters,
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,

@@ -1,4 +1,3 @@
-// lib/features/projetos/widgets/structure_card.dart
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
@@ -6,12 +5,12 @@ import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
 
 class StructureCard extends StatelessWidget {
   final EstruturaModel estrutura;
+  final String projetoId;
 
-  const StructureCard({super.key, required this.estrutura});
+  const StructureCard({super.key, required this.estrutura, required this.projetoId});
 
-  // Função inteligente para gerir imagens da web ou assets locais
   Widget _buildImage() {
-    const String defaultAsset = 'assets/images/obra.png'; // Imagem padrão caso não tenha foto
+    const String defaultAsset = 'assets/images/sem_estrutura.png'; 
 
     if (estrutura.imageUrl == null || estrutura.imageUrl!.isEmpty) {
       return Image.asset(
@@ -27,7 +26,6 @@ class StructureCard extends StatelessWidget {
       height: 90,
       width: double.infinity,
       fit: BoxFit.cover,
-      // Se o link der erro de carregamento, ele volta para a imagem padrão suavemente
       errorBuilder: (context, error, stackTrace) => Image.asset(
         defaultAsset,
         height: 90,
@@ -41,15 +39,16 @@ class StructureCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
-        // Navegação simples para a Home de Estrutura
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) =>  EstruturaHomeScreen(estrutura: estrutura)),
+          MaterialPageRoute(builder: (context) =>  EstruturaHomeScreen(estrutura: estrutura, projetoId: projetoId,)),
         );
       },
       child: Container(
         width: 170,
         margin: const EdgeInsets.only(right: 16),
+        // 1. A MÁGICA ESTÁ AQUI: Obriga o Container a "aparar" as pontas de tudo o que estiver lá dentro
+        clipBehavior: Clip.antiAlias, 
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -58,15 +57,11 @@ class StructureCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Imagem Dinâmica com Badge
             Stack(
               children: [
-                ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(12),
-                  ),
-                  child: _buildImage(),
-                ),
+                // 2. APAGÁMOS O ClipRRect. A imagem agora preenche 100% da largura.
+                _buildImage(),
+                
                 Positioned(
                   bottom: 8,
                   left: 8,
@@ -96,7 +91,6 @@ class StructureCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Título da Estrutura
                   Text(
                     estrutura.nome ?? 'Sem nome',
                     style: const TextStyle(
@@ -107,7 +101,6 @@ class StructureCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  // Tipo de Estrutura
                   Text(
                     estrutura.tipo ?? 'Sem tipo',
                     style: const TextStyle(
@@ -118,7 +111,6 @@ class StructureCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
-                  // Idade e CAA
                   Text(
                     '${estrutura.idadeAnos ?? '-'} Anos  CAA ${estrutura.caa ?? '-'}',
                     style: const TextStyle(
@@ -140,11 +132,10 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   
-                  
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: const LinearProgressIndicator(
-                      value: 0.8, // Futuramente conectaremos isso a uma variável de progresso da API
+                      value: 0.8, 
                       minHeight: 5,
                       backgroundColor: Color(0xFFEEEEEE),
                       color: AppColors.primary, 

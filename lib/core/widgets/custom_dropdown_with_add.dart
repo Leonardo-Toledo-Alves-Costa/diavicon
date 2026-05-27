@@ -9,6 +9,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final String hint;
   final VoidCallback onAddPressed;
   final bool isRequired; 
+  final String? Function(T?)? validator;
 
   const CustomDropdownWithAdd({
     super.key,
@@ -19,6 +20,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     this.value,
     this.hint = 'Selecione',
     this.isRequired = false,
+    this.validator,
   });
 
   @override
@@ -63,6 +65,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                     value: value,
                     items: items,
                     onChanged: onChanged,
+                    validator: validator,
                     decoration: InputDecoration(
                       hintText: hint,
                       hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),

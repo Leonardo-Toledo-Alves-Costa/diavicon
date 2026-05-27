@@ -1,33 +1,50 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/estrutura_model.dart';
+import 'dart:io';
 
 class EstruturaRepository {
   final SupabaseClient _client;
 
   EstruturaRepository(this._client);
 
-  /// Cria uma nova estrutura e já vincula ao projeto correspondente
-  Future<void> criarEstrutura(
-    EstruturaModel estrutura,
-    String projetoId,
-  ) async {
+  /// Cria a estrutura e já regista o projeto a que ela pertence na própria tabela
+  // 👇 1. MUDOU DE Future<void> PARA Future<EstruturaModel>
+  Future<EstruturaModel> criarEstrutura(EstruturaModel estrutura, String projetoId) async {
     try {
-      //Insere na tabela 'estruturas' e recupera o ID gerado pelo banco
-      final response = await _client
-          .from('estruturas')
-          .insert(estrutura.toMap())
-          .select()
-          .single();
+      final map = estrutura.toMap();
+      map['projeto_id'] = projetoId; 
+      
+      // 👇 2. ADICIONAMOS O .select().single() PARA O SUPABASE DEVOLVER A ESTRUTURA CRIADA
+      final response = await _client.from('estruturas').insert(map).select().single();
+      
+      // 👇 3. TRANSFORMAMOS A RESPOSTA NUM OBJETO E DEVOLVEMOS
+      return EstruturaModel.fromMap(response);
+      
+    } catch (e) {
+      throw Exception('Falha ao registar estrutura: $e');
+    }
+  }
 
-      final String novaEstruturaId = response['id'];
-
-      // Cria o vínculo na tabela associativa 'projeto_estruturas'
+  /// Função para vincular a estrutura a um projeto
+  Future<void> vincularEstrutura(String estruturaId, String projetoId) async {
+    try {
       await _client.from('projeto_estruturas').insert({
         'projeto_id': projetoId,
-        'estrutura_id': novaEstruturaId,
+        'estrutura_id': estruturaId,
       });
     } catch (e) {
-      throw Exception('Falha ao registrar estrutura: $e');
+      throw Exception('Falha ao vincular estrutura: $e');
+    }
+  }
+
+  /// Função para desvincular uma estrutura
+  Future<void> desvincularEstrutura(String estruturaId, String projetoId) async {
+    try {
+      await _client.from('projeto_estruturas')
+          .delete()
+          .match({'projeto_id': projetoId, 'estrutura_id': estruturaId});
+    } catch (e) {
+      throw Exception('Falha ao desvincular estrutura: $e');
     }
   }
 
@@ -48,6 +65,28 @@ class EstruturaRepository {
           .toList();
     } catch (e) {
       throw Exception('Erro ao carregar lista de estruturas: $e');
+    }
+  }
+
+  /// FAZ O UPLOAD DA IMAGEM PARA O STORAGE E RETORNA A URL PÚBLICA
+  Future<String?> uploadImagemEstrutura(File imageFile) async {
+    try {
+      final fileExt = imageFile.path.split('.').last;
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final filePath = 'estruturas/$fileName';
+
+      // 1. CHAMA O SUPABASE DIRETAMENTE AQUI
+      final supabase = Supabase.instance.client;
+
+      // 2. Faz o upload da imagem
+      await supabase.storage.from('projetos').upload(filePath, imageFile);
+
+      // 3. Pega o link público
+      final publicUrl = supabase.storage.from('projetos').getPublicUrl(filePath);
+      return publicUrl;
+      
+    } catch (e) {
+      throw Exception('Falha ao fazer upload da imagem: $e');
     }
   }
 }

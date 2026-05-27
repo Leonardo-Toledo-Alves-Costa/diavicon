@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:diavicon/features/projetos/models/projeto_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+
 class ProjectRepository {
   final SupabaseClient _supabase;
   ProjectRepository(this._supabase);

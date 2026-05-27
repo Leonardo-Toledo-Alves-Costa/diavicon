@@ -1,27 +1,34 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
-import '../../../core/widgets/compact_button.dart';
+import '../models/estrutura_model.dart';
+import '../widgets/proprietario_vinculo_section.dart';
+import '../widgets/header_imagem_editavel.dart';
+import '../widgets/mapa_preview_widget.dart';
 
-class EstruturaInformacaoScreen extends StatefulWidget {
-  const EstruturaInformacaoScreen({super.key});
+class EstruturaInformacaoScreen extends ConsumerStatefulWidget {
+  final EstruturaModel estrutura;
+  final String projetoId; 
+
+  const EstruturaInformacaoScreen({super.key, required this.estrutura, required this.projetoId});
 
   @override
-  State<EstruturaInformacaoScreen> createState() => _EstruturaInformacaoScreenState();
+  ConsumerState<EstruturaInformacaoScreen> createState() => _EstruturaInformacaoScreenState();
 }
 
-class _EstruturaInformacaoScreenState extends State<EstruturaInformacaoScreen> {
+class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoScreen> {
   final double _fieldSpacing = 16.0;
 
-  // Controllers para os campos de texto
-  final _nomeController = TextEditingController(text: 'Estrutura 123');
+  // Controladores de Texto
+  final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
-  final _idadeController = TextEditingController(text: '26');
-  final _latController = TextEditingController(text: '26');
-  final _longController = TextEditingController(text: '26');
+  final _idadeController = TextEditingController();
+  final _latController = TextEditingController();
+  final _longController = TextEditingController();
   final _cepController = TextEditingController();
   final _enderecoController = TextEditingController();
   final _cidadeController = TextEditingController();
@@ -29,308 +36,184 @@ class _EstruturaInformacaoScreenState extends State<EstruturaInformacaoScreen> {
   final _paisController = TextEditingController();
   final _ufController = TextEditingController();
 
-  // Variáveis para os Dropdowns
-  String? _caaSelecionado;
-  String? _conjuntoSelecionado;
-  String? _utilizacaoSelecionada;
-  String? _tipoEstruturaSelecionado;
-  String? _tipologiaSelecionada;
+  String? _caaSelecionado, _conjuntoSelecionado, _utilizacaoSelecionada, _tipoEstruturaSelecionado, _tipologiaSelecionada;
+
+  String? _clean(String? val) => (val != null && val.trim().isNotEmpty) ? val : null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.estrutura;
+    _nomeController.text = e.nome ?? '';
+    _descricaoController.text = e.descricao ?? '';
+    _idadeController.text = e.idadeAnos?.toString() ?? '';
+    _latController.text = e.latitude?.toString() ?? '';
+    _longController.text = e.longitude?.toString() ?? '';
+    _cepController.text = e.cep ?? '';
+    _enderecoController.text = e.endereco ?? '';
+    _cidadeController.text = e.cidade ?? '';
+    _numeroController.text = e.numero ?? '';
+    _paisController.text = e.pais ?? '';
+    _ufController.text = e.uf ?? '';
+
+    _caaSelecionado = _clean(e.caa);
+    _conjuntoSelecionado = _clean(e.conjuntoEstrutural);
+    _utilizacaoSelecionada = _clean(e.utilizacao);
+    _tipoEstruturaSelecionado = _clean(e.tipo);
+    _tipologiaSelecionada = _clean(e.tipologiaEstrutural);
+  }
+
+  @override
+  void dispose() {
+    _nomeController.dispose(); _descricaoController.dispose(); _idadeController.dispose(); _latController.dispose();
+    _longController.dispose(); _cepController.dispose(); _enderecoController.dispose(); _cidadeController.dispose();
+    _numeroController.dispose(); _paisController.dispose(); _ufController.dispose();
+    super.dispose();
+  }
+
+  Widget _buildStatusBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(color: const Color(0xFFFFF3E0), borderRadius: BorderRadius.circular(12)),
+      child: Text(widget.estrutura.status ?? 'Pendente', style: const TextStyle(color: AppColors.primary, fontSize: 10, fontWeight: FontWeight.bold)),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    double? latAtual = double.tryParse(_latController.text.trim());
+    double? longAtual = double.tryParse(_longController.text.trim());
+
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(
-        title: 'Estrutura\nInformações', 
-        showBackButton: true,
-      ),
+      appBar: const CustomAppBar(title: 'Estrutura\nInformações', showBackButton: true),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // 1. Imagem de Cabeçalho com ícone de edição
-            _buildImageHeader(),
-            const SizedBox(height: 24),
-
-            // 2. Campos Iniciais (HINT ADICIONADO AQUI)
-            CustomTextField(
-              label: 'Nome',
-              hint: 'Estrutura 123', // <-- Adicionado
-              controller: _nomeController,
+            HeaderImagemEditavel(
+              imageUrl: widget.estrutura.imageUrl,
+              onEditPressed: () { /* Lógica futura de alterar imagem */ },
             ),
-            SizedBox(height: _fieldSpacing),
-
-            const Text('Status', style: TextStyle(fontSize: 14, color: AppColors.hintText)),
-            const SizedBox(height: 4),
-            _buildBadge('Pendente', const Color(0xFFFFF3E0), AppColors.primary),
-            SizedBox(height: _fieldSpacing),
-
-            const Text('Descrição', style: TextStyle(fontSize: 14, color: AppColors.hintText)),
-            const SizedBox(height: 4),
-            TextFormField(
-              controller: _descricaoController,
-              maxLines: 4,
-              decoration: InputDecoration(
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
-              ),
-            ),
-            const SizedBox(height: 24),
-
-            // 3. Seção do Proprietário
-            _buildProprietarioSection(),
-            const SizedBox(height: 24),
-
-            // 4. Seção de Cadastro
-            const Text(
-              'Cadastro',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
-            ),
-            const SizedBox(height: 16),
-
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: CustomDropdown<String>(
-                    label: 'CAA',
-                    value: _caaSelecionado,
-                    items: const [
-                      DropdownMenuItem(value: '1', child: Text('I')),
-                      DropdownMenuItem(value: '2', child: Text('II')),
-                    ],
-                    onChanged: (val) => setState(() => _caaSelecionado = val),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  flex: 2,
-                  child: CustomTextField(
-                    label: 'Idade (anos)',
-                    hint: '26', // <-- Adicionado
-                    keyboardType: TextInputType.number,
-                    controller: _idadeController,
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            CustomDropdownWithAdd<String>(
-              label: 'Conjunto Estrutural',
-              value: _conjuntoSelecionado,
-              items: const [DropdownMenuItem(value: '1', child: Text('Conjunto Padrão'))],
-              onChanged: (val) => setState(() => _conjuntoSelecionado = val),
-              onAddPressed: () {},
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            CustomDropdownWithAdd<String>(
-              label: 'Utilização da estrutura',
-              value: _utilizacaoSelecionada,
-              items: const [DropdownMenuItem(value: '1', child: Text('Residencial'))],
-              onChanged: (val) => setState(() => _utilizacaoSelecionada = val),
-              onAddPressed: () {},
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            CustomDropdownWithAdd<String>(
-              label: 'Tipo de estrutura',
-              value: _tipoEstruturaSelecionado,
-              items: const [DropdownMenuItem(value: '1', child: Text('Concreto Armado'))],
-              onChanged: (val) => setState(() => _tipoEstruturaSelecionado = val),
-              onAddPressed: () {},
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            CustomDropdownWithAdd<String>(
-              label: 'Tipologia estrutural',
-              value: _tipologiaSelecionada,
-              items: const [DropdownMenuItem(value: '1', child: Text('Edifício'))],
-              onChanged: (val) => setState(() => _tipologiaSelecionada = val),
-              onAddPressed: () {},
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            // Latitude e Longitude (HINTS ADICIONADOS AQUI)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: CustomTextField(
-                    label: 'Latitude', 
-                    hint: '26', // <-- Adicionado
-                    controller: _latController,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: CustomTextField(
-                    label: 'Longitude', 
-                    hint: '26', // <-- Adicionado
-                    controller: _longController,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(24),
-                  child: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: Center(
-                      child: Image.asset(
-                        'assets/images/map_pin.png', 
-                        width: 24,
-                        height: 24,
-                        color: Colors.white,
-                      ),
+            
+            Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Bloco Inicial Desativado
+                  AbsorbPointer(
+                    absorbing: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        CustomTextField(label: 'Nome', hint: 'Sem nome', controller: _nomeController, enabled: false),
+                        SizedBox(height: _fieldSpacing),
+                        const Text('Status', style: TextStyle(fontSize: 14, color: AppColors.hintText)),
+                        const SizedBox(height: 4),
+                        _buildStatusBadge(),
+                        SizedBox(height: _fieldSpacing),
+                        const Text('Descrição', style: TextStyle(fontSize: 14, color: AppColors.hintText)),
+                        const SizedBox(height: 4),
+                        TextFormField(
+                          controller: _descricaoController,
+                          maxLines: 4,
+                          enabled: false, 
+                          decoration: InputDecoration(
+                            filled: true,
+                            fillColor: Colors.grey[50],
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
+                            disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.inputBorder)),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
                     ),
                   ),
-                ),
-              ],
-            ),
-            SizedBox(height: _fieldSpacing),
 
-            // Endereço (Os hints já estavam aqui)
-            CustomTextField(label: 'CEP', hint: '000000-000', controller: _cepController),
-            SizedBox(height: _fieldSpacing),
-            CustomTextField(label: 'Endereço', hint: 'Rua...', controller: _enderecoController),
-            SizedBox(height: _fieldSpacing),
+                  // Seção do Proprietário (Sincronizada com o Supabase)
+                  ProprietarioVinculoSection(projetoId: widget.projetoId),
+                  const SizedBox(height: 24),
 
-            Row(
-              children: [
-                Expanded(child: CustomTextField(label: 'Cidade', hint: 'Cidade', controller: _cidadeController)),
-                const SizedBox(width: 16),
-                Expanded(child: CustomTextField(label: 'Número', hint: '123', controller: _numeroController)),
-              ],
-            ),
-            SizedBox(height: _fieldSpacing),
-
-            Row(
-              children: [
-                Expanded(child: CustomTextField(label: 'Pais', hint: 'Brasil', controller: _paisController)),
-                const SizedBox(width: 16),
-                Expanded(child: CustomTextField(label: 'UF', hint: 'XX', controller: _ufController)),
-              ],
-            ),
-            const SizedBox(height: 24),
-
-            // 5. Indicação no mapa (Imagem)
-            const Text('Indicação no mapa', style: TextStyle(fontSize: 14, color: AppColors.hintText)),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: Image.asset(
-                'assets/images/project_placeholder.png', 
-                width: double.infinity,
-                height: 180,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Container(
-                  height: 180,
-                  color: Colors.grey[300],
-                  child: const Center(child: Text('Imagem do Mapa')),
-                ),
+                  // Bloco de Cadastro e Localização Desativado
+                  AbsorbPointer(
+                    absorbing: true,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Cadastro', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                        const SizedBox(height: 16),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(flex: 3, child: CustomDropdown<String>(label: 'CAA', value: _caaSelecionado ?? '1', items: [DropdownMenuItem(value: _caaSelecionado ?? '1', child: Text(_caaSelecionado ?? 'Não Informado'))], onChanged: (_) {})),
+                            const SizedBox(width: 16),
+                            Expanded(flex: 2, child: CustomTextField(label: 'Idade (anos)', hint: '-', controller: _idadeController, enabled: false)),
+                          ],
+                        ),
+                        SizedBox(height: _fieldSpacing),
+                        CustomDropdownWithAdd<String>(label: 'Conjunto Estrutural', value: _conjuntoSelecionado ?? '1', items: [DropdownMenuItem(value: _conjuntoSelecionado ?? '1', child: Text(_conjuntoSelecionado ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+                        SizedBox(height: _fieldSpacing),
+                        CustomDropdownWithAdd<String>(label: 'Utilização da estrutura', value: _utilizacaoSelecionada ?? '1', items: [DropdownMenuItem(value: _utilizacaoSelecionada ?? '1', child: Text(_utilizacaoSelecionada ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+                        SizedBox(height: _fieldSpacing),
+                        CustomDropdownWithAdd<String>(label: 'Tipo de estrutura', value: _tipoEstruturaSelecionado ?? '1', items: [DropdownMenuItem(value: _tipoEstruturaSelecionado ?? '1', child: Text(_tipoEstruturaSelecionado ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+                        SizedBox(height: _fieldSpacing),
+                        CustomDropdownWithAdd<String>(label: 'Tipologia estrutural', value: _tipologiaSelecionada ?? '1', items: [DropdownMenuItem(value: _tipologiaSelecionada ?? '1', child: Text(_tipologiaSelecionada ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+                        SizedBox(height: _fieldSpacing),
+                        
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(child: CustomTextField(label: 'Latitude', hint: '-', controller: _latController, enabled: false)),
+                            const SizedBox(width: 8),
+                            Expanded(child: CustomTextField(label: 'Longitude', hint: '-', controller: _longController, enabled: false)),
+                            const SizedBox(width: 12),
+                            // 👇 SIMBOLO DO MAPA AJUSTADO VOLTANDO A SER LARANJA (AppColors.primary) 👇
+                            Container(
+                              width: 48, 
+                              height: 48, 
+                              decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle), 
+                              child: Center(child: Image.asset('assets/images/map_pin.png', width: 24, height: 24, color: Colors.white))
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: _fieldSpacing),
+                        CustomTextField(label: 'CEP', hint: '-', controller: _cepController, enabled: false),
+                        SizedBox(height: _fieldSpacing),
+                        CustomTextField(label: 'Endereço', hint: '-', controller: _enderecoController, enabled: false),
+                        SizedBox(height: _fieldSpacing),
+                        Row(
+                          children: [
+                            Expanded(child: CustomTextField(label: 'Cidade', hint: '-', controller: _cidadeController, enabled: false)),
+                            const SizedBox(width: 16),
+                            Expanded(child: CustomTextField(label: 'Número', hint: '-', controller: _numeroController, enabled: false)),
+                          ],
+                        ),
+                        SizedBox(height: _fieldSpacing),
+                        Row(
+                          children: [
+                            Expanded(child: CustomTextField(label: 'País', hint: '-', controller: _paisController, enabled: false)),
+                            const SizedBox(width: 16),
+                            Expanded(child: CustomTextField(label: 'UF', hint: '-', controller: _ufController, enabled: false)),
+                          ],
+                        ),
+                        const SizedBox(height: 24),
+                        
+                        // Mini-Mapa Preview interativo (Read-Only com AbsorbPointer interno)
+                        MapaPreviewWidget(
+                          latitude: latAtual,
+                          longitude: longAtual,
+                        ),
+                        
+                        const SizedBox(height: 40),
+                      ],
+                    ),
+                  ),
+                ],
               ),
-            ),
-            const SizedBox(height: 40),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildImageHeader() {
-    return Stack(
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(16),
-          child: Image.asset(
-            'assets/images/empresa.png', 
-            width: double.infinity,
-            height: 140,
-            fit: BoxFit.cover,
-          ),
-        ),
-        Positioned(
-          bottom: 8,
-          right: 8,
-          child: Container(
-            padding: const EdgeInsets.all(8),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              shape: BoxShape.circle,
-              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4)],
-            ),
-            child: const Icon(Icons.edit_outlined, color: AppColors.textDark, size: 24),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProprietarioSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Divider(color: AppColors.inputBorder, thickness: 1),
-        const SizedBox(height: 16),
-        const Text(
-          'Proprietário da estrutura',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'O proprietário da estrutura é responsável pela gestão e compartilhamento dos dados',
-          style: TextStyle(fontSize: 12, color: AppColors.hintText),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            const CircleAvatar(
-              radius: 20,
-              backgroundColor: Colors.white,
-              backgroundImage: AssetImage('assets/images/empresa.png'),
-            ),
-            const SizedBox(width: 12),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Cond. Portal do Solar', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                const SizedBox(height: 4),
-                _buildBadge('Não Vinculado', const Color(0xFFFFEBEE), Colors.red),
-              ],
-            ),
-            const Spacer(),
-            CompactButton(
-              text: 'Vincular',
-              onPressed: () {},
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        const Divider(color: AppColors.inputBorder, thickness: 1),
-      ],
-    );
-  }
-
-  Widget _buildBadge(String text, Color bgColor, Color textColor) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Text(
-        text,
-        style: TextStyle(color: textColor, fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }

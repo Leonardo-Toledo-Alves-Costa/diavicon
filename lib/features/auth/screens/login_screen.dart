@@ -53,7 +53,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     return AuthLayout(
       logoHeight: 220,
       child: SingleChildScrollView(
-        // BouncingScrollPhysics dá aquele efeito elástico legal no iOS
         physics: const BouncingScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 35, 28, 20),
@@ -132,7 +131,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Image.asset('assets/images/ic_linkedin.png', height: 45),
                     const SizedBox(width: 35),
-                    Image.asset('assets/images/ic_google.png', height: 45),
+                    GestureDetector(
+                      onTap: () {
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .autenticarComGoogle(context);
+                      },
+                      child: Image.asset(
+                        'assets/images/ic_google.png',
+                        height: 45,
+                      ),
+                    ),
                   ],
                 ),
 

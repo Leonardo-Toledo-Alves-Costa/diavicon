@@ -11,6 +11,7 @@ class CustomTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
   final bool? enabled;
+  final bool isRequired; // 🚨 NOVO PARÂMETRO
   final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
@@ -23,6 +24,7 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType,
     this.suffixIcon,
     this.enabled,
+    this.isRequired = false, // 🚨 Padrão é falso
     this.inputFormatters,
   });
 
@@ -31,12 +33,22 @@ class CustomTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+        // 🚨 RICH TEXT PARA O ASTERISCO COLORIDO
+        RichText(
+          text: TextSpan(
+            text: label.replaceAll('*', '').trim(),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+            children: [
+              if (isRequired || label.contains('*'))
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.primary),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
@@ -46,7 +58,7 @@ class CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
-          enabled: enabled, // Controla se o campo pode ser editado
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText),
@@ -65,7 +77,6 @@ class CustomTextField extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.primary, width: 2),
             ),
-            // Estilo de quando o campo está desativado (_isLoading = true)
             disabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),

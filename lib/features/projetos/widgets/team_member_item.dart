@@ -15,6 +15,9 @@ class TeamMemberItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Verifica se a imagem vem da internet ou é o placeholder local
+    final bool isNetworkImage = imagePath.startsWith('http');
+
     return Padding(
       padding: const EdgeInsets.only(right: 16),
       child: Column(
@@ -22,11 +25,13 @@ class TeamMemberItem extends StatelessWidget {
           CircleAvatar(
             radius: 28,
             backgroundColor: AppColors.inputBorder,
-            backgroundImage: AssetImage(imagePath), // Aqui usa o seu user.png
+            backgroundImage: isNetworkImage
+                ? NetworkImage(imagePath)
+                : AssetImage(imagePath) as ImageProvider,
           ),
           const SizedBox(height: 6),
           Text(
-            name.split(' ')[0], // Pega só o primeiro nome como no protótipo
+            name.split(' ').first, // Pega só o primeiro nome como no protótipo
             style: const TextStyle(
               fontSize: 11,
               fontWeight: FontWeight.bold,

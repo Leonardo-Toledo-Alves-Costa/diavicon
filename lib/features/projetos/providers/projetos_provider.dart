@@ -1,47 +1,105 @@
+import 'package:diavicon/core/widgets/status_badge.dart';
 import 'package:diavicon/features/projetos/repositories/project_repository.dart';
-import 'package:diavicon/features/projetos/models/projeto_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../models/projeto_model.dart';
 
-final projetoRepositoryProvider = Provider((ref) => ProjectRepository(Supabase.instance.client));
-/// Provider da LISTA BRUTA 
-/// Ele observa o currentUserProvider para buscar apenas os projetos
-/// que o usuário tem permissão para ver
-final projectsListProvider = FutureProvider<List<ProjetoModel>>((ref) async {
-  final user = ref.watch(currentUserProvider);
-  
-  // Se não tem usuário logado, retorna lista vazia
-  if (user == null) return [];
-
-  final repo = ref.read(projetoRepositoryProvider);
-  return await repo.fetchUserProjects(user.id);
+final projetoRepositoryProvider = Provider<ProjectRepository>((ref) {
+  final client = Supabase.instance.client;
+  return ProjectRepository(client);
 });
 
-/// Provider da BUSCA
 final searchQueryProvider = StateProvider<String>((ref) => '');
+final filtroStatusProvider = StateProvider<String>((ref) => 'Todos');
+final filtroRecentesProvider = StateProvider<bool>((ref) => true);
 
-/// Provider da LISTA FILTRADA
-/// Faz o filtro em memória, sem precisar bater no Supabase toda hora
-final filteredProjectsProvider = Provider<AsyncValue<List<ProjetoModel>>>((ref) {
-  final projectsAsync = ref.watch(projectsListProvider);
-  final query = ref.watch(searchQueryProvider).toLowerCase();
+final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
 
-  return projectsAsync.whenData((lista) {
-    if (query.isEmpty) return lista;
+  if (userId == null) return [];
+
+  final usuarioData = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+  final minhaEmpresaId = usuarioData?['empresa_id'];
+  if (minhaEmpresaId == null) return [];
+
+  // 🔥 A MUDANÇA ESTÁ AQUI: Agora ele SÓ busca se o Gestor tiver marcado o checkbox (ativo = true)
+  final colaboradoresData = await supabase
+      .from('projeto_colaboradores')
+      .select('projeto_id')
+      .eq('empresa_id', minhaEmpresaId)
+      .eq('ativo', true); 
+
+  final List<String> projetosComoColaborador = colaboradoresData
+      .map((e) => e['projeto_id'].toString())
+      .toList();
+
+  String filtroOr = 'empresa_gestora_id.eq.$minhaEmpresaId,empresa_cliente_id.eq.$minhaEmpresaId';
+  if (projetosComoColaborador.isNotEmpty) {
+    filtroOr += ',id.in.(${projetosComoColaborador.join(',')})';
+  }
+
+  final response = await supabase
+      .from('projetos')
+      .select('''
+        *,
+        prioridade(nome),
+        status_projeto(nome),
+        empresas!projetos_empresa_gestora_id_fkey(nome),
+        empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
+      ''')
+      .or(filtroOr);
+
+  List<ProjetoModel> todosProjetos = (response as List).map((json) {
+    return ProjetoModel.fromMap(json); 
+  }).toList();
+
+  final busca = ref.watch(searchQueryProvider).toLowerCase();
+  final statusFiltro = ref.watch(filtroStatusProvider);
+  final isRecente = ref.watch(filtroRecentesProvider);
+
+  var listaFiltrada = todosProjetos.where((p) {
+    final matchBusca = p.nome.toLowerCase().contains(busca) ||
+                       p.empresaNome.toLowerCase().contains(busca);
     
-    return lista.where((p) {
-      final matchesNome = p.nome.toLowerCase().contains(query);
-      final matchesDesc = p.descricao?.toLowerCase().contains(query) ?? false;
-      return matchesNome || matchesDesc;
-    }).toList();
-  });
+    bool matchStatus = true;
+    if (statusFiltro != 'Todos') {
+      if (statusFiltro == 'Em andamento') matchStatus = p.statusBadge == BadgeStatus.emAndamento;
+      if (statusFiltro == 'Concluído') matchStatus = p.statusBadge == BadgeStatus.concluido;
+    }
+
+    return matchBusca && matchStatus;
+  }).toList();
+
+  if (isRecente) {
+    listaFiltrada.sort((a, b) => b.criadoEm.compareTo(a.criadoEm));
+  } else {
+    listaFiltrada.sort((a, b) => a.criadoEm.compareTo(b.criadoEm));
+  }
+
+  return listaFiltrada;
 });
 
-/// Provider do DETALHE (Usado na ProjectDetailScreen)
-/// O .family permite passar o ID do projeto por parâmetro.
-final projectDetailProvider = FutureProvider.family<ProjetoModel, String>((ref, id) async {
-  final repo = ref.read(projetoRepositoryProvider);
-  return await repo.getProjectById(id);
+final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, String>((ref, id) async {
+  final supabase = Supabase.instance.client;
+  
+  final response = await supabase
+      .from('projetos')
+      .select('''
+        *,
+        prioridade(nome),
+        status_projeto(nome),
+        empresas!projetos_empresa_gestora_id_fkey(nome),
+        empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
+      ''')
+      .eq('id', id)
+      .single();
+      
+  return ProjetoModel.fromMap(response);
 });

@@ -1,6 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/status_badge.dart'; // Onde está o seu Enum
+import '../../../core/widgets/status_badge.dart';
 
 class ProjectCard extends StatelessWidget {
   final String title;
@@ -41,12 +42,7 @@ class ProjectCard extends StatelessWidget {
             children: [
               ClipRRect(
                 borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                child: Image.asset(
-                  imageUrl,
-                  height: 140,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                child: _buildCapaProjeto(),
               ),
               // Badge de Status (Esquerda)
               Positioned(
@@ -60,7 +56,7 @@ class ProjectCard extends StatelessWidget {
                 right: 12,
                 child: _buildPriorityLabel(),
               ),
-              // Logo da Empresa Gestora (Sobreposta)
+              // Logo da Empresa Gestora / Cliente (Sobreposta)
               Positioned(
                 bottom: -15,
                 right: 12,
@@ -82,6 +78,8 @@ class ProjectCard extends StatelessWidget {
                 Text(
                   title,
                   style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textDark),
+                  maxLines: 1, 
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 16),
                 const Text('Progresso', style: TextStyle(fontSize: 12, color: AppColors.hintText)),
@@ -116,7 +114,42 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  // Helpers Visuais
+  // --- Helpers Visuais ---
+
+  /// Renderiza a imagem baseado se é um link do banco, um asset padrão ou um arquivo local
+  Widget _buildCapaProjeto() {
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        height: 140,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => _fallbackImage(),
+      );
+    } 
+    // 2. Se for um arquivo local recém-tirado pela câmera/galeria
+    else if (imageUrl.startsWith('/data') || imageUrl.startsWith('file://')) {
+      return Image.file(
+        File(imageUrl),
+        height: 140,
+        width: double.infinity,
+        fit: BoxFit.cover,
+      );
+    } 
+    else {
+      return _fallbackImage();
+    }
+  }
+
+  Widget _fallbackImage() {
+    return Image.asset(
+      'assets/images/project_placeholder1.png', // Ou um 'assets/images/projeto_placeholder.png'
+      height: 140,
+      width: double.infinity,
+      fit: BoxFit.cover,
+    );
+  }
+
   Color _getProgressColor() {
     if (status == BadgeStatus.concluido) return Colors.green;
     if (status == BadgeStatus.cancelado) return Colors.red;

@@ -24,7 +24,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
   }
 
   void _realizarBusca() {
-    // Só atualiza o estado se tiver pelo menos 2 letras, pra não forçar o banco à toa
     if (_buscaController.text.trim().length >= 2) {
       setState(() {
         _termoBusca = _buscaController.text.trim();
@@ -38,7 +37,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
 
   @override
   Widget build(BuildContext context) {
-    // Escuta o provider GLOBAL, passando o que o usuário digitou
     final resultadosAsync = ref.watch(buscarTodasEmpresasProvider(_termoBusca));
 
     return ModalSelecaoBase(
@@ -54,7 +52,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
         _buildCampoBusca(),
         const SizedBox(height: 24),
         
-        // Controla o que aparece na tela dependendo do texto digitado
         if (_termoBusca.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
@@ -66,7 +63,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
             ),
           )
         else
-          // Lida com o carregamento, erro ou sucesso da busca no Supabase
           resultadosAsync.when(
             loading: () => const Center(
               child: Padding(
@@ -160,14 +156,12 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
   }) {
     return InkWell(
       onTap: () {
-        // Atualiza o estado do Rascunho com o ID e NOME REAIS do banco
         ref.read(projetoFormProvider.notifier).update((state) => state.copyWith(
               clienteId: id,
               clienteNome: nome,
               isNovoCliente: false, 
             ));
         
-        // fecha este modal e volta para a tela de Novo Projeto
         Navigator.pop(context); 
       },
       child: Padding(

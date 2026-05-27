@@ -8,6 +8,11 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
 import '../providers/empresa_provider.dart';
+import '../../../core/utils/formatters/cnpj_formatter.dart';
+import '../../../core/utils/validators/cnpj_validator.dart';
+
+
+
 
 class EmpresaCadastroScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosUsuario;
@@ -174,11 +179,16 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
               const SizedBox(height: 12),
               CustomTextField(
                 label: 'CNPJ',
-                hint: '00.000.000/0001-00',
+                hint: '123.456.789-10',
                 controller: _cnpjController,
                 keyboardType: TextInputType.number,
-                validator: (val) =>
-                    (val?.length ?? 0) < 14 ? 'CNPJ inválido' : null,
+                inputFormatters: [CnpjFormatter.mask],
+                validator: (val) {
+                  if (!CnpjValidator.isValid(val)) {
+                    return 'CNPJ inválido';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 12),
               CustomTextField(

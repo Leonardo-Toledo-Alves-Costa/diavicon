@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 
 class AppColors {
   // COR PRINCIPAL ( DiaViCon)
-  static const Color primary = Color(0xFFD99100); // 
+  static const Color primary = Color(0xFFF9A232); // 
 
   // PALETA DE CINZAS (Remetem ao concreto e rigor técnico) 
   static const Color greyDarkest = Color(0xFF626365); 
@@ -12,6 +12,7 @@ class AppColors {
   static const Color greyVeryLight = Color(0xFFE6E7E8); 
 
   // SEMÂNTICA DE CORES PARA O APP
+  static const Color textPrimary = Color(0xFF626365);
   static const Color textDark = Color(0xFF626365); 
   static const Color background = Color(0xFFE6E7E8);
   static const Color white = Colors.white;

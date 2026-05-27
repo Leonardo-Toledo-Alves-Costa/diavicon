@@ -8,6 +8,8 @@ class CustomDropdown<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final String hint;
   final String? tooltip;
+  final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final String? Function(T?)? validator;
 
   const CustomDropdown({
     super.key,
@@ -17,6 +19,8 @@ class CustomDropdown<T> extends StatelessWidget {
     this.value,
     this.hint = 'Selecione',
     this.tooltip,
+    this.isRequired = false, // 🚨 Padrão é falso
+    this.validator,
   });
 
   @override
@@ -24,15 +28,44 @@ class CustomDropdown<T> extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(color: AppColors.textDark, fontSize: 14),
-        ),
-        const SizedBox(height: 8),
+        if (label.isNotEmpty) ...[
+          // 🚨 RICH TEXT COM SUPORTE A TOOLTIP
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              RichText(
+                text: TextSpan(
+                  text: label.replaceAll('*', '').trim(),
+                  style: const TextStyle(
+                    color: AppColors.textDark,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                  children: [
+                    if (isRequired || label.contains('*'))
+                      const TextSpan(
+                        text: ' *',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                  ],
+                ),
+              ),
+              if (tooltip != null) ...[
+                const SizedBox(width: 4),
+                Tooltip(
+                  message: tooltip!,
+                  child: const Icon(Icons.info_outline, size: 16, color: AppColors.greyLight),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
         DropdownButtonFormField<T>(
           initialValue: value,
           items: items,
           onChanged: onChanged,
+          validator: validator,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),

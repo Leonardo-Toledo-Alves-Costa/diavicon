@@ -1,7 +1,3 @@
-import 'package:diavicon/core/utils/diavicon_modal.dart';
-import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
-import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
-import 'package:diavicon/features/projetos/widgets/new_project_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -56,9 +52,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
     return AuthLayout(
       logoHeight: 220,
-      // Envolvemos o Padding com o SingleChildScrollView para permitir a rolagem
       child: SingleChildScrollView(
-        // BouncingScrollPhysics dá aquele efeito elástico legal no iOS
         physics: const BouncingScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(28, 35, 28, 20),
@@ -130,7 +124,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   onPressed: isLoading ? null : _fazerLogin,
                 ),
 
-                // Mantemos o gap fixo que você criou
                 const SizedBox(height: 50),
 
                 Row(
@@ -138,7 +131,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   children: [
                     Image.asset('assets/images/ic_linkedin.png', height: 45),
                     const SizedBox(width: 35),
-                    Image.asset('assets/images/ic_google.png', height: 45),
+                    GestureDetector(
+                      onTap: () {
+                        ref
+                            .read(authControllerProvider.notifier)
+                            .autenticarComGoogle(context);
+                      },
+                      child: Image.asset(
+                        'assets/images/ic_google.png',
+                        height: 45,
+                      ),
+                    ),
                   ],
                 ),
 

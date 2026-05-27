@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:flutter/services.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
   final String hint;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
-  
-  // Novas propriedades opcionais (sem a palavra 'required')
-  final bool obscureText; 
+  final bool obscureText;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
+  final bool? enabled;
+  final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
     super.key,
@@ -18,9 +20,12 @@ class CustomTextField extends StatelessWidget {
     required this.hint,
     this.controller,
     this.validator,
-    this.obscureText = false, // Por padrão, não esconde o texto
+    this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
+    this.enabled,
+    this.isRequired = false, // 🚨 Padrão é falso
+    this.inputFormatters,
   });
 
   @override
@@ -28,24 +33,38 @@ class CustomTextField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+        // 🚨 RICH TEXT PARA O ASTERISCO COLORIDO
+        RichText(
+          text: TextSpan(
+            text: label.replaceAll('*', '').trim(),
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+            children: [
+              if (isRequired || label.contains('*'))
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.primary),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
         TextFormField(
+          inputFormatters: inputFormatters,
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          enabled: enabled,
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText),
-            suffixIcon: suffixIcon, // Aqui entra o ícone do olhinho
+            suffixIcon: suffixIcon,
+            filled: true,
+            fillColor: (enabled ?? true) ? Colors.white : Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -56,7 +75,11 @@ class CustomTextField extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primary),
+              borderSide: const BorderSide(color: AppColors.primary, width: 2),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: AppColors.inputBorder),
             ),
           ),
         ),

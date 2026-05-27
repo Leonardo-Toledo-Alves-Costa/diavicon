@@ -4,7 +4,7 @@ import '../models/empresa_model.dart';
 class EmpresaRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  /// Salva a empresa no Supabase e vincula ao usuário.
+  /// Salva a empresa no Supabase e vincula ao usuário
   /// Fluxo:
   ///   1. Insere endereço na tabela 'enderecos' → pega o ID.
   ///   2. Insere empresa na tabela 'empresas' vinculado ao endereço.
@@ -46,7 +46,7 @@ class EmpresaRepository {
 
     final String idEmpresa = empresaData['id'];
 
-    // O VÍNCULO CRÍTICO: Atualiza o usuário com o ID da empresa
+    // Atualiza o usuário com o ID da empresa
     await _supabase
         .from('usuarios')
         .update({

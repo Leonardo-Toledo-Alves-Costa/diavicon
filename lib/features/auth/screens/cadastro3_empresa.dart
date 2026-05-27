@@ -151,6 +151,17 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                   loading: _buildLoadingState,
                   error: (error, stackTrace) => _buildErrorState(error),
                   data: (planos) {
+                    planos = planos.where((plano) {
+                      final nome = plano.nome.toLowerCase();
+                      final descricao = plano.descricao.toLowerCase();
+                      bool isPlanoEmpresa =
+                          (descricao == 'plano starter para empresas' ||
+                          nome == 'basic' ||
+                          nome == 'professional' ||
+                          nome == 'advanced');
+                      return isPlanoEmpresa;
+                    }).toList();
+                    print(planos);
                     if (planos.isEmpty) {
                       return _buildEmptyState();
                     }
@@ -299,57 +310,58 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
           Expanded(
             child: SingleChildScrollView(
               padding: const EdgeInsets.fromLTRB(18, 18, 18, 12),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Plano ${plano.nome}',
-                    style: const TextStyle(
-                      color: AppColors.primary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    plano.descricao.isNotEmpty
-                        ? plano.descricao
-                        : 'Escolha o plano ideal para continuar o cadastro.',
-                    style: const TextStyle(
-                      color: AppColors.textDark,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w700,
-                      height: 1.15,
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  _buildFeatureList(plano),
-                  const SizedBox(height: 18),
-                  Center(
-                    child: RichText(
-                      textAlign: TextAlign.end,
-                      text: TextSpan(
-                        text: _formatarValor(plano.valor),
-                        style: const TextStyle(
-                          color: AppColors.primary,
-                          fontSize: 36,
-                          fontWeight: FontWeight.w900,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: _formatarVigencia(plano),
-                            style: const TextStyle(
-                              color: Colors.black,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Plano ${plano.nome}',
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 18),
+                    Text(
+                      plano.descricao.isNotEmpty
+                          ? plano.descricao
+                          : 'Escolha o plano ideal para continuar o cadastro.',
+                      style: const TextStyle(
+                        color: AppColors.textDark,
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                        height: 1.15,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    _buildFeatureList(plano),
+                    const SizedBox(height: 18),
+                  ],
+                ),
               ),
+            ),
+          ),
+          RichText(
+            textAlign: TextAlign.end,
+            text: TextSpan(
+              text: _formatarValor(plano.valor),
+              style: const TextStyle(
+                color: AppColors.primary,
+                fontSize: 36,
+                fontWeight: FontWeight.w900,
+              ),
+              children: [
+                TextSpan(
+                  text: _formatarVigencia(plano),
+                  style: const TextStyle(
+                    color: Colors.black,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
           ),
           Padding(
@@ -404,7 +416,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       child: Text(
         text,
         style: TextStyle(
-          fontSize: 20,
+          fontSize: 16,
           fontWeight: FontWeight.w500,
           color: Colors.grey.shade700,
           height: 1.25,

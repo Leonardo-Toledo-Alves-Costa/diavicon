@@ -60,24 +60,65 @@ class Cadastro1Empresa extends StatelessWidget {
                   ),
                 ),
               ),
-              Container(
-                width: double.infinity,
-                height: screenheight * 0.30,
-                color: AppColors.background,
-                child: Image.asset(
-                  'assets/images/escudo_diavicon.png',
-                  fit: BoxFit.contain,
+              Expanded(
+                child: Center(
+                  child: SizedBox(
+                    width: 280,
+                    height: 320,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned(
+                          left: 0,
+                          bottom: 0,
+                          child: Image.asset(
+                            'assets/images/cachorro.png',
+                            width: 210,
+                            fit: BoxFit.contain,
+                          ),
+                        ),
+                        Positioned(
+                          right: 0,
+                          top: 20,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.greyVeryLight,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Vamos\nComeçar?',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.textDark,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
+              SizedBox(height: screenheight * 0.04),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  CustomTextbutton(text: '<   Voltar', onPressed: () {}),
+                  CustomTextbutton(
+                    text: '<   Voltar',
+                    onPressed: () => context.pop(),
+                  ),
                   SizedBox(width: screenwidth * 0.2),
                   CompactButton(
                     text: 'Começar',
                     onPressed: () => context.push(
-                      '/empresa/servicos', extra: dadosUsuario,
+                      '/empresa/servicos',
+                      extra: dadosUsuario,
                     ), // Leva para os Checkboxes (Cadastro2)
                   ),
                 ],

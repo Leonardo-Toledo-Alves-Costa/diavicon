@@ -81,11 +81,16 @@ class CadastroR2Screen extends ConsumerWidget {
   void _irParaProximaEtapa(BuildContext context, String tipo) {
     // Adiciona o tipo escolhido ao mapa de dados que veio das telas anteriores
     final dadosAtualizados = {...dadosUsuario, 'tipo': tipo};
-
+    print(tipo); // Para debug: ver qual tipo foi selecionado
     if (tipo == 'Acadêmico') {
       // Vai para a tela de dados acadêmicos
       context.go('/register/academico', extra: dadosAtualizados);
-    } else {
+    }
+    else if (tipo == 'Cliente') {
+      // Vai para a tela de dados do cliente
+      context.go('/register/cliente/gate', extra: dadosAtualizados);
+    }
+    else {
       // Engenheiro e Proprietário seguem para o Onboarding de Empresa
       context.go('/empresa/gate', extra: dadosAtualizados);
     }

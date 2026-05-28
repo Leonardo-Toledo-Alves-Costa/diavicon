@@ -121,7 +121,7 @@ class _CadastroAcademicoScreenState
               alignment: Alignment.center,
               children: [
                 Image.asset(
-                  'assets/images/escudo_diavicon.png',
+                  'assets/images/cachorro.png',
                   fit: BoxFit.contain,
                   errorBuilder: (_, _, _) => const Icon(
                     Icons.school,

@@ -1,3 +1,7 @@
+import 'package:diavicon/features/auth/screens/cadastro0_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro1_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
+import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
 import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
@@ -48,9 +52,10 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       //  Redirecionamento para usuários logados
       if (isLoggedIn) {
-        // Permite continuar no onboarding de empresa sem interrupção
-        if (path.startsWith('/empresa/')) {
-          return null;
+        //Se ele estiver em QUALQUER parte do fluxo de empresa, 
+        // NÃO interrompa o fluxo dele. Deixe ele terminar o onboarding.
+        if (path.startsWith('/empresa/') ) {
+          return null; 
         }
 
         // Se o usuário já logado tentar acessar telas iniciais, manda para Projetos
@@ -96,6 +101,14 @@ final routerProvider = Provider<GoRouter>((ref) {
               return CadastroAcademicoScreen(dadosUsuario: extra);
             },
           ),
+          GoRoute(path: 'cliente/gate',
+        builder: (context, state) => Cadastro0Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/checkboxes',
+        builder: (context, state) => Cadastro1Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/planos',
+        builder: (context, state) => Cadastro2Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+          GoRoute(path: 'cliente/welcome',
+        builder: (context, state) => Cadastro3Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
         ],
       ),
 
@@ -137,7 +150,9 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
-      // --- ÁREA LOGADA (SHELL ROUTE COM BOTTOM BAR) ---
+
+
+      // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => MainScreen(child: child),

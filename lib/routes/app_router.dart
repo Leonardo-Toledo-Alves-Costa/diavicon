@@ -18,6 +18,9 @@ import '../../features/empresa/screens/empresa_planos_screen.dart';
 import '../../features/empresa/screens/empresa_cadastro_screen.dart';
 import '../../features/empresa/screens/empresa_bemvinda_screen.dart';
 
+// ── Elementos Estruturais ─────────────────────────────────────────────────────
+import '../../features/elementos/screens/elementos_screen.dart';
+
 // ── Home / Projetos ───────────────────────────────────────────────────────────
 import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
@@ -40,7 +43,6 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final path = state.uri.toString();
 
-      // Rotas que não exigem login
       const publicPrefixes = [
         '/',
         '/login',
@@ -60,7 +62,9 @@ final routerProvider = Provider<GoRouter>((ref) {
       if (!isLoggedIn && !isPublic) return '/login';
 
       if (isLoggedIn &&
-          (path == '/' || path == '/login' || path.startsWith('/register'))) {
+          (path == '/' ||
+              path == '/login' ||
+              path.startsWith('/register'))) {
         return '/projetos';
       }
 
@@ -100,7 +104,6 @@ final routerProvider = Provider<GoRouter>((ref) {
           return CadastroR2Screen(dadosUsuario: extra);
         },
       ),
-
       GoRoute(
         path: '/register/academico',
         builder: (context, state) {
@@ -172,6 +175,22 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: '/estruturas',
             builder: (context, state) => const Scaffold(
                 body: Center(child: Text('Tela de Estruturas'))),
+            routes: [
+              // ── Elementos Estruturais ──────────────────────────────────────
+              GoRoute(
+                path: ':estruturaId/elementos',
+                builder: (context, state) {
+                  final estruturaId = state.pathParameters['estruturaId']!;
+                  final extra =
+                      state.extra as Map<String, dynamic>? ?? {};
+                  return ElementosScreen(
+                    estruturaId: estruturaId,
+                    estruturaNome:
+                        extra['estruturaNome'] as String? ?? 'Estrutura',
+                  );
+                },
+              ),
+            ],
           ),
           GoRoute(
             path: '/empresa',

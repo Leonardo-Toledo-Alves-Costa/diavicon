@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/compact_button.dart';
@@ -17,6 +18,28 @@ class EstruturaHomeScreen extends StatelessWidget {
   final String projetoId;
 
   const EstruturaHomeScreen({super.key, required this.estrutura, required this.projetoId});
+
+  void _openElemento(
+    BuildContext context, {
+    required String elementoId,
+    required String titulo,
+    required String tipo,
+    required String local,
+    required String imageUrl,
+  }) {
+    context.push(
+      '/estruturas/${estrutura.id}/elementos/$elementoId',
+      extra: <String, dynamic>{
+        'projetoId': projetoId,
+        'estruturaId': estrutura.id,
+        'elementoId': elementoId,
+        'titulo': titulo,
+        'tipo': tipo,
+        'local': local,
+        'imageUrl': imageUrl,
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,9 +132,48 @@ class EstruturaHomeScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  const ElementoEstruturalCard(titulo: 'V201', tipo: 'Viga - Concreto armado', local: 'Casa de máquinas', imageUrl: 'assets/images/empresa.png'),
-                  const ElementoEstruturalCard(titulo: 'P102', tipo: 'Pilar - Concreto armado', local: '1º Subsolo', imageUrl: 'assets/images/empresa.png'),
-                  const ElementoEstruturalCard(titulo: 'P105', tipo: 'Pilar - Concreto armado', local: '3º Andar', imageUrl: 'assets/images/empresa.png'),
+                  ElementoEstruturalCard(
+                    titulo: 'V201',
+                    tipo: 'Viga - Concreto armado',
+                    local: 'Casa de máquinas',
+                    imageUrl: 'assets/images/empresa.png',
+                    onTap: () => _openElemento(
+                      context,
+                      elementoId: 'v201',
+                      titulo: 'V201',
+                      tipo: 'Viga - Concreto armado',
+                      local: 'Casa de máquinas',
+                      imageUrl: 'assets/images/empresa.png',
+                    ),
+                  ),
+                  ElementoEstruturalCard(
+                    titulo: 'P102',
+                    tipo: 'Pilar - Concreto armado',
+                    local: '1º Subsolo',
+                    imageUrl: 'assets/images/empresa.png',
+                    onTap: () => _openElemento(
+                      context,
+                      elementoId: 'p102',
+                      titulo: 'P102',
+                      tipo: 'Pilar - Concreto armado',
+                      local: '1º Subsolo',
+                      imageUrl: 'assets/images/empresa.png',
+                    ),
+                  ),
+                  ElementoEstruturalCard(
+                    titulo: 'P105',
+                    tipo: 'Pilar - Concreto armado',
+                    local: '3º Andar',
+                    imageUrl: 'assets/images/empresa.png',
+                    onTap: () => _openElemento(
+                      context,
+                      elementoId: 'p105',
+                      titulo: 'P105',
+                      tipo: 'Pilar - Concreto armado',
+                      local: '3º Andar',
+                      imageUrl: 'assets/images/empresa.png',
+                    ),
+                  ),
                 ],
               ),
             ),

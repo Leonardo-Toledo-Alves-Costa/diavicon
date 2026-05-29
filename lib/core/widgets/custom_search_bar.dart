@@ -27,14 +27,20 @@ class CustomSearchBar extends StatelessWidget {
               onChanged: onChanged,
               decoration: InputDecoration(
                 hintText: hintText,
-                hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
+                hintStyle: const TextStyle(
+                  color: AppColors.hintText,
+                  fontSize: 14,
+                ),
                 prefixIcon: const Icon(Icons.search, color: AppColors.hintText),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 0,
+                ),
                 filled: true,
-                fillColor: AppColors.white, 
+                fillColor: Colors.white,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(50),
-                  borderSide: BorderSide.none, 
+                  borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(50),
@@ -42,17 +48,14 @@ class CustomSearchBar extends StatelessWidget {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(50),
-                  borderSide: BorderSide.none, 
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
           ),
         ),
-        
-        if (trailing != null) ...[
-          const SizedBox(width: 12),
-          trailing!,
-        ],
+
+        if (trailing != null) ...[const SizedBox(width: 12), trailing!],
       ],
     );
   }

@@ -69,7 +69,7 @@ Future<T?> showDiaviconModal<T>({
                 maxHeight: MediaQuery.of(context).size.height * 0.85,
               ),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: Colors.white,
                 borderRadius: effectiveBorderRadius,
               ),
               child: IntrinsicHeight( // 🚨 Adicionado para dar estabilidade ao cálculo de altura

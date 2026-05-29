@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import '../constants/app_colors.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../constants/app_colors.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
@@ -11,7 +13,7 @@ class CustomTextField extends StatelessWidget {
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
   final bool? enabled;
-  final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final bool isRequired;
   final List<TextInputFormatter>? inputFormatters;
 
   const CustomTextField({
@@ -24,29 +26,34 @@ class CustomTextField extends StatelessWidget {
     this.keyboardType,
     this.suffixIcon,
     this.enabled,
-    this.isRequired = false, // 🚨 Padrão é falso
+    this.isRequired = false,
     this.inputFormatters,
   });
 
   @override
   Widget build(BuildContext context) {
+    final isEnabled = enabled ?? true;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // 🚨 RICH TEXT PARA O ASTERISCO COLORIDO
         RichText(
           text: TextSpan(
             text: label.replaceAll('*', '').trim(),
-            style: const TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
+            style: GoogleFonts.lato(
               color: AppColors.textDark,
+              fontSize: 20,
+              fontWeight: FontWeight.w300,
+              height: 1,
             ),
             children: [
               if (isRequired || label.contains('*'))
                 const TextSpan(
                   text: ' *',
-                  style: TextStyle(color: AppColors.primary),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
             ],
           ),
@@ -59,12 +66,25 @@ class CustomTextField extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           enabled: enabled,
+          style: GoogleFonts.lato(
+            color: isEnabled ? AppColors.textDark : Colors.grey[600],
+            fontSize: 18,
+            fontWeight: FontWeight.w300,
+            height: 1,
+            letterSpacing: 0.54,
+          ),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.hintText),
+            hintStyle: GoogleFonts.lato(
+              color: AppColors.hintText,
+              fontSize: 18,
+              fontWeight: FontWeight.w300,
+              height: 1,
+              letterSpacing: 0.54,
+            ),
             suffixIcon: suffixIcon,
             filled: true,
-            fillColor: (enabled ?? true) ? Colors.white : Colors.grey[100],
+            fillColor: isEnabled ? Colors.white : Colors.grey[100],
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),

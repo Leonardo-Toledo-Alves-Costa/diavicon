@@ -152,7 +152,7 @@ class _OpcaoButton extends StatelessWidget {
         ),
         child: Row(
           children: [
-            Icon(icone, color: AppColors.white, size: 28),
+            Icon(icone, color: Colors.white, size: 28),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -161,7 +161,7 @@ class _OpcaoButton extends StatelessWidget {
                   Text(
                     texto,
                     style: const TextStyle(
-                      color: AppColors.white,
+                      color: Colors.white,
                       fontWeight: FontWeight.bold,
                       fontSize: 14,
                     ),
@@ -171,7 +171,7 @@ class _OpcaoButton extends StatelessWidget {
                     Text(
                       subtexto!,
                       style: const TextStyle(
-                        color: AppColors.white,
+                        color: Colors.white,
                         fontSize: 11,
                       ),
                     ),

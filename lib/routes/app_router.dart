@@ -5,6 +5,11 @@ import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
 import 'package:diavicon/features/auth/screens/completar_cadastro_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
+import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
+import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
+import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
+import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
+import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -27,6 +32,32 @@ import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
 import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+
+Map<String, dynamic> _routeExtra(Object? extra) {
+  if (extra is Map<String, dynamic>) return extra;
+  if (extra is Map) {
+    return extra.map((key, value) => MapEntry(key.toString(), value));
+  }
+  return <String, dynamic>{};
+}
+
+String? _stringExtra(Map<String, dynamic> extra, String key) {
+  final value = extra[key];
+  if (value == null) return null;
+  return value.toString();
+}
+
+String? _elementoTipo(Map<String, dynamic> extra) {
+  final tipo = _stringExtra(extra, 'tipo');
+  if (tipo == null || tipo.trim().isEmpty) return null;
+  return tipo.split('-').first.trim();
+}
+
+String? _elementoTipologia(Map<String, dynamic> extra) {
+  final tipo = _stringExtra(extra, 'tipo');
+  if (tipo == null || !tipo.contains('-')) return null;
+  return tipo.split('-').skip(1).join('-').trim();
+}
 
 final routerProvider = Provider<GoRouter>((ref) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -181,6 +212,58 @@ final routerProvider = Provider<GoRouter>((ref) {
 
 
       // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
+      GoRoute(
+        path: '/estruturas/:estruturaId/elementos/:elementoId',
+        builder: (context, state) {
+          final extra = _routeExtra(state.extra);
+          return ElementoScreen(
+            estruturaId: state.pathParameters['estruturaId'],
+            elementoId: state.pathParameters['elementoId'],
+            projetoId: _stringExtra(extra, 'projetoId'),
+            titulo: _stringExtra(extra, 'titulo'),
+            tipo: _stringExtra(extra, 'tipo'),
+            local: _stringExtra(extra, 'local'),
+            imageUrl: _stringExtra(extra, 'imageUrl'),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: 'informacoes',
+            builder: (context, state) {
+              final extra = _routeExtra(state.extra);
+              final basePath =
+                  '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+
+              return ElementoInfoScreen(
+                initialNome: _stringExtra(extra, 'titulo') ?? 'ABC Corp.',
+                initialTipoElemento: _elementoTipo(extra),
+                initialTipologiaEstrutural: _elementoTipologia(extra),
+                initialLocalElemento: _stringExtra(extra, 'local'),
+                onOpenRelatorios: () => context.push(
+                  '$basePath/relatorios',
+                  extra: extra,
+                ),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'relatorios',
+            builder: (context, state) {
+              final extra = _routeExtra(state.extra);
+              final basePath =
+                  '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+
+              return RelatoriosScreen(
+                onOpenInformacoes: () => context.push(
+                  '$basePath/informacoes',
+                  extra: extra,
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => MainScreen(child: child),
@@ -202,8 +285,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Outras abas da Bottom Bar
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Estruturas'))),
+            builder: (context, state) => EstruturaHomeScreen(
+              projetoId: 'demo-projeto',
+              estrutura: EstruturaModel(
+                id: 'demo-estrutura',
+                nome: 'Estrutura BCDE',
+                tipo: 'Concreto armado',
+                status: 'Em andamento',
+                caa: 'II',
+                idadeAnos: 26,
+                conjuntoEstrutural: 'Conjunto Estrutural A',
+                tipologiaEstrutural: 'Viga',
+              ),
+            ),
           ),
           GoRoute(
             path: '/minha-empresa',

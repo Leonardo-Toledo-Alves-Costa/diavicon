@@ -54,7 +54,11 @@ class CustomDropdown<T> extends StatelessWidget {
                 const SizedBox(width: 4),
                 Tooltip(
                   message: tooltip!,
-                  child: const Icon(Icons.info_outline, size: 16, color: AppColors.greyLight),
+                  child: const Icon(
+                    Icons.info_outline,
+                    size: 16,
+                    color: AppColors.greyLight,
+                  ),
                 ),
               ],
             ],
@@ -69,9 +73,12 @@ class CustomDropdown<T> extends StatelessWidget {
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             filled: true,
-            fillColor: AppColors.white,
+            fillColor: Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),

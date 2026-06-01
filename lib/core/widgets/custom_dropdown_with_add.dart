@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
 import '../constants/app_colors.dart';
 
 class CustomDropdownWithAdd<T> extends StatelessWidget {
@@ -8,8 +10,10 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
   final ValueChanged<T?>? onChanged;
   final String hint;
   final VoidCallback onAddPressed;
-  final bool isRequired; 
+  final bool isRequired;
   final String? Function(T?)? validator;
+  final bool isAddEnabled;
+  final bool isAdding;
 
   const CustomDropdownWithAdd({
     super.key,
@@ -21,11 +25,14 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     this.hint = 'Selecione',
     this.isRequired = false,
     this.validator,
+    this.isAddEnabled = true,
+    this.isAdding = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
+    final canAdd = onChanged != null && isAddEnabled && !isAdding;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -33,17 +40,20 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
         RichText(
           text: TextSpan(
             text: label.replaceAll('*', '').trim(),
-            style: const TextStyle(
+            style: GoogleFonts.lato(
               color: AppColors.textDark,
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Inter', // Caso use fonte customizada, o RichText pede
+              fontSize: 20,
+              fontWeight: FontWeight.w300,
+              height: 1,
             ),
             children: [
               if (isRequired || label.contains('*'))
                 const TextSpan(
                   text: ' *',
-                  style: TextStyle(color: AppColors.primary),
+                  style: TextStyle(
+                    color: AppColors.primary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
             ],
           ),
@@ -66,33 +76,63 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                     items: items,
                     onChanged: onChanged,
                     validator: validator,
+                    style: GoogleFonts.lato(
+                      color: onChanged != null
+                          ? AppColors.textDark
+                          : Colors.grey[600],
+                      fontSize: 18,
+                      fontWeight: FontWeight.w300,
+                      height: 1,
+                      letterSpacing: 0.54,
+                    ),
                     decoration: InputDecoration(
                       hintText: hint,
-                      hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      hintStyle: GoogleFonts.lato(
+                        color: AppColors.hintText,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w300,
+                        height: 1,
+                        letterSpacing: 0.54,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
                       filled: true,
-                      fillColor: onChanged != null ? AppColors.white : Colors.grey[100],
+                      fillColor: onChanged != null
+                          ? Colors.white
+                          : Colors.grey[100],
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.inputBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.inputBorder,
+                        ),
                       ),
                       enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.inputBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.inputBorder,
+                        ),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.primary, width: 2),
+                        borderSide: const BorderSide(
+                          color: AppColors.primary,
+                          width: 2,
+                        ),
                       ),
                       disabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
-                        borderSide: const BorderSide(color: AppColors.inputBorder),
+                        borderSide: const BorderSide(
+                          color: AppColors.inputBorder,
+                        ),
                       ),
                     ),
-                    icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.primary),
-                    style: TextStyle(
-                      color: onChanged != null ? AppColors.textDark : Colors.grey[600],
-                      fontSize: 16,
+                    icon: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: onChanged != null
+                          ? const Color(0xFF313144)
+                          : Colors.grey[500],
                     ),
                   ),
                 ),
@@ -100,19 +140,38 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
             ),
             const SizedBox(width: 12),
             InkWell(
-              onTap: onChanged != null ? onAddPressed : null,
+              onTap: canAdd ? onAddPressed : null,
               borderRadius: BorderRadius.circular(24),
               child: Container(
                 width: 48,
                 height: 48,
                 decoration: BoxDecoration(
-                  color: onChanged != null ? AppColors.primary : Colors.grey[400],
+                  color: canAdd || isAdding
+                      ? AppColors.primary
+                      : Colors.grey[400],
                   shape: BoxShape.circle,
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x4D3A57E8),
+                      offset: Offset(0, 2),
+                      blurRadius: 4,
+                    ),
+                  ],
                 ),
-                child: const Icon(
-                  Icons.add,
-                  color: AppColors.white,
-                ),
+                child: isAdding
+                    ? const Center(
+                        child: SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.white,
+                            ),
+                          ),
+                        ),
+                      )
+                    : const Icon(Icons.add, color: Colors.white),
               ),
             ),
           ],

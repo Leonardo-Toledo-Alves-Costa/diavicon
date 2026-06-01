@@ -6,7 +6,7 @@ class ModalSelecaoBase extends StatelessWidget {
   final Widget titulo;
   final List<Widget> filhos;
   final String? textoBotao;
-  final IconData? iconeBotao; 
+  final IconData? iconeBotao;
   final VoidCallback? aoPressionarBotao;
 
   const ModalSelecaoBase({
@@ -14,7 +14,7 @@ class ModalSelecaoBase extends StatelessWidget {
     required this.titulo,
     required this.filhos,
     this.textoBotao,
-    this.iconeBotao, 
+    this.iconeBotao,
     this.aoPressionarBotao,
   });
 
@@ -26,7 +26,7 @@ class ModalSelecaoBase extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
         decoration: BoxDecoration(
-          color: AppColors.white,
+          color: Colors.white,
           borderRadius: BorderRadius.circular(28),
         ),
         child: SingleChildScrollView(
@@ -37,7 +37,11 @@ class ModalSelecaoBase extends StatelessWidget {
                 alignment: Alignment.topRight,
                 child: IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: AppColors.greyLight, size: 28),
+                  icon: const Icon(
+                    Icons.close,
+                    color: AppColors.greyLight,
+                    size: 28,
+                  ),
                 ),
               ),
               Padding(
@@ -45,9 +49,9 @@ class ModalSelecaoBase extends StatelessWidget {
                 child: titulo,
               ),
               const SizedBox(height: 24),
-              
+
               ...filhos,
-              
+
               if (textoBotao != null) ...[
                 const SizedBox(height: 32),
                 SizedBox(
@@ -57,21 +61,26 @@ class ModalSelecaoBase extends StatelessWidget {
                       onPressed: aoPressionarBotao,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primary,
-                        foregroundColor: AppColors.white,
+                        foregroundColor: Colors.white,
                         elevation: 0,
-                        padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 40,
+                          vertical: 16,
+                        ),
                         shape: const StadiumBorder(),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           if (iconeBotao != null) ...[
-                            Icon(iconeBotao, color: AppColors.white, size: 22),
+                            Icon(iconeBotao, color: Colors.white, size: 22),
                             const SizedBox(width: 8),
                           ],
                           Text(
                             textoBotao!,
-                            style: AppTextStyles.corpoDestaqueBranco.copyWith(fontSize: 20),
+                            style: AppTextStyles.corpoDestaqueBranco.copyWith(
+                              fontSize: 20,
+                            ),
                           ),
                         ],
                       ),

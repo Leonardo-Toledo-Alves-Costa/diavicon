@@ -43,7 +43,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                     width: 80,
                     height: 80,
                     decoration: BoxDecoration(
-                      color: AppColors.white,
+                      color: Colors.white,
                       shape: BoxShape.circle,
                       border: Border.all(color: AppColors.inputBorder, width: 2),
                     ),
@@ -82,7 +82,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppColors.white,
+                color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.greyVeryLight),
               ),

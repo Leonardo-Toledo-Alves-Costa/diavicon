@@ -4,10 +4,10 @@ import 'app_colors.dart';
 class AppTextStyles {
   // Títulos principais (GeoSlab703 Md BT conforme manual)
   static const TextStyle tituloPrincipal = TextStyle(
-    fontFamily: 'GeoSlab703', 
+    fontFamily: 'GeoSlab703',
     fontSize: 22,
     fontWeight: FontWeight.w700,
-    color: AppColors.greyDarkest,  
+    color: AppColors.greyDarkest,
   );
 
   // Textos de botões e destaques dentro de cards (Lato )
@@ -15,7 +15,7 @@ class AppTextStyles {
     fontFamily: 'Lato',
     fontSize: 18,
     fontWeight: FontWeight.w700,
-    color: AppColors.white,
+    color: Colors.white,
   );
 
   // Texto padrão para o fundo do app (Lato )
@@ -31,7 +31,7 @@ class AppTextStyles {
     fontFamily: 'Lato',
     fontSize: 13,
     fontWeight: FontWeight.w400,
-    color: AppColors.white,
+    color: Colors.white,
   );
 
   // Labels de formulários (Lato )
@@ -39,6 +39,6 @@ class AppTextStyles {
     fontFamily: 'Lato',
     fontSize: 14,
     fontWeight: FontWeight.w500,
-    color: AppColors.greyMedium, 
+    color: AppColors.greyMedium,
   );
 }

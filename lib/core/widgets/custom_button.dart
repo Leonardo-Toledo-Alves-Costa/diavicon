@@ -22,33 +22,33 @@ class CustomButton extends StatelessWidget {
       height: 50,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          foregroundColor: AppColors.white,
+          foregroundColor: Colors.white,
           backgroundColor: AppColors.primary,
           elevation: 0,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
+            borderRadius: BorderRadius.circular(10),
           ),
         ),
-        onPressed: isLoading? null : onPressed, 
+        onPressed: isLoading ? null : onPressed,
         child: isLoading
-          ? const CircularProgressIndicator(color: AppColors.white)
-          : Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
+            ? const CircularProgressIndicator(color: Colors.white)
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    text,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  if (showArrow) ...[
+                    const SizedBox(width: 8),
+                    const Icon(Icons.arrow_forward, size: 18),
+                  ],
+                ],
               ),
-              if (showArrow) ...[
-                const SizedBox(width: 8),
-                const Icon(Icons.arrow_forward, size: 18),
-              ]
-            ],
-          ), 
-        ),
+      ),
     );
   }
 }

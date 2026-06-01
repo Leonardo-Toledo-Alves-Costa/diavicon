@@ -312,7 +312,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                             decoration: BoxDecoration(
                               color: estaSelecionado
                                   ? AppColors.primary.withValues(alpha: 0.08)
-                                  : AppColors.white,
+                                  : Colors.white,
                               borderRadius: BorderRadius.circular(8),
                               border: Border.all(
                                 color: estaSelecionado
@@ -372,7 +372,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
                                         child: estaSelecionado
                                             ? const Icon(
                                                 Icons.check,
-                                                color: AppColors.white,
+                                                color: Colors.white,
                                                 size: 14,
                                               )
                                             : null,

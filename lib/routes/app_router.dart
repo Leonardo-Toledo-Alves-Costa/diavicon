@@ -2,12 +2,14 @@ import 'package:diavicon/features/auth/screens/cadastro0_cliente.dart';
 import 'package:diavicon/features/auth/screens/cadastro1_cliente.dart';
 import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
 import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
+import 'package:diavicon/features/auth/screens/completar_cadastro_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
@@ -30,37 +32,58 @@ final routerProvider = Provider<GoRouter>((ref) {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
   final shellNavigatorKey = GlobalKey<NavigatorState>();
 
+  final routerAlarme = ValueNotifier<bool>(false);
+  
+  // ALARME 1: Se o Riverpod mudar, recarrega as rotas
+  ref.listen(currentUserProvider, (previous, next) {
+    routerAlarme.value = !routerAlarme.value; 
+  });
+
+  // ALARME 2: Se o Supabase logar/deslogar, recarrega as rotas
+  Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+    routerAlarme.value = !routerAlarme.value;
+  });
+
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
+    refreshListenable: routerAlarme, 
 
     redirect: (context, state) {
       final path = state.uri.toString();
-      final bool isLoggedIn = ref.read(currentUserProvider) != null;
+      final usuario = ref.read(currentUserProvider);
 
-      // Redirecionamento para usuários NÃO logados
+      final bool isLoggedIn = usuario != null;
+      final bool isAtivo = usuario?.ativo ?? false; 
+
+      // --- Redirecionamento para usuários NÃO logados ---
       if (!isLoggedIn) {
         final bool isPublic =
             path == '/' ||
             path == '/login' ||
             path.startsWith('/register') ||
-            path.startsWith('/empresa/');
+            path.startsWith('/empresa/') ||
+            path == '/completar-cadastro'; 
 
         if (!isPublic) return '/login';
         return null;
       }
 
-      //  Redirecionamento para usuários logados
+      // --- Redirecionamento para usuários LOGADOS (Com perfil carregado) ---
       if (isLoggedIn) {
-        //Se ele estiver em QUALQUER parte do fluxo de empresa, 
-        // NÃO interrompa o fluxo dele. Deixe ele terminar o onboarding.
-        if (path.startsWith('/empresa/') ) {
-          return null; 
+        // Se NÃO está ativo e não está na tela de completar cadastro, joga ele pra lá!
+        if (!isAtivo && path != '/completar-cadastro') {
+          return '/completar-cadastro';
         }
 
-        // Se o usuário já logado tentar acessar telas iniciais, manda para Projetos
-        if (path == '/' || path == '/login' || path.startsWith('/register')) {
+        // Se ESTÁ ativo e tentar acessar telas iniciais ou a de completar cadastro, joga pra Projetos
+        if (isAtivo && (path == '/completar-cadastro' || path == '/' || path == '/login' || path.startsWith('/register'))) {
           return '/projetos';
+        }
+
+        // Se ele estiver no fluxo de empresa, não interrompe
+        if (path.startsWith('/empresa/')) {
+          return null; 
         }
       }
 
@@ -102,13 +125,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             },
           ),
           GoRoute(path: 'cliente/gate',
-        builder: (context, state) => Cadastro0Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+            builder: (context, state) => Cadastro0Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
           GoRoute(path: 'cliente/checkboxes',
-        builder: (context, state) => Cadastro1Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+            builder: (context, state) => Cadastro1Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
           GoRoute(path: 'cliente/planos',
-        builder: (context, state) => Cadastro2Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+            builder: (context, state) => Cadastro2Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
           GoRoute(path: 'cliente/welcome',
-        builder: (context, state) => Cadastro3Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
+            builder: (context, state) => Cadastro3Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
         ],
       ),
 
@@ -150,6 +173,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         ),
       ),
 
+      //completar cadastro
+      GoRoute(
+        path: '/completar-cadastro',
+        builder: (context, state) => const CompletarCadastroScreen(),
+      ),
 
 
       // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
@@ -188,7 +216,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                 const Scaffold(body: Center(child: Text('Educação'))),
           ),
 
-          // NOTIICACOES
+          // NOTIFICACOES
           GoRoute(
             path: '/notificacoes',
             builder: (context, state) => const NotificacoesScreen(),

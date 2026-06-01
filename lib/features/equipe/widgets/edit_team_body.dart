@@ -6,6 +6,9 @@ import '../providers/equipe_provider.dart';
 import 'team_edit_item.dart';
 import 'invite_team_body.dart';
 
+// 🔥 IMPORT DA NOVA TELA
+import '../../equipe/screens/convidar_funcionario_screen.dart';
+
 class EditTeamBody extends ConsumerWidget {
   final String projetoId;
   
@@ -17,7 +20,6 @@ class EditTeamBody extends ConsumerWidget {
     late OverlayEntry overlayEntry;
     bool isRemoved = false;
 
-    // Função para remover da tela com segurança
     void remover() {
       if (!isRemoved) {
         overlayEntry.remove();
@@ -30,7 +32,7 @@ class EditTeamBody extends ConsumerWidget {
 
     overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 20, // Desce do topo da tela (nunca fica atrás do modal)
+        top: MediaQuery.of(context).padding.top + 20, 
         left: 16,
         right: 16,
         child: Material(
@@ -38,7 +40,7 @@ class EditTeamBody extends ConsumerWidget {
           child: TweenAnimationBuilder(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutBack,
-            tween: Tween<double>(begin: -100, end: 0), // Animação elástica
+            tween: Tween<double>(begin: -100, end: 0), 
             builder: (context, double value, child) {
               return Transform.translate(
                 offset: Offset(0, value),
@@ -83,8 +85,6 @@ class EditTeamBody extends ConsumerWidget {
     );
 
     overlay.insert(overlayEntry);
-
-    // Some sozinho depois de 4 segundos
     Future.delayed(const Duration(seconds: 4), remover);
   }
 
@@ -234,7 +234,7 @@ class EditTeamBody extends ConsumerWidget {
                   
                   return colaboradoresAsync.when(
                     loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                    error: (err, stack) => Center(child: Text('Erro ao carregar equipa: $err')),
+                    error: (err, stack) => Center(child: Text('Erro ao carregar equipe: $err')),
                     data: (listaColaboradores) {
                       if (listaColaboradores.isEmpty) {
                         return const Padding(
@@ -249,75 +249,109 @@ class EditTeamBody extends ConsumerWidget {
                       }
 
                       return Column(
-                        children: listaColaboradores.map((item) {
-                          final usuario = item['usuario'] as Map<String, dynamic>;
-                          final empresaIdColaborador = item['empresa_id'] as String?;
-                          
-                          final String nomeCompleto = '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'.trim();
-                          final String cargo = usuario['cargo'] ?? 'Colaborador';
-                          
-                          final bool isAtivo = item['ativo'] ?? false;
-                          final bool isUserGestor = empresaGestoraId != null && empresaGestoraId == empresaIdColaborador;
-                          final bool isCurrentCompany = empresaLogadaId != null && empresaLogadaId == empresaIdColaborador;
+                        children: [
+                          ...listaColaboradores.map((item) {
+                            final usuario = item['usuario'] as Map<String, dynamic>;
+                            final empresaIdColaborador = item['empresa_id'] as String?;
+                            
+                            final String nomeCompleto = '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'.trim();
+                            final String cargo = usuario['cargo'] ?? 'Colaborador';
+                            
+                            final bool isAtivo = item['ativo'] ?? false;
+                            final bool isUserGestor = empresaGestoraId != null && empresaGestoraId == empresaIdColaborador;
+                            final bool isCurrentCompany = empresaLogadaId != null && empresaLogadaId == empresaIdColaborador;
 
-                          return TeamEditItem(
-                            name: nomeCompleto,
-                            role: cargo,
-                            subRole: '', 
-                            isSelected: isAtivo, 
-                            isUserGestor: isUserGestor,
-                            isViewerGestor: isViewerGestor,
-                            onChanged: (val) {
-                              if (isCurrentCompany) {
-                                _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode alterar o seu próprio nível de acesso.', isAviso: true);
-                                return;
-                              }
+                            return TeamEditItem(
+                              name: nomeCompleto,
+                              role: cargo,
+                              subRole: '', 
+                              isSelected: isAtivo, 
+                              isUserGestor: isUserGestor,
+                              isViewerGestor: isViewerGestor,
+                              onChanged: (val) {
+                                if (isCurrentCompany) {
+                                  _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode alterar o seu próprio nível de acesso.', isAviso: true);
+                                  return;
+                                }
 
-                              if (!isViewerGestor) {
-                                _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode editar os acessos.', isAviso: true);
-                                return;
-                              }
+                                if (!isViewerGestor) {
+                                  _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode editar os acessos.', isAviso: true);
+                                  return;
+                                }
 
-                              if (val == false) {
-                                _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
-                              } else if (val == true && empresaIdColaborador != null) {
-                                _confirmarReenvioConvite(context, ref, empresaIdColaborador, nomeCompleto);
-                              }
-                            },
-                            onToggleGestor: (val) async {
-                              if (!isViewerGestor) return;
+                                if (val == false) {
+                                  _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
+                                } else if (val == true && empresaIdColaborador != null) {
+                                  _confirmarReenvioConvite(context, ref, empresaIdColaborador, nomeCompleto);
+                                }
+                              },
+                              onToggleGestor: (val) async {
+                                if (!isViewerGestor) return;
 
-                              if (val && empresaIdColaborador != null) {
-                                try {
-                                  await ref.read(equipeControllerProvider).alterarGestor(
-                                    projetoId: projetoId, 
-                                    novaEmpresaGestoraId: empresaIdColaborador,
-                                  );
-                                  if (context.mounted) {
-                                    _mostrarAvisoFlutuante(context, 'Gestão Alterada', 'A nova empresa gestora foi definida.', isAviso: false);
-                                  }
-                                } catch (e) {
-                                  if (context.mounted) {
-                                    _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao alterar gestão: $e', isErro: true);
+                                if (val && empresaIdColaborador != null) {
+                                  try {
+                                    await ref.read(equipeControllerProvider).alterarGestor(
+                                      projetoId: projetoId, 
+                                      novaEmpresaGestoraId: empresaIdColaborador,
+                                    );
+                                    if (context.mounted) {
+                                      _mostrarAvisoFlutuante(context, 'Gestão Alterada', 'A nova empresa gestora foi definida.', isAviso: false);
+                                    }
+                                  } catch (e) {
+                                    if (context.mounted) {
+                                      _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao alterar gestão: $e', isErro: true);
+                                    }
                                   }
                                 }
-                              }
-                            },
-                            onRemove: () {
-                              if (isCurrentCompany) {
-                                _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode se remover do projeto. Solicite à gestora.', isAviso: true);
-                                return;
-                              }
+                              },
+                              onRemove: () {
+                                if (isCurrentCompany) {
+                                  _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode se remover do projeto. Solicite à gestora.', isAviso: true);
+                                  return;
+                                }
 
-                              if (!isViewerGestor) {
-                                _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode remover membros.', isAviso: true);
-                                return;
-                              }
+                                if (!isViewerGestor) {
+                                  _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode remover membros.', isAviso: true);
+                                  return;
+                                }
 
-                              _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
+                                _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
+                              },
+                            );
+                          }),
+                          
+                          // 🔥 O ATALHO PARA CONVIDAR FUNCIONÁRIO FOI ADICIONADO AQUI
+                          const SizedBox(height: 16),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(
+                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                            onPressed: () {
+                              // Fecha o modal atual antes de abrir a próxima tela
+                              Navigator.pop(context);
+                              
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const ConvidarFuncionarioScreen(),
+                                ),
+                              );
                             },
-                          );
-                        }).toList(),
+                            icon: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
+                            label: const Text(
+                              'Não achou? Convide para a empresa',
+                              style: TextStyle(
+                                color: AppColors.primary, 
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+                        ],
                       );
                     },
                   );

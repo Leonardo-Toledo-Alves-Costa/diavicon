@@ -121,7 +121,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                 decoration: InputDecoration(
                   hintText: 'Digite o nome...',
                   hintStyle: const TextStyle(color: AppColors.greyLight, fontSize: 14),
-                  fillColor: AppColors.white,
+                  fillColor: Colors.white,
                   filled: true,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -173,7 +173,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
               height: 48,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: AppColors.white,
+                color: Colors.white,
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.05),

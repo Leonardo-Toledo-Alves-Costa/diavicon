@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CompactSearchBar extends StatelessWidget {
   final String hintText;
@@ -8,7 +9,7 @@ class CompactSearchBar extends StatelessWidget {
 
   const CompactSearchBar({
     super.key,
-    this.hintText = 'Nome da estrutura', 
+    this.hintText = 'Nome da estrutura',
     this.controller,
     this.onChanged,
   });
@@ -35,20 +36,28 @@ class CompactSearchBar extends StatelessWidget {
         onChanged: onChanged,
         textAlignVertical: TextAlignVertical.center,
         autofocus: false,
-        style: const TextStyle(fontSize: 11, color: AppColors.textDark, fontFamily: 'Lato'),
+        style: const TextStyle(
+          fontSize: 11,
+          color: AppColors.textDark,
+          fontFamily: 'Lato',
+        ),
         decoration: InputDecoration(
-          isCollapsed: true, 
+          isCollapsed: true,
           hintText: hintText,
           hintStyle: const TextStyle(
-            color: Color(0xFFBDBDBD), 
-            fontSize: 10.5, 
+            color: Color(0xFFBDBDBD),
+            fontSize: 10.5,
             fontFamily: 'Lato',
           ),
-          suffixIcon: const Icon(Icons.search, color: Color(0xFF757575), size: 16),
+          suffixIcon: const Icon(
+            Icons.search,
+            color: Color(0xFF757575),
+            size: 16,
+          ),
           suffixIconConstraints: const BoxConstraints(minWidth: 35),
-          
-          contentPadding: const EdgeInsets.fromLTRB(12, 8, 0, 8), 
-          
+
+          contentPadding: const EdgeInsets.fromLTRB(12, 8, 0, 8),
+
           border: InputBorder.none,
         ),
       ),

@@ -224,7 +224,7 @@ class _CadastroAcademicoScreenState
                     decoration: BoxDecoration(
                       color: selecionado
                           ? AppColors.primary.withValues(alpha: 0.08)
-                          : AppColors.white,
+                          : Colors.white,
                       borderRadius: BorderRadius.circular(8),
                       border: Border.all(
                         color: selecionado
@@ -253,7 +253,7 @@ class _CadastroAcademicoScreenState
                           child: selecionado
                               ? const Icon(
                                   Icons.check,
-                                  color: AppColors.white,
+                                  color: Colors.white,
                                   size: 14,
                                 )
                               : null,

@@ -263,7 +263,7 @@ class _PlanoCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: plano.destaque ? AppColors.primary : AppColors.white,
+          color: plano.destaque ? AppColors.primary : Colors.white,
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -283,7 +283,7 @@ class _PlanoCard extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(
                       horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: AppColors.white,
+                    color: Colors.white,
                     borderRadius: BorderRadius.circular(20),
                   ),
                   child: const Text(
@@ -304,7 +304,7 @@ class _PlanoCard extends StatelessWidget {
                   fontSize: 18,
                   fontWeight: FontWeight.w900,
                   color:
-                      plano.destaque ? AppColors.white : AppColors.textDark,
+                      plano.destaque ? Colors.white : AppColors.textDark,
                 ),
               ),
               const SizedBox(height: 4),
@@ -313,7 +313,7 @@ class _PlanoCard extends StatelessWidget {
                 style: TextStyle(
                   fontSize: 12,
                   color: plano.destaque
-                      ? AppColors.white.withValues(alpha: 0.8)
+                      ? Colors.white.withValues(alpha: 0.8)
                       : AppColors.greyMedium,
                 ),
               ),
@@ -327,7 +327,7 @@ class _PlanoCard extends StatelessWidget {
                           Icons.check_circle,
                           size: 16,
                           color: plano.destaque
-                              ? AppColors.white
+                              ? Colors.white
                               : AppColors.primary,
                         ),
                         const SizedBox(width: 8),
@@ -337,7 +337,7 @@ class _PlanoCard extends StatelessWidget {
                             style: TextStyle(
                               fontSize: 13,
                               color: plano.destaque
-                                  ? AppColors.white
+                                  ? Colors.white
                                   : AppColors.textDark,
                             ),
                           ),
@@ -357,7 +357,7 @@ class _PlanoCard extends StatelessWidget {
                         fontSize: 26,
                         fontWeight: FontWeight.w900,
                         color: plano.destaque
-                            ? AppColors.white
+                            ? Colors.white
                             : AppColors.primary,
                       ),
                     ),
@@ -366,7 +366,7 @@ class _PlanoCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 14,
                         color: plano.destaque
-                            ? AppColors.white.withValues(alpha: 0.7)
+                            ? Colors.white.withValues(alpha: 0.7)
                             : AppColors.greyMedium,
                       ),
                     ),
@@ -380,11 +380,11 @@ class _PlanoCard extends StatelessWidget {
                 child: ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: plano.destaque
-                        ? AppColors.white
+                        ? Colors.white
                         : AppColors.primary,
                     foregroundColor: plano.destaque
                         ? AppColors.primary
-                        : AppColors.white,
+                        : Colors.white,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -405,7 +405,7 @@ class _PlanoCard extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 12,
                     color: plano.destaque
-                        ? AppColors.white.withValues(alpha: 0.8)
+                        ? Colors.white.withValues(alpha: 0.8)
                         : AppColors.primary,
                     fontWeight: FontWeight.w600,
                   ),

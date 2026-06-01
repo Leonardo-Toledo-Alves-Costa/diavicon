@@ -73,7 +73,7 @@ class SelecaoClienteModal extends ConsumerWidget {
                 'assets/images/user-star.png',
                 width: 44,
                 height: 44,
-                color: AppColors.white,
+                color: Colors.white,
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -128,7 +128,7 @@ class SelecaoClienteModal extends ConsumerWidget {
                         ? AppColors.textPrimary 
                         : AppColors.greyLight,
                   ),
-                  fillColor: AppColors.white,
+                  fillColor: Colors.white,
                   filled: true,
                   isDense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
@@ -148,13 +148,13 @@ class SelecaoClienteModal extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.white.withOpacity(0.3)),
+                    border: Border.all(color: Colors.white.withOpacity(0.3)),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
                         radius: 20, 
-                        backgroundColor: AppColors.white,
+                        backgroundColor: Colors.white,
                         backgroundImage: _obterImagemCliente(projetoForm.clienteFotoUrl),
                       ),
                       const SizedBox(width: 12),

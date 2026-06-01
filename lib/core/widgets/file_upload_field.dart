@@ -59,7 +59,7 @@ class FileUploadField extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
             decoration: BoxDecoration(
-              color: AppColors.white,
+              color: Colors.white,
               border: Border.all(color: AppColors.inputBorder),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -76,11 +76,17 @@ class FileUploadField extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        selectedFile != null ? selectedFile!.name : 'Selecione um arquivo',
+                        selectedFile != null
+                            ? selectedFile!.name
+                            : 'Selecione um arquivo',
                         style: TextStyle(
-                          color: selectedFile != null ? AppColors.textDark : AppColors.hintText,
+                          color: selectedFile != null
+                              ? AppColors.textDark
+                              : AppColors.hintText,
                           fontSize: 14,
-                          fontWeight: selectedFile != null ? FontWeight.w500 : FontWeight.normal,
+                          fontWeight: selectedFile != null
+                              ? FontWeight.w500
+                              : FontWeight.normal,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -94,7 +100,7 @@ class FileUploadField extends StatelessWidget {
                             fontSize: 12,
                           ),
                         ),
-                      ]
+                      ],
                     ],
                   ),
                 ),

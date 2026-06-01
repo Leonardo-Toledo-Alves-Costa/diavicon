@@ -91,7 +91,7 @@ class _EmpresaServicosScreenState extends ConsumerState<EmpresaServicosScreen> {
                       decoration: BoxDecoration(
                         color: selecionado
                             ? AppColors.primary.withValues(alpha: 0.08)
-                            : AppColors.white,
+                            : Colors.white,
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
                           color: selecionado
@@ -119,7 +119,7 @@ class _EmpresaServicosScreenState extends ConsumerState<EmpresaServicosScreen> {
                             ),
                             child: selecionado
                                 ? const Icon(Icons.check,
-                                    color: AppColors.white, size: 14)
+                                    color: Colors.white, size: 14)
                                 : null,
                           ),
                           const SizedBox(width: 12),

@@ -125,7 +125,7 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
                   child: Container(
                     padding: const EdgeInsets.all(6),
                     decoration: const BoxDecoration(
-                      color: AppColors.white,
+                      color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 4)],
                     ),

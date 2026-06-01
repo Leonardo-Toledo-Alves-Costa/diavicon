@@ -22,7 +22,7 @@ class DiaviconApp extends ConsumerWidget {
       theme: ThemeData(
         useMaterial3: true,
         primaryColor: AppColors.primary,
-        scaffoldBackgroundColor: AppColors.white,
+        scaffoldBackgroundColor: Colors.white,
         colorScheme: ColorScheme.fromSeed(
           seedColor: AppColors.primary,
           primary: AppColors.primary,

@@ -68,12 +68,12 @@
 
     final routerAlarme = ValueNotifier<bool>(false);
     
-    // ALARME 1: Se o Riverpod mudar, recarrega as rotas
+    // Se o Riverpod mudar, recarrega as rotas
     ref.listen(currentUserProvider, (previous, next) {
       routerAlarme.value = !routerAlarme.value; 
     });
 
-    // ALARME 2: Se o Supabase logar/deslogar, recarrega as rotas
+    //  Se o Supabase logar/deslogar, recarrega as rotas
     Supabase.instance.client.auth.onAuthStateChange.listen((_) {
       routerAlarme.value = !routerAlarme.value;
     });

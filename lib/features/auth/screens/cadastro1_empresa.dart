@@ -14,7 +14,6 @@ class Cadastro1Empresa extends StatelessWidget {
   Widget build(BuildContext context) {
     return AuthLayout(
       child: SafeArea(
-        // 🔥 Removido o padding vertical de 20 e ajustado para o fundo colar mais embaixo
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 10.0), 
           child: Column(
@@ -70,10 +69,9 @@ class Cadastro1Empresa extends StatelessWidget {
                         ),
                       ),
                       
-                      // 🔥 Aumentado o flex para 4 para dar mais área pro balão
                       Flexible(
                         flex: 4, 
-                        // 🔥 Transform.translate "flutua" o widget.
+                        // Transform.translate "flutua" o widget.
                         // offset: Offset(Eixo X, Eixo Y). 
                         // Valores negativos puxam para Esquerda e para Cima!
                         child: Transform.translate(
@@ -123,9 +121,8 @@ class Cadastro1Empresa extends StatelessWidget {
                     },
                   ),
                   
-                  const SizedBox(width: 70), // 🔥 Adiciona um respiro entre os botões
+                  const SizedBox(width: 70), 
                   
-                  // 🔥 O Expanded salva a sua tela de ficar branca!
                   CustomButton(
                     width: 120,
                     text: 'Começar',

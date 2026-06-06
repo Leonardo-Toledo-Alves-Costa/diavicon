@@ -12,7 +12,6 @@ class CustomButton extends StatelessWidget {
   final double fontSize;
   final FontWeight? fontWeight;
   
-  // 🔥 Agora ele aceita os seus estilos do AppTextStyles!
   final TextStyle? textStyle; 
 
   const CustomButton({
@@ -56,7 +55,6 @@ class CustomButton extends StatelessWidget {
                 children: [
                   Text(
                     text,
-                    // 🔥 Se você passar um textStyle, ele usa. Se não, usa o padrão do botão.
                     style: textStyle ?? TextStyle(
                       fontSize: fontSize,
                       fontWeight: fontWeight,

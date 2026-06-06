@@ -103,7 +103,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
     }
   }
 
-  // 🔥 Função auxiliar que garante que o aviso aparece no lugar certo!
+  //Função auxiliar que garante que o aviso aparece no lugar certo!
   void _mostrarAviso(String mensagem, Color cor) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -131,7 +131,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
       if (response.statusCode == 200) {
         final dados = jsonDecode(response.body);
 
-        // 🔥 O Segredo: containsKey('erro') ignora se é texto ou booleano, só vê se a palavra "erro" veio da API.
+        //  containsKey('erro') ignora se é texto ou booleano, só vê se a palavra "erro" veio da API.
         if (dados.containsKey('erro')) {
           _mostrarAviso('CEP não encontrado ou inválido!', Colors.red);
           setState(() {
@@ -153,7 +153,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
           _carregandoCep = false;
         });
 
-        // 🔥 Aviso verde de sucesso!
+        // Aviso verde de sucesso!
         _mostrarAviso('Endereço preenchido com sucesso!', Colors.green);
 
       } else {
@@ -162,7 +162,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
         setState(() => _carregandoCep = false);
       }
     } catch (e) {
-      // 🔥 Se não tiver internet
+      // Se não tiver internet
       _mostrarAviso('Erro de conexão ao buscar o CEP.', Colors.red);
       setState(() => _carregandoCep = false);
     }

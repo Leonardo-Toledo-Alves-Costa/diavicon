@@ -334,7 +334,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: '00000-000',
                     controller: _cepController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [_cepMask], // 🔥 Agora a usar a máscara local isolada de estado!
+                    inputFormatters: [_cepMask],
                     enabled: !_carregandoCep,
                     validator: ValidatorsCadastro.cep,
                   ),

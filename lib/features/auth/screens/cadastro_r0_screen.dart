@@ -42,23 +42,20 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      // 🔥 O pulo do gato 1: Tocar fora do teclado fecha ele
       onTap: () => FocusScope.of(context).unfocus(), 
       child: AuthLayout(
         child: LayoutBuilder(
           builder: (context, constraints) {
-            // 🔥 O pulo do gato 2: Permite que a tela role quando o teclado subir
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
                 24,
                 28,
                 24,
-                // 🔥 Adiciona o tamanho do teclado/barra de navegação no final
+                // 🔥  o tamanho do teclado/barra de navegação no final
                 MediaQuery.of(context).padding.bottom + 24, 
               ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
-                  // 🔥 Garante que a tela ocupe 100% da altura para o Spacer funcionar
                   minHeight: constraints.maxHeight - 52, 
                 ),
                 child: IntrinsicHeight(
@@ -142,7 +139,6 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
                               ValidatorsCadastro.confirmarSenha(v, _senhaCtrl.text),
                         ),
                         
-                        // 🔥 Agora o Spacer não vai mais explodir a tela!
                         const Spacer(),
                         const SizedBox(height: 24),
                         

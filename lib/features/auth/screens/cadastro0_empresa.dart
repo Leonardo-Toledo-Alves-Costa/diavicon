@@ -116,7 +116,6 @@ class Cadastro0Empresa extends StatelessWidget {
                           size: 24,
                         ),
                         const SizedBox(width: 10),
-                        // 🔥 FittedBox encolhe o texto para caber em 1 linha sem quebrar
                         Expanded(
                           child: FittedBox(
                             fit: BoxFit.scaleDown,

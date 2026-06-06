@@ -80,18 +80,9 @@ Future<T?> showDiaviconModal<T>({
                     // Header: Título + Botão de fechar
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 12, 12, 4),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Stack( // 🔥 Trocado de Column para Stack para alinhar na mesma linha
+                        alignment: Alignment.center,
                         children: [
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.close, color: AppColors.hintText),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                          ),
                           if (title.isNotEmpty)
                             SizedBox(
                               width: double.infinity,
@@ -105,6 +96,15 @@ Future<T?> showDiaviconModal<T>({
                                 ),
                               ),
                             ),
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: IconButton(
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: const Icon(Icons.close, color: AppColors.hintText),
+                              onPressed: () => Navigator.of(context).pop(),
+                            ),
+                          ),
                         ],
                       ),
                     ),

@@ -27,25 +27,21 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
       .maybeSingle();
 
   final minhaEmpresaId = usuarioData?['empresa_id'];
+
   if (minhaEmpresaId == null) return [];
 
-  // 🔥 A MUDANÇA ESTÁ AQUI: Agora ele SÓ busca se o Gestor tiver marcado o checkbox (ativo = true)
+  // Busca todos os projetos onde a MINHA empresa é colaboradora com status 'aceito'
   final colaboradoresData = await supabase
-      .from('projeto_colaboradores')
+      .from('projeto_empresas_colaboradoras') 
       .select('projeto_id')
-      .eq('empresa_id', minhaEmpresaId)
-      .eq('ativo', true); 
+      .eq('empresa_id', minhaEmpresaId) 
+      .eq('status', 'aceito'); 
 
-  final List<String> projetosComoColaborador = colaboradoresData
+  final List<String> idsColaborador = colaboradoresData
       .map((e) => e['projeto_id'].toString())
       .toList();
 
-  String filtroOr = 'empresa_gestora_id.eq.$minhaEmpresaId,empresa_cliente_id.eq.$minhaEmpresaId';
-  if (projetosComoColaborador.isNotEmpty) {
-    filtroOr += ',id.in.(${projetosComoColaborador.join(',')})';
-  }
-
-  final response = await supabase
+  var query = supabase
       .from('projetos')
       .select('''
         *,
@@ -53,8 +49,23 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
         status_projeto(nome),
         empresas!projetos_empresa_gestora_id_fkey(nome),
         empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
-      ''')
-      .or(filtroOr);
+      ''');
+
+  // Se ela for colaboradora de algo, inclui os IDs na busca!
+  if (idsColaborador.isNotEmpty) {
+    query = query.or(
+      'empresa_gestora_id.eq.$minhaEmpresaId,'
+      'empresa_cliente_id.eq.$minhaEmpresaId,'
+      'id.in.(${idsColaborador.join(',')})'
+    );
+  } else {
+    query = query.or(
+      'empresa_gestora_id.eq.$minhaEmpresaId,'
+      'empresa_cliente_id.eq.$minhaEmpresaId'
+    );
+  }
+
+  final response = await query;
 
   List<ProjetoModel> todosProjetos = (response as List).map((json) {
     return ProjetoModel.fromMap(json); 
@@ -84,6 +95,22 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
   }
 
   return listaFiltrada;
+});
+
+// Busca o ID da empresa do usuário logado para lógica de permissões
+final loggedUserCompanyIdProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+
+  if (userId == null) return null;
+
+  final usuarioData = await supabase
+      .from('usuarios')
+      .select('empresa_id')
+      .eq('id', userId)
+      .maybeSingle();
+
+  return usuarioData?['empresa_id'];
 });
 
 final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, String>((ref, id) async {

@@ -1,8 +1,9 @@
-import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
-import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
+import 'dart:io';
+import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
@@ -13,12 +14,14 @@ import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../equipe/widgets/team_member_item.dart';
 import '../../estrutura/widgets/structure_card.dart';
-import '../../equipe/widgets/edit_team_body.dart';
+import '../../auth/screens/edit_team_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
 import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
+import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
+import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
 
-// Certifique-se de importar o provider da equipe
+// Import do provider da equipe
 import '../../equipe/providers/equipe_provider.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
@@ -29,8 +32,6 @@ class ProjectDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
-
-    // OBTENÇÃO DOS DADOS DO SUPABASE
     final projetoAsync = ref.watch(projectDetailProvider(projetoId));
 
     return projetoAsync.when(
@@ -42,7 +43,6 @@ class ProjectDetailScreen extends ConsumerWidget {
       error: (err, stack) =>
           Scaffold(body: Center(child: Text('Erro ao carregar projeto: $err'))),
       data: (projeto) => GestureDetector(
-        //Clicou fora, o teclado fecha e o foco some
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
         child: AnnotatedRegion<SystemUiOverlayStyle>(
           value: SystemUiOverlayStyle.light.copyWith(
@@ -53,24 +53,28 @@ class ProjectDetailScreen extends ConsumerWidget {
           child: Scaffold(
             backgroundColor: Colors.white,
             extendBodyBehindAppBar: true,
-
-            //PERMITE QUE A TELA SE AJUSTE AO TECLADO
             resizeToAvoidBottomInset: true,
-
-            // BARRA DE NAVEGAÇÃO DO SISTEMA
             bottomNavigationBar: Container(
               color: Colors.white,
               child: const SafeArea(top: false, child: SizedBox.shrink()),
             ),
-
-            // MENU LATERAL (DRAWER)
             endDrawer: MenuDrawerAppBar(
               title: 'Menu do\nProjeto',
               items: [
                 DiaviconMenuItem(
                   icon: Icons.info_outline,
                   label: 'Informações',
-                  onTap: () => Navigator.pop(context),
+                  onTap: () {
+                    Navigator.pop(context); // Fecha o menu lateral
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        // Se estiver dentro de um StatefulWidget, use widget.projetoId
+                        builder: (context) =>
+                            ProjectInfoScreen(projetoId: projetoId),
+                      ),
+                    );
+                  },
                 ),
                 DiaviconMenuItem(
                   icon: Icons.assignment_outlined,
@@ -108,26 +112,23 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-
             appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
 
+            // 🔥 TELA PRINCIPAL SUPER LIMPA
             body: SingleChildScrollView(
               padding: EdgeInsets.zero,
-              //PADDING DINÂMICO QUE RESPONDE AO TECLADO
               child: Padding(
                 padding: EdgeInsets.only(bottom: keyboardHeight > 0 ? 20 : 120),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // HEADER COM IMAGEM
-                    _buildHeader(projeto),
+                    _ProjectHeader(projeto: projeto), // Componente extraído!
 
                     Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // TÍTULO DO PROJETO
                           Text(
                             projeto.nome,
                             style: const TextStyle(
@@ -141,7 +142,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                           _buildGestoraSection(projeto.empresaNome),
                           const SizedBox(height: 24),
 
-                          _buildProgressCard(projeto.progresso),
+                          _ProjectProgressCard(
+                            progresso: projeto.progresso,
+                          ), // Componente extraído!
                           const SizedBox(height: 32),
 
                           const Text(
@@ -153,12 +156,16 @@ class ProjectDetailScreen extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          _buildTeamSection(context, ref),
+
+                          _TeamSection(
+                            projetoId: projetoId,
+                          ), // Componente extraído!
                           const SizedBox(height: 32),
 
-                          // SEÇÃO DE ESTRUTURAS
-                          _buildStructuresSection(context, ref, projeto),
-
+                          _StructuresSection(
+                            projeto: projeto,
+                            projetoId: projetoId,
+                          ), // Componente extraído!
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -173,9 +180,43 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  // --- MÉTODOS AUXILIARES ---
+  // Isso pode ficar na tela principal pois é muito simples
+  Widget _buildGestoraSection(String empresaNome) {
+    return Row(
+      children: [
+        Image.asset('assets/images/empresa.png', height: 35),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              empresaNome,
+              style: const TextStyle(
+                fontWeight: FontWeight.bold,
+                color: AppColors.textDark,
+              ),
+            ),
+            const Text(
+              'Gestora',
+              style: TextStyle(color: AppColors.hintText, fontSize: 12),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
 
-  Widget _buildHeader(ProjetoModel projeto) {
+// ─────────────────────────────────────────────────────────────────────────────
+// 🔥 WIDGETS SEPARADOS POR BOA PRÁTICA (Podem ir para arquivos separados depois)
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProjectHeader extends StatelessWidget {
+  final ProjetoModel projeto;
+  const _ProjectHeader({required this.projeto});
+
+  @override
+  Widget build(BuildContext context) {
     return Stack(
       children: [
         projeto.imageUrl.startsWith('http')
@@ -184,19 +225,16 @@ class ProjectDetailScreen extends ConsumerWidget {
                 height: 280,
                 width: double.infinity,
                 fit: BoxFit.cover,
-                // Fallback: Se o link estiver quebrado ou sem internet, mostra a imagem padrão
-                errorBuilder: (context, error, stackTrace) => Image.asset(
-                  'assets/images/project_placeholder1.png',
-                  height: 280,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                ),
+                errorBuilder: (context, error, stackTrace) => _fallbackImage(),
               )
             : Image.asset(
-                projeto.imageUrl,
+                projeto.imageUrl.isNotEmpty
+                    ? projeto.imageUrl
+                    : 'assets/images/project_placeholder1.png',
                 height: 280,
                 width: double.infinity,
                 fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => _fallbackImage(),
               ),
         Positioned.fill(
           child: Container(
@@ -227,6 +265,15 @@ class ProjectDetailScreen extends ConsumerWidget {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _fallbackImage() {
+    return Image.asset(
+      'assets/images/project_placeholder1.png',
+      height: 280,
+      width: double.infinity,
+      fit: BoxFit.cover,
     );
   }
 
@@ -277,33 +324,14 @@ class ProjectDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildGestoraSection(String empresaNome) {
-    return Row(
-      children: [
-        Image.asset('assets/images/empresa.png', height: 35),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              empresaNome,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textDark,
-              ),
-            ),
-            const Text(
-              'Gestora',
-              style: TextStyle(color: AppColors.hintText, fontSize: 12),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
+class _ProjectProgressCard extends StatelessWidget {
+  final double progresso;
+  const _ProjectProgressCard({required this.progresso});
 
-  Widget _buildProgressCard(double value) {
+  @override
+  Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -323,7 +351,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ),
               Text(
-                '${(value * 100).toInt()}%',
+                '${(progresso * 100).toInt()}%',
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.textDark,
@@ -335,7 +363,7 @@ class ProjectDetailScreen extends ConsumerWidget {
           ClipRRect(
             borderRadius: BorderRadius.circular(10),
             child: LinearProgressIndicator(
-              value: value,
+              value: progresso,
               backgroundColor: const Color(0xFFE0E0E0),
               color: AppColors.primary,
               minHeight: 8,
@@ -345,9 +373,15 @@ class ProjectDetailScreen extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildTeamSection(BuildContext context, WidgetRef ref) {
-    // 🔥 AQUI ESTÁ A MÁGICA: Agora escutamos o provider filtrado!
+// 🔥 Seção da Equipe com Riverpod Otimizado (Só ela recarrega quando a equipe muda!)
+class _TeamSection extends ConsumerWidget {
+  final String projetoId;
+  const _TeamSection({required this.projetoId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final colaboradoresAsync = ref.watch(
       colaboradoresAtivosProjetoProvider(projetoId),
     );
@@ -367,25 +401,20 @@ class ProjectDetailScreen extends ConsumerWidget {
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.end,
+            // 🔥 Mudei de "end" para "start" para remover o buraco em branco acima das fotos!
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Mapeia APENAS os utilizadores ATIVOS reais vindos do Supabase
               ...listaColaboradores.map((item) {
                 final usuario = item['usuario'] as Map<String, dynamic>;
-                final nome = usuario['nome'] ?? 'Sem nome';
-                final cargo = usuario['cargo'] ?? 'Colaborador';
-                final fotoUrl = usuario['foto_url'] ?? 'assets/images/user.png';
-
                 return TeamMemberItem(
-                  name: nome,
-                  role: cargo,
-                  imagePath: fotoUrl,
+                  name: usuario['nome'] ?? 'Sem nome',
+                  role: usuario['cargo'] ?? 'Colaborador',
+                  imagePath: usuario['foto_url'] ?? 'assets/images/user.png',
                 );
               }),
 
-              // Botão Laranja de Editar/Adicionar (+) continua sempre aqui
               Padding(
-                padding: const EdgeInsets.only(bottom: 25, left: 8),
+                padding: EdgeInsets.only(bottom: 16, left: 0, right: 0),
                 child: GestureDetector(
                   onTap: () {
                     showDiaviconModal(
@@ -410,12 +439,16 @@ class ProjectDetailScreen extends ConsumerWidget {
       },
     );
   }
+}
 
-  Widget _buildStructuresSection(
-    BuildContext context,
-    WidgetRef ref,
-    ProjetoModel projeto,
-  ) {
+// 🔥 Seção de Estruturas com Riverpod Otimizado
+class _StructuresSection extends ConsumerWidget {
+  final ProjetoModel projeto;
+  final String projetoId;
+  const _StructuresSection({required this.projeto, required this.projetoId});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
 
     return Column(
@@ -441,7 +474,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                   title: 'Incluir Estrutura',
                   height: MediaQuery.of(context).size.height * 0.80,
                   isScrollable: false,
-                  margin: EdgeInsets.fromLTRB(18, 150, 18, 0),
+                  margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),
                   centerTitle: true,
                   body: IncluirEstruturaBody(
                     clienteNome: projeto.clienteNome ?? 'Cliente não definido',
@@ -454,7 +487,6 @@ class ProjectDetailScreen extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 16),
-
         SizedBox(
           height: 200,
           child: estruturasAsync.when(

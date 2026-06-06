@@ -97,6 +97,14 @@ class ProjetosScreen extends ConsumerWidget {
                                 status: projeto.statusBadge,
                                 priority: projeto.prioridadeNome,
                                 imageUrl: projeto.imageUrl,
+                                // 🔥 Mock temporário da equipe para a UI não quebrar e testar o "+2"!
+                                teamAvatars: const [
+                                  'assets/images/user.png',
+                                  'assets/images/user.png',
+                                  'assets/images/user.png',
+                                  'assets/images/user.png',
+                                  'assets/images/user.png',
+                                ],
                               ),
                             );
                           },
@@ -251,7 +259,6 @@ class ProjetosScreen extends ConsumerWidget {
               ),
             ),
           ],
-
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Row(

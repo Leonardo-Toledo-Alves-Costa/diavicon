@@ -4,13 +4,13 @@ class ValidatorsCadastro {
   ValidatorsCadastro._();
 
   // ── Genérico ───────────────────────────────────────────────────────────────
-  // 🔥 UPGRADE: Agora ele aceita uma mensagem opcional personalizada!
+  // ele aceita uma mensagem opcional personalizada!
   static String? obrigatorio(String? val, [String mensagem = 'Campo obrigatório']) {
     if (val == null || val.trim().isEmpty) return mensagem;
     return null;
   }
 
-  // 🔥 NOVO: Útil para não deixar o cara colocar só "A" no nome e sobrenome
+  //  Útil para não deixar o cara colocar só "A" no nome e sobrenome
   static String? nome(String? val, [String campo = 'Nome']) {
     if (val == null || val.trim().isEmpty) return 'Informe o $campo';
     if (val.trim().length < 2) return '$campo muito curto';

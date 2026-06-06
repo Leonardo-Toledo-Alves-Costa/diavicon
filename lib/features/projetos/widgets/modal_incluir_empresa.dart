@@ -9,7 +9,6 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../providers/empresas_projeto_provider.dart';
 
-// 🔥 IMPORTANTE: Confirme se o caminho do seu formatter é esse mesmo!
 
 class ModalIncluirEmpresa extends ConsumerStatefulWidget {
   final String projetoId;
@@ -58,13 +57,9 @@ class _ModalIncluirEmpresaState extends ConsumerState<ModalIncluirEmpresa> {
     setState(() => _isLoading = true);
 
     try {
-      final user = Supabase.instance.client.auth.currentUser;
-      if (user == null) throw Exception('Usuário não autenticado.');
-
-      await ref.read(empresasProjetoControllerProvider).confirmarVinculo(
+      await ref.read(empresasProjetoControllerProvider).enviarConviteEmpresa(
             projetoId: widget.projetoId,
             empresaConvidadaId: _empresaEncontrada!['id'],
-            criadoPorUsuarioId: user.id,
           );
 
       if (!mounted) return;

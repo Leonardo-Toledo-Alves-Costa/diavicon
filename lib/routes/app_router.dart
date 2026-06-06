@@ -3,8 +3,8 @@
   import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
   import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
   import 'package:diavicon/features/auth/screens/completar_cadastro_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_bemvinda_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
   import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
   import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
   import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
@@ -68,12 +68,12 @@
 
     final routerAlarme = ValueNotifier<bool>(false);
     
-    // ALARME 1: Se o Riverpod mudar, recarrega as rotas
+    // Se o Riverpod mudar, recarrega as rotas
     ref.listen(currentUserProvider, (previous, next) {
       routerAlarme.value = !routerAlarme.value; 
     });
 
-    // ALARME 2: Se o Supabase logar/deslogar, recarrega as rotas
+    //  Se o Supabase logar/deslogar, recarrega as rotas
     Supabase.instance.client.auth.onAuthStateChange.listen((_) {
       routerAlarme.value = !routerAlarme.value;
     });

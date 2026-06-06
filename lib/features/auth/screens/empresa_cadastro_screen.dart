@@ -12,7 +12,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
 import '../../../core/widgets/custom_text_button.dart'; 
-import '../providers/empresa_provider.dart';
+import '../../empresa/providers/empresa_provider.dart';
 import '../../../core/utils/formatters/cnpj_formatter.dart';
 import '../../../core/utils/validators/cnpj_validator.dart';
 import '../../../core/utils/validators/validators_cadastro.dart'; 
@@ -334,7 +334,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: '00000-000',
                     controller: _cepController,
                     keyboardType: TextInputType.number,
-                    inputFormatters: [_cepMask], // 🔥 Agora a usar a máscara local isolada de estado!
+                    inputFormatters: [_cepMask],
                     enabled: !_carregandoCep,
                     validator: ValidatorsCadastro.cep,
                   ),

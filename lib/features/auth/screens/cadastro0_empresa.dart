@@ -2,10 +2,10 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/auth_layout.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 
 class Cadastro0Empresa extends StatefulWidget {
-  const Cadastro0Empresa({super.key});
+  final Map<String, dynamic> dadosCadastro;
+  const Cadastro0Empresa({super.key, required this.dadosCadastro});
 
   @override
   State<Cadastro0Empresa> createState() => _Cadastro0EmpresaState();

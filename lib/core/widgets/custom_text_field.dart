@@ -17,7 +17,6 @@ class CustomTextField extends StatelessWidget {
   final bool isRequired;
   final List<TextInputFormatter>? inputFormatters;
   final Widget? prefixIcon;
-  final List<TextInputFormatter>? inputFormatters; // ← novo
   final int? maxLines;
   final bool readOnly;
   final VoidCallback? onTap;
@@ -29,14 +28,12 @@ class CustomTextField extends StatelessWidget {
     this.controller,
     this.validator,
     this.obscureText = false,
-    this.obscureText = false,
     this.keyboardType,
     this.suffixIcon,
     this.enabled,
     this.isRequired = false,
     this.inputFormatters,
     this.prefixIcon,
-    this.inputFormatters,
     this.maxLines = 1,
     this.readOnly = false,
     this.onTap,
@@ -85,7 +82,6 @@ class CustomTextField extends StatelessWidget {
             height: 1,
             letterSpacing: 0.54,
           ),
-          inputFormatters: inputFormatters,
           maxLines: obscureText ? 1 : maxLines,
           readOnly: readOnly,
           onTap: onTap,
@@ -101,8 +97,6 @@ class CustomTextField extends StatelessWidget {
             suffixIcon: suffixIcon,
             filled: true,
             fillColor: isEnabled ? Colors.white : Colors.grey[100],
-            hintStyle: const TextStyle(color: AppColors.hintText),
-            suffixIcon: suffixIcon,
             prefixIcon: prefixIcon,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),

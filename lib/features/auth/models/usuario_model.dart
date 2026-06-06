@@ -63,7 +63,7 @@
         'cargo': cargo,
         'empresa_id': empresaId,
         'setor_id': setorId,
-        'ativo': ativo ?? true,
+        'ativo': ativo ?? false,
         'titulo_principal': tituloPrincipal,
         'escolaridade': escolaridade,
         'foto_url': fotoUrl,

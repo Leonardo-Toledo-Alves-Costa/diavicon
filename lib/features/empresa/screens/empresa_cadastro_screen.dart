@@ -1,18 +1,21 @@
+import 'dart:convert';
 import 'package:diavicon/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:http/http.dart' as http;
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart'; // 🔥 Import do pacote de máscaras
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
+import '../../../core/widgets/custom_text_button.dart'; 
 import '../providers/empresa_provider.dart';
 import '../../../core/utils/formatters/cnpj_formatter.dart';
 import '../../../core/utils/validators/cnpj_validator.dart';
-
-
-
+import '../../../core/utils/validators/validators_cadastro.dart'; 
 
 class EmpresaCadastroScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosUsuario;
@@ -26,6 +29,13 @@ class EmpresaCadastroScreen extends ConsumerStatefulWidget {
 
 class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _formKey = GlobalKey<FormState>();
+
+  // 🔥 Máscara de CEP exclusiva e local desta instância para não bugar com outras telas
+  final _cepMask = MaskTextInputFormatter(
+    mask: '#####-###',
+    filter: {"#": RegExp(r'[0-9]')},
+    type: MaskAutoCompletionType.lazy,
+  );
 
   final _cnpjController = TextEditingController();
   final _nomeFantasiaController = TextEditingController();
@@ -47,6 +57,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _linkedinController = TextEditingController();
   final _instagramController = TextEditingController();
 
+  // Controlos da API de CEP
+  bool _enderecoBloqueado = false;
+  bool _carregandoCep = false;
+
   static const _opcoesColaboradores = [
     '1 - 5',
     '6 - 20',
@@ -64,7 +78,14 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _cepController.addListener(_ouvinteCep);
+  }
+
+  @override
   void dispose() {
+    _cepController.removeListener(_ouvinteCep);
     _cnpjController.dispose();
     _nomeFantasiaController.dispose();
     _cargoController.dispose();
@@ -82,13 +103,90 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     super.dispose();
   }
 
+  // ── Lógica do CEP (ViaCEP) ───────────────────────────────────────────────
+  void _mostrarAviso(String mensagem, Color cor) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          mensagem,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: cor,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(20),
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _ouvinteCep() {
+    final apenasNumeros = _cepController.text.replaceAll(RegExp(r'\D'), '');
+    
+    if (apenasNumeros.length == 8 && !_enderecoBloqueado && !_carregandoCep) {
+      _buscarCep(apenasNumeros);
+    }
+    
+    if (apenasNumeros.isEmpty && _enderecoBloqueado) {
+      setState(() {
+        _enderecoBloqueado = false;
+        _cidadeController.clear();
+        _ruaController.clear();
+        _bairroController.clear();
+        _estadoController.clear();
+      });
+    }
+  }
+
+  Future<void> _buscarCep(String cep) async {
+    setState(() => _carregandoCep = true);
+
+    try {
+      final url = Uri.parse('https://viacep.com.br/ws/$cep/json/');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final dados = jsonDecode(response.body);
+
+        if (dados.containsKey('erro')) {
+          _mostrarAviso('CEP não encontrado ou inválido!', Colors.red);
+          setState(() {
+            _enderecoBloqueado = false;
+            _carregandoCep = false;
+          });
+          return;
+        }
+
+        setState(() {
+          _cidadeController.text = dados['localidade'] ?? '';
+          _ruaController.text = dados['logradouro'] ?? '';
+          _bairroController.text = dados['bairro'] ?? '';
+          _estadoController.text = dados['uf'] ?? '';
+          _paisController.text = 'Brasil';
+          
+          _enderecoBloqueado = true; 
+          _carregandoCep = false;
+        });
+
+        _mostrarAviso('Endereço comercial preenchido!', Colors.green);
+
+      } else {
+        _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);
+        setState(() => _carregandoCep = false);
+      }
+    } catch (e) {
+      _mostrarAviso('Erro de conexão ao buscar o CEP.', Colors.red);
+      setState(() => _carregandoCep = false);
+    }
+  }
+
+  // ── Submissão do Formulário ──────────────────────────────────────────────
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
-    // Preparao objeto final que contém TUDO
     final dadosCompletos = {
-      ...widget
-          .dadosUsuario, // Traz email, senha, nome, sobrenome, telefone e plano_id
+      ...widget.dadosUsuario,
       'empresa': {
         'cnpj': _cnpjController.text.trim(),
         'nome': _nomeFantasiaController.text.trim(),
@@ -110,37 +208,16 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     };
 
     try {
-      // Salva no banco
       await ref
           .read(empresaControllerProvider.notifier)
           .cadastrarEmpresa(dadosCompletos);
 
-      print("✅ BANCO SALVOU! Tentando navegar...");
-
-      // Tenta navegar
       if (mounted) {
-        print("🚀 TELA ATIVA! Executando context.go para Bem-vinda...");
         ref.read(routerProvider).go('/empresa/bemvinda', extra: dadosCompletos);
-      } else {
-        print(
-          "❌ ERRO: A tela 'morreu' (unmounted) antes de conseguir navegar.",
-        );
       }
     } catch (e) {
-      print('=========================================');
-      print('🚨 ERRO FATAL AO CRIAR EMPRESA: $e');
-      print('=========================================');
-
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Erro no banco: $e'),
-            backgroundColor: Colors.red,
-            duration: const Duration(
-              seconds: 5,
-            ), // Tempo extra pra você conseguir ler
-          ),
-        );
+        _mostrarAviso('Erro ao salvar no banco: $e', Colors.red);
       }
     }
   }
@@ -151,168 +228,219 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
     return AuthLayout(
       logoHeight: 120,
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(28, 10, 28, 28),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const StepProgressBar(currentStep: 3, totalSteps: 3),
-              const SizedBox(height: 20),
-
-              _buildLogoPicker(),
-              const SizedBox(height: 20),
-
-              const Text(
-                'Cadastre sua empresa',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w900,
-                  color: AppColors.textDark,
-                ),
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          bottom: false,
+          child: Form(
+            key: _formKey,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                28, 
+                10, 
+                28, 
+                MediaQuery.of(context).padding.bottom + 24,
               ),
-              const SizedBox(height: 20),
-
-              // ── SEÇÃO: DADOS BÁSICOS ───────────────────────────────────────
-              const _SectionTitle(titulo: 'Dados básicos'),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'CNPJ',
-                hint: '123.456.789-10',
-                controller: _cnpjController,
-                keyboardType: TextInputType.number,
-                inputFormatters: [CnpjFormatter.mask],
-                validator: (val) {
-                  if (!CnpjValidator.isValid(val)) {
-                    return 'CNPJ inválido';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Nome Fantasia',
-                hint: 'Ex: Diavicon Engenharia',
-                controller: _nomeFantasiaController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
-              ),
-              const SizedBox(height: 12),
-              _DropdownField(
-                label: 'Nº Colaboradores',
-                hint: 'Selecione',
-                valor: _nColaboradores,
-                opcoes: _opcoesColaboradores,
-                onChanged: (val) => setState(() => _nColaboradores = val),
-              ),
-
-              const SizedBox(height: 24),
-
-              const _SectionTitle(titulo: 'Seu Cargo'),
-              const Text(
-                'Você terá permissões de administrador automaticamente.',
-                style: TextStyle(fontSize: 11, color: AppColors.greyMedium),
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Cargo',
-                hint: 'Ex: Engenheiro Diagnóstico',
-                controller: _cargoController,
-                validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
-              ),
-              const SizedBox(height: 12),
-              _DropdownField(
-                label: 'Nível',
-                hint: 'Selecione seu nível',
-                valor: _nivelSelecionado,
-                opcoes: _niveisCargo,
-                onChanged: (val) => setState(() => _nivelSelecionado = val),
-              ),
-
-              const SizedBox(height: 24),
-
-              const _SectionTitle(titulo: 'Endereço Comercial'),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'CEP',
-                hint: '00000-000',
-                controller: _cepController,
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Cidade',
-                hint: 'Cidade',
-                controller: _cidadeController,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Rua',
-                hint: 'Logradouro',
-                controller: _ruaController,
-              ),
-              const SizedBox(height: 12),
-              Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    flex: 2,
-                    child: CustomTextField(
-                      label: 'Número',
-                      hint: '123',
-                      controller: _numeroController,
-                      keyboardType: TextInputType.number,
+                  const StepProgressBar(currentStep: 3, totalSteps: 3),
+                  const SizedBox(height: 20),
+
+                  _buildLogoPicker(),
+                  const SizedBox(height: 20),
+
+                  const Text(
+                    'Cadastre sua empresa',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textDark,
                     ),
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    flex: 3,
-                    child: CustomTextField(
-                      label: 'Bairro',
-                      hint: 'Bairro',
-                      controller: _bairroController,
-                    ),
+                  const SizedBox(height: 20),
+
+                  // ── SEÇÃO: DADOS BÁSICOS ───────────────────────────────────────
+                  const _SectionTitle(titulo: 'Dados básicos'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'CNPJ',
+                    hint: '123.456.789-10',
+                    isRequired: true,
+                    controller: _cnpjController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CnpjFormatter.mask],
+                    validator: (val) {
+                      if (!CnpjValidator.isValid(val)) {
+                        return 'CNPJ inválido';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Nome Fantasia',
+                    isRequired: true,
+                    hint: 'Ex: Diavicon Engenharia',
+                    controller: _nomeFantasiaController,
+                    validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _DropdownField(
+                    label: 'Nº Colaboradores',
+                    hint: 'Selecione',
+                    isRequired: true,
+                    valor: _nColaboradores,
+                    opcoes: _opcoesColaboradores,
+                    onChanged: (val) => setState(() => _nColaboradores = val),
+                    validator: (v) => v == null ? 'Obrigatório' : null,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── SEÇÃO: SEU CARGO ───────────────────────────────────────────
+                  const _SectionTitle(titulo: 'Seu Cargo'),
+                  const Text(
+                    'Você terá permissões de administrator automaticamente.',
+                    style: TextStyle(fontSize: 11, color: AppColors.greyMedium),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Cargo',
+                    isRequired: true,
+                    hint: 'Ex: Engenheiro Diagnóstico',
+                    controller: _cargoController,
+                    validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  _DropdownField(
+                    label: 'Nível',
+                    hint: 'Selecione seu nível',
+                    isRequired: true,
+                    valor: _nivelSelecionado,
+                    opcoes: _niveisCargo,
+                    onChanged: (val) => setState(() => _nivelSelecionado = val),
+                    validator: (v) => v == null ? 'Obrigatório' : null,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── SEÇÃO: ENDEREÇO COMERCIAL ──────────────────────────────────
+                  const _SectionTitle(titulo: 'Endereço Comercial'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'CEP',
+                    isRequired: true,
+                    hint: '00000-000',
+                    controller: _cepController,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [_cepMask],
+                    enabled: !_carregandoCep,
+                    validator: ValidatorsCadastro.cep,
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Cidade',
+                    hint: 'Cidade',
+                    isRequired: true,
+                    controller: _cidadeController,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Rua',
+                    hint: 'Logradouro',
+                    isRequired: true,
+                    controller: _ruaController,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: CustomTextField(
+                          label: 'Número',
+                          isRequired: true,
+                          hint: '123',
+                          controller: _numeroController,
+                          keyboardType: TextInputType.number,
+                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Inválido'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 3,
+                        child: CustomTextField(
+                          label: 'Bairro',
+                          isRequired: true,
+                          hint: 'Bairro',
+                          controller: _bairroController,
+                          enabled: !_enderecoBloqueado,
+                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Estado',
+                    hint: 'Ex: São Paulo',
+                    isRequired: true,
+                    controller: _estadoController,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Complemento',
+                    hint: 'Sala, Andar, etc.',
+                    controller: _complementoController,
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // ── SEÇÃO: REDES SOCIAIS ───────────────────────────────────────
+                  const _SectionTitle(titulo: 'Redes Sociais (Opcional)'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Site',
+                    hint: 'www.empresa.com',
+                    controller: _siteController,
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'LinkedIn',
+                    hint: 'linkedin.com/company/...',
+                    controller: _linkedinController,
+                  ),
+
+                  const SizedBox(height: 40),
+
+                  // ── BOTOES DE AÇÃO ─────────────────────────────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomTextbutton(
+                        text: '<   Voltar',
+                        onPressed: () => context.pop(),
+                      ),
+                      const SizedBox(width: 40),
+                      CustomButton(
+                        text: 'Começar',
+                        width: 150,
+                        fontSize: 15,
+                        isLoading: isLoading,
+                        onPressed: isLoading ? null : _salvar,
+                      ),
+                    ],
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Estado',
-                hint: 'Ex: São Paulo',
-                controller: _estadoController,
-              ),
-
-              const SizedBox(height: 24),
-
-              const _SectionTitle(titulo: 'Redes Sociais (Opcional)'),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Site',
-                hint: 'www.empresa.com',
-                controller: _siteController,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'LinkedIn',
-                hint: 'linkedin.com/company/...',
-                controller: _linkedinController,
-              ),
-
-              const SizedBox(height: 32),
-
-              CustomButton(
-                text: 'Começar',
-                isLoading: isLoading,
-                onPressed: isLoading ? null : _salvar,
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => context.pop(),
-                child: const Text(
-                  '< Voltar',
-                  style: TextStyle(color: AppColors.greyMedium),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -322,25 +450,34 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   Widget _buildLogoPicker() {
     return Center(
       child: GestureDetector(
-        onTap: () {}, // Lógica de imagem aqui futuramente
+        onTap: () {},
         child: Stack(
+          clipBehavior: Clip.none,
           children: [
             CircleAvatar(
-              radius: 44,
+              radius: 56,
               backgroundColor: AppColors.greyVeryLight,
               child: const Icon(
                 Icons.domain,
-                size: 40,
+                size: 52,
                 color: AppColors.greyLight,
               ),
             ),
             Positioned(
-              bottom: 0,
-              right: 0,
-              child: CircleAvatar(
-                radius: 14,
-                backgroundColor: AppColors.primary,
-                child: const Icon(Icons.edit, size: 14, color: Colors.white),
+              bottom: 2,
+              right: -2,
+              child: Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF1C1C1C), width: 1.5),
+                ),
+                child: const Icon(
+                  Icons.edit_outlined,
+                  size: 20,
+                  color: Color(0xFF1C1C1C),
+                ),
               ),
             ),
           ],
@@ -367,20 +504,23 @@ class _SectionTitle extends StatelessWidget {
   }
 }
 
-//widgets internos
 class _DropdownField extends StatelessWidget {
   final String label;
   final String hint;
   final String? valor;
+  final bool isRequired; 
   final List<String> opcoes;
   final void Function(String?) onChanged;
+  final String? Function(String?)? validator;
 
   const _DropdownField({
     required this.label,
     required this.hint,
     required this.valor,
+    this.isRequired = false,
     required this.opcoes,
     required this.onChanged,
+    this.validator,
   });
 
   @override
@@ -388,23 +528,31 @@ class _DropdownField extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: AppColors.textDark,
+        RichText(
+          text: TextSpan(
+            text: label,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
+            children: [
+              if (isRequired)
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppColors.primary),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
           value: valor,
+          isExpanded: true,
           hint: Text(hint, style: const TextStyle(color: AppColors.hintText)),
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 12,
-              vertical: 14,
-            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -417,11 +565,14 @@ class _DropdownField extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.primary),
             ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: const BorderSide(color: Colors.red),
+            ),
           ),
-          items: opcoes
-              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
-              .toList(),
+          items: opcoes.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
           onChanged: onChanged,
+          validator: validator,
         ),
       ],
     );

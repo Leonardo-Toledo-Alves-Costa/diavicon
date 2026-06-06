@@ -39,6 +39,7 @@ final gestaoProjetoProvider = FutureProvider.family<Map<String, dynamic>?, Strin
   
   final projetoData = await supabase.from('projetos').select('empresa_gestora_id').eq('id', projetoId).maybeSingle();
   if (projetoData == null) return null;
+  
 
   final userId = supabase.auth.currentUser?.id;
   if (userId == null) return null;

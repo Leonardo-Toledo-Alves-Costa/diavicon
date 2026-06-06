@@ -1,4 +1,5 @@
 import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
+import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -10,15 +11,15 @@ import '../../../core/widgets/compact_search_bar.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../../../core/utils/diavicon_modal.dart';
 import '../../../core/widgets/status_badge.dart';
-import '../widgets/team_member_item.dart';
+import '../../equipe/widgets/team_member_item.dart';
 import '../../estrutura/widgets/structure_card.dart';
-import '../widgets/edit_team_body.dart';
+import '../../equipe/widgets/edit_team_body.dart';
 import '../models/projeto_model.dart';
 import 'package:diavicon/features/estrutura/widgets/incluir_estrutura_body.dart';
 import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
 
 // Certifique-se de importar o provider da equipe
-import '../providers/equipe_provider.dart'; 
+import '../../equipe/providers/equipe_provider.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -79,7 +80,16 @@ class ProjectDetailScreen extends ConsumerWidget {
                 DiaviconMenuItem(
                   icon: Icons.business_outlined,
                   label: 'Empresas',
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ProjectCompaniesScreen(projetoId: projetoId),
+                      ),
+                    );
+                  },
                 ),
                 DiaviconMenuItem(
                   icon: Icons.description_outlined,
@@ -148,7 +158,7 @@ class ProjectDetailScreen extends ConsumerWidget {
 
                           // SEÇÃO DE ESTRUTURAS
                           _buildStructuresSection(context, ref, projeto),
-            
+
                           const SizedBox(height: 24),
                         ],
                       ),
@@ -338,12 +348,16 @@ class ProjectDetailScreen extends ConsumerWidget {
 
   Widget _buildTeamSection(BuildContext context, WidgetRef ref) {
     // 🔥 AQUI ESTÁ A MÁGICA: Agora escutamos o provider filtrado!
-    final colaboradoresAsync = ref.watch(colaboradoresAtivosProjetoProvider(projetoId));
+    final colaboradoresAsync = ref.watch(
+      colaboradoresAtivosProjetoProvider(projetoId),
+    );
 
     return colaboradoresAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 20),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       ),
       error: (err, stack) => const Text(
         'Erro ao carregar equipe',
@@ -368,7 +382,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                   imagePath: fotoUrl,
                 );
               }),
-              
+
               // Botão Laranja de Editar/Adicionar (+) continua sempre aqui
               Padding(
                 padding: const EdgeInsets.only(bottom: 25, left: 8),
@@ -397,7 +411,11 @@ class ProjectDetailScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStructuresSection(BuildContext context, WidgetRef ref, ProjetoModel projeto) {
+  Widget _buildStructuresSection(
+    BuildContext context,
+    WidgetRef ref,
+    ProjetoModel projeto,
+  ) {
     final estruturasAsync = ref.watch(projetoEstruturasProvider(projetoId));
 
     return Column(
@@ -423,13 +441,12 @@ class ProjectDetailScreen extends ConsumerWidget {
                   title: 'Incluir Estrutura',
                   height: MediaQuery.of(context).size.height * 0.80,
                   isScrollable: false,
-                  margin:  EdgeInsets.fromLTRB(18, 150, 18, 0),
+                  margin: EdgeInsets.fromLTRB(18, 150, 18, 0),
                   centerTitle: true,
                   body: IncluirEstruturaBody(
                     clienteNome: projeto.clienteNome ?? 'Cliente não definido',
                     empresaNome: projeto.empresaNome,
                     projetoId: projetoId,
-                  
                   ),
                 );
               },
@@ -469,8 +486,10 @@ class ProjectDetailScreen extends ConsumerWidget {
                 scrollDirection: Axis.horizontal,
                 itemCount: estruturas.length,
                 itemBuilder: (context, index) {
-                  return StructureCard(estrutura: estruturas[index],
-                  projetoId: projetoId,);
+                  return StructureCard(
+                    estrutura: estruturas[index],
+                    projetoId: projetoId,
+                  );
                 },
               );
             },

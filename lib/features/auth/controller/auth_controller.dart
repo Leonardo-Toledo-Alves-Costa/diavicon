@@ -1,3 +1,4 @@
+import 'dart:async'; // Necessário para o StreamSubscription
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,8 +10,52 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthController extends StateNotifier<bool> {
   final Ref _ref;
   final SupabaseClient _supabase = Supabase.instance.client;
+  StreamSubscription<AuthState>? _authSubscription;
 
-  AuthController(this._ref) : super(false);
+  AuthController(this._ref) : super(false) {
+    // Inicia o "espião" assim que o controller for criado na memória
+    _escutarMudancasDeSessao();
+  }
+
+  void _escutarMudancasDeSessao() {
+    _authSubscription = _supabase.auth.onAuthStateChange.listen((data) async {
+      final AuthChangeEvent event = data.event;
+      final Session? session = data.session;
+
+      debugPrint("🔥🔥🔥🔥 [1. EVENTO DETECTADO]: $event");
+
+      if ((event == AuthChangeEvent.signedIn || event == AuthChangeEvent.initialSession) && session?.user != null) {
+        
+        debugPrint("🔥🔥🔥🔥 [2. SUPABASE AUTENTICOU]: ID do cara = ${session!.user!.id}");
+        
+        try {
+          final repo = _ref.read(authRepositoryProvider);
+          debugPrint("🔥🔥🔥🔥 [3. BUSCANDO NA TABELA 'usuarios' NO BANCO...]");
+          
+          final perfil = await repo.getUsuarioPerfil(session.user!.id);
+          
+          if (perfil != null) {
+            debugPrint("🔥🔥🔥🔥 [4. SUCESSO!]: Perfil achado! Ativo: ${perfil.ativo}");
+            _ref.read(currentUserProvider.notifier).setUser(perfil);
+          } else {
+            debugPrint("🚨🚨🚨🚨 [ERRO FATAL]: O Supabase logou, mas o getUsuarioPerfil() retornou NULL! A linha dele realmente existe na tabela 'usuarios' com esse ID?");
+          }
+        } catch (e) {
+          debugPrint("🚨🚨🚨🚨 [ERRO AO BATER NO BANCO]: $e");
+        }
+
+      } else if (event == AuthChangeEvent.signedOut) {
+        debugPrint("🔥🔥🔥🔥 [USUÁRIO DESLOGOU]");
+        _ref.read(currentUserProvider.notifier).clearUser();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _authSubscription?.cancel(); // Limpa a escuta para não vazar memória
+    super.dispose();
+  }
 
   Future<void> login(String email, String password) async {
     state = true;

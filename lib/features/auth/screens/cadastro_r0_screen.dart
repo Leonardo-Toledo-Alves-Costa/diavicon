@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/validators/validators_cadastro.dart';
 import '../../../core/widgets/auth_layout.dart';
-import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
 
 class CadastroR0Screen extends StatefulWidget {
   const CadastroR0Screen({super.key});
@@ -13,137 +15,144 @@ class CadastroR0Screen extends StatefulWidget {
 }
 
 class _CadastroR0ScreenState extends State<CadastroR0Screen> {
-  final _formKey = GlobalKey<FormState>();
-  final _emailController = TextEditingController();
-  final _senhaController = TextEditingController();
-  final _confirmarSenhaController = TextEditingController();
+  final _formKey      = GlobalKey<FormState>();
+  final _emailCtrl    = TextEditingController();
+  final _senhaCtrl    = TextEditingController();
+  final _confirmaCtrl = TextEditingController();
+
+  bool _senhaVisible    = false;
+  bool _confirmaVisible = false;
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _senhaController.dispose();
-    _confirmarSenhaController.dispose();
+    _emailCtrl.dispose();
+    _senhaCtrl.dispose();
+    _confirmaCtrl.dispose();
     super.dispose();
   }
 
   void _avancar() {
-    if (_formKey.currentState!.validate()) {
-      context.push(
-        '/register/dados',
-        extra: {
-          'email': _emailController.text.trim(),
-          'senha': _senhaController.text.trim(),
-        },
-      );
-    }
+    if (!_formKey.currentState!.validate()) return;
+    context.go('/register/dados', extra: {
+      'email': _emailCtrl.text.trim(),
+      'senha': _senhaCtrl.text,
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    return AuthLayout(
-      child: Form(
-        key: _formKey,
-        child: SingleChildScrollView( 
-          physics: const BouncingScrollPhysics(), 
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 28.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const SizedBox(height: 40),
-                const Text(
-                  'Crie sua conta',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w900,
-                    color: AppColors.textDark,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(), 
+      child: AuthLayout(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(
+                24,
+                28,
+                24,
+                // 🔥  o tamanho do teclado/barra de navegação no final
+                MediaQuery.of(context).padding.bottom + 24, 
+              ),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 52, 
+                ),
+                child: IntrinsicHeight(
+                  child: Form(
+                    key: _formKey,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Seja Bem Vindo à',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF1C1C1C),
+                            height: 1.25,
+                          ),
+                        ),
+                        const Text(
+                          'DIAVICON!',
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                            height: 1.25,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        const Text(
+                          'Vamos iniciar o seu cadastro',
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                            color: Color(0xFF1C1C1C),
+                          ),
+                        ),
+                        const SizedBox(height: 32),
+                        CustomTextField(
+                          label: 'Seu melhor e-mail',
+                          hint: 'seuemail@email.com',
+                          controller: _emailCtrl,
+                          keyboardType: TextInputType.emailAddress,
+                          validator: ValidatorsCadastro.email,
+                        ),
+                        const SizedBox(height: 16),
+                        CustomTextField(
+                          label: 'Senha',
+                          hint: 'Sua senha',
+                          controller: _senhaCtrl,
+                          obscureText: !_senhaVisible,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _senhaVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                            onPressed: () =>
+                                setState(() => _senhaVisible = !_senhaVisible),
+                          ),
+                          validator: ValidatorsCadastro.senha,
+                        ),
+                        const SizedBox(height: 16),
+                        CustomTextField(
+                          label: 'Confirme a senha',
+                          hint: 'Sua senha',
+                          controller: _confirmaCtrl,
+                          obscureText: !_confirmaVisible,
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              _confirmaVisible
+                                  ? Icons.visibility_off_outlined
+                                  : Icons.visibility_outlined,
+                              color: Colors.grey,
+                              size: 20,
+                            ),
+                            onPressed: () =>
+                                setState(() => _confirmaVisible = !_confirmaVisible),
+                          ),
+                          validator: (v) =>
+                              ValidatorsCadastro.confirmarSenha(v, _senhaCtrl.text),
+                        ),
+                        
+                        const Spacer(),
+                        const SizedBox(height: 24),
+                        
+                        CustomButton(
+                          text: 'Avançar',
+                          onPressed: _avancar,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
-                const Text(
-                  'Comece sua jornada na DiaViCon',
-                  style: TextStyle(color: AppColors.greyMedium, fontSize: 14),
-                ),
-                const SizedBox(height: 32),
-
-                // Campo de E-mail
-                CustomTextField(
-                  label: 'E-mail',
-                  hint: 'exemplo@email.com',
-                  controller: _emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (val) {
-                    final email = val?.trim() ?? "";
-                    if (email.isEmpty) return 'Obrigatório';
-
-                    final emailRegex = RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    );
-
-                    if (!emailRegex.hasMatch(email)) {
-                      return 'E-mail inválido';
-                    }
-
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // Campo de Senha
-                CustomTextField(
-                  label: 'Senha',
-                  hint: '••••••••',
-                  controller: _senhaController,
-                  obscureText: true,
-                  validator: (val) {
-                    if (val == null || val.isEmpty) return 'Obrigatório';
-                    if (val.length < 6) return 'Mínimo 6 caracteres';
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 20),
-
-                // Confirmar Senha
-                CustomTextField(
-                  label: 'Confirmar Senha',
-                  hint: '••••••••',
-                  controller: _confirmarSenhaController,
-                  obscureText: true,
-                  validator: (val) {
-                    if (val != _senhaController.text) {
-                      return 'As senhas não batem';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 40),
-
-                // Botão Continuar
-                CustomButton(text: 'Continuar', onPressed: _avancar),
-
-                const SizedBox(height: 24),
-
-                // Link para Login
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Text('Já tem uma conta? '),
-                    GestureDetector(
-                      onTap: () => context.go('/login'),
-                      child: const Text(
-                        'Faça login',
-                        style: TextStyle(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 40), 
-              ],
-            ),
-          ),
+              ),
+            );
+          },
         ),
       ),
     );

@@ -1,119 +1,147 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/auth_layout.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
+import 'package:diavicon/core/widgets/custom_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Cadastro1Empresa extends StatelessWidget {
-  final Map<String, dynamic> dadosUsuario; // Adicione isso
-  const Cadastro1Empresa({super.key, required this.dadosUsuario});
+  final Map<String, dynamic> dadosCadastro; 
+  const Cadastro1Empresa({super.key, required this.dadosCadastro});
 
   @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-
     return AuthLayout(
       child: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(
-                20,
-                20,
-                20,
-                MediaQuery.of(context).padding.bottom + 24,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
+        // 🔥 Removido o padding vertical de 20 e ajustado para o fundo colar mais embaixo
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 10.0), 
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 16),
+
+              // ── Bloco de Texto com Barra Laranja ────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: AppColors.primary, width: 4),
+                  ),
                 ),
-                child: IntrinsicHeight(
-                  child: Column(
-                    children: [
-                      Container(
-                        width: double.infinity,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border(
-                            left: BorderSide(
-                              color: AppColors.primary,
-                              width: 5,
-                            ),
-                          ),
-                        ),
-                        padding: const EdgeInsets.fromLTRB(
-                          12,
-                          10,
-                          14,
-                          12,
-                        ),
-                        child: const Column(
-                          crossAxisAlignment:
-                              CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Vamos conhecer melhor a\nsua Empresa!',
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                height: 1.05,
-                              ),
-                            ),
-                            SizedBox(height: 10),
-                            Text(
-                              'Assim conseguimos personalizar\nsua experiência e oferecer\nsoluções adequadas ao seu tipo de\nprojeto.',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w500,
-                                height: 1.15,
-                              ),
-                            ),
-                          ],
-                        ),
+                padding: const EdgeInsets.only(left: 16),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Vamos conhecer melhor a\nsua Empresa!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1C1C1C),
+                        height: 1.2,
                       ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Assim conseguimos personalizar\nsua experiência e oferecer\nsoluções adequadas ao seu tipo de\nprojeto.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4A4A4A),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
 
-                      SizedBox(height: screenHeight * 0.04),
-
-                      SizedBox(
-                        height: screenHeight * 0.30,
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        flex: 5,
                         child: Image.asset(
-                          'assets/images/escudo_diavicon.png',
+                          'assets/images/cachorro.png',
                           fit: BoxFit.contain,
                         ),
                       ),
-
-                      const Spacer(),
-
-                      Padding(
-                        padding: EdgeInsets.only(
-                          bottom:
-                              MediaQuery.of(context).padding.bottom,
-                        ),
-                        child: Row(
-                          mainAxisAlignment:
-                              MainAxisAlignment.center,
-                          children: [
-                            CustomTextbutton(
-                              text: '<   Voltar',
-                              onPressed: () {},
-                            ),
-                            const SizedBox(width: 40),
-                            CompactButton(
-                              text: 'Começar',
-                              onPressed: () {},
-                            ),
-                          ],
+                      
+                      // 🔥 Aumentado o flex para 4 para dar mais área pro balão
+                      Flexible(
+                        flex: 4, 
+                        // 🔥 Transform.translate "flutua" o widget.
+                        // offset: Offset(Eixo X, Eixo Y). 
+                        // Valores negativos puxam para Esquerda e para Cima!
+                        child: Transform.translate(
+                          offset: const Offset(-30, -80), 
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/images/fala_dog2.png',
+                                fit: BoxFit.contain,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 4.0), 
+                                child: FittedBox( 
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Vamos\nComeçar?',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1C1C1C),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-            );
-          },
+
+              // ── Botões Inferiores ──────────────────────────────
+              Row(
+                children: [
+                  CustomTextbutton(
+                    text: '<   Voltar',
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/empresa/gate', extra: dadosCadastro);
+                      }
+                    },
+                  ),
+                  
+                  const SizedBox(width: 70), // 🔥 Adiciona um respiro entre os botões
+                  
+                  // 🔥 O Expanded salva a sua tela de ficar branca!
+                  CustomButton(
+                    width: 120,
+                    text: 'Começar',
+                    onPressed: () {
+                      context.go('/empresa/servicos', extra: dadosCadastro);
+                    },
+                  ),
+                ],
+              ),
+              
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
+

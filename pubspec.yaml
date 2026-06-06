@@ -10,7 +10,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    image_picker: ^1.1.2
     
 
   cupertino_icons: ^1.0.8
@@ -24,7 +23,6 @@ dependencies:
   riverpod: ^3.2.1
   flutter_riverpod: ^3.3.1
   google_sign_in: ^7.2.0
-  mask_text_input_formatter: ^2.9.0
   image_picker: ^1.2.2
   http: ^1.6.0
   google_maps_flutter: ^2.17.0

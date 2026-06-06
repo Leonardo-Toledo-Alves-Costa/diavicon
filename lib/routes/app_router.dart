@@ -176,7 +176,7 @@
         GoRoute(
           path: '/empresa/onboarding',
           builder: (context, state) => Cadastro1Empresa(
-            dadosUsuario: state.extra as Map<String, dynamic>? ?? {},
+            dadosCadastro: state.extra as Map<String, dynamic>? ?? {},
           ),
         ),
         GoRoute(

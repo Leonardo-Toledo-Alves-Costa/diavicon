@@ -29,7 +29,7 @@ class AppTextStyles {
   // Subtextos e legendas dentro de cards (Lato )
   static const TextStyle corpoSubtextoBranco = TextStyle(
     fontFamily: 'Lato',
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: FontWeight.w400,
     color: Colors.white,
   );
@@ -40,5 +40,12 @@ class AppTextStyles {
     fontSize: 14,
     fontWeight: FontWeight.w500,
     color: AppColors.greyMedium,
+  );
+
+  static const TextStyle primary = TextStyle(
+    fontFamily: 'Lato',
+    fontSize: 14,
+    fontWeight: FontWeight.w400,
+    color: AppColors.textPrimary,
   );
 }

@@ -1,9 +1,13 @@
+import 'dart:convert';
 import 'dart:io';
 
+import 'package:diavicon/core/constants/app_text_styles.dart';
+import 'package:diavicon/core/utils/formatters/cep_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters/formatters_cadastro.dart';
@@ -11,6 +15,7 @@ import '../../../core/utils/validators/validators_cadastro.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../core/widgets/custom_text_button.dart';
 
 const _escolaridades = <String>[
   'Ensino Médio',
@@ -47,9 +52,21 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
   final _formacaoCtrl    = TextEditingController();
 
   String? _escolaridade;
+  
+  // Controlo de estado para a API de CEP
+  bool _enderecoBloqueado = false;
+  bool _carregandoCep = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Ouve as alterações do CEP em tempo real
+    _cepCtrl.addListener(_ouvinteCep);
+  }
 
   @override
   void dispose() {
+    _cepCtrl.removeListener(_ouvinteCep);
     _nomeCtrl.dispose();
     _sobrenomeCtrl.dispose();
     _telefoneCtrl.dispose();
@@ -65,6 +82,92 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
     super.dispose();
   }
 
+  void _ouvinteCep() {
+    final apenasNumeros = _cepCtrl.text.replaceAll(RegExp(r'\D'), '');
+    
+    // Dispara a busca automaticamente ao atingir 8 dígitos
+    if (apenasNumeros.length == 8 && !_enderecoBloqueado && !_carregandoCep) {
+      _buscarCep(apenasNumeros);
+    }
+    
+    // Se o utilizador apagar o CEP, liberta os campos para edição manual
+    if (apenasNumeros.isEmpty && _enderecoBloqueado) {
+      setState(() {
+        _enderecoBloqueado = false;
+        _cidadeCtrl.clear();
+        _ruaCtrl.clear();
+        _bairroCtrl.clear();
+        _estadoCtrl.clear();
+        _paisCtrl.clear();
+      });
+    }
+  }
+
+  // 🔥 Função auxiliar que garante que o aviso aparece no lugar certo!
+  void _mostrarAviso(String mensagem, Color cor) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          mensagem, 
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: cor,
+        behavior: SnackBarBehavior.floating, // Faz flutuar
+        margin: const EdgeInsets.all(20), // O Flutter já cuida de subir isso acima do teclado!
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _buscarCep(String cep) async {
+    setState(() => _carregandoCep = true);
+
+    try {
+      final url = Uri.parse('https://viacep.com.br/ws/$cep/json/');
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final dados = jsonDecode(response.body);
+
+        // 🔥 O Segredo: containsKey('erro') ignora se é texto ou booleano, só vê se a palavra "erro" veio da API.
+        if (dados.containsKey('erro')) {
+          _mostrarAviso('CEP não encontrado ou inválido!', Colors.red);
+          setState(() {
+            _enderecoBloqueado = false;
+            _carregandoCep = false;
+          });
+          return;
+        }
+
+        // Se deu tudo certo, preenche os campos
+        setState(() {
+          _cidadeCtrl.text = dados['localidade'] ?? '';
+          _ruaCtrl.text = dados['logradouro'] ?? '';
+          _bairroCtrl.text = dados['bairro'] ?? '';
+          _estadoCtrl.text = dados['uf'] ?? '';
+          _paisCtrl.text = 'Brasil';
+          
+          _enderecoBloqueado = true; 
+          _carregandoCep = false;
+        });
+
+        // 🔥 Aviso verde de sucesso!
+        _mostrarAviso('Endereço preenchido com sucesso!', Colors.green);
+
+      } else {
+        // Se a API retornar código 400 ou 500
+        _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);
+        setState(() => _carregandoCep = false);
+      }
+    } catch (e) {
+      // 🔥 Se não tiver internet
+      _mostrarAviso('Erro de conexão ao buscar o CEP.', Colors.red);
+      setState(() => _carregandoCep = false);
+    }
+  }
+
   Future<void> _selecionarFoto() async {
     final img = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -76,7 +179,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
 
   void _comecar() {
     if (!_formKey.currentState!.validate()) return;
-    context.go('/register/perfil', extra: {
+    context.push('/register/perfil', extra: {
       ...widget.dadosCadastro,
       'nome'        : _nomeCtrl.text.trim(),
       'sobrenome'   : _sobrenomeCtrl.text.trim(),
@@ -94,188 +197,208 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
       'fotoPath'    : _foto?.path,
     });
   }
-
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
-        physics: const BouncingScrollPhysics(),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Seja Bem Vindo à',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1C1C1C),
-                  height: 1.25,
-                ),
-              ),
-              const Text(
-                'DiaViCon',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.primary,
-                  height: 1.25,
-                ),
-              ),
-              const SizedBox(height: 24),
-
-              Center(
-                child: _AvatarPicker(
-                  foto: _foto,
-                  onTap: _selecionarFoto,
-                ),
-              ),
-              const SizedBox(height: 28),
-
-              // ── Informações Pessoais ─────────────────────────
-              const _SectionTitle('Informações Pessoais'),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Nome',
-                hint: 'João',
-                controller: _nomeCtrl,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Informe o nome' : null,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Sobrenome',
-                hint: 'Silva',
-                controller: _sobrenomeCtrl,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Informe o sobrenome' : null,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Telefone',
-                hint: '(31) 9 9191-9191',
-                controller: _telefoneCtrl,
-                keyboardType: TextInputType.phone,
-                inputFormatters: [FormattersCadastro.telefone],
-                validator: ValidatorsCadastro.telefone,
-              ),
-              const SizedBox(height: 28),
-
-              // ── Endereço ────────────────────────────────────
-              const _SectionTitle('Endereço'),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'CEP',
-                hint: '31.333-000',
-                controller: _cepCtrl,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FormattersCadastro.cep],
-                validator: ValidatorsCadastro.cep,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Cidade',
-                hint: 'Belo Horizonte',
-                controller: _cidadeCtrl,
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Informe a cidade' : null,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Rua',
-                hint: 'Rua Abc',
-                controller: _ruaCtrl,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Bairro',
-                hint: 'Bairro Xyz',
-                controller: _bairroCtrl,
-              ),
-              const SizedBox(height: 12),
-              Row(
+      child: GestureDetector(
+        onTap: () => FocusScope.of(context).unfocus(),
+        child: SafeArea(
+          bottom: false,
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              24, 
+              28, 
+              24, 
+              MediaQuery.of(context).padding.bottom + 24,
+            ),
+            physics: const BouncingScrollPhysics(),
+            child: Form(
+              key: _formKey,
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 2,
-                    child: CustomTextField(
-                      label: 'Número',
-                      hint: '123',
-                      controller: _numeroCtrl,
-                      keyboardType: TextInputType.number,
-                      inputFormatters: [
-                        FilteringTextInputFormatter.digitsOnly,
-                      ],
+                  const Text(
+                    'Seja Bem Vindo à',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1C1C1C),
+                      height: 1.25,
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    flex: 3,
-                    child: CustomTextField(
-                      label: 'Complemento',
-                      hint: 'Apto 123',
-                      controller: _complementoCtrl,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Estado',
-                hint: 'Minas Gerais',
-                controller: _estadoCtrl,
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'País',
-                hint: 'Brasil',
-                controller: _paisCtrl,
-              ),
-              const SizedBox(height: 28),
-
-              // ── Título e Escolaridade ────────────────────────
-              const _SectionTitle('Título e Escolaridade'),
-              const SizedBox(height: 12),
-              _DropdownEscolaridade(
-                value: _escolaridade,
-                onChanged: (v) => setState(() => _escolaridade = v),
-              ),
-              const SizedBox(height: 12),
-              CustomTextField(
-                label: 'Formação',
-                hint: 'Engenharia Civil',
-                controller: _formacaoCtrl,
-              ),
-              const SizedBox(height: 32),
-
-              // ── Ações ────────────────────────────────────────
-              Row(
-                children: [
-                  TextButton.icon(
-                    onPressed: () => context.pop(),
-                    icon: const Icon(
-                      Icons.chevron_left,
+                  const Text(
+                    'DiaViCon',
+                    style: TextStyle(
+                      fontSize: 26,
+                      fontWeight: FontWeight.bold,
                       color: AppColors.primary,
-                    ),
-                    label: const Text(
-                      'Voltar',
-                      style: TextStyle(
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                      ),
+                      height: 1.25,
                     ),
                   ),
-                  const Spacer(),
-                  CustomButton(
-                    text: 'Começar',
-                    onPressed: _comecar,
+                  const SizedBox(height: 24),
+
+                  Center(
+                    child: _AvatarPicker(
+                      foto: _foto,
+                      onTap: _selecionarFoto,
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Informações Pessoais ─────────────────────────
+                  const _SectionTitle('Informações Pessoais'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Nome',
+                    hint: 'João',
+                    isRequired: true,
+                    controller: _nomeCtrl,
+                    validator: (v) => ValidatorsCadastro.nome(v, 'nome'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Sobrenome',
+                    isRequired: true,
+                    hint: 'Silva',
+                    controller: _sobrenomeCtrl,
+                    validator: (v) => ValidatorsCadastro.nome(v, 'sobrenome'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Telefone',
+                    hint: '(31) 9 9191-9191',
+                    isRequired: true,
+                    controller: _telefoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [FormattersCadastro.telefone],
+                    validator: ValidatorsCadastro.telefone,
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Endereço ────────────────────────────────────
+                  const _SectionTitle('Endereço'),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'CEP',
+                    isRequired: true,
+                    hint: '31333-000',
+                    controller: _cepCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [CepFormatter.mask],
+                    validator: ValidatorsCadastro.cep,
+                    enabled: !_carregandoCep,
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Cidade',
+                    hint: 'Belo Horizonte',
+                    isRequired: true,
+                    controller: _cidadeCtrl,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe a cidade'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Rua',
+                    hint: 'Rua Abc',
+                    isRequired: true,
+                    controller: _ruaCtrl,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe a rua'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Bairro',
+                    hint: 'Bairro Xyz',
+                    isRequired: true,
+                    controller: _bairroCtrl,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o bairro'),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 2,
+                        child: CustomTextField(
+                          label: 'Número',
+                          isRequired: true,
+                          hint: '123',
+                          controller: _numeroCtrl,
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                          ],
+                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Inválido'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 3,
+                        child: CustomTextField(
+                          label: 'Complemento',
+                          hint: 'Apto 123',
+                          controller: _complementoCtrl,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Estado',
+                    hint: 'Minas Gerais',
+                    isRequired: true,
+                    controller: _estadoCtrl,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o estado'),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'País',
+                    isRequired: true,
+                    hint: 'Brasil',
+                    controller: _paisCtrl,
+                    enabled: !_enderecoBloqueado,
+                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o país'),
+                  ),
+                  const SizedBox(height: 28),
+
+                  // ── Título e Escolaridade ────────────────────────
+                  const _SectionTitle('Título e Escolaridade'),
+                  const SizedBox(height: 12),
+                  _DropdownEscolaridade(
+                    value: _escolaridade,
+                    onChanged: (v) => setState(() => _escolaridade = v),
+                  ),
+                  const SizedBox(height: 12),
+                  CustomTextField(
+                    label: 'Formação',
+                    hint: 'Engenharia Civil',
+                    controller: _formacaoCtrl,
+                  ),
+                  const SizedBox(height: 40),
+
+                  // ── Ações ────────────────────────────────────────
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CustomTextbutton(
+                        text: '<   Voltar',
+                        onPressed: () => context.pop(),
+                      ),
+                      const SizedBox(width: 40),
+                      CustomButton(
+                        text: 'Começar',
+                        width: 150,
+                        fontSize: 15,
+                        onPressed: _comecar,
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -299,25 +422,29 @@ class _AvatarPicker extends StatelessWidget {
         clipBehavior: Clip.none,
         children: [
           CircleAvatar(
-            radius: 52,
+            radius: 56,
             backgroundColor: Colors.grey.shade200,
             backgroundImage:
                 foto != null ? FileImage(File(foto!.path)) : null,
             child: foto == null
-                ? Icon(Icons.person, size: 48, color: Colors.grey.shade400)
+                ? Icon(Icons.person, size: 52, color: Colors.grey.shade400)
                 : null,
           ),
           Positioned(
-            bottom: 0,
-            right: -4,
+            bottom: 2,
+            right: -2,
             child: Container(
-              padding: const EdgeInsets.all(6),
+              padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: AppColors.primary,
-                shape: BoxShape.circle,
-                border: Border.all(color: Colors.white, width: 2),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFF1C1C1C), width: 1.5),
               ),
-              child: const Icon(Icons.edit, size: 14, color: Colors.white),
+              child: const Icon(
+                Icons.edit_outlined,
+                size: 20,
+                color: Color(0xFF1C1C1C),
+              ),
             ),
           ),
         ],

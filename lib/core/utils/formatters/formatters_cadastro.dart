@@ -11,7 +11,7 @@ class FormattersCadastro {
   /// CEP: XXXXX-XXX
   static final TextInputFormatter cep = _CepFormatter();
 
-  /// Telefone: (XX) X XXXX-XXXX ou (XX) XXXX-XXXX
+  /// Telefone: (XX) 9 XXXX-XXXX ou (XX) XXXX-XXXX
   static final TextInputFormatter telefone = _TelefoneFormatter();
 }
 
@@ -72,14 +72,19 @@ class _TelefoneFormatter extends TextInputFormatter {
   ) {
     final digits = newValue.text.replaceAll(RegExp(r'\D'), '');
     final buffer = StringBuffer();
+    // Identifica dinamicamente se é celular (11 dígitos) ou fixo (10 dígitos)
     final isCelular = digits.length == 11;
 
     for (int i = 0; i < digits.length && i < 11; i++) {
       if (i == 0) buffer.write('(');
       if (i == 2) buffer.write(') ');
-      if (isCelular && i == 3) buffer.write('');
+      
+      
+      if (isCelular && i == 3) buffer.write(' '); 
+      
       if (!isCelular && i == 6) buffer.write('-');
       if (isCelular && i == 7) buffer.write('-');
+      
       buffer.write(digits[i]);
     }
 

@@ -44,10 +44,10 @@ class CadastroR2Screen extends StatelessWidget {
     switch (perfilKey) {
       case 'engenheiro':
       case 'proprietario':
-        context.go('/empresa/gate', extra: extra);
+        context.push('/empresa/gate', extra: extra);
         break;
       case 'academico':
-        context.go('/register/academico', extra: extra);
+        context.push('/register/academico', extra: extra);
         break;
     }
   }

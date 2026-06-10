@@ -120,11 +120,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   }
 
   String _formatarVigencia(PlanosModel plano) {
-    if (plano.vigenciaDias == 30) {
-      return '/mês';
-    }
-
-    return '/${plano.vigenciaDias} dias';
+    return '/mês';
   }
 
   @override
@@ -137,16 +133,15 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Image.asset(
                 'assets/images/logo_diavicon.png',
-                height: 120,
+                height: 150,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 10),
-              const SizedBox(height: 8),
               Expanded(
                 child: planosAsync.when(
                   loading: _buildLoadingState,
@@ -190,7 +185,6 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 2),
                         _buildArrowButton(
                           icon: Icons.chevron_right_rounded,
                           onPressed: planos.length > 1
@@ -202,7 +196,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _buildTrialButton(isLoading),
             ],
           ),
@@ -344,8 +338,9 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
               ),
             ),
           ),
+          SizedBox(height: 25),
           RichText(
-            textAlign: TextAlign.end,
+            textAlign: TextAlign.center,
             text: TextSpan(
               text: _formatarValor(plano.valor),
               style: const TextStyle(
@@ -365,11 +360,11 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
               ],
             ),
           ),
+          SizedBox(height: 40),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
             child: _buildPrimaryButton(isLoading, plano),
           ),
-          CustomTextbutton(text: '<   Voltar', onPressed: () => context.pop()),
         ],
       ),
     );
@@ -381,15 +376,15 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: const BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
       ),
       child: const Text(
         'MELHOR OFERTA!',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.w900,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
@@ -463,7 +458,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
         style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         child: const Text(
           'Experimente por 1 Mês',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ),
     );

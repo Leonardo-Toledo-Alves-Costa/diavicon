@@ -45,7 +45,7 @@ class AppTextStyles {
   static const TextStyle primary = TextStyle(
     fontFamily: 'Lato',
     fontSize: 14,
-    fontWeight: FontWeight.w400,
+    fontWeight: FontWeight.w300,
     color: AppColors.textPrimary,
   );
 }

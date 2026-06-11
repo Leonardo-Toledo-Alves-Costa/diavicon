@@ -3,8 +3,8 @@
   import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
   import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
   import 'package:diavicon/features/auth/screens/completar_cadastro_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_bemvinda_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
   import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
   import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
   import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';

@@ -31,7 +31,6 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
   @override
   void initState() {
     super.initState();
-    // Carrega os dados que já vieram do convite
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _carregarDadosIniciais();
     });
@@ -72,7 +71,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
       
       if (user == null) throw Exception('Usuário não autenticado.');
 
-      // 1. Atualiza a senha no Supabase Auth (O usuário do convite não tem senha ainda)
+      // 1. Atualiza a senha no Supabase Auth
       await supabase.auth.updateUser(
         UserAttributes(password: _senhaController.text),
       );
@@ -86,7 +85,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
         'ativo': true, // 🔥 LIBERA O ACESSO
       }).eq('id', user.id);
 
-      // 3. Atualiza o Provider local para refletir a mudança imediatamente
+      // 3. Atualiza o Provider local
       final repo = ref.read(authRepositoryProvider);
       final perfilAtualizado = await repo.getUsuarioPerfil(user.id);
       if (perfilAtualizado != null) {
@@ -101,9 +100,6 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
         'Bem-vindo à equipe! Seu acesso foi liberado.'
       );
 
-      // 4. O GoRouter vai detectar a mudança no currentUserProvider (ativo = true)
-      // e vai redirecionar automaticamente para /projetos.
-      // Mas por garantia, podemos forçar:
       Future.delayed(const Duration(seconds: 2), () {
         if (mounted) context.go('/projetos');
       });
@@ -125,7 +121,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: true,
-        automaticallyImplyLeading: false, // Não pode voltar, tem que completar!
+        automaticallyImplyLeading: false, 
       ),
       body: GestureDetector(
         onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
@@ -157,7 +153,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
                     Expanded(
                       child: CustomTextField(
                         label: 'Nome',
-                        hint: 'Seu nome', // 🔥 HINT ADICIONADO AQUI
+                        hint: 'Seu nome',
                         controller: _nomeController,
                         validator: (val) => val == null || val.isEmpty ? 'Obrigatório' : null,
                       ),
@@ -166,7 +162,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
                     Expanded(
                       child: CustomTextField(
                         label: 'Sobrenome',
-                        hint: 'Seu sobrenome', // 🔥 HINT ADICIONADO AQUI
+                        hint: 'Seu sobrenome',
                         controller: _sobrenomeController,
                         validator: (val) => val == null || val.isEmpty ? 'Obrigatório' : null,
                       ),
@@ -174,12 +170,21 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
                   ],
                 ),
                 const SizedBox(height: 16),
- 
+                
+                // 🔥 CARGO BLOQUEADO
                 CustomTextField(
                   label: 'Cargo / Função',
-                  hint: 'Ex: Desenvolvedor', // 🔥 HINT ADICIONADO AQUI
+                  hint: 'Ex: Desenvolvedor', 
                   controller: _cargoController,
+                  enabled: false, // Impede a edição
                   validator: (val) => val == null || val.isEmpty ? 'Obrigatório' : null,
+                ),
+                const Padding(
+                  padding: EdgeInsets.only(top: 4, left: 4),
+                  child: Text(
+                    'Seu cargo foi definido pelo gestor que enviou o convite.',
+                    style: TextStyle(fontSize: 11, color: Colors.grey),
+                  ),
                 ),
                 const SizedBox(height: 16),
 

@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/diavicon_modal.dart';
-import '../providers/equipe_provider.dart'; 
+import '../controllers/equipe_controller.dart';
+import '../providers/equipe_provider.dart';
 import 'team_edit_item.dart';
-import 'invite_team_body.dart';
-
-// 🔥 IMPORT DA NOVA TELA
-import '../../equipe/screens/convidar_funcionario_screen.dart';
+import '../screens/convidar_funcionario_screen.dart';
 
 class EditTeamBody extends ConsumerWidget {
   final String projetoId;
-  
+
   const EditTeamBody({super.key, required this.projetoId});
 
-  // --- 🔥 AVISO FLUTUANTE MODERNO (OVERLAY) ---
-  void _mostrarAvisoFlutuante(BuildContext context, String titulo, String mensagem, {bool isErro = false, bool isAviso = false}) {
+  void _mostrarAvisoFlutuante(
+    BuildContext context,
+    String titulo,
+    String mensagem, {
+    bool isErro = false,
+    bool isAviso = false,
+  }) {
     final overlay = Overlay.of(context);
     late OverlayEntry overlayEntry;
     bool isRemoved = false;
@@ -27,12 +30,16 @@ class EditTeamBody extends ConsumerWidget {
       }
     }
 
-    final Color corPrincipal = isErro ? Colors.red : (isAviso ? Colors.orange.shade800 : Colors.green);
-    final IconData icone = isErro ? Icons.error_outline : (isAviso ? Icons.warning_amber_rounded : Icons.check_circle_outline);
+    final Color corPrincipal = isErro
+        ? Colors.red
+        : (isAviso ? Colors.orange.shade800 : Colors.green);
+    final IconData icone = isErro
+        ? Icons.error_outline
+        : (isAviso ? Icons.warning_amber_rounded : Icons.check_circle_outline);
 
     overlayEntry = OverlayEntry(
       builder: (context) => Positioned(
-        top: MediaQuery.of(context).padding.top + 20, 
+        top: MediaQuery.of(context).padding.top + 20,
         left: 16,
         right: 16,
         child: Material(
@@ -40,7 +47,7 @@ class EditTeamBody extends ConsumerWidget {
           child: TweenAnimationBuilder(
             duration: const Duration(milliseconds: 400),
             curve: Curves.easeOutBack,
-            tween: Tween<double>(begin: -100, end: 0), 
+            tween: Tween<double>(begin: -100, end: 0),
             builder: (context, double value, child) {
               return Transform.translate(
                 offset: Offset(0, value),
@@ -53,7 +60,11 @@ class EditTeamBody extends ConsumerWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: const [
-                  BoxShadow(color: Colors.black26, blurRadius: 10, offset: Offset(0, 4)),
+                  BoxShadow(
+                    color: Colors.black26,
+                    blurRadius: 10,
+                    offset: Offset(0, 4),
+                  ),
                 ],
                 border: Border(left: BorderSide(color: corPrincipal, width: 4)),
               ),
@@ -66,16 +77,35 @@ class EditTeamBody extends ConsumerWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(titulo, style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark, fontSize: 16)),
+                        Text(
+                          titulo,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                            fontSize: 16,
+                          ),
+                        ),
                         const SizedBox(height: 4),
-                        Text(mensagem, style: TextStyle(color: Colors.grey.shade700, fontSize: 14)),
+                        Text(
+                          mensagem,
+                          style: TextStyle(
+                            color: Colors.grey.shade700,
+                            fontSize: 14,
+                          ),
+                        ),
                       ],
                     ),
                   ),
                   TextButton(
                     onPressed: remover,
-                    child: Text('Entendi', style: TextStyle(color: corPrincipal, fontWeight: FontWeight.bold)),
-                  )
+                    child: Text(
+                      'Entendi',
+                      style: TextStyle(
+                        color: corPrincipal,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -88,29 +118,55 @@ class EditTeamBody extends ConsumerWidget {
     Future.delayed(const Duration(seconds: 4), remover);
   }
 
-  Future<void> _confirmarRemocao(BuildContext context, WidgetRef ref, String usuarioId, String nomeColaborador) async {
+  Future<void> _confirmarRemocao(
+    BuildContext context,
+    WidgetRef ref,
+    String usuarioId,
+    String nomeColaborador,
+  ) async {
     final confirmar = await showDialog<bool>(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: const Text(
-            'Remover Colaborador', 
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)
+            'Remover Colaborador',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: AppColors.textDark,
+            ),
           ),
-          content: Text('Tem certeza que deseja remover $nomeColaborador da equipe deste projeto? Ele perderá o acesso aos dados atuais.'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          content: Text(
+            'Tem certeza que deseja remover $nomeColaborador da equipe deste projeto? Ele perderá o acesso aos dados atuais.',
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(
+                  color: Colors.grey,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
             ElevatedButton(
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
               onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Remover', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Remover',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         );
@@ -119,63 +175,30 @@ class EditTeamBody extends ConsumerWidget {
 
     if (confirmar == true && context.mounted) {
       try {
-        await ref.read(equipeControllerProvider).atualizarStatusColaborador(
-          projetoId: projetoId, 
-          usuarioId: usuarioId,
-          ativo: false,
-        );
+        await ref
+            .read(equipeControllerProvider)
+            .atualizarStatusColaborador(
+              projetoId: projetoId,
+              usuarioId: usuarioId,
+              ativo: false,
+            );
         if (context.mounted) {
-          _mostrarAvisoFlutuante(context, 'Sucesso!', 'Colaborador removido da equipe.');
+          // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
+          ref.invalidate(colaboradoresProjetoProvider(projetoId));
+          _mostrarAvisoFlutuante(
+            context,
+            'Sucesso!',
+            'Colaborador removido da equipe.',
+          );
         }
       } catch (e) {
         if (context.mounted) {
-          _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao remover: $e', isErro: true);
-        }
-      }
-    }
-  }
-
-  Future<void> _confirmarReenvioConvite(BuildContext context, WidgetRef ref, String empresaId, String nomeColaborador) async {
-    final confirmar = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text(
-            'Reenviar Convite', 
-            style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)
-          ),
-          content: Text('Deseja enviar um novo convite de acesso ao projeto para $nomeColaborador?'),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary, 
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Enviar Convite', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmar == true && context.mounted) {
-      try {
-        await ref.read(equipeControllerProvider).enviarConvite(
-          projetoId: projetoId, 
-          empresaConvidadaId: empresaId,
-        );
-        if (context.mounted) {
-          _mostrarAvisoFlutuante(context, 'Sucesso!', 'Convite enviado para a empresa. Aguardando aceite.');
-        }
-      } catch (e) {
-        if (context.mounted) {
-          _mostrarAvisoFlutuante(context, 'Aviso', e.toString().replaceAll('Exception: ', ''), isAviso: true);
+          _mostrarAvisoFlutuante(
+            context,
+            'Ops!',
+            'Erro ao remover: $e',
+            isErro: true,
+          );
         }
       }
     }
@@ -185,178 +208,270 @@ class EditTeamBody extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final gestaoAsync = ref.watch(gestaoProjetoProvider(projetoId));
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: gestaoAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, stack) => Center(child: Text('Erro ao validar permissões: $err')),
+        loading: () => const Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
+        error: (err, stack) =>
+            Center(child: Text('Erro ao validar permissões: $err')),
         data: (gestaoData) {
-          final empresaGestoraId = gestaoData?['empresa_gestora_id'];
-          final empresaLogadaId = gestaoData?['empresa_usuario_logado_id'];
-          
-          final bool isViewerGestor = empresaGestoraId != null && empresaGestoraId == empresaLogadaId;
+          final bool isViewerGestor =
+              gestaoData?['is_user_gestor_equipe'] ?? false;
 
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              OutlinedButton.icon(
-                icon: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
-                label: const Text(
-                  'Convidar nova empresa por CNPJ',
-                  style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
-                ),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: AppColors.primary),
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-                onPressed: () {
-                  showDiaviconModal(
-                    context: context,
-                    title: 'Buscar Colaborador',
-                    body: InviteTeamBody(projetoId: projetoId),
-                  );
-                },
-              ),
-              const SizedBox(height: 24),
-              
-              const Text(
-                'Membros Atuais',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark),
-              ),
-              const SizedBox(height: 12),
-              
-              Consumer(
-                builder: (context, ref, child) {
-                  final colaboradoresAsync = ref.watch(colaboradoresProjetoProvider(projetoId));
-                  
-                  return colaboradoresAsync.when(
-                    loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                    error: (err, stack) => Center(child: Text('Erro ao carregar equipe: $err')),
-                    data: (listaColaboradores) {
-                      if (listaColaboradores.isEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 20),
+              Flexible(
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final colaboradoresAsync = ref.watch(
+                        colaboradoresProjetoProvider(projetoId),
+                      );
+
+                      return colaboradoresAsync.when(
+                        loading: () => const Padding(
+                          padding: EdgeInsets.all(20.0),
                           child: Center(
-                            child: Text(
-                              'Nenhum colaborador vinculado a este projeto.',
-                              style: TextStyle(color: AppColors.hintText),
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
                             ),
                           ),
-                        );
-                      }
-
-                      return Column(
-                        children: [
-                          ...listaColaboradores.map((item) {
-                            final usuario = item['usuario'] as Map<String, dynamic>;
-                            final empresaIdColaborador = item['empresa_id'] as String?;
-                            
-                            final String nomeCompleto = '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'.trim();
-                            final String cargo = usuario['cargo'] ?? 'Colaborador';
-                            
-                            final bool isAtivo = item['ativo'] ?? false;
-                            final bool isUserGestor = empresaGestoraId != null && empresaGestoraId == empresaIdColaborador;
-                            final bool isCurrentCompany = empresaLogadaId != null && empresaLogadaId == empresaIdColaborador;
-
-                            return TeamEditItem(
-                              name: nomeCompleto,
-                              role: cargo,
-                              subRole: '', 
-                              isSelected: isAtivo, 
-                              isUserGestor: isUserGestor,
-                              isViewerGestor: isViewerGestor,
-                              onChanged: (val) {
-                                if (isCurrentCompany) {
-                                  _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode alterar o seu próprio nível de acesso.', isAviso: true);
-                                  return;
-                                }
-
-                                if (!isViewerGestor) {
-                                  _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode editar os acessos.', isAviso: true);
-                                  return;
-                                }
-
-                                if (val == false) {
-                                  _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
-                                } else if (val == true && empresaIdColaborador != null) {
-                                  _confirmarReenvioConvite(context, ref, empresaIdColaborador, nomeCompleto);
-                                }
-                              },
-                              onToggleGestor: (val) async {
-                                if (!isViewerGestor) return;
-
-                                if (val && empresaIdColaborador != null) {
-                                  try {
-                                    await ref.read(equipeControllerProvider).alterarGestor(
-                                      projetoId: projetoId, 
-                                      novaEmpresaGestoraId: empresaIdColaborador,
-                                    );
-                                    if (context.mounted) {
-                                      _mostrarAvisoFlutuante(context, 'Gestão Alterada', 'A nova empresa gestora foi definida.', isAviso: false);
-                                    }
-                                  } catch (e) {
-                                    if (context.mounted) {
-                                      _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao alterar gestão: $e', isErro: true);
-                                    }
-                                  }
-                                }
-                              },
-                              onRemove: () {
-                                if (isCurrentCompany) {
-                                  _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode se remover do projeto. Solicite à gestora.', isAviso: true);
-                                  return;
-                                }
-
-                                if (!isViewerGestor) {
-                                  _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas a empresa gestora pode remover membros.', isAviso: true);
-                                  return;
-                                }
-
-                                _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
-                              },
-                            );
-                          }),
-                          
-                          // 🔥 O ATALHO PARA CONVIDAR FUNCIONÁRIO FOI ADICIONADO AQUI
-                          const SizedBox(height: 16),
-                          TextButton.icon(
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                            ),
-                            onPressed: () {
-                              // Fecha o modal atual antes de abrir a próxima tela
-                              Navigator.pop(context);
-                              
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => const ConvidarFuncionarioScreen(),
+                        ),
+                        error: (err, stack) => Padding(
+                          padding: const EdgeInsets.all(20.0),
+                          child: Center(
+                            child: Text('Erro ao carregar equipe: $err'),
+                          ),
+                        ),
+                        data: (listaColaboradores) {
+                          if (listaColaboradores.isEmpty) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(vertical: 20),
+                              child: Center(
+                                child: Text(
+                                  'Nenhum colaborador vinculado a este projeto.',
+                                  style: TextStyle(color: AppColors.hintText),
                                 ),
-                              );
-                            },
-                            icon: const Icon(Icons.person_add_alt_1, color: AppColors.primary),
-                            label: const Text(
-                              'Não achou? Convide para a empresa',
-                              style: TextStyle(
-                                color: AppColors.primary, 
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
                               ),
-                            ),
-                          ),
-                          const SizedBox(height: 24),
-                        ],
+                            );
+                          }
+
+                          return Column(
+                            children: [
+                              ...listaColaboradores.map((item) {
+                                final usuario =
+                                    item['usuario'] as Map<String, dynamic>? ??
+                                        {};
+                                final String nomeCompleto =
+                                    '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'
+                                        .trim();
+                                final String cargo =
+                                    usuario['cargo'] ?? 'Colaborador';
+                                final String tituloPrincipal =
+                                    usuario['titulo_principal'] ?? '';
+
+                                final bool isAtivo = item['ativo'] ?? false;
+                                final bool isUserGestor =
+                                    item['is_gestor'] ?? false;
+                                final bool isMe =
+                                    usuario['id'] == currentUserId;
+                                final bool podeEditar = isViewerGestor && !isMe;
+
+                                return TeamEditItem(
+                                  name: nomeCompleto,
+                                  role: cargo,
+                                  subRole: tituloPrincipal,
+                                  isSelected: isAtivo,
+                                  isUserGestor: isUserGestor,
+                                  isViewerGestor: isViewerGestor,
+                                  isEditable: podeEditar,
+
+                                  onChanged: (val) async {
+                                    if (isMe) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Ação Bloqueada',
+                                        'Você não pode alterar o seu próprio nível de acesso.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+                                    if (!isViewerGestor) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Acesso Negado',
+                                        'Apenas os gestores podem editar os acessos da equipe.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+
+                                    if (val == false) {
+                                      _confirmarRemocao(
+                                        context,
+                                        ref,
+                                        usuario['id'],
+                                        nomeCompleto,
+                                      );
+                                    } else if (val == true) {
+                                      try {
+                                        await ref
+                                            .read(equipeControllerProvider)
+                                            .atualizarStatusColaborador(
+                                              projetoId: projetoId,
+                                              usuarioId: usuario['id'],
+                                              ativo: true,
+                                            );
+                                        if (!context.mounted) return;
+                                        
+                                        // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
+                                        ref.invalidate(colaboradoresProjetoProvider(projetoId));
+
+                                        _mostrarAvisoFlutuante(
+                                          context,
+                                          'Sucesso!',
+                                          '$nomeCompleto foi adicionado ao projeto.',
+                                        );
+                                      } catch (e) {
+                                        if (!context.mounted) return;
+                                        _mostrarAvisoFlutuante(
+                                          context,
+                                          'Ops!',
+                                          'Erro ao adicionar membro: $e',
+                                          isErro: true,
+                                        );
+                                      }
+                                    }
+                                  },
+
+                                  onToggleGestor: (val) async {
+                                    if (isMe) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Ação Bloqueada',
+                                        'Você não pode alterar a sua própria permissão de gestão.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+                                    if (!isViewerGestor) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Acesso Negado',
+                                        'Apenas gestores podem realizar essa ação.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+
+                                    try {
+                                      await ref
+                                          .read(equipeControllerProvider)
+                                          .alterarGestorEquipe(
+                                            projetoId: projetoId,
+                                            usuarioId: usuario['id'],
+                                            isGestor: val,
+                                          );
+                                      if (!context.mounted) return;
+                                      
+                                      // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
+                                      ref.invalidate(colaboradoresProjetoProvider(projetoId));
+
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Gestão Alterada',
+                                        'O nível de acesso foi atualizado com sucesso.',
+                                        isAviso: false,
+                                      );
+                                    } catch (e) {
+                                      if (!context.mounted) return;
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Ops!',
+                                        'Erro ao alterar gestão: $e',
+                                        isErro: true,
+                                      );
+                                    }
+                                  },
+
+                                  onRemove: () {
+                                    if (isMe) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Ação Bloqueada',
+                                        'Você não pode se remover do projeto.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+                                    if (!isViewerGestor) {
+                                      _mostrarAvisoFlutuante(
+                                        context,
+                                        'Acesso Negado',
+                                        'Apenas os gestores podem remover membros.',
+                                        isAviso: true,
+                                      );
+                                      return;
+                                    }
+
+                                    _confirmarRemocao(
+                                      context,
+                                      ref,
+                                      usuario['id'],
+                                      nomeCompleto,
+                                    );
+                                  },
+                                );
+                              }),
+                            ],
+                          );
+                        },
                       );
                     },
-                  );
-                }
+                  ),
+                ),
               ),
+
+              const SizedBox(height: 16),
+
+              if (isViewerGestor)
+                OutlinedButton.icon(
+                  icon: const Icon(
+                    Icons.person_add_alt_1,
+                    color: AppColors.primary,
+                  ),
+                  label: const Text(
+                    'Convidar novo funcionário',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppColors.primary),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            ConvidarFuncionarioScreen(projetoId: projetoId),
+                      ),
+                    );
+                  },
+                ),
             ],
           );
         },

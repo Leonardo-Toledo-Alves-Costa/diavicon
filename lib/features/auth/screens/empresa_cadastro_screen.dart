@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io'; // 🔥 Import do dart:io para exibir o File da imagem
 import 'package:diavicon/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
-import 'package:mask_text_input_formatter/mask_text_input_formatter.dart'; // 🔥 Import do pacote de máscaras
+import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
+import 'package:image_picker/image_picker.dart'; // 🔥 Import do ImagePicker
+import 'package:image_cropper/image_cropper.dart'; // 🔥 Import do ImageCropper
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
@@ -12,7 +15,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
 import '../../../core/widgets/custom_text_button.dart'; 
-import '../providers/empresa_provider.dart';
+import '../../empresa/providers/empresa_provider.dart';
 import '../../../core/utils/formatters/cnpj_formatter.dart';
 import '../../../core/utils/validators/cnpj_validator.dart';
 import '../../../core/utils/validators/validators_cadastro.dart'; 
@@ -30,12 +33,14 @@ class EmpresaCadastroScreen extends ConsumerStatefulWidget {
 class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _formKey = GlobalKey<FormState>();
 
-  // 🔥 Máscara de CEP exclusiva e local desta instância para não bugar com outras telas
   final _cepMask = MaskTextInputFormatter(
     mask: '#####-###',
     filter: {"#": RegExp(r'[0-9]')},
     type: MaskAutoCompletionType.lazy,
   );
+
+  // 🔥 Variável de estado para guardar a foto da empresa
+  XFile? _fotoEmpresa;
 
   final _cnpjController = TextEditingController();
   final _nomeFantasiaController = TextEditingController();
@@ -101,6 +106,44 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     _linkedinController.dispose();
     _instagramController.dispose();
     super.dispose();
+  }
+
+  // ── Lógica da Foto ───────────────────────────────────────────────────────
+  Future<void> _selecionarFotoEmpresa() async {
+    final img = await ImagePicker().pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 1024, 
+      maxHeight: 1024,
+    );
+
+    if (img != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: img.path,
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1), 
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar Logo da Empresa',
+            toolbarColor: AppColors.primary, 
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true, 
+          ),
+          IOSUiSettings(
+            title: 'Ajustar Logo',
+            cancelButtonTitle: 'Cancelar',
+            doneButtonTitle: 'Concluir',
+            aspectRatioLockEnabled: true, 
+            resetButtonHidden: true,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _fotoEmpresa = XFile(croppedFile.path); 
+        });
+      }
+    }
   }
 
   // ── Lógica do CEP (ViaCEP) ───────────────────────────────────────────────
@@ -204,6 +247,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         'site': _siteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
         'instagram': _instagramController.text.trim(),
+        'fotoPath': _fotoEmpresa?.path, // 🔥 Passando o caminho da foto para o Provider!
       },
     };
 
@@ -447,21 +491,25 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     );
   }
 
+  // 🔥 Atualizado: O onTap agora chama a função e exibe a imagem local caso exista
   Widget _buildLogoPicker() {
     return Center(
       child: GestureDetector(
-        onTap: () {},
+        onTap: _selecionarFotoEmpresa,
         child: Stack(
           clipBehavior: Clip.none,
           children: [
             CircleAvatar(
               radius: 56,
               backgroundColor: AppColors.greyVeryLight,
-              child: const Icon(
-                Icons.domain,
-                size: 52,
-                color: AppColors.greyLight,
-              ),
+              backgroundImage: _fotoEmpresa != null ? FileImage(File(_fotoEmpresa!.path)) : null,
+              child: _fotoEmpresa == null 
+                  ? const Icon(
+                      Icons.domain,
+                      size: 52,
+                      color: AppColors.greyLight,
+                    )
+                  : null, // Se tem foto, some o ícone
             ),
             Positioned(
               bottom: 2,

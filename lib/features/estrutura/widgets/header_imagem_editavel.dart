@@ -9,7 +9,7 @@ class HeaderImagemEditavel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const String defaultAsset = 'assets/images/empresa.png';
+    const String defaultAsset = 'assets/images/sem_estrutura.png';
 
     return Stack(
       children: [

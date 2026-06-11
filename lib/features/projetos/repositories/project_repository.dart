@@ -49,9 +49,9 @@ class ProjectRepository {
             prioridade:prioridade_id(nome),
             status_projeto:status_id(nome),
             empresas:empresa_gestora_id(nome),
-            projeto_colaboradores!inner(usuario_id)
+            projeto_empresas_colaboradoras!inner(usuario_id)
           ''')
-          .eq('projeto_colaboradores.usuario_id', userId)
+          .eq('projeto_empresas_colaboradoras.usuario_id', userId)
           .order('criado_em', ascending: false);
 
       final List data = response as List;
@@ -143,7 +143,7 @@ class ProjectRepository {
       }
 
       // Adiciona o Gestor à equipe
-      await _supabase.from('projeto_colaboradores').insert({
+      await _supabase.from('projeto_empresas_colaboradoras').insert({
         'projeto_id': novoProjetoId,
         'usuario_id': usuarioId, 
         'empresa_id': empresaGestoraId, 

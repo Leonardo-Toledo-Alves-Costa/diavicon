@@ -15,6 +15,7 @@ class CustomTextField extends StatelessWidget {
   final bool? enabled;
   final bool isRequired;
   final List<TextInputFormatter>? inputFormatters;
+  final int maxLines;
 
   const CustomTextField({
     super.key,
@@ -28,6 +29,7 @@ class CustomTextField extends StatelessWidget {
     this.enabled,
     this.isRequired = false,
     this.inputFormatters,
+    this.maxLines = 1,
   });
 
   @override
@@ -65,6 +67,7 @@ class CustomTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
+          maxLines: maxLines,
           enabled: enabled,
           style: GoogleFonts.lato(
             color: isEnabled ? AppColors.textDark : Colors.grey[600],
@@ -75,6 +78,11 @@ class CustomTextField extends StatelessWidget {
           ),
           decoration: InputDecoration(
             hintText: hint,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14.0,
+              horizontal: 16.0,
+            ),
+
             hintStyle: GoogleFonts.lato(
               color: AppColors.hintText,
               fontSize: 18,

@@ -57,7 +57,7 @@ class NotificacoesController {
     await _supabase.from('projeto_convites_equipe').update({'status': 'aceito'}).eq('id', conviteId);
 
     // 🔥 VERIFICA SE A EMPRESA JÁ EXISTE NO HISTÓRICO (Soft Delete)
-    final jaExiste = await _supabase.from('projeto_colaboradores')
+    final jaExiste = await _supabase.from('projeto_empresas_colaboradoras')
         .select('usuario_id')
         .eq('projeto_id', projetoId)
         .eq('empresa_id', empresaId)
@@ -65,13 +65,13 @@ class NotificacoesController {
 
     if (jaExiste != null) {
       // Se ela já estava lá desmarcada, apenas reativa
-      await _supabase.from('projeto_colaboradores')
+      await _supabase.from('projeto_empresas_colaboradoras')
           .update({'ativo': true, 'usuario_id': userId}) 
           .eq('projeto_id', projetoId)
           .eq('empresa_id', empresaId);
     } else {
       // Se é a primeira vez na vida, insere do zero já como ATIVO
-      await _supabase.from('projeto_colaboradores').insert({
+      await _supabase.from('projeto_empresas_colaboradoras').insert({
         'projeto_id': projetoId,
         'usuario_id': userId,
         'empresa_id': empresaId,

@@ -20,7 +20,7 @@ final colaboradoresProjetoProvider = FutureProvider.family<List<Map<String, dyna
   final supabase = Supabase.instance.client;
   // 🔥 AQUI: Pedimos para o banco trazer a coluna 'ativo'
   final response = await supabase
-      .from('projeto_colaboradores')
+      .from('projeto_empresas_colaboradoras')
       .select('empresa_id, ativo, usuario:usuarios(id, nome, sobrenome, cargo, foto_url)')
       .eq('projeto_id', projetoId);
   return List<Map<String, dynamic>>.from(response);
@@ -65,7 +65,7 @@ class EquipeController {
 
     // 🔥 BUSCA TAMBÉM O STATUS DE ATIVO
     final jaColaborador = await _supabase
-        .from('projeto_colaboradores')
+        .from('projeto_empresas_colaboradoras')
         .select('ativo')
         .eq('projeto_id', projetoId)
         .eq('empresa_id', empresaConvidadaId)
@@ -101,7 +101,7 @@ class EquipeController {
     required bool ativo,
   }) async {
     await _supabase
-        .from('projeto_colaboradores')
+        .from('projeto_empresas_colaboradoras')
         .update({'ativo': ativo})
         .eq('projeto_id', projetoId)
         .eq('usuario_id', usuarioId);
@@ -141,7 +141,7 @@ class EquipeController {
 
     // 3. Verifica se essa empresa já foi colaboradora no passado (Soft Delete)
     final jaColaborador = await _supabase
-        .from('projeto_colaboradores')
+        .from('projeto_empresas_colaboradoras')
         .select('empresa_id')
         .eq('projeto_id', projetoId)
         .eq('empresa_id', empresaId)
@@ -150,13 +150,13 @@ class EquipeController {
     if (jaColaborador != null) {
       // Se já existe, apenas reativa
       await _supabase
-          .from('projeto_colaboradores')
+          .from('projeto_empresas_colaboradoras')
           .update({'ativo': true})
           .eq('projeto_id', projetoId)
           .eq('empresa_id', empresaId);
     } else {
       // Se é a primeira vez, insere do zero
-      await _supabase.from('projeto_colaboradores').insert({
+      await _supabase.from('projeto_empresas_colaboradoras').insert({
         'projeto_id': projetoId,
         'empresa_id': empresaId,
         'usuario_id': userId, // Opcional, se sua tabela exigir

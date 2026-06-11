@@ -45,14 +45,20 @@ final minhasEstruturasProvider = StreamProvider.autoDispose.family<List<Estrutur
 
   // Filtra pelo usuário logado E pelo projeto atual
   return supabase
-      .from('estruturas')
-      .stream(primaryKey: ['id'])
-      .eq('projeto_id', projetoId) 
-      .order('criado_em', ascending: false)
-      .map((lista) {
-        return lista
-            .where((item) => item['user_id'] == userId) 
-            .map((item) => EstruturaModel.fromMap(item))
+      .from('projeto_estruturas')
+      .stream(primaryKey: ['projeto_id', 'estrutura_id'])
+      .eq('projeto_id', projetoId)
+      .asyncMap((_) async {
+        final response = await supabase
+            .from('projeto_estruturas')
+            .select('estruturas!inner(*)')
+            .eq('projeto_id', projetoId)
+            .eq('estruturas.user_id', userId)
+            .order('criado_em', referencedTable: 'estruturas', ascending: false);
+
+        final List<dynamic> data = response;
+        return data
+            .map((item) => EstruturaModel.fromMap(item['estruturas'] as Map<String, dynamic>))
             .toList();
       });
 });

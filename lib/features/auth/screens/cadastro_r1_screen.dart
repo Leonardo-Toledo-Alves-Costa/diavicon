@@ -6,6 +6,7 @@ import 'package:diavicon/core/utils/formatters/cep_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 
@@ -38,21 +39,21 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
   final _formKey = GlobalKey<FormState>();
   XFile? _foto;
 
-  final _nomeCtrl        = TextEditingController();
-  final _sobrenomeCtrl   = TextEditingController();
-  final _telefoneCtrl    = TextEditingController();
-  final _cepCtrl         = TextEditingController();
-  final _cidadeCtrl      = TextEditingController();
-  final _ruaCtrl         = TextEditingController();
-  final _bairroCtrl      = TextEditingController();
-  final _numeroCtrl      = TextEditingController();
+  final _nomeCtrl = TextEditingController();
+  final _sobrenomeCtrl = TextEditingController();
+  final _telefoneCtrl = TextEditingController();
+  final _cepCtrl = TextEditingController();
+  final _cidadeCtrl = TextEditingController();
+  final _ruaCtrl = TextEditingController();
+  final _bairroCtrl = TextEditingController();
+  final _numeroCtrl = TextEditingController();
   final _complementoCtrl = TextEditingController();
-  final _estadoCtrl      = TextEditingController();
-  final _paisCtrl        = TextEditingController();
-  final _formacaoCtrl    = TextEditingController();
+  final _estadoCtrl = TextEditingController();
+  final _paisCtrl = TextEditingController();
+  final _formacaoCtrl = TextEditingController();
 
   String? _escolaridade;
-  
+
   // Controlo de estado para a API de CEP
   bool _enderecoBloqueado = false;
   bool _carregandoCep = false;
@@ -84,12 +85,12 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
 
   void _ouvinteCep() {
     final apenasNumeros = _cepCtrl.text.replaceAll(RegExp(r'\D'), '');
-    
+
     // Dispara a busca automaticamente ao atingir 8 dígitos
     if (apenasNumeros.length == 8 && !_enderecoBloqueado && !_carregandoCep) {
       _buscarCep(apenasNumeros);
     }
-    
+
     // Se o utilizador apagar o CEP, liberta os campos para edição manual
     if (apenasNumeros.isEmpty && _enderecoBloqueado) {
       setState(() {
@@ -110,12 +111,17 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          mensagem, 
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          mensagem,
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: cor,
         behavior: SnackBarBehavior.floating, // Faz flutuar
-        margin: const EdgeInsets.all(20), // O Flutter já cuida de subir isso acima do teclado!
+        margin: const EdgeInsets.all(
+          20,
+        ), // O Flutter já cuida de subir isso acima do teclado!
         duration: const Duration(seconds: 3),
       ),
     );
@@ -148,14 +154,13 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
           _bairroCtrl.text = dados['bairro'] ?? '';
           _estadoCtrl.text = dados['uf'] ?? '';
           _paisCtrl.text = 'Brasil';
-          
-          _enderecoBloqueado = true; 
+
+          _enderecoBloqueado = true;
           _carregandoCep = false;
         });
 
         // Aviso verde de sucesso!
         _mostrarAviso('Endereço preenchido com sucesso!', Colors.green);
-
       } else {
         // Se a API retornar código 400 ou 500
         _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);
@@ -171,32 +176,69 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
   Future<void> _selecionarFoto() async {
     final img = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
+      maxWidth:
+          1024,
+      maxHeight: 1024,
     );
-    if (img != null) setState(() => _foto = img);
+
+    if (img != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: img.path,
+        aspectRatio: const CropAspectRatio(
+          ratioX: 1,
+          ratioY: 1,
+        ), 
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar Foto',
+            toolbarColor: AppColors.primary, 
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.square,
+            lockAspectRatio: true, 
+          ),
+          IOSUiSettings(
+            title: 'Ajustar Foto',
+            cancelButtonTitle: 'Cancelar',
+            doneButtonTitle: 'Concluir',
+            aspectRatioLockEnabled: true,
+            resetButtonHidden: true,
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _foto = XFile(croppedFile.path);
+
+        });
+      }
+    }
   }
 
   void _comecar() {
     if (!_formKey.currentState!.validate()) return;
-    context.push('/register/perfil', extra: {
-      ...widget.dadosCadastro,
-      'nome'        : _nomeCtrl.text.trim(),
-      'sobrenome'   : _sobrenomeCtrl.text.trim(),
-      'telefone'    : _telefoneCtrl.text,
-      'cep'         : _cepCtrl.text,
-      'cidade'      : _cidadeCtrl.text.trim(),
-      'rua'         : _ruaCtrl.text.trim(),
-      'bairro'      : _bairroCtrl.text.trim(),
-      'numero'      : _numeroCtrl.text.trim(),
-      'complemento' : _complementoCtrl.text.trim(),
-      'estado'      : _estadoCtrl.text.trim(),
-      'pais'        : _paisCtrl.text.trim(),
-      'escolaridade': _escolaridade,
-      'formacao'    : _formacaoCtrl.text.trim(),
-      'fotoPath'    : _foto?.path,
-    });
+    context.push(
+      '/register/perfil',
+      extra: {
+        ...widget.dadosCadastro,
+        'nome': _nomeCtrl.text.trim(),
+        'sobrenome': _sobrenomeCtrl.text.trim(),
+        'telefone': _telefoneCtrl.text,
+        'cep': _cepCtrl.text,
+        'cidade': _cidadeCtrl.text.trim(),
+        'rua': _ruaCtrl.text.trim(),
+        'bairro': _bairroCtrl.text.trim(),
+        'numero': _numeroCtrl.text.trim(),
+        'complemento': _complementoCtrl.text.trim(),
+        'estado': _estadoCtrl.text.trim(),
+        'pais': _paisCtrl.text.trim(),
+        'escolaridade': _escolaridade,
+        'formacao': _formacaoCtrl.text.trim(),
+        'fotoPath': _foto?.path,
+      },
+    );
   }
+
   @override
   Widget build(BuildContext context) {
     return AuthLayout(
@@ -206,9 +248,9 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
           bottom: false,
           child: SingleChildScrollView(
             padding: EdgeInsets.fromLTRB(
-              24, 
-              28, 
-              24, 
+              24,
+              28,
+              24,
               MediaQuery.of(context).padding.bottom + 24,
             ),
             physics: const BouncingScrollPhysics(),
@@ -238,10 +280,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                   const SizedBox(height: 24),
 
                   Center(
-                    child: _AvatarPicker(
-                      foto: _foto,
-                      onTap: _selecionarFoto,
-                    ),
+                    child: _AvatarPicker(foto: _foto, onTap: _selecionarFoto),
                   ),
                   const SizedBox(height: 28),
 
@@ -295,7 +334,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     isRequired: true,
                     controller: _cidadeCtrl,
                     enabled: !_enderecoBloqueado,
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe a cidade'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Informe a cidade'),
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -304,7 +344,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     isRequired: true,
                     controller: _ruaCtrl,
                     enabled: !_enderecoBloqueado,
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe a rua'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Informe a rua'),
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -313,7 +354,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     isRequired: true,
                     controller: _bairroCtrl,
                     enabled: !_enderecoBloqueado,
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o bairro'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Informe o bairro'),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -330,7 +372,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                           inputFormatters: [
                             FilteringTextInputFormatter.digitsOnly,
                           ],
-                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Inválido'),
+                          validator: (v) =>
+                              ValidatorsCadastro.obrigatorio(v, 'Inválido'),
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -351,7 +394,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     isRequired: true,
                     controller: _estadoCtrl,
                     enabled: !_enderecoBloqueado,
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o estado'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Informe o estado'),
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -360,7 +404,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     hint: 'Brasil',
                     controller: _paisCtrl,
                     enabled: !_enderecoBloqueado,
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Informe o país'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Informe o país'),
                   ),
                   const SizedBox(height: 28),
 
@@ -424,8 +469,7 @@ class _AvatarPicker extends StatelessWidget {
           CircleAvatar(
             radius: 56,
             backgroundColor: Colors.grey.shade200,
-            backgroundImage:
-                foto != null ? FileImage(File(foto!.path)) : null,
+            backgroundImage: foto != null ? FileImage(File(foto!.path)) : null,
             child: foto == null
                 ? Icon(Icons.person, size: 52, color: Colors.grey.shade400)
                 : null,
@@ -474,10 +518,7 @@ class _DropdownEscolaridade extends StatelessWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
 
-  const _DropdownEscolaridade({
-    required this.value,
-    required this.onChanged,
-  });
+  const _DropdownEscolaridade({required this.value, required this.onChanged});
 
   @override
   Widget build(BuildContext context) {

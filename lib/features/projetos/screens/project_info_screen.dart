@@ -1,17 +1,22 @@
 import 'dart:io';
+import 'package:diavicon/core/utils/diavicon_modal.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart'; 
-import '../../../core/widgets/custom_button.dart'; // 🔥 Import do seu botão global
+import '../../../core/widgets/custom_button.dart'; 
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../../../core/widgets/status_badge.dart'; 
 import '../models/projeto_model.dart'; 
 import '../providers/projetos_provider.dart';
+// 🔥 Novos imports para a lógica de transferência de gestão
+import '../providers/empresas_projeto_provider.dart';
+import '../widgets/trocar_gestora_modal.dart'; 
 
 class ProjectInfoScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -30,19 +35,17 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   String? _prioridadeSelecionada;
   File? _novaImagemCapa; 
 
-  // 🔥 VARIÁVEIS PARA RASTREAR O ESTADO ORIGINAL (Antes da edição)
   bool _isInitialized = false;
   String _initialNome = '';
   String _initialDesc = '';
   String? _initialStatus;
   String? _initialPrioridade;
   
-  bool _isSaving = false; // Controle do loading do botão de salvar
+  bool _isSaving = false;
 
   @override
   void initState() {
     super.initState();
-    // Adiciona "olheiros" nos campos de texto para atualizar a tela quando o usuário digitar
     _nomeController.addListener(_onFieldChanged);
     _descController.addListener(_onFieldChanged);
   }
@@ -57,10 +60,9 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   }
 
   void _onFieldChanged() {
-    setState(() {}); // Apenas recarrega a tela para recalcular o "_hasChanges"
+    setState(() {}); 
   }
 
-  // 🔥 GETTER MÁGICO: Retorna TRUE se algo foi alterado
   bool get _hasChanges {
     if (!_isInitialized) return false;
     if (_nomeController.text != _initialNome) return true;
@@ -72,7 +74,6 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   }
 
   void _preencherControladores(ProjetoModel projeto) {
-    // Só preenche na primeira vez que a tela carrega
     if (!_isInitialized) {
       _initialNome = projeto.nome;
       _initialDesc = projeto.descricao ?? '';
@@ -91,13 +92,12 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       }
       _initialPrioridade = projeto.prioridadeNome;
 
-      // Joga os valores originais para a tela
       _nomeController.text = _initialNome;
       _descController.text = _initialDesc;
       _statusSelecionado = _initialStatus;
       _prioridadeSelecionada = _initialPrioridade;
       
-      _isInitialized = true; // Trava para não sobrescrever o que o usuário digitar
+      _isInitialized = true;
     }
   }
 
@@ -107,37 +107,33 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     return 'Não Vinculado';
   }
 
-  // 🔥 LÓGICA DE FOTO COM ENQUADRAMENTO (CROP)
   Future<void> _pickImage() async {
     try {
-      // 1. Abre a galeria para escolher a foto
       FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
       
       if (result != null && result.files.single.path != null) {
         final pickedFilePath = result.files.single.path!;
 
-        // 2. Abre a tela de enquadramento (Crop)
         CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFilePath,
-          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), // 🔥 Força o formato de capa!
+          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), 
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Enquadrar Capa',
-              toolbarColor: AppColors.primary, // Sua cor Laranja DiaViCon
+              toolbarColor: AppColors.primary, 
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.ratio16x9,
-              lockAspectRatio: true, // Não deixa o usuário bagunçar a proporção
+              lockAspectRatio: true, 
               hideBottomControls: false,
             ),
             IOSUiSettings(
               title: 'Enquadrar Capa',
-              aspectRatioLockEnabled: true, // Trava a proporção no iOS também
+              aspectRatioLockEnabled: true, 
               resetButtonHidden: true,
             ),
           ],
         );
 
-        // 3. Se o usuário confirmou o corte, atualiza a tela!
         if (croppedFile != null) {
           setState(() {
             _novaImagemCapa = File(croppedFile.path);
@@ -151,12 +147,10 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     }
   }
 
-  // 🔥 FUNÇÃO DE SALVAR REAL (Integrada com o Banco de Dados)
   Future<void> _salvarAlteracoes() async {
     setState(() => _isSaving = true);
     
     try {
-      // Chama o repositório que acabamos de criar, passando os dados da tela
       await ref.read(projetoRepositoryProvider).updateProject(
         projetoId: widget.projetoId,
         nome: _nomeController.text.trim(),
@@ -166,7 +160,6 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         novaImagem: _novaImagemCapa,
       );
 
-      // Invalida a tela de detalhes e a home para elas recarregarem sozinhas com os dados novos
       ref.invalidate(projectDetailProvider(widget.projetoId));
       ref.invalidate(filteredProjectsProvider);
 
@@ -188,6 +181,77 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         setState(() => _isSaving = false);
       }
     }
+  }
+
+  void _abrirModalTrocaGestora(ProjetoModel projeto) {
+    showDiaviconModal(
+      context: context,
+      title: 'Selecionar empresa',
+      centerTitle: false,
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      alignment: Alignment.center,
+      body: TrocarGestoraBody(
+        projetoId: projeto.id,
+        empresaGestoraAtualId: projeto.empresaGestoraId ?? '',
+        onSelecionada: (novaEmpresaId, nomeEmpresa) {
+          Navigator.pop(context); // Fecha o modal de seleção
+          
+          showDialog(
+            context: context,
+            builder: (ctxConfirma) => AlertDialog(
+              backgroundColor: AppColors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              title: const Text('Confirmar Transferência', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
+              content: Text('Tem certeza que deseja transferir a gestão para $nomeEmpresa? Sua empresa perderá as permissões administrativas deste projeto.'),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctxConfirma),
+                  child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    Navigator.pop(ctxConfirma); 
+                    
+                    // Exibe um loading ou bloqueia a tela se quiser, pois agora vamos aguardar a rede!
+                    try {
+                      // 1. Executa a query de atualização no Supabase
+                      await ref.read(empresasProjetoControllerProvider).alterarEmpresaGestora(
+                        projetoId: projeto.id,
+                        novaEmpresaGestoraId: novaEmpresaId,
+                      );
+                      
+                      if (mounted) {
+                        // 🔥 A BALA DE PRATA: 
+                        // Forçamos o Riverpod a buscar os dados novos e ESPERAMOS o retorno do banco
+                        await ref.refresh(projectDetailProvider(projeto.id).future);
+
+                        // AGORA SIM! Com o cache 100% atualizado, mandamos a tela ler os dados.
+                        // O nome da nova empresa vai aparecer e os campos vão ser bloqueados na hora.
+                        setState(() {
+                          _isInitialized = false; 
+                        });
+                        
+                        DiaviconAlerts.show(context, 'Sucesso!', 'Gestão transferida com sucesso!');
+                      }
+                    } catch (e) {
+                      if (mounted) {
+                        DiaviconAlerts.show(
+                          context, 
+                          'Erro na transferência', 
+                          e.toString().replaceAll('Exception: ', ''), 
+                          isErro: true,
+                        );
+                      }
+                    }
+                  },
+                  child: const Text('Transferir', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 
   @override
@@ -221,7 +285,6 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         ),
       ),
       
-      // 🔥 O BOTÃO DE SALVAR QUE SÓ APARECE SE TIVER MUDANÇAS
       bottomNavigationBar: _hasChanges
           ? SafeArea(
               child: Padding(
@@ -237,7 +300,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                       ),
               ),
             )
-          : null, // Se não tiver mudanças, não mostra nada!
+          : null, 
 
       body: projetoAsync.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -343,7 +406,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
                 _buildSectionHeader(
                   title: 'Cliente proprietário',
-                  subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este ponto focal do projeto.',
+                  subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este point focal do projeto.',
                 ),
                 const SizedBox(height: 16),
                 _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit),
@@ -357,7 +420,8 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                   subtitle: 'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
                 ),
                 const SizedBox(height: 16),
-                _buildGestoraCard(nomeGestora, canEdit),
+                // 🔥 Injetada a função de callback para abrir o fluxo ao clicar no lápis
+                _buildGestoraCard(nomeGestora, canEdit, () => _abrirModalTrocaGestora(projeto)),
                 
                 const SizedBox(height: 40), 
               ],
@@ -432,7 +496,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: const TextStyle(fontSize: 13, color: AppColors.greyMediumDark),
+          style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w300, color: AppColors.greyMediumDark),
         ),
       ],
     );
@@ -472,7 +536,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
             ],
           ),
         ),
-        if (canEdit)
+        if (canEdit && !isVinculado)
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary, 
@@ -483,13 +547,14 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
             onPressed: () {
               DiaviconAlerts.show(context, 'Vincular Cliente', 'Abrirá o modal para buscar CNPJ do cliente.', isAviso: true);
             },
-            child: const Text('Vincular', style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold)),
+            child: Text('Vincular', style: GoogleFonts.lato(color: AppColors.white, fontWeight: FontWeight.bold)),
           ),
       ],
     );
   }
 
-  Widget _buildGestoraCard(String nome, bool canEdit) {
+  // 🔥 Modificada a assinatura para receber a ação do clique do lápis
+  Widget _buildGestoraCard(String nome, bool canEdit, VoidCallback onTapEdit) {
     return Row(
       children: [
         const CircleAvatar(
@@ -506,9 +571,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         ),
         if (canEdit)
           GestureDetector(
-            onTap: () {
-              DiaviconAlerts.show(context, 'Editar Gestora', 'Abrirá a lista de empresas ativas para transferir a gestão.', isAviso: true);
-            },
+            onTap: onTapEdit, // 🔥 Agora aciona dinamicamente a troca de gestora
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: const BoxDecoration(

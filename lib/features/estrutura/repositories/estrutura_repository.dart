@@ -7,17 +7,20 @@ class EstruturaRepository {
 
   EstruturaRepository(this._client);
 
-  /// Cria a estrutura e já regista o projeto a que ela pertence na própria tabela
+  /// Cria a estrutura e registra o vínculo na tabela intermediária
   // 👇 1. MUDOU DE Future<void> PARA Future<EstruturaModel>
   Future<EstruturaModel> criarEstrutura(EstruturaModel estrutura, String projetoId) async {
     try {
       final map = estrutura.toMap();
-      map['projeto_id'] = projetoId; 
+      // 🚨 REMOVIDO: map['projeto_id'] = projetoId; (A coluna não existe mais na tabela estruturas)
       
       // 👇 2. ADICIONAMOS O .select().single() PARA O SUPABASE DEVOLVER A ESTRUTURA CRIADA
       final response = await _client.from('estruturas').insert(map).select().single();
       
-      // 👇 3. TRANSFORMAMOS A RESPOSTA NUM OBJETO E DEVOLVEMOS
+      // 👇 3. VINCULA A ESTRUTURA CRIADA AO PROJETO NA TABELA INTERMEDIÁRIA
+      await vincularEstrutura(response['id'], projetoId);
+      
+      // 👇 4. TRANSFORMAMOS A RESPOSTA NUM OBJETO E DEVOLVEMOS
       return EstruturaModel.fromMap(response);
       
     } catch (e) {
@@ -25,7 +28,7 @@ class EstruturaRepository {
     }
   }
 
-  /// Função para vincular a estrutura a um projeto
+  /// Função para vincular a estrutura a um projeto (Muitos-para-Muitos)
   Future<void> vincularEstrutura(String estruturaId, String projetoId) async {
     try {
       await _client.from('projeto_estruturas').insert({
@@ -53,10 +56,10 @@ class EstruturaRepository {
     String projetoId,
   ) async {
     try {
-      // Realiza o join através da tabela de relacionamento
+      // Realiza o join através da tabela de relacionamento usando !inner
       final response = await _client
           .from('projeto_estruturas')
-          .select('estruturas (*)')
+          .select('estruturas!inner(*)')
           .eq('projeto_id', projetoId);
 
       return (response as List)

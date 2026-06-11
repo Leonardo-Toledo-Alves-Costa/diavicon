@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 
-/// Tela final de boas-vindas após o cadastro completo da empresa no Supabase
 class EmpresaBemVindaScreen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
 
@@ -13,162 +13,203 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Extração dos dados para exibição nos cards
-    final nome = dadosUsuario['nome'] as String? ?? '';
-    final sobrenome = dadosUsuario['sobrenome'] as String? ?? '';
+    final nome = dadosUsuario['nome'] as String? ?? 'Fulano';
+    final sobrenome = dadosUsuario['sobrenome'] as String? ?? 'Ciclano';
     
-    // Pegando dados de dentro do mapa 'empresa' que criamos na tela anterior
     final empresaMap = dadosUsuario['empresa'] as Map?;
-    final cargo = empresaMap?['cargo'] as String? ?? 'Gestor';
-    final nivel = empresaMap?['nivel'] as String? ?? '';
-    final nomeEmpresa = empresaMap?['nome'] as String? ?? 'Sua Empresa';
+    final cargo = empresaMap?['cargo'] as String? ?? 'Engenheiro Civil';
+    final nivel = empresaMap?['nivel'] as String? ?? 'Diretor (CEO)';
+
+    final String? fotoUsuario = dadosUsuario['foto_url'] ?? dadosUsuario['fotoPath'];
+    final String nomeExibicao = nome.isNotEmpty ? nome : 'Fulano';
+
+    // AJUSTE O BALÃO AQUI:
+    const double bubbleOffsetX = -15.0; 
+    const double bubbleOffsetY = -80.0; 
 
     return AuthLayout(
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 40, 28, 40),
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 8), 
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(32),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // CABEÇALHO DA EMPRESA 
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.greyVeryLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Column(
+            IntrinsicHeight(
+              child: Row(
                 children: [
-                  // Logo Placeholder
                   Container(
-                    width: 80,
-                    height: 80,
+                    width: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.inputBorder, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.domain,
-                      size: 40,
-                      color: AppColors.greyLight,
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(4),
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'BEM-VINDA!',
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.greyMediumDark,
-                      letterSpacing: 1.5,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    nomeEmpresa.toUpperCase(),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textDark,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Bem vindo $nomeExibicao!',
+                          style: const TextStyle(
+                            fontSize: 26,
+                            fontWeight: FontWeight.w900,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Comece a ter o controle de suas\nestruturas na palma da sua mão!',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade700,
+                            height: 1.3,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 40), 
 
-            // PERFIL DO USUÁRIO RESPONSÁVEL
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.greyVeryLight),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 28,
-                    backgroundColor: AppColors.greyVeryLight,
-                    child: const Icon(Icons.person, size: 30, color: AppColors.greyLight),
-                  ),
-                  const SizedBox(width: 14),
-                  Column(
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 40,
+                  backgroundColor: AppColors.greyVeryLight,
+                  backgroundImage: _getImagemPerfil(fotoUsuario),
+                  child: fotoUsuario == null 
+                      ? const Icon(Icons.person, size: 40, color: AppColors.greyLight) 
+                      : null,
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         '$nome $sobrenome',
                         style: const TextStyle(
                           fontWeight: FontWeight.w900,
+                          fontSize: 20,
+                          color: AppColors.textDark,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        cargo,
+                        style: const TextStyle(
                           fontSize: 16,
                           color: AppColors.textDark,
                         ),
                       ),
                       const SizedBox(height: 2),
-                      Text(
-                        cargo,
-                        style: const TextStyle(fontSize: 13, color: AppColors.greyMedium),
-                      ),
                       if (nivel.isNotEmpty)
                         Text(
                           nivel,
-                          style: const TextStyle(fontSize: 13, color: AppColors.greyMedium),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey.shade700,
+                          ),
                         ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 80),
 
-            //MASCOTE/GUIA 
-            Expanded(
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  // Substitua pelo seu asset real ou mantenha o ícone de fallback
-                  Image.asset(
-                    'assets/images/escudo_diavicon.png',
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Expanded(
+                  flex: 5,
+                  child: Image.asset(
+                    'assets/images/cachorro.png', 
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.shield_rounded, 
-                      size: 100, 
-                      color: AppColors.greyLight
-                    ),
+                    height: 160,
                   ),
-                  Positioned(
-                    right: 10,
-                    top: 10,
+                ),
+                Expanded(
+                  flex: 6,
+                  child: Transform.translate(
+                    offset: const Offset(bubbleOffsetX, bubbleOffsetY),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                      decoration: BoxDecoration(
-                        color: AppColors.greyVeryLight,
-                        borderRadius: BorderRadius.circular(12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEFEFEF),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(16),
+                          topRight: Radius.circular(16),
+                          bottomRight: Radius.circular(16),
+                          bottomLeft: Radius.circular(4),
+                        ),
                       ),
-                      child: const Text(
-                        'Hora de começar a\nacompanhar suas\nestruturas! Serei o\nseu guia!',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(fontSize: 11, color: AppColors.textDark, height: 1.4),
+                      child: RichText(
+                        text: const TextSpan(
+                          style: TextStyle(
+                            fontSize: 12, 
+                            color: AppColors.textDark,
+                            height: 1.4,
+                            fontFamily: 'Lato',
+                          ),
+                          children: [
+                            TextSpan(text: 'Hora de começar a\nacompanhar suas\nestruturas! Serei o\nseu '),
+                            TextSpan(
+                              text: 'guia!',
+                              style: TextStyle(
+                                color: AppColors.primary,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 48),
 
-            // BOTÃO DE ENTRADA NO APP 
-            CustomButton(
-              text: '✓  Começar',
-              onPressed: () {
-                // GoRouter mata toda a pilha de cadastro e abre a Home
-                context.go('/projetos');
-              },
+            Center(
+              child: CustomButton(
+                text: 'Começar',
+                width: 160,
+                height: 48,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                onPressed: () {
+                  context.go('/projetos');
+                },
+              ),
             ),
           ],
         ),
       ),
     );
+  }
+
+  ImageProvider? _getImagemPerfil(String? path) {
+    if (path == null || path.isEmpty) return null;
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
+    } else {
+      return FileImage(File(path));
+    }
   }
 }

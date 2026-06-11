@@ -1,4 +1,5 @@
 import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'projetos_provider.dart';
@@ -45,6 +46,89 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
         return listaCompleta;
       });
 });
+
+// Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
+// Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
+final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, projetoId) async {
+  final supabase = Supabase.instance.client;
+  
+  // 🔥 CORREÇÃO: Buscando cidade e estado dentro do relacionamento enderecos()
+  final response = await supabase
+      .from('projeto_empresas_colaboradoras')
+      .select('empresas:empresa_id(id, nome, foto_url, enderecos(cidade, estado))')
+      .eq('projeto_id', projetoId)
+      .eq('status', 'aceito');
+
+  final List data = response as List;
+  
+  return data.map((item) {
+    final emp = item['empresas'] as Map<String, dynamic>;
+    
+    // O Supabase pode retornar o endereço como lista (se for 1:N) ou mapa (1:1)
+    final enderecoData = emp['enderecos'];
+    Map? endereco;
+    if (enderecoData is List && enderecoData.isNotEmpty) {
+       endereco = enderecoData.first;
+    } else if (enderecoData is Map) {
+       endereco = enderecoData;
+    }
+    
+    return {
+      'id': emp['id'],
+      'nome': emp['nome'] ?? 'Sem Nome',
+      'foto_url': emp['foto_url'],
+      'cidade': endereco != null ? endereco['cidade'] : null,
+      'estado': endereco != null ? endereco['estado'] : null,
+    };
+  }).toList();
+});
+
+// =========================================================================
+// PROVIDER DE BUSCA DE EMPRESA COLABORADORA
+// =========================================================================
+final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, filtro) async {
+  final String filtroTrimmed = filtro.trim();
+  if (filtroTrimmed.isEmpty) return null;
+  
+  final supabase = Supabase.instance.client;
+  try {
+    // UUID check
+    final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(filtroTrimmed);
+
+    if (isUuid) {
+      final response = await supabase
+          .from('empresas')
+          .select('id, nome, cnpj, foto_url')
+          .eq('id', filtroTrimmed)
+          .limit(1); 
+      return (response as List).isNotEmpty ? response.first : null;
+    }
+
+    // Extrai números
+    final String cnpjLimpo = filtroTrimmed.replaceAll(RegExp(r'[^0-9]'), '');
+    if (cnpjLimpo.length != 14) return null;
+    
+    // Formata igual a como tá no banco (agora sempre formatado!)
+    final String cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+
+    debugPrint('🔍 Buscando: $cnpjFormatado');
+
+    final response = await supabase
+        .from('empresas')
+        .select('id, nome, cnpj, foto_url')
+        .or('cnpj.eq.$cnpjFormatado,cnpj.eq.$cnpjLimpo')
+        .limit(1);
+
+    debugPrint('✅ Encontrado: $response');
+
+    return (response as List).isNotEmpty ? response.first : null;
+    
+  } catch (e) {
+    debugPrint('🚨 Erro: $e');
+    return null;
+  }
+});
+
 
 // Controller para gerenciar a ação das empresas colaboradoras
 final empresasProjetoControllerProvider = Provider((ref) => EmpresasProjetoController(ref));
@@ -155,6 +239,7 @@ class EmpresasProjetoController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId)); // 🔥 Atualiza a tela de equipe tbm
   }
 
+  
   // 🔥 ADICIONE NO SEU EmpresasProjetoController
   Future<void> alterarEmpresaGestora({
     required String projetoId, 

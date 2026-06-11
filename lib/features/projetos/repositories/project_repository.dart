@@ -123,13 +123,15 @@ class ProjectRepository {
         'empresa_cliente_id': isNovoCliente ? null : empresaClienteId,
         'status_vinculo_cliente': isNovoCliente ? 'nao_vinculado' : 'ativo',
         'image_url': imageUrl, 
+        'criado_por': usuarioId,
       }).select('id').single();
 
       final String novoProjetoId = respostaProjeto['id'];
 
       // Cria o Convite com o link da foto do cliente
       if (isNovoCliente && emailNovoCliente != null) {
-        await _supabase.from('projeto_convites').insert({
+        // 🔥 CORRIGIDO PARA O NOVO NOME DA TABELA DE CLIENTES: projeto_convites_cliente
+        await _supabase.from('projeto_convites_cliente').insert({
           'projeto_id': novoProjetoId,
           'email_convidado': emailNovoCliente,
           'empresa_nome_temp': nomeNovoCliente,
@@ -139,7 +141,7 @@ class ProjectRepository {
         });
       }
 
-      // 🔥 CORRIGIDO O NOME DA TABELA E DA COLUNA is_gestor!
+      // Garante a inserção do criador na equipe do projeto com sua respectiva empresa
       await _supabase.from('projeto_equipe_interna').insert({
         'projeto_id': novoProjetoId,
         'usuario_id': usuarioId, 

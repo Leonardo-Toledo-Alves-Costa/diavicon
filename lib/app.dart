@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'core/constants/app_colors.dart';
 import 'routes/app_router.dart'; // Importe o arquivo de rotas
 
@@ -20,6 +21,9 @@ class DiaviconApp extends ConsumerWidget {
       routerConfig: router, 
       
       theme: ThemeData(
+        textTheme: GoogleFonts.latoTextTheme(
+          Theme.of(context).textTheme,
+        ),
         useMaterial3: true,
         primaryColor: AppColors.primary,
         scaffoldBackgroundColor: Colors.white,

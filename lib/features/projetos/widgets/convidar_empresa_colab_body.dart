@@ -1,3 +1,4 @@
+import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
 import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart';
@@ -79,6 +80,7 @@ class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBod
             hint: '00.000.000/0000-00',
             controller: _cnpjController,
             keyboardType: TextInputType.number,
+            inputFormatters: [CnpjFormatter.mask],
           ),
           const SizedBox(height: 16),
 

@@ -92,39 +92,39 @@ final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<Strin
   
   final supabase = Supabase.instance.client;
   try {
-    // UUID check
+    // 1. É um ID de empresa?
     final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(filtroTrimmed);
 
     if (isUuid) {
-      final response = await supabase
-          .from('empresas')
-          .select('id, nome, cnpj, foto_url')
-          .eq('id', filtroTrimmed)
-          .limit(1); 
-      return (response as List).isNotEmpty ? response.first : null;
+      return await supabase.from('empresas').select('id, nome, cnpj, foto_url').eq('id', filtroTrimmed).maybeSingle();
     }
 
-    // Extrai números
+    // 2. Prepara as duas versões do CNPJ
     final String cnpjLimpo = filtroTrimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cnpjLimpo.length != 14) return null;
+    String cnpjFormatado = filtroTrimmed;
+    if (cnpjLimpo.length == 14) {
+      cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    }
+
+    // 🔥 BUSCA CASCATA BLINDADA (Usa .eq que nunca quebra com caracteres especiais)
     
-    // Formata igual a como tá no banco (agora sempre formatado!)
-    final String cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    // Tentativa 1: Busca a versão COM máscara (que é como está no seu banco de dados)
+    var response = await supabase.from('empresas').select('id, nome, cnpj, foto_url').eq('cnpj', cnpjFormatado).maybeSingle();
 
-    debugPrint('🔍 Buscando: $cnpjFormatado');
+    // Tentativa 2: Se não achou, tenta a versão SÓ com números
+    if (response == null) {
+      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url').eq('cnpj', cnpjLimpo).maybeSingle();
+    }
 
-    final response = await supabase
-        .from('empresas')
-        .select('id, nome, cnpj, foto_url')
-        .or('cnpj.eq.$cnpjFormatado,cnpj.eq.$cnpjLimpo')
-        .limit(1);
+    // Tentativa 3: Se ainda assim não achou, busca do exato jeito maluco que o usuário digitou
+    if (response == null) {
+      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url').eq('cnpj', filtroTrimmed).maybeSingle();
+    }
 
-    debugPrint('✅ Encontrado: $response');
-
-    return (response as List).isNotEmpty ? response.first : null;
+    return response;
     
   } catch (e) {
-    debugPrint('🚨 Erro: $e');
+    debugPrint('🚨 Erro crítico na busca de empresa: $e');
     return null;
   }
 });
@@ -141,17 +141,49 @@ class EmpresasProjetoController {
 
   // 1. Busca a empresa pelo CNPJ para mostrar no Modal
   Future<Map<String, dynamic>> buscarEmpresaParaPreview(String cnpj) async {
-    final cnpjLimpo = cnpj.replaceAll(RegExp(r'[^0-9]'), '');
+    final String filtroTrimmed = cnpj.trim();
+    if (filtroTrimmed.isEmpty) {
+      throw Exception('O CNPJ não pode estar vazio.');
+    }
 
-    final empresa = await _supabase
+    // Extrai APENAS os números
+    final String cnpjLimpo = filtroTrimmed.replaceAll(RegExp(r'[^0-9]'), '');
+
+    // Monta o CNPJ formatado exatamente como está no seu banco
+    String cnpjFormatado = filtroTrimmed;
+    if (cnpjLimpo.length == 14) {
+      cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    }
+
+    // Tentativa 1: Busca a versão COM máscara (igualzinho está no seu banco)
+    var empresa = await _supabase
         .from('empresas')
         .select('id, nome, foto_url, enderecos(cidade, estado)')
-        .eq('cnpj', cnpjLimpo)
+        .eq('cnpj', cnpjFormatado)
         .maybeSingle();
+
+    // Tentativa 2: Se não achou, tenta a versão SÓ com números
+    if (empresa == null) {
+      empresa = await _supabase
+          .from('empresas')
+          .select('id, nome, foto_url, enderecos(cidade, estado)')
+          .eq('cnpj', cnpjLimpo)
+          .maybeSingle();
+    }
+
+    // Tentativa 3: Se ainda assim falhar, tenta o texto exato digitado
+    if (empresa == null) {
+      empresa = await _supabase
+          .from('empresas')
+          .select('id, nome, foto_url, enderecos(cidade, estado)')
+          .eq('cnpj', filtroTrimmed)
+          .maybeSingle();
+    }
 
     if (empresa == null) {
       throw Exception('Nenhuma empresa encontrada com este CNPJ.');
     }
+    
     return empresa;
   }
 

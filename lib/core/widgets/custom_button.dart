@@ -6,6 +6,13 @@ class CustomButton extends StatelessWidget {
   final VoidCallback? onPressed;
   final bool showArrow;
   final bool isLoading;
+  
+  final double? width;
+  final double height;
+  final double fontSize;
+  final FontWeight? fontWeight;
+  
+  final TextStyle? textStyle; 
 
   const CustomButton({
     super.key,
@@ -13,33 +20,46 @@ class CustomButton extends StatelessWidget {
     this.onPressed,
     this.showArrow = false,
     this.isLoading = false,
+    this.width = double.infinity,
+    this.height = 50,
+    this.fontSize = 16,
+    this.fontWeight = FontWeight.w400,
+    this.textStyle, // Adicionado aqui
   });
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: double.infinity,
-      height: 50,
+      width: width,
+      height: height,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
           foregroundColor: Colors.white,
           backgroundColor: AppColors.primary,
           elevation: 0,
+          padding: const EdgeInsets.symmetric(horizontal: 20),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(10),
           ),
         ),
         onPressed: isLoading ? null : onPressed,
         child: isLoading
-            ? const CircularProgressIndicator(color: Colors.white)
+            ? const SizedBox(
+                height: 24,
+                width: 24,
+                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5),
+              )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: width == double.infinity ? MainAxisSize.max : MainAxisSize.min,
                 children: [
                   Text(
                     text,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
+                    style: textStyle ?? TextStyle(
+                      fontSize: fontSize,
+                      fontWeight: fontWeight,
+                      letterSpacing: 0.5,
+                      color: Colors.white, // Garante que a cor base seja branca se não passar estilo
                     ),
                   ),
                   if (showArrow) ...[

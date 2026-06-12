@@ -14,9 +14,9 @@ import '../../../core/widgets/step_progress_bar.dart';
 ///   Etapa 3: Dados acadêmicos
 /// Rota: /register/academico
 class CadastroAcademicoScreen extends ConsumerStatefulWidget {
-  final Map<String, dynamic> dadosUsuario;
+  final Map<String, dynamic> dadosCadastro;
 
-  const CadastroAcademicoScreen({super.key, required this.dadosUsuario});
+  const CadastroAcademicoScreen({super.key, required this.dadosCadastro});
 
   @override
   ConsumerState<CadastroAcademicoScreen> createState() =>
@@ -161,7 +161,7 @@ class _CadastroAcademicoScreenState
             children: [
               TextButton(
                 onPressed: () =>
-                    context.go('/register/perfil', extra: widget.dadosUsuario),
+                    context.go('/register/perfil', extra: widget.dadosCadastro),
                 child: const Text(
                   '< Voltar',
                   style: TextStyle(color: AppColors.greyMedium),
@@ -450,23 +450,23 @@ class _CadastroAcademicoScreenState
     // Preparamos o MAPA com todos os dados coletados desde a R0
     // Certifique-se que as chaves batem com o que o Repositorio espera
     final Map<String, dynamic> dadosParaSalvar = {
-      ...widget.dadosUsuario, // Traz e-mail, senha, nome, sobrenome, etc.
+      ...widget.dadosCadastro, // Traz e-mail, senha, nome, sobrenome, etc.
       // Dados de Endereço (Vêm dos controllers da R2)
-      'rua': widget.dadosUsuario['rua'],
-      'cidade': widget.dadosUsuario['cidade'],
-      'estado': widget.dadosUsuario['estado'],
-      'cep': widget.dadosUsuario['cep'],
+      'rua': widget.dadosCadastro['rua'],
+      'cidade': widget.dadosCadastro['cidade'],
+      'estado': widget.dadosCadastro['estado'],
+      'cep': widget.dadosCadastro['cep'],
 
       // Dados específicos desta tela final
       'formacao': _universidadeController.text, // ou o que for o caso
-      'perfil': widget.dadosUsuario['perfil'], // 'Acadêmico' ou 'Empresa'
+      'perfil': widget.dadosCadastro['perfil'], // 'Acadêmico' ou 'Empresa'
     };
 
     try {
       //  Dispara o processo de salvamento (Auth -> Endereço -> Usuário)
       await controller.registrar(
-        email: widget.dadosUsuario['email'],
-        password: widget.dadosUsuario['senha'],
+        email: widget.dadosCadastro['email'],
+        password: widget.dadosCadastro['senha'],
         dados: dadosParaSalvar,
       );
 

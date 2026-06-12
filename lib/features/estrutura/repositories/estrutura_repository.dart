@@ -26,7 +26,7 @@ class EstruturaRepository {
     }
   }
 
-  /// Função para vincular a estrutura a um projeto
+  /// Função para vincular a estrutura a um projeto (Muitos-para-Muitos)
   Future<void> vincularEstrutura(String estruturaId, String projetoId) async {
     try {
       await _client.from('projeto_estruturas').insert({

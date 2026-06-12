@@ -7,122 +7,132 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 class Cadastro1Empresa extends StatelessWidget {
-  final Map<String, dynamic> dadosUsuario; // Adicione isso
-  const Cadastro1Empresa({super.key, required this.dadosUsuario});
+  final Map<String, dynamic> dadosCadastro; 
+  const Cadastro1Empresa({super.key, required this.dadosCadastro});
 
   @override
   Widget build(BuildContext context) {
-    final screenwidth = MediaQuery.of(context).size.width;
-    final screenheight = MediaQuery.of(context).size.height;
     return AuthLayout(
       child: SafeArea(
-        child: Center(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24.0, 20.0, 24.0, 10.0), 
           child: Column(
-            mainAxisAlignment: MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 16,
-                ),
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      left: BorderSide(color: AppColors.primary, width: 5),
-                    ),
+              const SizedBox(height: 16),
+
+              // ── Bloco de Texto com Barra Laranja ────────────────
+              Container(
+                decoration: const BoxDecoration(
+                  border: Border(
+                    left: BorderSide(color: AppColors.primary, width: 4),
                   ),
-                  padding: const EdgeInsets.fromLTRB(12, 10, 14, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: const [
-                      Text(
-                        'Vamos conhecer melhor a\nsua Empresa!',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                          height: 1.05,
+                ),
+                padding: const EdgeInsets.only(left: 16),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Vamos conhecer melhor a\nsua Empresa!',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1C1C1C),
+                        height: 1.2,
+                      ),
+                    ),
+                    SizedBox(height: 12),
+                    Text(
+                      'Assim conseguimos personalizar\nsua experiência e oferecer\nsoluções adequadas ao seu tipo de\nprojeto.',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF4A4A4A),
+                        height: 1.3,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 20),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Flexible(
+                        flex: 5,
+                        child: Image.asset(
+                          'assets/images/cachorro.png',
+                          fit: BoxFit.contain,
                         ),
                       ),
-                      SizedBox(height: 10),
-                      Text(
-                        'Assim conseguimos personalizar\nsua experiência e oferecer\nsoluções adequadas ao seu tipo de\nprojeto.',
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.black,
-                          height: 1.15,
+                      
+                      Flexible(
+                        flex: 4, 
+                        // Transform.translate "flutua" o widget.
+                        // offset: Offset(Eixo X, Eixo Y). 
+                        // Valores negativos puxam para Esquerda e para Cima!
+                        child: Transform.translate(
+                          offset: const Offset(-30, -80), 
+                          child: Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Image.asset(
+                                'assets/images/fala_dog2.png',
+                                fit: BoxFit.contain,
+                              ),
+                              const Padding(
+                                padding: EdgeInsets.only(bottom: 4.0), 
+                                child: FittedBox( 
+                                  fit: BoxFit.scaleDown,
+                                  child: Text(
+                                    'Vamos\nComeçar?',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: Color(0xFF1C1C1C),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
               ),
-              Expanded(
-                child: Center(
-                  child: SizedBox(
-                    width: 280,
-                    height: 320,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        Positioned(
-                          left: 0,
-                          bottom: 0,
-                          child: Image.asset(
-                            'assets/images/cachorro.png',
-                            width: 210,
-                            fit: BoxFit.contain,
-                          ),
-                        ),
-                        Positioned(
-                          right: 0,
-                          top: 20,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 10,
-                            ),
-                            decoration: BoxDecoration(
-                              color: AppColors.greyVeryLight,
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'Vamos\nComeçar?',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textDark,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(height: screenheight * 0.04),
+
+              // ── Botões Inferiores ──────────────────────────────
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   CustomTextbutton(
                     text: '<   Voltar',
-                    onPressed: () => context.pop(),
+                    onPressed: () {
+                      if (context.canPop()) {
+                        context.pop();
+                      } else {
+                        context.go('/empresa/gate', extra: dadosCadastro);
+                      }
+                    },
                   ),
-                  SizedBox(width: screenwidth * 0.2),
-                  CompactButton(
+                  
+                  const SizedBox(width: 70), 
+                  
+                  CustomButton(
+                    width: 120,
                     text: 'Começar',
-                    onPressed: () => context.push(
-                      '/empresa/servicos',
-                      extra: dadosUsuario,
-                    ), // Leva para os Checkboxes (Cadastro2)
+                    onPressed: () {
+                      context.go('/empresa/servicos', extra: dadosCadastro);
+                    },
                   ),
                 ],
               ),
+              
             ],
           ),
         ),
@@ -130,3 +140,5 @@ class Cadastro1Empresa extends StatelessWidget {
     );
   }
 }
+
+

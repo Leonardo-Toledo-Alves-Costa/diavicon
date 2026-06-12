@@ -72,15 +72,18 @@ class StructuresSection extends ConsumerWidget {
                   ),
                 );
               }
-              return ListView.builder(
-                scrollDirection: Axis.horizontal,
-                itemCount: estruturas.length,
-                itemBuilder: (context, index) {
-                  return StructureCard(
-                    estrutura: estruturas[index],
-                    projetoId: projetoId,
-                  );
-                },
+              return SizedBox(
+                height: 0,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: estruturas.length,
+                  itemBuilder: (context, index) {
+                    return StructureCard(
+                      estrutura: estruturas[index],
+                      projetoId: projetoId,
+                    );
+                  },
+                ),
               );
             },
             loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),

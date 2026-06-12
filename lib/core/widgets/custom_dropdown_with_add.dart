@@ -34,6 +34,9 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final canAdd = onChanged != null && isAddEnabled && !isAdding;
 
+    final bool valueExists = value == null || items.any((item) => item.value == value);
+    final T? safeValue = valueExists ? value : null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -72,7 +75,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                 child: AbsorbPointer(
                   absorbing: isKeyboardOpen,
                   child: DropdownButtonFormField<T>(
-                    value: value,
+                    value: safeValue,
                     items: items,
                     onChanged: onChanged,
                     validator: validator,

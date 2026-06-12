@@ -14,7 +14,9 @@ final searchQueryProvider = StateProvider<String>((ref) => '');
 final filtroStatusProvider = StateProvider<String>((ref) => 'Todos');
 final filtroRecentesProvider = StateProvider<bool>((ref) => true);
 
-final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>((ref) async {
+final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>((
+  ref,
+) async {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
 
@@ -68,7 +70,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
   final response = await query;
 
   List<ProjetoModel> todosProjetos = (response as List).map((json) {
-    return ProjetoModel.fromMap(json); 
+    return ProjetoModel.fromMap(json);
   }).toList();
 
   final busca = ref.watch(searchQueryProvider).toLowerCase();
@@ -76,13 +78,16 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
   final isRecente = ref.watch(filtroRecentesProvider);
 
   var listaFiltrada = todosProjetos.where((p) {
-    final matchBusca = p.nome.toLowerCase().contains(busca) ||
-                       p.empresaNome.toLowerCase().contains(busca);
-    
+    final matchBusca =
+        p.nome.toLowerCase().contains(busca) ||
+        p.empresaNome.toLowerCase().contains(busca);
+
     bool matchStatus = true;
     if (statusFiltro != 'Todos') {
-      if (statusFiltro == 'Em andamento') matchStatus = p.statusBadge == BadgeStatus.emAndamento;
-      if (statusFiltro == 'Concluído') matchStatus = p.statusBadge == BadgeStatus.concluido;
+      if (statusFiltro == 'Em andamento')
+        matchStatus = p.statusBadge == BadgeStatus.emAndamento;
+      if (statusFiltro == 'Concluído')
+        matchStatus = p.statusBadge == BadgeStatus.concluido;
     }
 
     return matchBusca && matchStatus;
@@ -113,20 +118,22 @@ final loggedUserCompanyIdProvider = FutureProvider.autoDispose<String?>((ref) as
   return usuarioData?['empresa_id'];
 });
 
-final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, String>((ref, id) async {
-  final supabase = Supabase.instance.client;
-  
-  final response = await supabase
-      .from('projetos')
-      .select('''
+
+final projectDetailProvider = FutureProvider.autoDispose
+    .family<ProjetoModel, String>((ref, id) async {
+      final supabase = Supabase.instance.client;
+
+      final response = await supabase
+          .from('projetos')
+          .select('''
         *,
         prioridade(nome),
         status_projeto(nome),
         empresas!projetos_empresa_gestora_id_fkey(nome),
         empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
       ''')
-      .eq('id', id)
-      .single();
-      
-  return ProjetoModel.fromMap(response);
-});
+          .eq('id', id)
+          .single();
+
+      return ProjetoModel.fromMap(response);
+    });

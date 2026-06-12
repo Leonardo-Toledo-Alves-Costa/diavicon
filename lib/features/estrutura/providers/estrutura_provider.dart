@@ -26,15 +26,28 @@ final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, St
 final todasEstruturasProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
   final supabase = Supabase.instance.client;
   
-  // Retorna todas as estruturas em tempo real, ordenadas pelas mais recentes
   return supabase
       .from('estruturas')
       .stream(primaryKey: ['id'])
-      .order('criado_em', ascending: false)
-      .map((lista) => lista.map((item) => EstruturaModel.fromMap(item)).toList());
+      .asyncMap((_) async {
+        // 👇 O .select() COM OS JOINS ENTRA AQUI 👇
+        final response = await supabase
+            .from('estruturas')
+            .select('''
+              *,
+              conjuntos_estruturais(nome),
+              utilizacoes_estrutura(nome),
+              tipos_estrutura(nome),
+              tipologias_estrutura(nome)
+            ''')
+            .order('criado_em', ascending: false);
+
+        return response.map((item) => EstruturaModel.fromJson(item)).toList();
+      });
 });
 
-// --- PROVIDER: APENAS AS ESTRUTURAS DO UTILIZADOR LOGADO ---
+
+/// --- PROVIDER: APENAS AS ESTRUTURAS QUE A EMPRESA TEM ACESSO FILTRADAS PELO DONO DO PROJETO ---
 final minhasEstruturasProvider = StreamProvider.autoDispose.family<List<EstruturaModel>, String>((ref, projetoId) {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
@@ -43,22 +56,46 @@ final minhasEstruturasProvider = StreamProvider.autoDispose.family<List<Estrutur
     return Stream.value([]);
   }
 
-  // Filtra pelo usuário logado E pelo projeto atual
   return supabase
-      .from('projeto_estruturas')
-      .stream(primaryKey: ['projeto_id', 'estrutura_id'])
-      .eq('projeto_id', projetoId)
+      .from('estruturas')
+      .stream(primaryKey: ['id'])
       .asyncMap((_) async {
-        final response = await supabase
-            .from('projeto_estruturas')
-            .select('estruturas!inner(*)')
-            .eq('projeto_id', projetoId)
-            .eq('estruturas.user_id', userId)
-            .order('criado_em', referencedTable: 'estruturas', ascending: false);
+        // 1. Descobre a empresa do usuário logado 
+        final usuarioData = await supabase
+            .from('usuarios')
+            .select('empresa_id')
+            .eq('id', userId)
+            .maybeSingle();
+        final minhaEmpresaId = usuarioData?['empresa_id'];
+        if (minhaEmpresaId == null) return [];
 
-        final List<dynamic> data = response;
-        return data
-            .map((item) => EstruturaModel.fromMap(item['estruturas'] as Map<String, dynamic>))
-            .toList();
+        // 2. Descobre quem é o proprietário (Dono/Cliente) do projeto atual
+        final projData = await supabase
+            .from('projetos')
+            .select('empresa_cliente_id, empresa_gestora_id')
+            .eq('id', projetoId)
+            .maybeSingle();
+            
+        // Se o projeto não tiver um cliente definido, o dono é a própria gestora
+        final donoProjetoId = projData?['empresa_cliente_id'] ?? projData?['empresa_gestora_id'];
+        if (donoProjetoId == null) return [];
+
+        // 3. Busca as estruturas aplicando o filtro duplo cruzado
+        final response = await supabase
+            .from('estruturas')
+            .select('''
+              *,
+              conjuntos_estruturais(nome),
+              utilizacoes_estrutura(nome),
+              tipos_estrutura(nome),
+              tipologias_estrutura(nome)
+            ''')
+            // REGRA A: A estrutura DEVE pertencer ao mesmo proprietário do projeto 
+            .eq('proprietaria_id', donoProjetoId)
+            // REGRA B: A sua empresa deve ser a gestora OU a proprietária dela para ter acesso
+            .or('empresa_gestora_id.eq.$minhaEmpresaId,proprietaria_id.eq.$minhaEmpresaId')
+            .order('criado_em', ascending: false);
+
+        return response.map((item) => EstruturaModel.fromJson(item)).toList();
       });
 });

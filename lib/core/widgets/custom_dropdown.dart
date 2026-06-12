@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class CustomDropdown<T> extends StatelessWidget {
   final String label;
@@ -8,7 +9,7 @@ class CustomDropdown<T> extends StatelessWidget {
   final ValueChanged<T?> onChanged;
   final String hint;
   final String? tooltip;
-  final bool isRequired; // 🚨 NOVO PARÂMETRO
+  final bool isRequired;
   final String? Function(T?)? validator;
 
   const CustomDropdown({
@@ -19,7 +20,7 @@ class CustomDropdown<T> extends StatelessWidget {
     this.value,
     this.hint = 'Selecione',
     this.tooltip,
-    this.isRequired = false, // 🚨 Padrão é falso
+    this.isRequired = false,
     this.validator,
   });
 
@@ -29,23 +30,26 @@ class CustomDropdown<T> extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (label.isNotEmpty) ...[
-          // 🚨 RICH TEXT COM SUPORTE A TOOLTIP
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               RichText(
                 text: TextSpan(
                   text: label.replaceAll('*', '').trim(),
-                  style: const TextStyle(
+                  style: GoogleFonts.lato(
                     color: AppColors.textDark,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 20,
+                    fontWeight: FontWeight.w300,
+                    height: 1,
                   ),
                   children: [
                     if (isRequired || label.contains('*'))
                       const TextSpan(
                         text: ' *',
-                        style: TextStyle(color: AppColors.primary),
+                        style: TextStyle(
+                          color: AppColors.primary,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                   ],
                 ),
@@ -54,6 +58,16 @@ class CustomDropdown<T> extends StatelessWidget {
                 const SizedBox(width: 4),
                 Tooltip(
                   message: tooltip!,
+                  triggerMode: TooltipTriggerMode.tap,
+                  preferBelow: false,
+                  showDuration: const Duration(seconds: 2),
+                  padding: const EdgeInsets.all(12),
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  textStyle: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: BoxDecoration(
+                    color: Colors.black87,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                   child: const Icon(
                     Icons.info_outline,
                     size: 16,
@@ -67,12 +81,30 @@ class CustomDropdown<T> extends StatelessWidget {
         ],
         DropdownButtonFormField<T>(
           initialValue: value,
+          isExpanded: true,
           items: items,
           onChanged: onChanged,
           validator: validator,
+          style: GoogleFonts.lato(
+            color: AppColors.textDark,
+            fontSize: 18,
+            fontWeight: FontWeight.w300,
+            height: 1,
+            letterSpacing: 0.54,
+          ),
+          hint: Text(
+            hint,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis, // Faz a mágica do "Seleci..."
+            style: GoogleFonts.lato(
+              color: AppColors.hintText,
+              fontSize: 18,
+              fontWeight: FontWeight.w300,
+              height: 1,
+              letterSpacing: 0.54,
+            ),
+          ),
           decoration: InputDecoration(
-            hintText: hint,
-            hintStyle: const TextStyle(color: AppColors.hintText, fontSize: 14),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 14,

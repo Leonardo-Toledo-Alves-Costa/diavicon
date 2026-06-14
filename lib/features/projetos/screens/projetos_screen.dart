@@ -78,11 +78,7 @@ class ProjetosScreen extends ConsumerWidget {
                                 status: projeto.statusBadge,
                                 priority: projeto.prioridadeNome,
                                 imageUrl: projeto.imageUrl,
-                                teamAvatars: const [
-                                  'assets/images/user.png',
-                                  'assets/images/user.png',
-                                  'assets/images/user.png',
-                                ],
+                                teamAvatars: projeto.equipeFotos,
                               ),
                             );
                           },

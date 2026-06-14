@@ -217,6 +217,7 @@ class EmpresasProjetoController {
 
 
   // 3. A Empresa aceita o convite
+  // 3. A Empresa aceita o convite
   Future<void> aceitarConviteEmpresa({
     required String conviteId, 
     required String projetoId, 
@@ -235,40 +236,44 @@ class EmpresasProjetoController {
 
     // Atualiza o convite na tabela de empresas colaboradoras para 'aceito'
     await _supabase
-        .from('projeto_empresas_colaboradoras') // 🔥 TABELA NOVA
+        .from('projeto_empresas_colaboradoras') 
         .update({'status': 'aceito'})
         .eq('id', conviteId);
 
     // Garante que quem aceitou o convite (o dono/gestor da empresa parceira) 
-    // entre na equipe interna do projeto para poder acessá-lo.
+    // entre na equipe interna do projeto com poderes para gerir a sua própria equipe.
     final jaNaEquipe = await _supabase
-        .from('projeto_equipe_interna') // 🔥 TABELA NOVA
+        .from('projeto_equipe_interna') 
         .select('usuario_id')
         .eq('projeto_id', projetoId)
         .eq('usuario_id', userId)
         .maybeSingle();
 
     if (jaNaEquipe != null) {
-      // Reativa caso estivesse inativo
+      // Reativa caso estivesse inativo e injeta o poder de gestor
       await _supabase
           .from('projeto_equipe_interna')
-          .update({'ativo': true})
+          .update({
+            'ativo': true,
+            'is_gestor': true, // 🔥 AGORA SIM! Ele vira chefe da equipe dele.
+          })
           .eq('projeto_id', projetoId)
           .eq('usuario_id', userId);
     } else {
-      // Insere o usuário na equipe do projeto
+      // Insere o usuário na equipe do projeto já como gestor
       await _supabase.from('projeto_equipe_interna').insert({
         'projeto_id': projetoId,
         'empresa_id': empresaId,
         'usuario_id': userId,
         'ativo': true,
+        'is_gestor': true, // 🔥 AGORA SIM! Ele já entra mandando na própria equipe.
       });
     }
 
     // Invalida os providers para a UI reagir na hora!
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(empresasVinculadasProjetoProvider(projetoId));
-    _ref.invalidate(colaboradoresProjetoProvider(projetoId)); // 🔥 Atualiza a tela de equipe tbm
+    _ref.invalidate(colaboradoresProjetoProvider(projetoId)); 
   }
 
   

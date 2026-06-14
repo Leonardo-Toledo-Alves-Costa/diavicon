@@ -20,57 +20,103 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
 
   if (userId == null) return [];
 
+  // Busca a empresa e se o usuário é Admin Global
   final usuarioData = await supabase
       .from('usuarios')
-      .select('empresa_id')
+      .select('empresa_id, is_admin_empresa')
       .eq('id', userId)
       .maybeSingle();
 
   final minhaEmpresaId = usuarioData?['empresa_id'];
+  final bool isAdminGlobal = usuarioData?['is_admin_empresa'] ?? false;
 
   if (minhaEmpresaId == null) return [];
 
-  // Busca todos os projetos onde a MINHA empresa é colaboradora com status 'aceito'
-  final colaboradoresData = await supabase
-      .from('projeto_empresas_colaboradoras') 
-      .select('projeto_id')
-      .eq('empresa_id', minhaEmpresaId) 
-      .eq('status', 'aceito'); 
+  List<ProjetoModel> todosProjetos = [];
 
-  final List<String> idsColaborador = colaboradoresData
-      .map((e) => e['projeto_id'].toString())
-      .toList();
+  // =========================================================
+  // ROTA 1: VISÃO DO CHEFE (Vê todos os projetos da Empresa)
+  // =========================================================
+  if (isAdminGlobal) {
+    // Busca todos os projetos onde a MINHA empresa é colaboradora com status 'aceito'
+    final colaboradoresData = await supabase
+        .from('projeto_empresas_colaboradoras') 
+        .select('projeto_id')
+        .eq('empresa_id', minhaEmpresaId) 
+        .eq('status', 'aceito'); 
 
-  var query = supabase
-      .from('projetos')
-      .select('''
-        *,
-        prioridade(nome),
-        status_projeto(nome),
-        empresas!projetos_empresa_gestora_id_fkey(nome),
-        empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
-      ''');
+    final List<String> idsColaborador = colaboradoresData
+        .map((e) => e['projeto_id'].toString())
+        .toList();
 
-  // Se ela for colaboradora de algo, inclui os IDs na busca!
-  if (idsColaborador.isNotEmpty) {
-    query = query.or(
-      'empresa_gestora_id.eq.$minhaEmpresaId,'
-      'empresa_cliente_id.eq.$minhaEmpresaId,'
-      'id.in.(${idsColaborador.join(',')})'
-    );
-  } else {
-    query = query.or(
-      'empresa_gestora_id.eq.$minhaEmpresaId,'
-      'empresa_cliente_id.eq.$minhaEmpresaId'
-    );
+    var query = supabase
+        .from('projetos')
+        .select('''
+          *,
+          prioridade(nome),
+          status_projeto(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          projeto_equipe_interna(
+            usuarios(foto_url)
+          )
+        ''');
+
+    // Se ela for colaboradora de algo, inclui os IDs na busca!
+    if (idsColaborador.isNotEmpty) {
+      query = query.or(
+        'empresa_gestora_id.eq.$minhaEmpresaId,'
+        'empresa_cliente_id.eq.$minhaEmpresaId,'
+        'id.in.(${idsColaborador.join(',')})'
+      );
+    } else {
+      query = query.or(
+        'empresa_gestora_id.eq.$minhaEmpresaId,'
+        'empresa_cliente_id.eq.$minhaEmpresaId'
+      );
+    }
+
+    final response = await query;
+    todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json)).toList();
+  } 
+  // =========================================================
+  // ROTA 2: VISÃO DO FUNCIONÁRIO (Vê apenas os próprios projetos)
+  // =========================================================
+  else {
+    // Busca na equipe interna apenas onde ele está ativo
+    final equipeData = await supabase
+        .from('projeto_equipe_interna')
+        .select('projeto_id')
+        .eq('usuario_id', userId)
+        .eq('ativo', true);
+
+    final List<String> meusIdsDeProjeto = equipeData
+        .map((e) => e['projeto_id'].toString())
+        .toList();
+
+    // Só faz a busca na tabela projetos se ele tiver ao menos um crachá
+    if (meusIdsDeProjeto.isNotEmpty) {
+      final response = await supabase
+          .from('projetos')
+          .select('''
+          *,
+          prioridade(nome),
+          status_projeto(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          projeto_equipe_interna(
+            usuarios(foto_url)
+          )
+        ''')
+        .inFilter('id', meusIdsDeProjeto);
+
+      todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json)).toList();
+    }
   }
 
-  final response = await query;
-
-  List<ProjetoModel> todosProjetos = (response as List).map((json) {
-    return ProjetoModel.fromMap(json); 
-  }).toList();
-
+  // =========================================================
+  // FILTROS DA TELA (Pesquisa, Status, Recentes)
+  // =========================================================
   final busca = ref.watch(searchQueryProvider).toLowerCase();
   final statusFiltro = ref.watch(filtroStatusProvider);
   final isRecente = ref.watch(filtroRecentesProvider);
@@ -119,12 +165,15 @@ final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, St
   final response = await supabase
       .from('projetos')
       .select('''
-        *,
-        prioridade(nome),
-        status_projeto(nome),
-        empresas!projetos_empresa_gestora_id_fkey(nome),
-        empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome)
-      ''')
+          *,
+          prioridade(nome),
+          status_projeto(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          projeto_equipe_interna(
+            usuarios(foto_url)
+          )
+        ''')
       .eq('id', id)
       .single();
       

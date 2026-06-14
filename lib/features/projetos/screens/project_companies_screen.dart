@@ -159,77 +159,78 @@ class ProjectCompaniesScreen extends ConsumerWidget {
       corTextoBadge = AppColors.error; 
     }
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: AppColors.white,
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(24),
-        onTap: () {
-          if (emp['is_gestora']) {
-            DiaviconAlerts.show(context, 'Ação Bloqueada', 'A empresa gestora não pode ser alterada aqui.', isAviso: true);
-          }
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Row(
-            children: [
-              CircleAvatar(
-                radius: 32,
-                backgroundColor: AppColors.greyVeryLight,
-                backgroundImage: emp['foto_url'].toString().startsWith('http')
-                    ? NetworkImage(emp['foto_url'])
-                    : null,
-                child: !emp['foto_url'].toString().startsWith('http')
-                    ? const Icon(Icons.business, size: 32, color: AppColors.greyMedium)
-                    : null,
+    // Verifica se tem link de foto e se é válido
+    final bool temFoto = emp['foto_url'] != null && emp['foto_url'].toString().startsWith('http');
+
+    return InkWell(
+      onTap: () {
+        if (emp['is_gestora']) {
+          DiaviconAlerts.show(context, 'Ação Bloqueada', 'A empresa gestora não pode ser alterada aqui.', isAviso: true);
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12.0),
+        child: Row(
+          children: [
+            // 🔥 AVATAR IGUAL AO PROTÓTIPO (Fundo branco e sombra suave)
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      emp['nome'],
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: AppColors.textDark),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${emp['cidade']} - ${emp['uf']}',
-                      style: const TextStyle(color: AppColors.greyMediumDark, fontSize: 13),
-                    ),
-                    const SizedBox(height: 2),
-                    const Text(
-                      'Empresa Parceira', 
-                      style: TextStyle(color: AppColors.greyMedium, fontSize: 13),
-                    ),
-                  ],
-                ),
+              child: CircleAvatar(
+                radius: 26,
+                backgroundColor: Colors.transparent, // Deixa o branco do Container aparecer
+                backgroundImage: temFoto ? NetworkImage(emp['foto_url']) : null,
+                child: !temFoto ? const Icon(Icons.business, color: AppColors.greyMedium) : null,
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                decoration: BoxDecoration(
-                  color: corFundoBadge,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  labelStatus,
-                  style: TextStyle(color: corTextoBadge, fontWeight: FontWeight.bold, fontSize: 12),
-                ),
+            ),
+            const SizedBox(width: 16),
+            
+            // 🔥 TEXTOS ALINHADOS
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    emp['nome'],
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600, // Peso médio/bold
+                      fontSize: 16, 
+                      color: AppColors.textDark,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '${emp['cidade']} - ${emp['uf']}',
+                    style: const TextStyle(color: AppColors.greyMedium, fontSize: 13),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            
+            // STATUS BADGE (Mantido para controle visual do usuário)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: corFundoBadge,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                labelStatus,
+                style: TextStyle(color: corTextoBadge, fontWeight: FontWeight.bold, fontSize: 11),
+              ),
+            ),
+          ],
         ),
       ),
     );

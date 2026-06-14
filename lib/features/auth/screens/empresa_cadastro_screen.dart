@@ -246,7 +246,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         'pais': _paisController.text.trim(),
         'site': _siteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
-        'instagram': _instagramController.text.trim(),
         'fotoPath': _fotoEmpresa?.path, // 🔥 Passando o caminho da foto para o Provider!
       },
     };

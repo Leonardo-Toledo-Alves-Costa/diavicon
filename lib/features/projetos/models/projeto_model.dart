@@ -11,7 +11,6 @@ class ProjetoModel {
   final String? statusVinculoCliente;
   final String? clienteNome;
   
-
   // Atributos para facilitar a UI (Preenchidos via Joins na query)
   final double progresso;
   final String imageUrl;
@@ -19,6 +18,7 @@ class ProjetoModel {
   final String empresaNome;
   final BadgeStatus statusBadge;
   final DateTime criadoEm;
+  final List<String> equipeFotos; // 🔥 NOVO: Lista de URLs das fotos!
 
   ProjetoModel({
     required this.id,
@@ -36,6 +36,7 @@ class ProjetoModel {
     this.statusVinculoCliente,
     this.clienteNome, 
     required this.criadoEm,
+    this.equipeFotos = const [], // 🔥 NOVO: Inicia vazio por padrão
   });
 
   /// Converte o JSON do Supabase para o Model
@@ -45,6 +46,18 @@ class ProjetoModel {
     final statusData = map['status_projeto'] as Map<String, dynamic>?;
     final empresaData = map['empresas'] as Map<String, dynamic>?;
     final clienteData = map['empresa_cliente'] as Map<String, dynamic>?;
+
+    // 🔥 NOVO: Extrai as URLs das fotos de dentro do array aninhado
+    final List<String> fotos = [];
+    if (map['projeto_equipe_interna'] != null) {
+      final equipeLista = map['projeto_equipe_interna'] as List;
+      for (var item in equipeLista) {
+        final usuarioData = item['usuarios'];
+        if (usuarioData != null && usuarioData['foto_url'] != null) {
+          fotos.add(usuarioData['foto_url'] as String);
+        }
+      }
+    }
 
     return ProjetoModel(
       id: map['id'] ?? '',
@@ -60,6 +73,7 @@ class ProjetoModel {
       prioridadeNome: prioridadeData?['nome'] ?? 'Média',
       empresaNome: empresaData?['nome'] ?? 'Empresa não identificada',
       statusBadge: _parseStatus(statusData?['nome']),
+      equipeFotos: fotos, // 🔥 NOVO: Atribui a lista pronta
 
       // Conversão segura de numéricos
       progresso: (map['progresso'] ?? 0.0).toDouble(),
@@ -115,6 +129,7 @@ class ProjetoModel {
     String? prioridadeNome,
     String? empresaNome,
     BadgeStatus? statusBadge,
+    List<String>? equipeFotos, // 🔥 NOVO no copyWith
   }) {
     return ProjetoModel(
       id: id ?? this.id,
@@ -129,6 +144,7 @@ class ProjetoModel {
       statusId: statusId,
       prioridadeId: prioridadeId, 
       criadoEm: criadoEm,
+      equipeFotos: equipeFotos ?? this.equipeFotos, // 🔥 NOVO
     );
   }
 }

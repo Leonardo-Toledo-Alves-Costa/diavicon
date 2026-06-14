@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/usuario_model.dart';
 
@@ -24,7 +27,28 @@ class AuthRepository {
     );
 
     if (response.user != null) {
-      // Salva APENAS o perfil básico na tabela 'usuarios'
+      String? fotoUrlPublica;
+      
+      // 🔥 Pega o caminho da foto que veio das telas anteriores do cadastro (Passo 1 ou 2)
+      // Ajuste a chave ('fotoPath' ou 'fotoPerfilPath') conforme estiver no seu formulário inicial
+      final String? fotoPathLocal = dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
+
+      if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
+        try {
+          final arquivoFoto = File(fotoPathLocal);
+          final extensao = fotoPathLocal.split('.').last;
+          final timestamp = DateTime.now().millisecondsSinceEpoch;
+          final caminhoStorage = 'usuarios/${response.user!.id}_$timestamp.$extensao';
+
+          await _supabase.storage.from('avatars').upload(caminhoStorage, arquivoFoto);
+          fotoUrlPublica = _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
+        } catch (e) {
+          debugPrint('🚨 ERRO NO UPLOAD DO USUÁRIO: $e');
+          throw Exception('Falha ao fazer upload da foto de perfil: $e');
+        }
+      }
+
+      // Salva o perfil na tabela 'usuarios' incluindo o link da foto
       await _supabase.from('usuarios').insert({
         'id': response.user!.id,
         'nome': dadosCompletos['nome'],
@@ -32,6 +56,7 @@ class AuthRepository {
         'email': email,
         'celular': dadosCompletos['telefone'],
         'perfil': dadosCompletos['perfil'], // 'Empresa'
+        'foto_url': fotoUrlPublica, // 🔥 AGORA A FOTO VAI SALVA DIRETO NO USUÁRIO!
         'ativo': true,
       });
     }

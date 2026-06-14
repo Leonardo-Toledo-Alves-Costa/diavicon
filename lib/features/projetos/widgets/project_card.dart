@@ -234,6 +234,7 @@ class ProjectCard extends StatelessWidget {
     const double avatarRadius = 19; 
     const double avatarOverlap = 12; 
 
+    // 🔥 Mantendo 3 fotos + 1 bolinha de saldo (total de 4 bolinhas)
     final int visibleCount = teamAvatars.length.clamp(0, 3);
     final int extraCount = teamAvatars.length - visibleCount;
 
@@ -242,7 +243,7 @@ class ProjectCard extends StatelessWidget {
       avatars.add(
         _positionedAvatar(
           i * (2 * avatarRadius - avatarOverlap), 
-          teamAvatars[i],
+          teamAvatars[i], // 🔥 Passa a URL da foto!
           avatarRadius,
         ),
       );
@@ -252,15 +253,21 @@ class ProjectCard extends StatelessWidget {
       avatars.add(
         Positioned(
           left: visibleCount * (2 * avatarRadius - avatarOverlap), 
-          child: CircleAvatar(
-            radius: avatarRadius,
-            backgroundColor: Colors.orange,
-            child: Text(
-              '+$extraCount',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: avatarRadius - 4, 
-                fontWeight: FontWeight.bold,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2), // 🔥 Borda branca pra ficar igual os outros
+            ),
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Colors.orange,
+              child: Text(
+                '+$extraCount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: avatarRadius - 4, 
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -284,7 +291,10 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  Widget _positionedAvatar(double left, String asset, double radius) {
+  // 🔥 Adaptado para aceitar URLs da internet e usar o user.png como fallback
+  Widget _positionedAvatar(double left, String imageUrl, double radius) {
+    final bool isNetwork = imageUrl.startsWith('http');
+
     return Positioned(
       left: left,
       child: Container(
@@ -294,7 +304,10 @@ class ProjectCard extends StatelessWidget {
         ),
         child: CircleAvatar(
           radius: radius, 
-          backgroundImage: AssetImage(asset),
+          backgroundColor: AppColors.greyVeryLight,
+          backgroundImage: isNetwork
+              ? NetworkImage(imageUrl)
+              : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
       ),
     );

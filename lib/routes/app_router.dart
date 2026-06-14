@@ -22,6 +22,8 @@
   import '../../features/auth/screens/cadastro_r1_screen.dart';
   import '../../features/auth/screens/cadastro_r2_screen.dart';
   import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/recupera_senha_screen.dart';
+import '../../features/auth/screens/nova_senha_screen.dart';
 
   import '../../features/auth/screens/cadastro0_empresa.dart';
   import '../../features/auth/screens/cadastro1_empresa.dart';

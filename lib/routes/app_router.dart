@@ -9,6 +9,8 @@ import '../../features/auth/screens/cadastro_r0_screen.dart';
 import '../../features/auth/screens/cadastro_r1_screen.dart';
 import '../../features/auth/screens/cadastro_r2_screen.dart';
 import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/recupera_senha_screen.dart';
+import '../../features/auth/screens/nova_senha_screen.dart';
 
 // ── Empresa ───────────────────────────────────────────────────────────────────
 import '../../features/empresa/screens/empresa_gate_screen.dart';
@@ -88,22 +90,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => const CadastroR0Screen(),
       ),
       GoRoute(
-        path: '/register/dados',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>? ?? {};
-          return CadastroR1Screen(
-            email: extra['email'] as String? ?? '',
-            senha: extra['senha'] as String? ?? '',
-          );
-        },
-      ),
-      GoRoute(
-        path: '/register/perfil',
-        builder: (context, state) {
-          final extra = state.extra as Map<String, dynamic>? ?? {};
-          return CadastroR2Screen(dadosUsuario: extra);
-        },
-      ),
+  path: '/register/dados',
+  builder: (context, state) {
+    final extra = state.extra as Map<String, dynamic>? ?? {};
+    return CadastroR1Screen(dadosCadastro: extra);
+  },
+),
+GoRoute(
+  path: '/register/perfil',
+  builder: (context, state) {
+    final extra = state.extra as Map<String, dynamic>? ?? {};
+    return CadastroR2Screen(dadosCadastro: extra);
+  },
+),
       GoRoute(
         path: '/register/academico',
         builder: (context, state) {
@@ -126,6 +125,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           final extra = state.extra as Map<String, dynamic>? ?? {};
           return EmpresaOnboardingScreen(dadosUsuario: extra);
         },
+      ),
+      GoRoute(
+        path: '/recuperar-senha',
+        builder: (context, state) => const RecuperaSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/nova-senha',
+        builder: (context, state) => const NovaSenhaScreen(),
       ),
       GoRoute(
         path: '/empresa/servicos',

@@ -1,23 +1,24 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators/validators_cadastro.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../providers/auth_provider.dart';
 
-class RecuperaSenhaScreen extends StatefulWidget {
+class RecuperaSenhaScreen extends ConsumerStatefulWidget {
   const RecuperaSenhaScreen({super.key});
 
   @override
-  State<RecuperaSenhaScreen> createState() => _RecuperaSenhaScreenState();
+  ConsumerState<RecuperaSenhaScreen> createState() =>
+      _RecuperaSenhaScreenState();
 }
 
-class _RecuperaSenhaScreenState extends State<RecuperaSenhaScreen> {
+class _RecuperaSenhaScreenState extends ConsumerState<RecuperaSenhaScreen> {
   final _formKey  = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
-  bool _isLoading  = false;
 
   @override
   void dispose() {
@@ -27,12 +28,11 @@ class _RecuperaSenhaScreenState extends State<RecuperaSenhaScreen> {
 
   Future<void> _enviarLink() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(
-        _emailCtrl.text.trim(),
-        redirectTo: 'diavicon://nova-senha',
-      );
+      await ref
+          .read(recuperaSenhaControllerProvider.notifier)
+          .enviarLink(_emailCtrl.text.trim());
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -44,17 +44,17 @@ class _RecuperaSenhaScreenState extends State<RecuperaSenhaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: $e'),
+          content: Text('Erro: ${e.toString()}'),
           backgroundColor: AppColors.error,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(recuperaSenhaControllerProvider);
+
     return AuthLayout(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
@@ -72,12 +72,12 @@ class _RecuperaSenhaScreenState extends State<RecuperaSenhaScreen> {
                   color: Color(0xFF1C1C1C),
                 ),
               ),
-              const SizedBox(height: 32),
-              _InfoBlock(
+              const SizedBox(height: 36),
+              const _InfoBlock(
                 'Insira o seu endereço de email e receberá um link '
                 'para atualização da sua senha na DIAVICON.',
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               CustomTextField(
                 label: 'Informe seu email',
                 hint: 'joaosilva@email.com',
@@ -89,7 +89,7 @@ class _RecuperaSenhaScreenState extends State<RecuperaSenhaScreen> {
               CustomButton(
                 text: 'Recuperar senha',
                 onPressed: _enviarLink,
-                isLoading: _isLoading,
+                isLoading: isLoading,
               ),
               const SizedBox(height: 24),
             ],

@@ -1,28 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/validators/validators_cadastro.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../providers/auth_provider.dart';
 
-class NovaSenhaScreen extends StatefulWidget {
+class NovaSenhaScreen extends ConsumerStatefulWidget {
   const NovaSenhaScreen({super.key});
 
   @override
-  State<NovaSenhaScreen> createState() => _NovaSenhaScreenState();
+  ConsumerState<NovaSenhaScreen> createState() => _NovaSenhaScreenState();
 }
 
-class _NovaSenhaScreenState extends State<NovaSenhaScreen> {
-  final _formKey     = GlobalKey<FormState>();
-  final _senhaCtrl   = TextEditingController();
+class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
+  final _formKey      = GlobalKey<FormState>();
+  final _senhaCtrl    = TextEditingController();
   final _confirmaCtrl = TextEditingController();
 
   bool _senhaVisible    = false;
   bool _confirmaVisible = false;
-  bool _isLoading       = false;
 
   @override
   void dispose() {
@@ -33,11 +33,11 @@ class _NovaSenhaScreenState extends State<NovaSenhaScreen> {
 
   Future<void> _atualizarSenha() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.updateUser(
-        UserAttributes(password: _senhaCtrl.text),
-      );
+      await ref
+          .read(recuperaSenhaControllerProvider.notifier)
+          .atualizarSenha(_senhaCtrl.text);
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -50,17 +50,17 @@ class _NovaSenhaScreenState extends State<NovaSenhaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: $e'),
+          content: Text('Erro: ${e.toString()}'),
           backgroundColor: AppColors.error,
         ),
       );
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final isLoading = ref.watch(recuperaSenhaControllerProvider);
+
     return AuthLayout(
       child: Padding(
         padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
@@ -78,11 +78,11 @@ class _NovaSenhaScreenState extends State<NovaSenhaScreen> {
                   color: Color(0xFF1C1C1C),
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               const _InfoBlock(
                 'Atualize a sua senha e continue a aproveitar da DIAVICON.',
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 36),
               CustomTextField(
                 label: 'Senha',
                 hint: '••••••••••',
@@ -125,7 +125,7 @@ class _NovaSenhaScreenState extends State<NovaSenhaScreen> {
               CustomButton(
                 text: 'Recuperar senha',
                 onPressed: _atualizarSenha,
-                isLoading: _isLoading,
+                isLoading: isLoading,
               ),
               const SizedBox(height: 24),
             ],

@@ -15,6 +15,12 @@ final authControllerProvider =
   return AuthController(ref);
 });
 
+// ── Recuperação de senha ───────────────────────────────────────────────────
+final recuperaSenhaControllerProvider =
+    StateNotifierProvider<RecuperaSenhaController, bool>((ref) {
+  return RecuperaSenhaController(ref);
+});
+
 // ── Notifier do usuário logado ─────────────────────────────────────────────
 class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   CurrentUserNotifier() : super(null);
@@ -29,7 +35,6 @@ class AuthController extends StateNotifier<bool> {
 
   AuthController(this._ref) : super(false);
 
-  // ── Login ──────────────────────────────────────────────────────────────────
   Future<void> login(String email, String password) async {
     state = true;
     try {
@@ -47,27 +52,20 @@ class AuthController extends StateNotifier<bool> {
     }
   }
 
-  // ── Cadastro ───────────────────────────────────────────────────────────────
-  /// Cria o usuário no Supabase Auth e salva o perfil na tabela 'usuarios'.
-  /// [dados] é o Map acumulado ao longo das telas R0 → R1.
   Future<void> register(Map<String, dynamic> dados) async {
     state = true;
     try {
       final repo = _ref.read(authRepositoryProvider);
 
-      // 1. Cria o usuário no Supabase Auth
       final response = await repo.signUp(
         dados['email'] as String,
         dados['senha'] as String,
       );
 
-      if (response.user == null) {
-        throw Exception('Erro ao criar usuário.');
-      }
+      if (response.user == null) throw Exception('Erro ao criar usuário.');
 
       final userId = response.user!.id;
 
-      // 2. Monta o model com os dados das telas R1
       final usuario = UsuarioModel(
         id: userId,
         nome: dados['nome'] as String?,
@@ -80,10 +78,7 @@ class AuthController extends StateNotifier<bool> {
         ativo: true,
       );
 
-      // 3. Salva o perfil na tabela 'usuarios'
       await repo.salvarPerfil(usuario);
-
-      // 4. Atualiza o provider com o usuário logado
       _ref.read(currentUserProvider.notifier).setUser(usuario);
     } catch (e) {
       rethrow;
@@ -92,10 +87,40 @@ class AuthController extends StateNotifier<bool> {
     }
   }
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
   Future<void> logout() async {
     final repo = _ref.read(authRepositoryProvider);
     await repo.signOut();
     _ref.read(currentUserProvider.notifier).clearUser();
+  }
+}
+
+// ── Controller de recuperação de senha ────────────────────────────────────
+class RecuperaSenhaController extends StateNotifier<bool> {
+  final Ref _ref;
+
+  RecuperaSenhaController(this._ref) : super(false); // state = isLoading
+
+  /// Envia email com link de recuperação.
+  Future<void> enviarLink(String email) async {
+    state = true;
+    try {
+      await _ref.read(authRepositoryProvider).resetPasswordForEmail(email);
+    } catch (e) {
+      rethrow;
+    } finally {
+      state = false;
+    }
+  }
+
+  /// Atualiza a senha do usuário autenticado via link.
+  Future<void> atualizarSenha(String novaSenha) async {
+    state = true;
+    try {
+      await _ref.read(authRepositoryProvider).updatePassword(novaSenha);
+    } catch (e) {
+      rethrow;
+    } finally {
+      state = false;
+    }
   }
 }

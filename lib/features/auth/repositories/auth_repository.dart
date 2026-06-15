@@ -4,7 +4,6 @@ import '../models/usuario_model.dart';
 class AuthRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // ── Login ──────────────────────────────────────────────────────────────────
   Future<AuthResponse> signIn(String email, String password) async {
     return await _supabase.auth.signInWithPassword(
       email: email,
@@ -12,7 +11,6 @@ class AuthRepository {
     );
   }
 
-  // ── Cadastro: cria usuário no Supabase Auth ────────────────────────────────
   Future<AuthResponse> signUp(String email, String password) async {
     return await _supabase.auth.signUp(
       email: email,
@@ -20,12 +18,10 @@ class AuthRepository {
     );
   }
 
-  // ── Salva dados do perfil na tabela 'usuarios' ────────────────────────────
   Future<void> salvarPerfil(UsuarioModel usuario) async {
     await _supabase.from('usuarios').upsert(usuario.toMap());
   }
 
-  // ── Busca perfil do usuário na tabela 'usuarios' ──────────────────────────
   Future<UsuarioModel?> getUsuarioPerfil(String userId) async {
     final data = await _supabase
         .from('usuarios')
@@ -37,6 +33,20 @@ class AuthRepository {
     return UsuarioModel.fromMap(data);
   }
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
   Future<void> signOut() async => await _supabase.auth.signOut();
+
+  // ── Recuperação de senha ───────────────────────────────────────────────────
+
+  Future<void> resetPasswordForEmail(String email) async {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'diavicon://nova-senha',
+    );
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
 }

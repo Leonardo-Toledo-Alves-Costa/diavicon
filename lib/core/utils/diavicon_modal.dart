@@ -72,54 +72,52 @@ Future<T?> showDiaviconModal<T>({
                 color: Colors.white,
                 borderRadius: effectiveBorderRadius,
               ),
-              child: IntrinsicHeight( // 🚨 Adicionado para dar estabilidade ao cálculo de altura
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Header: Título + Botão de fechar
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 12, 12, 4),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Align(
-                            alignment: Alignment.topRight,
-                            child: IconButton(
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: const Icon(Icons.close, color: AppColors.hintText),
-                              onPressed: () => Navigator.of(context).pop(),
-                            ),
-                          ),
-                          if (title.isNotEmpty)
-                            SizedBox(
-                              width: double.infinity,
-                              child: Text(
-                                title,
-                                textAlign: centerTitle ? TextAlign.center : TextAlign.start,
-                                style: const TextStyle(
-                                  color: AppColors.textDark,
-                                  fontSize: 20,
-                                  fontWeight: FontWeight.bold,
-                                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Header: Título + Botão de fechar
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 12, 12, 4),
+                    child: Stack( 
+                      alignment: Alignment.center,
+                      children: [
+                        if (title.isNotEmpty)
+                          SizedBox(
+                            width: double.infinity,
+                            child: Text(
+                              title,
+                              textAlign: centerTitle ? TextAlign.center : TextAlign.start,
+                              style: const TextStyle(
+                                color: AppColors.textDark,
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
-                        ],
-                      ),
+                          ),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: IconButton(
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            icon: const Icon(Icons.close, color: AppColors.hintText),
+                            onPressed: () => Navigator.of(context).pop(),
+                          ),
+                        ),
+                      ],
                     ),
-
-                    // Body
-                    Flexible(
-                      child: SingleChildScrollView(
-                        // 🚨 Importante: isScrollable controla o scroll interno
-                        physics: isScrollable ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics(),
-                        padding: effectivePadding,
-                        child: body,
-                      ),
+                  ),
+              
+                  // Body
+                  Flexible(
+                    child: SingleChildScrollView(
+                      // 🚨 Importante: isScrollable controla o scroll interno
+                      physics: isScrollable ? const BouncingScrollPhysics() : const NeverScrollableScrollPhysics(),
+                      padding: effectivePadding,
+                      child: body,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),

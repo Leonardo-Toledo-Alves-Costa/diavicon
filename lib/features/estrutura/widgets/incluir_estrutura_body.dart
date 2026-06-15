@@ -74,7 +74,7 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
           final estruturasFiltradas = minhasEstruturas.where((est) {
             if (_searchQuery.isEmpty) return true;
             final nomeEstrutura = (est.nome ?? '').toLowerCase();
-            final tituloEstrutura = (est.tipo ?? '').toLowerCase();
+            final tituloEstrutura = (est.tipoId ?? '').toLowerCase();
             final busca = _searchQuery.toLowerCase();
             return nomeEstrutura.contains(busca) || tituloEstrutura.contains(busca);
           }).toList();
@@ -136,13 +136,13 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                             title: est.nome ?? 'Sem nome',
                             
                             // Linha 1: Tipologia e Tipo
-                            type: '${est.tipologiaEstrutural ?? 'Sem tipologia'} - ${est.tipo ?? 'Sem tipo'}',
+                            type: '${est.tipologiaNome ?? 'Sem tipologia'} - ${est.tipoNome ?? 'Sem tipo'}',
                             
                             // Linha 2: Idade e CAA
-                            details: '${est.idadeAnos ?? '-'} Anos   CAA ${est.caa ?? '-'}',
+                            details: '${est.idadeCalculada} Anos   CAA ${est.caa ?? '-'}',
                             
                             // Linha 3: Conjunto Estrutural
-                            group: est.conjuntoEstrutural ?? 'Sem conjunto vinculado',
+                            group: est.conjuntoNome ?? 'Sem conjunto vinculado',
                             
                             imageUrl: est.imageUrl ?? '',
                             isSelected: _selectedStructures.contains(est.id),

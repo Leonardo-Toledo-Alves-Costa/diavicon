@@ -2,7 +2,8 @@ import 'dart:io';
 import 'package:diavicon/features/projetos/widgets/selecao_cliente_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart'; // 🔥 Trocado para file_picker
+import 'package:image_cropper/image_cropper.dart'; // 🔥 Import do cropper
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -30,31 +31,54 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     super.dispose();
   }
 
+  // 🔥 NOVA LÓGICA DE FOTO COM ENQUADRAMENTO
   Future<void> _escolherImagem() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 40, 
-      maxWidth: 1080,   
-    ); 
-    
-    if (pickedFile != null) {
-      ref.read(projetoFormProvider.notifier).update(
-        (state) => state.copyWith(imagemProjeto: File(pickedFile.path)),
-      );
+    try {
+      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
+      
+      if (result != null && result.files.single.path != null) {
+        final pickedFilePath = result.files.single.path!;
+
+        CroppedFile? croppedFile = await ImageCropper().cropImage(
+          sourcePath: pickedFilePath,
+          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), // Força 16:9
+          uiSettings: [
+            AndroidUiSettings(
+              toolbarTitle: 'Enquadrar Capa',
+              toolbarColor: AppColors.primary,
+              toolbarWidgetColor: Colors.white,
+              initAspectRatio: CropAspectRatioPreset.ratio16x9,
+              lockAspectRatio: true,
+              hideBottomControls: false,
+            ),
+            IOSUiSettings(
+              title: 'Enquadrar Capa',
+              aspectRatioLockEnabled: true,
+              resetButtonHidden: true,
+            ),
+          ],
+        );
+
+        if (croppedFile != null) {
+          // Salva o arquivo recortado no provider
+          ref.read(projetoFormProvider.notifier).update(
+            (state) => state.copyWith(imagemProjeto: File(croppedFile.path)),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        _showSnackBar('Erro ao selecionar ou cortar imagem: $e', isError: true);
+      }
     }
   }
 
-  /// Função que consolida os dados do rascunho e envia para o repositório
   Future<void> _salvarProjetoCompleto() async {
     final formState = ref.read(projetoFormProvider);
     final user = ref.read(currentUserProvider);
 
     if (user == null || user.empresaId == null) {
-      _showSnackBar(
-        'Erro: Empresa não identificada no seu perfil.',
-        isError: true,
-      );
+      _showSnackBar('Erro: Empresa não identificada no seu perfil.', isError: true);
       return;
     }
 
@@ -87,9 +111,8 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
             : null,
       );
 
-      // 🔥 CORREÇÃO AQUI: Usa o nome novo do provider principal de lista
       ref.invalidate(projetoFormProvider);
-      ref.invalidate(filteredProjectsProvider); // Antes estava projectsListProvider
+      ref.invalidate(filteredProjectsProvider); 
 
       if (mounted) {
         Navigator.pop(context);
@@ -120,50 +143,65 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     
-    // Escuta o rascunho (estado global do formulário)
     final rascunho = ref.watch(projetoFormProvider);
-
-    // Escuta o provider COMBINADO (Carteira + Cliente Selecionado na Busca Global)
     final clientesDropdownAsync = ref.watch(dropdownClientesProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // HEADER / IMAGEM DO PROJETO
+        // 🔥 HEADER / IMAGEM DO PROJETO (Agora retangular 16:9)
         GestureDetector(
           onTap: _estaSalvando ? null : _escolherImagem,
-          child: Center(
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 55,
-                  backgroundColor: AppColors.greyVeryLight,
-                  backgroundImage: rascunho.imagemProjeto != null
-                      ? FileImage(rascunho.imagemProjeto!) as ImageProvider
-                      : const AssetImage('assets/images/empresa.png'),
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 140,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: AppColors.greyVeryLight,
+                  borderRadius: BorderRadius.circular(16),
+                  image: rascunho.imagemProjeto != null
+                      ? DecorationImage(
+                          image: FileImage(rascunho.imagemProjeto!),
+                          fit: BoxFit.cover,
+                        )
+                      : null, // Deixamos o placeholder de fallback se não tiver
                 ),
+                // Exibe o ícone e texto só quando não tem imagem selecionada
+                child: rascunho.imagemProjeto == null
+                    ? const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo_outlined, size: 32, color: AppColors.greyMedium),
+                          SizedBox(height: 8),
+                          Text(
+                            'Adicionar capa',
+                            style: TextStyle(color: AppColors.greyMediumDark, fontSize: 14),
+                          ),
+                        ],
+                      )
+                    : null,
+              ),
+              // Botãozinho de lápis igual ao da tela de Informações
+              if (rascunho.imagemProjeto != null)
                 Positioned(
-                  bottom: 0,
-                  right: 0,
+                  bottom: -15,
+                  right: 15,
                   child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black12, blurRadius: 4),
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
                       ],
                     ),
-                    child: const Icon(
-                      Icons.camera_alt_outlined, 
-                      color: AppColors.textDark,
-                      size: 20,
-                    ),
+                    child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),
                   ),
                 ),
-              ],
-            ),
+            ],
           ),
         ),
         const SizedBox(height: 32),
@@ -237,14 +275,12 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
 
         const SizedBox(height: 40),
 
-        // CRIAR
         CustomButton(
           text: _estaSalvando ? 'Salvando...' : 'Criar',
           showArrow: false,
           onPressed: _estaSalvando ? null : _salvarProjetoCompleto,
         ),
 
-        // Ajuste de espaçamento para teclados e safe area
         SizedBox(height: bottomPadding > 0 ? bottomPadding : 16),
       ],
     );

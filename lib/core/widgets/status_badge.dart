@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 
 enum BadgeStatus {
-  pendente,
   emAndamento,
   concluido,
   cancelado,
@@ -18,23 +17,32 @@ class StatusBadge extends StatelessWidget {
     this.customText,
   });
 
-  Color get _baseColor {
+  // 🔥 Cor do texto
+  Color get _textColor {
     switch (status) {
-      case BadgeStatus.pendente:
-        return AppColors.primary; 
       case BadgeStatus.emAndamento:
-        return Colors.blue;
+        return AppColors.primary; // O seu Laranja DiaViCon!
       case BadgeStatus.concluido:
-        return Colors.green;
+        return Colors.green.shade800;
       case BadgeStatus.cancelado:
-        return Colors.red;
+        return Colors.red.shade700;
+    }
+  }
+
+  // 🔥 Cor do fundo 100% sólida
+  Color get _backgroundColor {
+    switch (status) {
+      case BadgeStatus.emAndamento:
+        return const Color(0xFFFFF3E0); // Laranja clarinho sólido
+      case BadgeStatus.concluido:
+        return const Color(0xFFE6F4EA); // Verde clarinho sólido
+      case BadgeStatus.cancelado:
+        return const Color(0xFFFFEBEE); // Vermelho clarinho sólido
     }
   }
 
   String get _defaultText {
     switch (status) {
-      case BadgeStatus.pendente:
-        return 'Pendente';
       case BadgeStatus.emAndamento:
         return 'Em Andamento';
       case BadgeStatus.concluido:
@@ -46,19 +54,18 @@ class StatusBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = _baseColor;
     final text = customText ?? _defaultText;
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.15), 
+        color: _backgroundColor, 
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: color,
+          color: _textColor, 
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),

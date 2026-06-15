@@ -76,4 +76,21 @@ class ElementoRepository {
       throw Exception('Falha ao desativar elemento: $e');
     }
   }
+
+  /// Faz upload de uma foto para o Storage do Supabase e retorna a URL pública.
+  Future<String> uploadFoto({
+    required String elementoId,
+    required String caminhoLocalFoto,
+  }) async {
+    final nomeArquivo =
+        '$elementoId/${DateTime.now().millisecondsSinceEpoch}.jpg';
+
+    await _client.storage
+        .from('elementos-fotos')
+        .upload(nomeArquivo, Uri.file(caminhoLocalFoto) as dynamic);
+
+    return _client.storage
+        .from('elementos-fotos')
+        .getPublicUrl(nomeArquivo);
+  }
 }

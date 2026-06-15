@@ -1,140 +1,154 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/auth_layout.dart';
 
-class CadastroR2Screen extends ConsumerWidget {
-  final Map<String, dynamic> dadosUsuario;
+class _PerfilData {
+  final IconData icon;
+  final String label;
+  final String key;
 
-  const CadastroR2Screen({super.key, required this.dadosUsuario});
+  const _PerfilData({
+    required this.icon,
+    required this.label,
+    required this.key,
+  });
+}
+
+const _perfis = [
+  _PerfilData(
+    icon: Icons.engineering_outlined,
+    label: 'Engenheiro Diagnóstico',
+    key: 'engenheiro',
+  ),
+  _PerfilData(
+    icon: Icons.business_outlined,
+    label: 'Proprietário/gestor de ativos',
+    key: 'proprietario',
+  ),
+  _PerfilData(
+    icon: Icons.school_outlined,
+    label: 'Pesquisador Acadêmico',
+    key: 'academico',
+  ),
+];
+
+class CadastroR2Screen extends StatelessWidget {
+  final Map<String, dynamic> dadosCadastro;
+
+  const CadastroR2Screen({super.key, required this.dadosCadastro});
+
+  void _selecionarPerfil(BuildContext context, String perfilKey) {
+    final extra = {...dadosCadastro, 'perfil': perfilKey};
+    switch (perfilKey) {
+      case 'engenheiro':
+      case 'proprietario':
+        context.push('/empresa/gate', extra: extra);
+        break;
+      case 'academico':
+        context.push('/register/academico', extra: extra);
+        break;
+    }
+  }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return AuthLayout(
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(28, 40, 28, 28),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 0),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Qual perfil melhor\nte descreve?',
+              'Qual perfil melhor',
               style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w900,
-                color: AppColors.textDark,
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1C1C),
+                height: 1.3,
               ),
             ),
-            const SizedBox(height: 32),
-
-            //Engenheiro Diagnóstico
-            _PerfilButton(
-              icone: Icons.engineering,
-              texto: 'Engenheiro Diagnóstico',
-              onTap: () => _irParaProximaEtapa(
-                context,
-                'Engenheiro/Pesquisador',
+            const Text(
+              'te descreve?',
+              style: TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF1C1C1C),
+                height: 1.3,
               ),
             ),
-            const SizedBox(height: 16),
-
-            // Proprietário/gestor de ativos
-            _PerfilButton(
-              icone: Icons.domain,
-              texto: 'Proprietário/gestor\nde ativos',
-              onTap: () => _irParaProximaEtapa(
-                context,
-                'Cliente',
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Pesquisador Acadêmico
-            _PerfilButton(
-              icone: Icons.school,
-              texto: 'Pesquisador Acadêmico',
-              onTap: () => _irParaProximaEtapa(
-                context,
-                'Acadêmico',
-              ),
-            ),
-
-            const Spacer(),
-
-            // Botão Voltar
-            Align(
-              alignment: Alignment.centerLeft,
-              child: TextButton(
-                onPressed: () => context.pop(),
-                child: const Text(
-                  '< Voltar',
-                  style: TextStyle(color: AppColors.greyMedium),
+            const SizedBox(height: 36),
+            ..._perfis.map(
+              (p) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _PerfilCard(
+                  icon: p.icon,
+                  label: p.label,
+                  onTap: () => _selecionarPerfil(context, p.key),
                 ),
               ),
             ),
+            const Spacer(),
+            TextButton.icon(
+              onPressed: () => context.pop(),
+              icon: const Icon(Icons.chevron_left, color: AppColors.primary),
+              label: const Text(
+                'Voltar',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
           ],
         ),
       ),
     );
   }
-
-  void _irParaProximaEtapa(BuildContext context, String tipo) {
-    // Adiciona o tipo escolhido ao mapa de dados que veio das telas anteriores
-    final dadosAtualizados = {...dadosUsuario, 'tipo': tipo};
-    print(tipo); // Para debug: ver qual tipo foi selecionado
-    if (tipo == 'Acadêmico') {
-      // Vai para a tela de dados acadêmicos
-      context.go('/register/academico', extra: dadosAtualizados);
-    }
-    else if (tipo == 'Cliente') {
-      // Vai para a tela de dados do cliente
-      context.go('/register/cliente/gate', extra: dadosAtualizados);
-    }
-    else {
-      // Engenheiro e Proprietário seguem para o Onboarding de Empresa
-      context.go('/empresa/gate', extra: dadosAtualizados);
-    }
-  }
 }
 
-// Widget auxiliar para os botões grandes de perfil
-class _PerfilButton extends StatelessWidget {
-  final IconData icone;
-  final String texto;
+class _PerfilCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
   final VoidCallback onTap;
 
-  const _PerfilButton({
-    required this.icone,
-    required this.texto,
+  const _PerfilCard({
+    required this.icon,
+    required this.label,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-        decoration: BoxDecoration(
-          color: AppColors.primary,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Row(
-          children: [
-            Icon(icone, color: Colors.white, size: 32),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Text(
-                texto,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 15,
+    return Material(
+      color: AppColors.primary,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        splashColor: Colors.white.withValues(alpha: 0.2),
+        highlightColor: Colors.white.withValues(alpha: 0.1),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+          child: Row(
+            children: [
+              Icon(icon, color: Colors.white, size: 36),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-            const Icon(Icons.arrow_forward_ios, color: Colors.white, size: 16),
-          ],
+            ],
+          ),
         ),
       ),
     );

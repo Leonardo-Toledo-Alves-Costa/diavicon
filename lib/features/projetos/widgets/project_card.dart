@@ -11,6 +11,7 @@ class ProjectCard extends StatelessWidget {
   final BadgeStatus status;
   final String priority;
   final String imageUrl;
+  final List<String> teamAvatars;
 
   const ProjectCard({
     super.key,
@@ -19,6 +20,7 @@ class ProjectCard extends StatelessWidget {
     required this.status,
     required this.priority,
     required this.imageUrl,
+    required this.teamAvatars,
   });
 
   @override
@@ -59,7 +61,7 @@ class ProjectCard extends StatelessWidget {
                 child: _buildPriorityLabel(),
               ),
               Positioned(
-                bottom: -12,
+                bottom: -16,
                 right: 20,
                 child: Container(
                   padding: const EdgeInsets.all(4),
@@ -71,15 +73,15 @@ class ProjectCard extends StatelessWidget {
                     ],
                   ),
                   child: Image.asset(
-                    'assets/images/logo_diavicon.png',
-                    height: 24,
+                    'assets/images/logo_diavicon.png', // O logo "escudo" vai aqui
+                    height: 32, // Um pouco maior para destacar o escudo
                   ),
                 ),
               ),
             ],
           ),
           Padding(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -88,42 +90,57 @@ class ProjectCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w900,
+                    fontSize: 17, 
+                    fontWeight: FontWeight.w800, 
                     color: AppColors.textDark,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+
+                // ── Progresso e Equipe (Linha Superior) ────────────────────
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     const Text(
                       'Progresso',
                       style: TextStyle(
-                        color: Colors.grey,
+                        fontSize: 15,
+                        color: Colors.grey, 
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: const TextStyle(fontWeight: FontWeight.w900),
-                    ),
+                    _buildTeamStack(),
                   ],
                 ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: Colors.grey.shade100,
-                    color: _getProgressColor(),
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _buildTeamStack(),
+                
+                const SizedBox(height: 12), 
+
+                // ── Barra de Progresso e Porcentagem (Linha Inferior) ──────
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(10),
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          backgroundColor: Colors.grey.shade200,
+                          color: _getProgressColor(),
+                          minHeight: 8,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16), 
+                    // O valor percentual na direita
+                    Text(
+                      '${(progress * 100).toInt()}%',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -134,43 +151,45 @@ class ProjectCard extends StatelessWidget {
   }
 
   Widget _buildCapaProjeto() {
+    const double imgHeight = 110; 
+
     if (imageUrl.startsWith('http')) {
       return Image.network(
         imageUrl,
-        height: 160,
+        height: imgHeight,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _fallbackImage(),
+        errorBuilder: (context, error, stackTrace) => _fallbackImage(imgHeight),
       );
     }
 
     if (imageUrl.startsWith('/data') || imageUrl.startsWith('file://')) {
       return Image.file(
         File(imageUrl.replaceFirst('file://', '')),
-        height: 160,
+        height: imgHeight,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _fallbackImage(),
+        errorBuilder: (context, error, stackTrace) => _fallbackImage(imgHeight),
       );
     }
 
     if (imageUrl.isNotEmpty) {
       return Image.asset(
         imageUrl,
-        height: 160,
+        height: imgHeight,
         width: double.infinity,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => _fallbackImage(),
+        errorBuilder: (context, error, stackTrace) => _fallbackImage(imgHeight),
       );
     }
 
-    return _fallbackImage();
+    return _fallbackImage(imgHeight);
   }
 
-  Widget _fallbackImage() {
+  Widget _fallbackImage(double height) {
     return Image.asset(
       'assets/images/project_placeholder1.png',
-      height: 160,
+      height: height,
       width: double.infinity,
       fit: BoxFit.cover,
     );
@@ -206,50 +225,75 @@ class ProjectCard extends StatelessWidget {
   }
 
   Color _getProgressColor() {
-    if (status == BadgeStatus.concluido) return Colors.green;
+    if (status == BadgeStatus.concluido) return Colors.green; 
     if (status == BadgeStatus.cancelado) return Colors.red;
     return AppColors.primary;
   }
 
   Widget _buildTeamStack() {
-    return SizedBox(
-      width: 100,
-      height: 32,
-      child: Stack(
-        children: [
-          _positionedAvatar(0, 'assets/images/user.png'),
-          _positionedAvatar(18, 'assets/images/user.png'),
-          _positionedAvatar(36, 'assets/images/user.png'),
-          const Positioned(
-            left: 54,
-            child: CircleAvatar(
-              radius: 14,
-              backgroundColor: Colors.orange,
-              child: Text(
-                '+2',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.bold,
-                ),
+    const double avatarRadius = 19; 
+    const double avatarOverlap = 12; 
+
+    final int visibleCount = teamAvatars.length.clamp(0, 3);
+    final int extraCount = teamAvatars.length - visibleCount;
+
+    List<Widget> avatars = [];
+    for (int i = 0; i < visibleCount; i++) {
+      avatars.add(
+        _positionedAvatar(
+          i * (2 * avatarRadius - avatarOverlap), 
+          teamAvatars[i],
+          avatarRadius,
+        ),
+      );
+    }
+
+    if (extraCount > 0) {
+      avatars.add(
+        Positioned(
+          left: visibleCount * (2 * avatarRadius - avatarOverlap), 
+          child: CircleAvatar(
+            radius: avatarRadius,
+            backgroundColor: Colors.orange,
+            child: Text(
+              '+$extraCount',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: avatarRadius - 4, 
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
-        ],
+        ),
+      );
+    }
+
+    final int totalItems = visibleCount + (extraCount > 0 ? 1 : 0);
+    final double totalWidth = totalItems > 0 
+        ? (totalItems * (2 * avatarRadius)) - ((totalItems - 1) * avatarOverlap) 
+        : 0;
+
+    return SizedBox(
+      width: totalWidth,
+      height: 2 * avatarRadius, 
+      child: Stack(
+        alignment: Alignment.centerLeft, 
+        clipBehavior: Clip.none,
+        children: avatars,
       ),
     );
   }
 
-  Widget _positionedAvatar(double left, String asset) {
+  Widget _positionedAvatar(double left, String asset, double radius) {
     return Positioned(
       left: left,
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2),
+          border: Border.all(color: Colors.white, width: 2), 
         ),
         child: CircleAvatar(
-          radius: 12,
+          radius: radius, 
           backgroundImage: AssetImage(asset),
         ),
       ),

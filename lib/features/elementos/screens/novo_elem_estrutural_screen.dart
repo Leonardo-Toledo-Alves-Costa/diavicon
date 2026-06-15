@@ -297,6 +297,9 @@ class _NovoElemEstruturalScreenState
           ),
           estruturaId,
         );
+
+    // Garante que a lista da estrutura reflita o novo elemento mesmo sem realtime.
+    ref.invalidate(elementosPorEstruturaProvider(estruturaId));
   }
 
   /// Retorna a lista mutavel de opcoes correspondente ao campo recebido.

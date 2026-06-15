@@ -3,9 +3,12 @@ import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Opcoes padrao iniciais para o campo "Tipo do Elemento".
@@ -41,10 +44,11 @@ const List<String> _defaultRevestimentoOptions = <String>[
 /// Esta tela recebe dados iniciais, carrega opcoes dinamicas quando disponiveis,
 /// permite adicionar novos itens aos dropdowns e envia o rascunho final no
 /// callback de submissao.
-class NovoElemEstruturalScreen extends StatefulWidget {
+class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
   /// Cria a tela com valores iniciais e callbacks opcionais para integracao.
   const NovoElemEstruturalScreen({
     super.key,
+    this.estruturaId,
     this.initialNome = 'ABC Corp.',
     this.initialTipoElemento,
     this.initialTipologiaEstrutural,
@@ -64,6 +68,11 @@ class NovoElemEstruturalScreen extends StatefulWidget {
     this.onOpenRelatorios,
   });
 
+  /// Estrutura à qual o novo elemento será vinculado.
+  ///
+  /// Necessário quando [onSubmit] não é informado: nesse caso a tela salva
+  /// o elemento diretamente via [elementoRepositoryProvider].
+  final String? estruturaId;
   final String initialNome;
   final String? initialTipoElemento;
   final String? initialTipologiaEstrutural;
@@ -84,7 +93,7 @@ class NovoElemEstruturalScreen extends StatefulWidget {
 
   /// Cria o estado mutavel da tela.
   @override
-  State<NovoElemEstruturalScreen> createState() =>
+  ConsumerState<NovoElemEstruturalScreen> createState() =>
       _NovoElemEstruturalScreenState();
 }
 
@@ -92,7 +101,8 @@ class NovoElemEstruturalScreen extends StatefulWidget {
 ///
 /// Mantem os controles de formulario, as selecoes atuais e as listas mutaveis
 /// usadas pelos dropdowns.
-class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
+class _NovoElemEstruturalScreenState
+    extends ConsumerState<NovoElemEstruturalScreen> {
   final GlobalKey<RightMenuBarState> _rightMenuKey =
       GlobalKey<RightMenuBarState>();
   late final TextEditingController _nomeController;
@@ -228,23 +238,38 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Monta o rascunho atual do formulario e o envia ao callback de submit.
+  /// Indica se o botão "Criar" consegue salvar: ou há um [onSubmit] injetado,
+  /// ou há uma [estruturaId] para o salvamento padrão via repository.
+  bool get _canSubmit =>
+      widget.onSubmit != null || widget.estruturaId != null;
+
+  /// Monta o rascunho atual do formulario e o persiste.
+  ///
+  /// Usa o [onSubmit] injetado quando existir; caso contrário, grava o
+  /// elemento diretamente na estrutura via [elementoRepositoryProvider].
   Future<void> _handleSubmit() async {
-    final onSubmit = widget.onSubmit;
-    if (onSubmit == null) return;
+    if (!_canSubmit) return;
+
+    final draft = NovoElemEstruturalDraft(
+      nome: _nomeController.text.trim(),
+      tipoElemento: _tipoElemento,
+      tipologiaEstrutural: _tipologiaEstrutural,
+      localElemento: _localElemento,
+      revestimento: _revestimento,
+    );
 
     setState(() => _isSubmitting = true);
 
     try {
-      await onSubmit(
-        NovoElemEstruturalDraft(
-          nome: _nomeController.text.trim(),
-          tipoElemento: _tipoElemento,
-          tipologiaEstrutural: _tipologiaEstrutural,
-          localElemento: _localElemento,
-          revestimento: _revestimento,
-        ),
-      );
+      final onSubmit = widget.onSubmit;
+      if (onSubmit != null) {
+        await onSubmit(draft);
+      } else {
+        await _criarElementoPadrao(draft);
+      }
+      if (mounted) {
+        Navigator.of(context).maybePop();
+      }
     } catch (error) {
       if (!mounted) return;
       _showSnackBar('Erro ao salvar elemento: $error');
@@ -253,6 +278,25 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  /// Salvamento padrão: cria o elemento na estrutura atual.
+  Future<void> _criarElementoPadrao(NovoElemEstruturalDraft draft) async {
+    final estruturaId = widget.estruturaId;
+    if (estruturaId == null) return;
+
+    await ref.read(elementoRepositoryProvider).criarElemento(
+          ElementoModel(
+            id: '',
+            nome: draft.nome.isEmpty ? null : draft.nome,
+            tipo: draft.tipoElemento,
+            tipologiaEstrutural: draft.tipologiaEstrutural,
+            local: draft.localElemento,
+            revestimento: draft.revestimento,
+            ativo: true,
+          ),
+          estruturaId,
+        );
   }
 
   /// Retorna a lista mutavel de opcoes correspondente ao campo recebido.
@@ -449,11 +493,9 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             text: _isSubmitting ? 'Salvando...' : 'Criar',
                             width: 139,
                             height: 54,
-                            onPressed: _isSubmitting
+                            onPressed: (_isSubmitting || !_canSubmit)
                                 ? () {}
-                                : (widget.onSubmit == null
-                                      ? () {}
-                                      : _handleSubmit),
+                                : _handleSubmit,
                           ),
                         ],
                       ),

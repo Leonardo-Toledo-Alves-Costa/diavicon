@@ -1,8 +1,11 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/compact_search_bar.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class ElementoEstruturalOption {
@@ -21,6 +24,7 @@ class ElementoEstruturalOption {
 
 Future<T?> showIncluirElementoEstruturalSheet<T>({
   required BuildContext context,
+  String? estruturaId,
   List<ElementoEstruturalOption> elementos = _defaultElementos,
   ValueChanged<List<ElementoEstruturalOption>>? onNovoPressed,
 }) {
@@ -31,30 +35,39 @@ Future<T?> showIncluirElementoEstruturalSheet<T>({
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withOpacity(0.42),
     builder: (context) => IncluirElementoEstruturalSheet(
+      estruturaId: estruturaId,
       elementos: elementos,
       onNovoPressed: onNovoPressed,
     ),
   );
 }
 
-class IncluirElementoEstruturalSheet extends StatefulWidget {
+class IncluirElementoEstruturalSheet extends ConsumerStatefulWidget {
   const IncluirElementoEstruturalSheet({
     super.key,
+    this.estruturaId,
     this.elementos = _defaultElementos,
     this.onNovoPressed,
   });
 
+  /// Estrutura atual. Quando informada, a lista vem do Supabase em tempo real
+  /// via [elementosPorEstruturaProvider]; senão, usa [elementos] (mock/demo).
+  final String? estruturaId;
   final List<ElementoEstruturalOption> elementos;
   final ValueChanged<List<ElementoEstruturalOption>>? onNovoPressed;
 
   @override
-  State<IncluirElementoEstruturalSheet> createState() =>
+  ConsumerState<IncluirElementoEstruturalSheet> createState() =>
       _IncluirElementoEstruturalSheetState();
 }
 
 class _IncluirElementoEstruturalSheetState
-    extends State<IncluirElementoEstruturalSheet> {
+    extends ConsumerState<IncluirElementoEstruturalSheet> {
   final Set<String> _selectedIds = <String>{};
+
+  /// Opções atualmente exibidas (mock ou vindas do banco). Mantido para que a
+  /// seleção e o callback [onNovoPressed] reflitam a lista real renderizada.
+  List<ElementoEstruturalOption> _currentOptions = const [];
 
   void _toggle(ElementoEstruturalOption elemento) {
     setState(() {
@@ -66,8 +79,25 @@ class _IncluirElementoEstruturalSheetState
     });
   }
 
+  /// Converte um elemento do banco no modelo de exibição do sheet.
+  ElementoEstruturalOption _toOption(ElementoModel elemento) {
+    final subtitlePartes = [
+      elemento.tipo,
+      elemento.tipologiaEstrutural,
+    ].where((parte) => parte != null && parte.trim().isNotEmpty).cast<String>();
+
+    return ElementoEstruturalOption(
+      id: elemento.id,
+      title: (elemento.nome?.trim().isNotEmpty ?? false)
+          ? elemento.nome!
+          : 'Elemento sem nome',
+      subtitle: subtitlePartes.join(' - '),
+      detail: elemento.local ?? '',
+    );
+  }
+
   void _handleNovoPressed() {
-    final selected = widget.elementos
+    final selected = _currentOptions
         .where((elemento) => _selectedIds.contains(elemento.id))
         .toList();
     final navigator = Navigator.of(context);
@@ -80,7 +110,63 @@ class _IncluirElementoEstruturalSheetState
 
     navigator.pop();
     navigator.push(
-      MaterialPageRoute<void>(builder: (_) => const NovoElemEstruturalScreen()),
+      MaterialPageRoute<void>(
+        builder: (_) =>
+            NovoElemEstruturalScreen(estruturaId: widget.estruturaId),
+      ),
+    );
+  }
+
+  /// Lista renderizada conforme o estado do carregamento. Em modo mock
+  /// ([asyncOptions] nulo) mostra direto; senão trata loading/erro/vazio.
+  Widget _buildElementoList(
+    AsyncValue<List<ElementoEstruturalOption>>? asyncOptions,
+  ) {
+    if (asyncOptions == null) {
+      return _optionsListView(widget.elementos);
+    }
+
+    return asyncOptions.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, _) => Center(
+        child: Text(
+          'Erro ao carregar elementos',
+          style: GoogleFonts.lato(color: const Color(0xFF686868), fontSize: 14),
+        ),
+      ),
+      data: (options) {
+        if (options.isEmpty) {
+          _currentOptions = const [];
+          return Center(
+            child: Text(
+              'Nenhum elemento cadastrado ainda',
+              style: GoogleFonts.lato(
+                color: const Color(0xFF686868),
+                fontSize: 14,
+              ),
+            ),
+          );
+        }
+        return _optionsListView(options);
+      },
+    );
+  }
+
+  /// Renderiza os cards selecionáveis e registra as opções exibidas.
+  Widget _optionsListView(List<ElementoEstruturalOption> options) {
+    _currentOptions = options;
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      itemCount: options.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 14),
+      itemBuilder: (context, index) {
+        final elemento = options[index];
+        return _ElementoSelectionCard(
+          elemento: elemento,
+          isSelected: _selectedIds.contains(elemento.id),
+          onTap: () => _toggle(elemento),
+        );
+      },
     );
   }
 
@@ -88,6 +174,13 @@ class _IncluirElementoEstruturalSheetState
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
     final sheetHeight = (screenHeight * 0.78).clamp(620.0, 680.0).toDouble();
+
+    final estruturaId = widget.estruturaId;
+    final asyncOptions = estruturaId == null
+        ? null
+        : ref
+              .watch(elementosPorEstruturaProvider(estruturaId))
+              .whenData((lista) => lista.map(_toOption).toList());
 
     return Align(
       alignment: Alignment.bottomCenter,
@@ -116,15 +209,8 @@ class _IncluirElementoEstruturalSheetState
                     const SizedBox(height: 28),
                     const _FilterRow(),
                     const SizedBox(height: 20),
-                    for (final elemento in widget.elementos) ...[
-                      _ElementoSelectionCard(
-                        elemento: elemento,
-                        isSelected: _selectedIds.contains(elemento.id),
-                        onTap: () => _toggle(elemento),
-                      ),
-                      const SizedBox(height: 14),
-                    ],
-                    const Spacer(),
+                    Expanded(child: _buildElementoList(asyncOptions)),
+                    const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerRight,
                       child: SizedBox(

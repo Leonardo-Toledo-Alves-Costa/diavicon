@@ -182,6 +182,14 @@ import '../../features/auth/screens/nova_senha_screen.dart';
           ),
         ),
         GoRoute(
+          path: '/recuperar-senha',
+          builder: (context, state) => const RecuperaSenhaScreen(),
+        ),
+        GoRoute(
+          path: '/nova-senha',
+          builder: (context, state) => const NovaSenhaScreen(),
+        ),
+        GoRoute(
           path: '/empresa/servicos',
           builder: (context, state) => Cadastro2Empresa(
             dadosUsuario: state.extra as Map<String, dynamic>? ?? {},

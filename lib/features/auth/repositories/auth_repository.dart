@@ -74,6 +74,10 @@ class AuthRepository {
     return UsuarioModel.fromMap(data);
   }
 
+  Future<void> salvarPerfil(UsuarioModel usuario) async {
+    await _supabase.from('usuarios').upsert(usuario.toMap());
+  }
+
   // Logout
   Future<void> signOut() async => await _supabase.auth.signOut();
 

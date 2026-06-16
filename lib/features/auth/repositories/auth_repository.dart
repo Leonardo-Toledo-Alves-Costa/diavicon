@@ -79,4 +79,19 @@ class AuthRepository {
 
   // Pega a sessão atual (para o app abrir já logado)
   User? get currentUser => _supabase.auth.currentUser;
+
+  // ── Recuperação de senha ───────────────────────────────────────────────────
+
+  Future<void> resetPasswordForEmail(String email) async {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'diavicon://nova-senha',
+    );
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
 }

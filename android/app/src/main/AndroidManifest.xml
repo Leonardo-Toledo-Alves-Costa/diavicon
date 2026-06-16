@@ -31,6 +31,8 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
+
+            <!-- Launcher -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
@@ -44,6 +46,23 @@
                     android:scheme="diavicon"
                     android:host="login-callback" />
             </intent-filter>
+
+            <!-- Deep link: diavicon://login-callback (login/cadastro) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="diavicon" android:host="login-callback" />
+            </intent-filter>
+
+            <!-- Deep link: diavicon://nova-senha (recuperação de senha) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="diavicon" android:host="nova-senha" />
+            </intent-filter>
+
         </activity>
 
         <meta-data

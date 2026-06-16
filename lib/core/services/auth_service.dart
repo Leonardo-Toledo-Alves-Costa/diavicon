@@ -4,33 +4,26 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthService extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // se o usuário está logado ou não
   bool _isLoggedIn = false;
   bool get isLoggedIn => _isLoggedIn;
 
-  //dados do usuário atual (ID, email, etc)
   User? get currentUser => _supabase.auth.currentUser;
 
   AuthService() {
-    //verifica se já tem alguém logado ao abrir o app
     _isLoggedIn = _supabase.auth.currentUser != null;
 
-    // fica escutando qualquer mudança no Supabase (Login, Logout, Token expirado)
     _supabase.auth.onAuthStateChange.listen((data) {
       final AuthChangeEvent event = data.event;
       if (event == AuthChangeEvent.signedIn) {
         _isLoggedIn = true;
-        notifyListeners(); // avisa o goRouter
+        notifyListeners();
       } else if (event == AuthChangeEvent.signedOut) {
         _isLoggedIn = false;
-        notifyListeners(); 
+        notifyListeners();
       }
     });
   }
 
-  // --- MÉTODOS ---
-
-  // login
   Future<void> signIn(String email, String password) async {
     await _supabase.auth.signInWithPassword(
       email: email,
@@ -38,7 +31,6 @@ class AuthService extends ChangeNotifier {
     );
   }
 
-  // cadastro
   Future<void> signUp(String email, String password) async {
     await _supabase.auth.signUp(
       email: email,
@@ -46,11 +38,24 @@ class AuthService extends ChangeNotifier {
     );
   }
 
-  // logout
   Future<void> signOut() async {
     await _supabase.auth.signOut();
   }
+
+  // ── Recuperação de senha ───────────────────────────────────────────────────
+
+  Future<void> resetPasswordForEmail(String email) async {
+    await _supabase.auth.resetPasswordForEmail(
+      email,
+      redirectTo: 'diavicon://nova-senha',
+    );
+  }
+
+  Future<void> updatePassword(String newPassword) async {
+    await _supabase.auth.updateUser(
+      UserAttributes(password: newPassword),
+    );
+  }
 }
 
-// instância global para o GoRouter poder acessar facilmente
 final authService = AuthService();

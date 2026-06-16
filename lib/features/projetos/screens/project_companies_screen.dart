@@ -77,6 +77,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                   'uf': endereco != null ? endereco['estado'] : 'MG',
                   'status_vinculo': 'aceito',
                   'is_gestora': true,
+                  'total_colaboradores': 0, // Fallback para a gestora, caso não venha no provider
                 });
               }
 
@@ -98,7 +99,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                       ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppColors.primary, // 🔥 Oficial!
+                          backgroundColor: AppColors.primary, 
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                           elevation: 2,
@@ -159,78 +160,98 @@ class ProjectCompaniesScreen extends ConsumerWidget {
       corTextoBadge = AppColors.error; 
     }
 
-    // Verifica se tem link de foto e se é válido
     final bool temFoto = emp['foto_url'] != null && emp['foto_url'].toString().startsWith('http');
+    
+    // 🔥 Puxa a contagem do provider atualizado, formatando com zero à esquerda (ex: "05")
+    final int qtdColab = emp['total_colaboradores'] ?? 0;
+    final String qtdFormatada = qtdColab.toString().padLeft(2, '0');
 
-    return InkWell(
-      onTap: () {
-        if (emp['is_gestora']) {
-          DiaviconAlerts.show(context, 'Ação Bloqueada', 'A empresa gestora não pode ser alterada aqui.', isAviso: true);
-        }
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0),
-        child: Row(
-          children: [
-            // 🔥 AVATAR IGUAL AO PROTÓTIPO (Fundo branco e sombra suave)
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16), // Para o clique não vazar a borda do card
+        onTap: () {
+          if (emp['is_gestora']) {
+            DiaviconAlerts.show(context, 'Ação Bloqueada', 'A empresa gestora não pode ser alterada aqui.', isAviso: true);
+          }
+        },
+        // 🔥 AQUI ENTRA O CARD COM ESTILO DA PROTOTIPAGEM
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
-              child: CircleAvatar(
-                radius: 26,
-                backgroundColor: Colors.transparent, // Deixa o branco do Container aparecer
-                backgroundImage: temFoto ? NetworkImage(emp['foto_url']) : null,
-                child: !temFoto ? const Icon(Icons.business, color: AppColors.greyMedium) : null,
+            ],
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Avatar
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white,
+                  border: Border.all(color: Colors.grey.shade200, width: 1.5),
+                ),
+                child: CircleAvatar(
+                  radius: 26,
+                  backgroundColor: Colors.transparent, 
+                  backgroundImage: temFoto ? NetworkImage(emp['foto_url']) : null,
+                  child: !temFoto ? const Icon(Icons.business, color: AppColors.greyMedium) : null,
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            
-            // 🔥 TEXTOS ALINHADOS
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    emp['nome'],
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600, // Peso médio/bold
-                      fontSize: 16, 
-                      color: AppColors.textDark,
+              const SizedBox(width: 16),
+              
+              // Textos
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      emp['nome'],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w600, 
+                        fontSize: 15, 
+                        color: AppColors.textDark,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${emp['cidade']} - ${emp['uf']}',
-                    style: const TextStyle(color: AppColors.greyMedium, fontSize: 13),
-                  ),
-                ],
+                    const SizedBox(height: 4),
+                    Text(
+                      '${emp['cidade']} - ${emp['uf']}',
+                      style: const TextStyle(color: AppColors.greyMedium, fontSize: 12),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$qtdFormatada Colaboradores',
+                      style: const TextStyle(color: AppColors.greyMedium, fontSize: 12),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            
-            // STATUS BADGE (Mantido para controle visual do usuário)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: corFundoBadge,
-                borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 8),
+              
+              // Status Badge
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: corFundoBadge,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  labelStatus,
+                  style: TextStyle(color: corTextoBadge, fontWeight: FontWeight.bold, fontSize: 11),
+                ),
               ),
-              child: Text(
-                labelStatus,
-                style: TextStyle(color: corTextoBadge, fontWeight: FontWeight.bold, fontSize: 11),
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

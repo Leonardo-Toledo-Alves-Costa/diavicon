@@ -55,9 +55,10 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
           *,
           prioridade(nome),
           status_projeto(nome),
-          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
           empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
           projeto_equipe_interna(
+            empresa_id, 
             usuarios(foto_url)
           )
         ''');
@@ -77,7 +78,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
     }
 
     final response = await query;
-    todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json)).toList();
+    todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json, minhaEmpresaId: minhaEmpresaId)).toList();
   } 
   // =========================================================
   // ROTA 2: VISÃO DO FUNCIONÁRIO (Vê apenas os próprios projetos)
@@ -102,15 +103,16 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
           *,
           prioridade(nome),
           status_projeto(nome),
-          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
           empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
           projeto_equipe_interna(
+            empresa_id,
             usuarios(foto_url)
           )
         ''')
         .inFilter('id', meusIdsDeProjeto);
 
-      todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json)).toList();
+      todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json, minhaEmpresaId: minhaEmpresaId)).toList();
     }
   }
 
@@ -159,8 +161,14 @@ final loggedUserCompanyIdProvider = FutureProvider.autoDispose<String?>((ref) as
   return usuarioData?['empresa_id'];
 });
 
+// Busca a empresa do usuário logado e adiciona a coluna na query
 final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, String>((ref, id) async {
   final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  
+  // Descobre a empresa logada
+  final user = await supabase.from('usuarios').select('empresa_id').eq('id', userId!).maybeSingle();
+  final minhaEmpresaId = user?['empresa_id'];
   
   final response = await supabase
       .from('projetos')
@@ -168,14 +176,15 @@ final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, St
           *,
           prioridade(nome),
           status_projeto(nome),
-          empresas!projetos_empresa_gestora_id_fkey(nome),
+          empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
           empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
           projeto_equipe_interna(
+            empresa_id,
             usuarios(foto_url)
           )
-        ''')
+        ''') 
       .eq('id', id)
       .single();
       
-  return ProjetoModel.fromMap(response);
+  return ProjetoModel.fromMap(response, minhaEmpresaId: minhaEmpresaId);
 });

@@ -91,7 +91,6 @@ class EmpresaRepository {
           'cargo': dadosEmpresa['cargo'],
           'titulo_principal': dadosEmpresa['nivel'],
           'is_admin_empresa': true,
-          if (fotoUrlPublica != null) 'foto_url': fotoUrlPublica, 
         })
         .eq('id', userId);
 

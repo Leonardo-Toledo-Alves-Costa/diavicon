@@ -79,6 +79,7 @@ class ProjetosScreen extends ConsumerWidget {
                                 priority: projeto.prioridadeNome,
                                 imageUrl: projeto.imageUrl,
                                 teamAvatars: projeto.equipeFotos,
+                                empresaFotoUrl: projeto.empresaFotoUrl,
                               ),
                             );
                           },

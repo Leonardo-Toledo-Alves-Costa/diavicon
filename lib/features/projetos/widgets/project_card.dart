@@ -12,6 +12,7 @@ class ProjectCard extends StatelessWidget {
   final String priority;
   final String imageUrl;
   final List<String> teamAvatars;
+  final String? empresaFotoUrl; // 🔥 ADICIONADO: URL da logo da empresa
 
   const ProjectCard({
     super.key,
@@ -21,6 +22,7 @@ class ProjectCard extends StatelessWidget {
     required this.priority,
     required this.imageUrl,
     required this.teamAvatars,
+    this.empresaFotoUrl, // 🔥 ADICIONADO NO CONSTRUTOR
   });
 
   @override
@@ -72,9 +74,17 @@ class ProjectCard extends StatelessWidget {
                       BoxShadow(color: Colors.black12, blurRadius: 4),
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/images/logo_diavicon.png', // O logo "escudo" vai aqui
-                    height: 32, // Um pouco maior para destacar o escudo
+                  // 🔥 AQUI ENTRA A LOGO DA EMPRESA GESTORA
+                  child: ClipOval(
+                    child: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty
+                        ? Image.network(
+                            empresaFotoUrl!,
+                            height: 32,
+                            width: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => _fallbackLogo(),
+                          )
+                        : _fallbackLogo(),
                   ),
                 ),
               ),
@@ -147,6 +157,16 @@ class ProjectCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // Helper para o logo padrão da Diavicon se a empresa não tiver foto
+  Widget _fallbackLogo() {
+    return Image.asset(
+      'assets/images/logo_diavicon.png', 
+      height: 32, 
+      width: 32,
+      fit: BoxFit.contain, // contain para não cortar o escudo
     );
   }
 
@@ -234,7 +254,6 @@ class ProjectCard extends StatelessWidget {
     const double avatarRadius = 19; 
     const double avatarOverlap = 12; 
 
-    // 🔥 Mantendo 3 fotos + 1 bolinha de saldo (total de 4 bolinhas)
     final int visibleCount = teamAvatars.length.clamp(0, 3);
     final int extraCount = teamAvatars.length - visibleCount;
 
@@ -243,7 +262,7 @@ class ProjectCard extends StatelessWidget {
       avatars.add(
         _positionedAvatar(
           i * (2 * avatarRadius - avatarOverlap), 
-          teamAvatars[i], // 🔥 Passa a URL da foto!
+          teamAvatars[i], 
           avatarRadius,
         ),
       );
@@ -256,7 +275,7 @@ class ProjectCard extends StatelessWidget {
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2), // 🔥 Borda branca pra ficar igual os outros
+              border: Border.all(color: Colors.white, width: 2), 
             ),
             child: CircleAvatar(
               radius: avatarRadius,
@@ -291,7 +310,6 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  // 🔥 Adaptado para aceitar URLs da internet e usar o user.png como fallback
   Widget _positionedAvatar(double left, String imageUrl, double radius) {
     final bool isNetwork = imageUrl.startsWith('http');
 

@@ -24,3 +24,20 @@ final elementosPorEstruturaProvider = StreamProvider.autoDispose
           .map((item) => ElementoModel.fromMap(item))
           .toList());
 });
+
+// --- PROVIDER: TODOS OS ELEMENTOS DE UMA ESTRUTURA (INCLUSIVE OCULTOS) ---
+// Diferente de [elementosPorEstruturaProvider], NÃO filtra por `ativo`. Usado
+// no sheet "Incluir", onde os elementos ocultos precisam aparecer desmarcados
+// para poderem ser reincluídos.
+final todosElementosPorEstruturaProvider = StreamProvider.autoDispose
+    .family<List<ElementoModel>, String>((ref, estruturaId) {
+  final supabase = Supabase.instance.client;
+
+  return supabase
+      .from('elementos_estruturais')
+      .stream(primaryKey: ['id'])
+      .eq('estrutura_id', estruturaId)
+      .order('criado_em', ascending: false)
+      .map((lista) =>
+          lista.map((item) => ElementoModel.fromMap(item)).toList());
+});

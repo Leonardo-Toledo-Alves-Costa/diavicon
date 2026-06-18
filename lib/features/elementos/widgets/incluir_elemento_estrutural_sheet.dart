@@ -14,12 +14,17 @@ class ElementoEstruturalOption {
     required this.title,
     required this.subtitle,
     required this.detail,
+    this.incluido = true,
   });
 
   final String id;
   final String title;
   final String subtitle;
   final String detail;
+
+  /// Se o elemento está atualmente incluído (visível) na estrutura. Reflete a
+  /// coluna `ativo` no banco; controla o checkbox vir marcado ou não.
+  final bool incluido;
 }
 
 Future<T?> showIncluirElementoEstruturalSheet<T>({
@@ -65,9 +70,19 @@ class _IncluirElementoEstruturalSheetState
     extends ConsumerState<IncluirElementoEstruturalSheet> {
   final Set<String> _selectedIds = <String>{};
 
+  /// Override otimista da inclusão (modo DB): aplica a mudança no checkbox na
+  /// hora do toque, sem esperar o round-trip do banco + re-emissão do stream.
+  /// Cada entrada é descartada quando o stream confirma o mesmo valor.
+  final Map<String, bool> _inclusaoOverride = <String, bool>{};
+
   /// Opções atualmente exibidas (mock ou vindas do banco). Mantido para que a
   /// seleção e o callback [onNovoPressed] reflitam a lista real renderizada.
   List<ElementoEstruturalOption> _currentOptions = const [];
+
+  /// `true` quando os elementos vêm do banco: o checkbox reflete a coluna
+  /// `ativo` e o toggle persiste a inclusão. `false` no modo mock/demo, onde a
+  /// seleção é apenas local ([_selectedIds]).
+  bool get _isDbMode => widget.estruturaId != null;
 
   void _toggle(ElementoEstruturalOption elemento) {
     setState(() {
@@ -77,6 +92,30 @@ class _IncluirElementoEstruturalSheetState
       }
       _selectedIds.add(elemento.id);
     });
+  }
+
+  /// Persiste a inclusão/exclusão do elemento (coluna `ativo`). Ao desmarcar,
+  /// o elemento some da lista da estrutura mas continua aparecendo aqui
+  /// (desmarcado) para poder ser reincluído depois. O stream atualiza sozinho.
+  Future<void> _toggleInclusao(ElementoEstruturalOption elemento) async {
+    if (!_isDbMode) {
+      _toggle(elemento);
+      return;
+    }
+    final novoValor = !(_inclusaoOverride[elemento.id] ?? elemento.incluido);
+    setState(() => _inclusaoOverride[elemento.id] = novoValor);
+    try {
+      await ref
+          .read(elementoRepositoryProvider)
+          .definirInclusao(elemento.id, novoValor);
+    } catch (error) {
+      if (!mounted) return;
+      // Reverte o override otimista: stream nunca confirmará a mudança.
+      setState(() => _inclusaoOverride.remove(elemento.id));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erro ao atualizar inclusão: $error')),
+      );
+    }
   }
 
   /// Converte um elemento do banco no modelo de exibição do sheet.
@@ -93,6 +132,7 @@ class _IncluirElementoEstruturalSheetState
           : 'Elemento sem nome',
       subtitle: subtitlePartes.join(' - '),
       detail: elemento.local ?? '',
+      incluido: elemento.ativo != false,
     );
   }
 
@@ -161,10 +201,17 @@ class _IncluirElementoEstruturalSheetState
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final elemento = options[index];
+        // Stream confirmou o override → descarta para voltar à fonte da verdade.
+        if (_inclusaoOverride[elemento.id] == elemento.incluido) {
+          _inclusaoOverride.remove(elemento.id);
+        }
+        final isSelected = _isDbMode
+            ? (_inclusaoOverride[elemento.id] ?? elemento.incluido)
+            : _selectedIds.contains(elemento.id);
         return _ElementoSelectionCard(
           elemento: elemento,
-          isSelected: _selectedIds.contains(elemento.id),
-          onTap: () => _toggle(elemento),
+          isSelected: isSelected,
+          onTap: () => _toggleInclusao(elemento),
         );
       },
     );
@@ -179,7 +226,7 @@ class _IncluirElementoEstruturalSheetState
     final asyncOptions = estruturaId == null
         ? null
         : ref
-              .watch(elementosPorEstruturaProvider(estruturaId))
+              .watch(todosElementosPorEstruturaProvider(estruturaId))
               .whenData((lista) => lista.map(_toOption).toList());
 
     return Align(

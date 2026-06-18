@@ -77,6 +77,21 @@ class ElementoRepository {
     }
   }
 
+  /// Define se o elemento está incluído na estrutura (`ativo`).
+  ///
+  /// `true` deixa o elemento visível na lista da estrutura; `false` o oculta
+  /// sem apagá-lo, permitindo reincluí-lo depois (recuperável).
+  Future<void> definirInclusao(String elementoId, bool incluido) async {
+    try {
+      await _client
+          .from('elementos_estruturais')
+          .update({'ativo': incluido})
+          .eq('id', elementoId);
+    } catch (e) {
+      throw Exception('Falha ao atualizar inclusão do elemento: $e');
+    }
+  }
+
   /// Faz upload de uma foto para o Storage do Supabase e retorna a URL pública.
   Future<String> uploadFoto({
     required String elementoId,

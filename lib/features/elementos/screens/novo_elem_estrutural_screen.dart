@@ -5,6 +5,7 @@ import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
+import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
@@ -266,10 +267,15 @@ class _NovoElemEstruturalScreenState
   bool get _canSubmit =>
       widget.onSubmit != null || widget.estruturaId != null;
 
-  /// Abre o popup de marcação em planta e guarda o resultado no estado.
+  /// Fluxo de marcação em planta: primeiro o usuário escolhe a planta/formato
+  /// (cards mockados), depois posiciona a marcação sobre a planta escolhida.
   Future<void> _handleAddMarcacao() async {
+    final planta = await showSelecionarPlantaPopup(context);
+    if (planta == null || !mounted) return;
+
     final resultado = await showMarcacaoPlantaPopup(
       context,
+      plantaAsset: planta.plantaAsset ?? kPlantaMockAsset,
       inicial: _marcacaoPlanta,
     );
     if (resultado == null || !mounted) return;

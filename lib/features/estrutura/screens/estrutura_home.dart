@@ -11,6 +11,7 @@ import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../elementos/models/elemento_model.dart';
 import '../../elementos/providers/elemento_provider.dart';
 import '../../elementos/screens/elementos_screen.dart' show ElementoFormScreen;
+import '../../elementos/screens/planejamento_screen.dart';
 import '../../elementos/widgets/incluir_elemento_estrutural_sheet.dart';
 import '../models/estrutura_model.dart';
 import '../widgets/elemento_estrutural_card.dart';
@@ -210,7 +211,17 @@ class EstruturaHomeScreen extends ConsumerWidget {
                 Navigator.push(context, MaterialPageRoute(builder: (_) => EstruturaInformacaoScreen(estrutura: estrutura, projetoId: projetoId)));
               },
             ),
-          DiaviconMenuItem(icon: Icons.layers_outlined, label: 'Planejamento', onTap: () {}),
+          DiaviconMenuItem(
+            icon: Icons.layers_outlined,
+            label: 'Planejamento',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const PlanejamentoScreen()),
+              );
+            },
+          ),
           DiaviconMenuItem(icon: Icons.science_outlined, label: 'Ensaios', onTap: () {}),
           DiaviconMenuItem(icon: Icons.description_outlined, label: 'Relatórios', onTap: () {}),
           DiaviconMenuItem(icon: Icons.pie_chart_outline, label: 'Dashboard', onTap: () {}),

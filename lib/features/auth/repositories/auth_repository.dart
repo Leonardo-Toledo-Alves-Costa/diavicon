@@ -1,5 +1,4 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/usuario_model.dart';
@@ -7,7 +6,9 @@ import '../models/usuario_model.dart';
 class AuthRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  // Login
+  User? get currentUser => _supabase.auth.currentUser;
+
+  // Realiza a autenticação direta por senha
   Future<AuthResponse> signIn(String email, String password) async {
     return await _supabase.auth.signInWithPassword(
       email: email,
@@ -15,12 +16,12 @@ class AuthRepository {
     );
   }
 
+  // Executa o isolamento de credenciais e realiza o upload assíncrono da foto de perfil
   Future<void> signUp({
     required String email,
     required String password,
     required Map<String, dynamic> dadosCompletos,
   }) async {
-    // Cria apenas a credencial de login
     final response = await _supabase.auth.signUp(
       email: email,
       password: password,
@@ -28,9 +29,6 @@ class AuthRepository {
 
     if (response.user != null) {
       String? fotoUrlPublica;
-      
-      // 🔥 Pega o caminho da foto que veio das telas anteriores do cadastro (Passo 1 ou 2)
-      // Ajuste a chave ('fotoPath' ou 'fotoPerfilPath') conforme estiver no seu formulário inicial
       final String? fotoPathLocal = dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
 
       if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
@@ -43,26 +41,26 @@ class AuthRepository {
           await _supabase.storage.from('avatars').upload(caminhoStorage, arquivoFoto);
           fotoUrlPublica = _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
         } catch (e) {
-          debugPrint('🚨 ERRO NO UPLOAD DO USUÁRIO: $e');
-          throw Exception('Falha ao fazer upload da foto de perfil: $e');
+          debugPrint('🚨 [ERRO STORAGE AVATAR]: $e');
+          throw Exception('Falha ao processar upload da foto de perfil contratada: $e');
         }
       }
 
-      // Salva o perfil na tabela 'usuarios' incluindo o link da foto
+      // Persiste a estrutura de dados de segurança na tabela pública de usuários
       await _supabase.from('usuarios').insert({
         'id': response.user!.id,
         'nome': dadosCompletos['nome'],
         'sobrenome': dadosCompletos['sobrenome'],
         'email': email,
         'celular': dadosCompletos['telefone'],
-        'perfil': dadosCompletos['perfil'], // 'Empresa'
-        'foto_url': fotoUrlPublica, // 🔥 AGORA A FOTO VAI SALVA DIRETO NO USUÁRIO!
+        'perfil': dadosCompletos['perfil'], 
+        'foto_url': fotoUrlPublica, 
         'ativo': true,
       });
     }
   }
 
-  // Busca perfil
+  // Recupera as informações estendidas mapeadas no banco relacional
   Future<UsuarioModel?> getUsuarioPerfil(String userId) async {
     final data = await _supabase
         .from('usuarios')
@@ -78,13 +76,9 @@ class AuthRepository {
     await _supabase.from('usuarios').upsert(usuario.toMap());
   }
 
-  // Logout
   Future<void> signOut() async => await _supabase.auth.signOut();
 
-  // Pega a sessão atual (para o app abrir já logado)
-  User? get currentUser => _supabase.auth.currentUser;
-
-  // ── Recuperação de senha ───────────────────────────────────────────────────
+  // ── LÓGICA DE RECUPERAÇÃO DE CREDENCIAIS (SUPABASE AUTH) ─────────────────
 
   Future<void> resetPasswordForEmail(String email) async {
     await _supabase.auth.resetPasswordForEmail(

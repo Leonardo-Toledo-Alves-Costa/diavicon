@@ -99,7 +99,9 @@ import '../../features/auth/screens/nova_senha_screen.dart';
               path == '/login' ||
               path.startsWith('/register') ||
               path.startsWith('/empresa/') ||
-              path == '/completar-cadastro'; 
+              path == '/completar-cadastro' ||
+              path == '/recuperar-senha' || 
+              path == '/nova-senha';
 
           if (!isPublic) return '/login';
           return null;

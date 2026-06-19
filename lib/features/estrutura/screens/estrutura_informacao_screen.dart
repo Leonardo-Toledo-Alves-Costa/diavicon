@@ -46,7 +46,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     final e = widget.estrutura;
     _nomeController.text = e.nome ?? '';
     _descricaoController.text = e.descricao ?? '';
-    _idadeController.text = e.idadeAnos?.toString() ?? '';
+    _idadeController.text = e.anoConcepcao?.toString() ?? '';
     _latController.text = e.latitude?.toString() ?? '';
     _longController.text = e.longitude?.toString() ?? '';
     _cepController.text = e.cep ?? '';
@@ -57,10 +57,10 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     _ufController.text = e.uf ?? '';
 
     _caaSelecionado = _clean(e.caa);
-    _conjuntoSelecionado = _clean(e.conjuntoEstrutural);
-    _utilizacaoSelecionada = _clean(e.utilizacao);
-    _tipoEstruturaSelecionado = _clean(e.tipo);
-    _tipologiaSelecionada = _clean(e.tipologiaEstrutural);
+    _conjuntoSelecionado = _clean(e.conjuntoEstruturalId);
+    _utilizacaoSelecionada = _clean(e.utilizacaoId);
+    _tipoEstruturaSelecionado = _clean(e.tipoId);
+    _tipologiaSelecionada = _clean(e.tipologiaId);
   }
 
   @override
@@ -151,14 +151,13 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                             Expanded(flex: 2, child: CustomTextField(label: 'Idade (anos)', hint: '-', controller: _idadeController, enabled: false)),
                           ],
                         ),
-                        SizedBox(height: _fieldSpacing),
-                        CustomDropdownWithAdd<String>(label: 'Conjunto Estrutural', value: _conjuntoSelecionado ?? '1', items: [DropdownMenuItem(value: _conjuntoSelecionado ?? '1', child: Text(_conjuntoSelecionado ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
-                        SizedBox(height: _fieldSpacing),
-                        CustomDropdownWithAdd<String>(label: 'Utilização da estrutura', value: _utilizacaoSelecionada ?? '1', items: [DropdownMenuItem(value: _utilizacaoSelecionada ?? '1', child: Text(_utilizacaoSelecionada ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
-                        SizedBox(height: _fieldSpacing),
-                        CustomDropdownWithAdd<String>(label: 'Tipo de estrutura', value: _tipoEstruturaSelecionado ?? '1', items: [DropdownMenuItem(value: _tipoEstruturaSelecionado ?? '1', child: Text(_tipoEstruturaSelecionado ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
-                        SizedBox(height: _fieldSpacing),
-                        CustomDropdownWithAdd<String>(label: 'Tipologia estrutural', value: _tipologiaSelecionada ?? '1', items: [DropdownMenuItem(value: _tipologiaSelecionada ?? '1', child: Text(_tipologiaSelecionada ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+                        CustomDropdownWithAdd<String>(label: 'Conjunto Estrutural', value: _conjuntoSelecionado ?? '1', items: [DropdownMenuItem(value: _conjuntoSelecionado ?? '1', child: Text(widget.estrutura.conjuntoNome ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+SizedBox(height: _fieldSpacing),
+CustomDropdownWithAdd<String>(label: 'Utilização da estrutura', value: _utilizacaoSelecionada ?? '1', items: [DropdownMenuItem(value: _utilizacaoSelecionada ?? '1', child: Text(widget.estrutura.utilizacaoNome ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+SizedBox(height: _fieldSpacing),
+CustomDropdownWithAdd<String>(label: 'Tipo de estrutura', value: _tipoEstruturaSelecionado ?? '1', items: [DropdownMenuItem(value: _tipoEstruturaSelecionado ?? '1', child: Text(widget.estrutura.tipoNome ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
+SizedBox(height: _fieldSpacing),
+CustomDropdownWithAdd<String>(label: 'Tipologia estrutural', value: _tipologiaSelecionada ?? '1', items: [DropdownMenuItem(value: _tipologiaSelecionada ?? '1', child: Text(widget.estrutura.tipologiaNome ?? 'Não Informado'))], onChanged: (_) {}, onAddPressed: (){}),
                         SizedBox(height: _fieldSpacing),
                         
                         Row(

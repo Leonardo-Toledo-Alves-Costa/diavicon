@@ -23,6 +23,12 @@ import '../providers/estrutura_provider.dart';
 import '../widgets/avatar_seletor_imagem.dart';
 import '../widgets/mapa_preview_widget.dart';
 import 'estrutura_home.dart';
+import '../providers/estruturas_dropdown_provider.dart';
+import '../widgets/novo_item_dropdown_modal.dart';
+
+//importações de outra features
+import '../../auth/providers/auth_provider.dart';
+import '../../projetos/providers/projetos_provider.dart';
 
 class NovaEstruturaScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -43,7 +49,8 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
   // Controladores de Texto
   final _nomeController = TextEditingController();
-  final _idadeController = TextEditingController();
+  final _descricaoController = TextEditingController(); 
+  final _anoConcepcaoController = TextEditingController();
   final _latController = TextEditingController();
   final _longController = TextEditingController();
   final _cepController = TextEditingController();
@@ -73,7 +80,8 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     _cepController.removeListener(_onCepChanged);
     _numeroController.removeListener(_onNumeroChanged);
     _nomeController.dispose();
-    _idadeController.dispose();
+    _anoConcepcaoController.dispose();
+    _descricaoController.dispose();
     _latController.dispose();
     _longController.dispose();
     _cepController.dispose();
@@ -118,6 +126,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
     try {
       final endereco = await LocationService.buscarEnderecoPorCep(cepFormatado);
+      
+      // 👇 A MÁGICA ESTÁ AQUI: Se a tela foi fechada enquanto buscava, pare por aqui!
+      if (!mounted) return; 
 
       if (endereco != null) {
         setState(() {
@@ -132,6 +143,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
             : '$cepFormatado, Brasil';
 
         final coords = await LocationService.buscarCoordenadasPorEndereco(textoBusca);
+        
+        if (!mounted) return; // 👇 Mais uma trava de segurança
+
         if (coords != null) {
           setState(() {
             _latController.text = coords['lat'].toString();
@@ -144,7 +158,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
         );
       }
     } finally {
-      setState(() => _isFetchingCep = false);
+      if (mounted) setState(() => _isFetchingCep = false); // Adicionado o if(mounted) aqui também
     }
   }
 
@@ -158,6 +172,8 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
       String textoBusca = '$rua, $numero, $city, $state, Brasil';
       final coords = await LocationService.buscarCoordenadasPorEndereco(textoBusca);
 
+      if (!mounted) return; // 👇 Adicionando a trava de segurança
+
       if (coords != null) {
         setState(() {
           _latController.text = coords['lat'].toString();
@@ -168,10 +184,10 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   }
 
   Future<void> _abrirMapaESelecionar() async {
-    // Chama o nosso novo Helper mágico!
     final resultado = await MapSelectionHelper.selecionarNoMapa(context);
 
-    // Se o utilizador escolheu um ponto...
+    if (!mounted) return; // 👇 Adicionando a trava de segurança
+
     if (resultado != null) {
       setState(() {
         _latController.text = resultado['latitude'];
@@ -179,7 +195,6 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
         
         final endereco = resultado['endereco'] as Map<String, String>?;
         
-        // Se a API encontrou o nome das ruas para aquele ponto
         if (endereco != null) {
           _cepController.text = endereco['cep'] ?? '';
           _enderecoController.text = endereco['rua'] ?? '';
@@ -188,7 +203,6 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
           _ufController.text = endereco['uf'] ?? '';
           _paisController.text = endereco['pais'] ?? '';
         } else {
-          // Limpa os campos se clicou no meio do nada
           _cepController.clear(); _enderecoController.clear(); _numeroController.clear();
           _cidadeController.clear(); _ufController.clear(); _paisController.clear();
           
@@ -218,6 +232,15 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     setState(() => _isLoading = true);
 
     try {
+      //  Lemos quem está logado e de quem é o projeto
+      final user = ref.read(currentUserProvider);
+      final projeto = ref.read(projectDetailProvider(widget.projetoId)).value;
+      
+      //O dono da estrutura é o Cliente da Obra.
+      // Caso não encontre, a dona temporária é a própria empresa logada.
+      final donoId = projeto?.empresaClienteId ?? user?.empresaId;
+      final gestoraId = user?.empresaId;
+
       String? imageUrlFinal;
       if (_imagemSelecionada != null) {
         imageUrlFinal = await ref
@@ -228,12 +251,13 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
       final novaEstrutura = EstruturaModel(
         id: '',
         nome: _nomeController.text.trim(),
+        descricao: _descricaoController.text.trim(),
         caa: _caaSelecionado,
-        idadeAnos: int.tryParse(_idadeController.text.trim()),
-        conjuntoEstrutural: _conjuntoSelecionado,
-        utilizacao: _utilizacaoSelecionada,
-        tipo: _tipoEstruturaSelecionado,
-        tipologiaEstrutural: _tipologiaSelecionada,
+        anoConcepcao: int.tryParse(_anoConcepcaoController.text.trim()),
+        conjuntoEstruturalId: _conjuntoSelecionado,
+        utilizacaoId: _utilizacaoSelecionada,
+        tipoId: _tipoEstruturaSelecionado,
+        tipologiaId: _tipologiaSelecionada,
         latitude: double.tryParse(_latController.text.trim()),
         longitude: double.tryParse(_longController.text.trim()),
         cep: _cepController.text.trim().isNotEmpty ? _cepController.text.trim() : null,
@@ -244,13 +268,22 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
         uf: _ufController.text.trim().isNotEmpty ? _ufController.text.trim() : null,
         status: 'Pendente',
         imageUrl: imageUrlFinal,
+        
+        // Automações Críticas de Banco de Dados
+        criadoEm: DateTime.now(), 
+        userId: user?.id, 
+        projetoId: widget.projetoId, 
+        proprietariaId: donoId,
+        empresaGestoraId: gestoraId, 
       );
 
       final estruturaCriada = await ref.read(estruturaRepositoryProvider).criarEstrutura(novaEstrutura, widget.projetoId);
-      ref.invalidate(projetoEstruturasProvider(widget.projetoId));
+      
+      // ATUALIZAÇÃO DA INTERFACE: Avisamos os 2 lugares para recarregar a lista!
+      ref.invalidate(projetoEstruturasProvider(widget.projetoId)); // Tela de detalhes
+      ref.invalidate(minhasEstruturasProvider(widget.projetoId)); // O Modal de Seleção
 
       if (context.mounted) {
-        // 👇 2. SUBSTITUÍMOS O Navigator.pop POR UM PUSH REPLACEMENT 👇
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
@@ -283,6 +316,12 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     bool podeEditarEndereco = _cepController.text.trim().isEmpty;
     double? latAtual = double.tryParse(_latController.text.trim());
     double? longAtual = double.tryParse(_longController.text.trim());
+
+    //  ESCUTANDO OS 4 PROVIDERS DO SUPABASE 
+    final conjuntosAsync = ref.watch(conjuntosEstruturaisProvider);
+    final utilizacoesAsync = ref.watch(utilizacoesEstruturaProvider);
+    final tiposAsync = ref.watch(tiposEstruturaProvider);
+    final tipologiasAsync = ref.watch(tipologiasEstruturaProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -317,9 +356,19 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                 const SizedBox(height: 32),
 
                 CustomTextField(
-                  label: 'Nome da estrutura',
+                  label: 'Nome da estrutura*',
                   hint: 'ABC Corp.',
                   controller: _nomeController,
+                  validator: (value) => value == null || value.trim().isEmpty ? 'Obrigatório' : null,
+                ),
+                SizedBox(height: _fieldSpacing),
+
+                // campo descrição
+                CustomTextField(
+                  label: 'Descrição*',
+                  hint: 'Descreva os detalhes e finalidade da estrutura...',
+                  controller: _descricaoController,
+                  maxLines: 6, // Transforma num Box maior
                   validator: (value) => value == null || value.trim().isEmpty ? 'Obrigatório' : null,
                 ),
                 SizedBox(height: _fieldSpacing),
@@ -328,9 +377,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      flex: 3,
+                      flex: 2, 
                       child: CustomDropdown<String>(
-                        label: 'CAA',
+                        label: 'CAA*',
                         tooltip: 'Classe de Agressividade Ambiental',
                         validator: (value) => value == null ? 'Obrigatório' : null,
                         value: _caaSelecionado,
@@ -345,12 +394,12 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      flex: 2,
+                      flex: 3, // 👈 Mais fatias para o Ano de Concepção
                       child: CustomTextField(
-                        label: 'Idade (anos)',
-                        hint: '26',
+                        label: 'Ano de concepção*', 
+                        hint: '2015',
                         keyboardType: TextInputType.number,
-                        controller: _idadeController,
+                        controller: _anoConcepcaoController,
                         validator: (value) => value == null || value.trim().isEmpty ? 'Obrigatório' : null,
                       ),
                     ),
@@ -358,58 +407,123 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                 ),
                 SizedBox(height: _fieldSpacing),
 
-                CustomDropdownWithAdd<String>(
-                  label: 'Conjunto Estrutural',
-                  value: _conjuntoSelecionado,
-                  validator: (value) => value == null ? 'Obrigatório' : null,
-                  items: const [
-                    DropdownMenuItem(value: 'Setor Industrial Norte', child: Text('Setor Industrial Norte')),
-                    DropdownMenuItem(value: 'Conjunto A', child: Text('Conjunto A')),
-                  ],
-                  onChanged: (val) => setState(() => _conjuntoSelecionado = val),
-                  onAddPressed: () {},
+                // 1. CONJUNTO ESTRUTURAL
+                conjuntosAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Erro ao carregar: $err'),
+                  data: (lista) => CustomDropdownWithAdd<String>(
+                    label: 'Conjunto Estrutural*',
+                    value: _conjuntoSelecionado,
+                    validator: (value) => value == null ? 'Obrigatório' : null,
+                    items: lista.map((item) => DropdownMenuItem(
+                      value: item['id'].toString(), 
+                      child: Text(item['nome'].toString())
+                    )).toList(),
+                    onChanged: (val) => setState(() => _conjuntoSelecionado = val),
+                    onAddPressed: () async {
+                      final novoId = await showDialog<String>(
+                        context: context,
+                        builder: (context) => const NovoItemDropdownModal(
+                          titulo: 'Conjunto Estrutural', 
+                          nomeTabela: 'conjuntos_estruturais',
+                        ),
+                      );
+                      if (novoId != null) {
+                        ref.invalidate(conjuntosEstruturaisProvider);
+                        setState(() => _conjuntoSelecionado = novoId);
+                      }
+                    },
+                  ),
                 ),
                 SizedBox(height: _fieldSpacing),
 
-                CustomDropdownWithAdd<String>(
-                  label: 'Utilização da estrutura',
-                  value: _utilizacaoSelecionada,
-                  validator: (value) => value == null ? 'Obrigatório' : null,
-                  items: const [
-                    DropdownMenuItem(value: 'Industrial', child: Text('Industrial')),
-                    DropdownMenuItem(value: 'Comercial', child: Text('Comercial')),
-                    DropdownMenuItem(value: 'Residencial', child: Text('Residencial')),
-                  ],
-                  onChanged: (val) => setState(() => _utilizacaoSelecionada = val),
-                  onAddPressed: () {},
+                // 2. UTILIZAÇÃO DA ESTRUTURA
+                utilizacoesAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Erro ao carregar: $err'),
+                  data: (lista) => CustomDropdownWithAdd<String>(
+                    label: 'Utilização da estrutura*',
+                    value: _utilizacaoSelecionada,
+                    validator: (value) => value == null ? 'Obrigatório' : null,
+                    items: lista.map((item) => DropdownMenuItem(
+                      value: item['id'].toString(), 
+                      child: Text(item['nome'].toString())
+                    )).toList(),
+                    onChanged: (val) => setState(() => _utilizacaoSelecionada = val),
+                    onAddPressed: () async {
+                      final novoId = await showDialog<String>(
+                        context: context,
+                        builder: (context) => const NovoItemDropdownModal(
+                          titulo: 'Utilização', 
+                          nomeTabela: 'utilizacoes_estrutura',
+                        ),
+                      );
+                      if (novoId != null) {
+                        ref.invalidate(utilizacoesEstruturaProvider);
+                        setState(() => _utilizacaoSelecionada = novoId);
+                      }
+                    },
+                  ),
                 ),
                 SizedBox(height: _fieldSpacing),
 
-                CustomDropdownWithAdd<String>(
-                  label: 'Tipo de estrutura',
-                  value: _tipoEstruturaSelecionado,
-                  validator: (value) => value == null ? 'Obrigatório' : null,
-                  items: const [
-                    DropdownMenuItem(value: 'Concreto Armado', child: Text('Concreto Armado')),
-                    DropdownMenuItem(value: 'Aço', child: Text('Aço')),
-                    DropdownMenuItem(value: 'Madeira', child: Text('Madeira')),
-                  ],
-                  onChanged: (val) => setState(() => _tipoEstruturaSelecionado = val),
-                  onAddPressed: () {},
+                // 3. TIPO DE ESTRUTURA
+                tiposAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Erro ao carregar: $err'),
+                  data: (lista) => CustomDropdownWithAdd<String>(
+                    label: 'Tipo de estrutura*',
+                    value: _tipoEstruturaSelecionado,
+                    validator: (value) => value == null ? 'Obrigatório' : null,
+                    items: lista.map((item) => DropdownMenuItem(
+                      value: item['id'].toString(), 
+                      child: Text(item['nome'].toString())
+                    )).toList(),
+                    onChanged: (val) => setState(() => _tipoEstruturaSelecionado = val),
+                    onAddPressed: () async {
+                      final novoId = await showDialog<String>(
+                        context: context,
+                        builder: (context) => const NovoItemDropdownModal(
+                          titulo: 'Tipo de Estrutura', 
+                          nomeTabela: 'tipos_estrutura',
+                        ),
+                      );
+                      if (novoId != null) {
+                        ref.invalidate(tiposEstruturaProvider);
+                        setState(() => _tipoEstruturaSelecionado = novoId);
+                      }
+                    },
+                  ),
                 ),
                 SizedBox(height: _fieldSpacing),
 
-                CustomDropdownWithAdd<String>(
-                  label: 'Tipologia estrutural',
-                  value: _tipologiaSelecionada,
-                  validator: (value) => value == null ? 'Obrigatório' : null,
-                  items: const [
-                    DropdownMenuItem(value: 'Edifício', child: Text('Edifício')),
-                    DropdownMenuItem(value: 'Galpão', child: Text('Galpão')),
-                    DropdownMenuItem(value: 'Ponte', child: Text('Ponte')),
-                  ],
-                  onChanged: (val) => setState(() => _tipologiaSelecionada = val),
-                  onAddPressed: () {},
+                // 4. TIPOLOGIA ESTRUTURAL
+                tipologiasAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (err, stack) => Text('Erro ao carregar: $err'),
+                  data: (lista) => CustomDropdownWithAdd<String>(
+                    label: 'Tipologia estrutural*',
+                    value: _tipologiaSelecionada,
+                    validator: (value) => value == null ? 'Obrigatório' : null,
+                    items: lista.map((item) => DropdownMenuItem(
+                      value: item['id'].toString(), 
+                      child: Text(item['nome'].toString())
+                    )).toList(),
+                    onChanged: (val) => setState(() => _tipologiaSelecionada = val),
+                    onAddPressed: () async {
+                      final novoId = await showDialog<String>(
+                        context: context,
+                        builder: (context) => const NovoItemDropdownModal(
+                          titulo: 'Tipologia Estrutural', 
+                          nomeTabela: 'tipologias_estrutura',
+                        ),
+                      );
+                      if (novoId != null) {
+                        ref.invalidate(tipologiasEstruturaProvider);
+                        setState(() => _tipologiaSelecionada = novoId);
+                      }
+                    },
+                  ),
                 ),
                 SizedBox(height: _fieldSpacing),
 
@@ -418,33 +532,40 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   children: [
                     Expanded(
                       child: CustomTextField(
-                        label: 'Latitude (Opcional)', 
-                        hint: '-15.793', 
+                        label: 'Latitude',
+                        hint: '-',
                         controller: _latController,
-                        // 👇 Abre teclado numérico com Ponto e Sinal Negativo
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        enabled: false, // Fica bloqueado para edição manual
                       ),
                     ),
                     const SizedBox(width: 8),
                     Expanded(
                       child: CustomTextField(
-                        label: 'Longitude (Opcional)', 
-                        hint: '-47.882', 
+                        label: 'Longitude',
+                        hint: '-',
                         controller: _longController,
-                        // 👇 Abre teclado numérico com Ponto e Sinal Negativo
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                        enabled: false, // Fica bloqueado para edição manual
                       ),
                     ),
                     const SizedBox(width: 12),
-                    InkWell(
-                      onTap: _abrirMapaESelecionar,
-                      borderRadius: BorderRadius.circular(24),
+                    
+                    // O BOTÃO DO MAPA RECUPERADO
+                    GestureDetector(
+                      onTap: _abrirMapaESelecionar, // Chama a função que abre o mapa interativo
                       child: Container(
                         width: 48,
                         height: 48,
-                        decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                        decoration: const BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                        ),
                         child: Center(
-                          child: Image.asset('assets/images/map_pin.png', width: 24, height: 24, color: Colors.white),
+                          child: Image.asset(
+                            'assets/images/map_pin.png',
+                            width: 24,
+                            height: 24,
+                            color: Colors.white,
+                          ),
                         ),
                       ),
                     ),
@@ -453,7 +574,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                 SizedBox(height: _fieldSpacing),
 
                 CustomTextField(
-                  label: 'CEP (Opcional)',
+                  label: 'CEP',
                   hint: '00000-000',
                   controller: _cepController,
                   keyboardType: TextInputType.number,
@@ -477,7 +598,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                 SizedBox(height: _fieldSpacing),
 
                 CustomTextField(
-                  label: 'Endereço (Opcional)',
+                  label: 'Endereço',
                   hint: 'Rua....',
                   controller: _enderecoController,
                   enabled: podeEditarEndereco,
@@ -488,7 +609,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   children: [
                     Expanded(
                       child: CustomTextField(
-                        label: 'Cidade',
+                        label: 'Cidade*',
                         hint: 'Cidade',
                         controller: _cidadeController,
                         enabled: podeEditarEndereco,
@@ -498,7 +619,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: CustomTextField(
-                        label: 'Número (Opcional)', 
+                        label: 'Número', 
                         hint: '123', 
                         controller: _numeroController,
                         // 👇 Abre o teclado puramente numérico
@@ -513,7 +634,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   children: [
                     Expanded(
                       child: CustomTextField(
-                        label: 'País',
+                        label: 'País*',
                         hint: 'Brasil',
                         controller: _paisController,
                         validator: (value) => value == null || value.trim().isEmpty ? 'Obrigatório' : null,
@@ -523,7 +644,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: CustomTextField(
-                        label: 'UF',
+                        label: 'UF*',
                         hint: 'XX',
                         controller: _ufController,
                         validator: (value) => value == null || value.trim().isEmpty ? 'Obrigatório' : null,

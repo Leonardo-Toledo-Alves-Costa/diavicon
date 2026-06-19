@@ -7,21 +7,19 @@ class EstruturaRepository {
 
   EstruturaRepository(this._client);
 
-  /// Cria a estrutura e registra o vínculo na tabela intermediária
-  // 👇 1. MUDOU DE Future<void> PARA Future<EstruturaModel>
+  /// Cria a estrutura e já regista o projeto a que ela pertence na própria tabela
   Future<EstruturaModel> criarEstrutura(EstruturaModel estrutura, String projetoId) async {
     try {
-      final map = estrutura.toMap();
-      // 🚨 REMOVIDO: map['projeto_id'] = projetoId; (A coluna não existe mais na tabela estruturas)
+      final map = estrutura.toJson();
       
-      // 👇 2. ADICIONAMOS O .select().single() PARA O SUPABASE DEVOLVER A ESTRUTURA CRIADA
+      //Insere a estrutura e recebe o objeto criado (com o novo ID gerado)
       final response = await _client.from('estruturas').insert(map).select().single();
+      final novaEstrutura = EstruturaModel.fromJson(response);
       
-      // 👇 3. VINCULA A ESTRUTURA CRIADA AO PROJETO NA TABELA INTERMEDIÁRIA
-      await vincularEstrutura(response['id'], projetoId);
+      // Vincula a estrutura recém-criada ao projeto na tabela de ligação
+      await vincularEstrutura(novaEstrutura.id, projetoId);
       
-      // 👇 4. TRANSFORMAMOS A RESPOSTA NUM OBJETO E DEVOLVEMOS
-      return EstruturaModel.fromMap(response);
+      return novaEstrutura;
       
     } catch (e) {
       throw Exception('Falha ao registar estrutura: $e');
@@ -56,15 +54,23 @@ class EstruturaRepository {
     String projetoId,
   ) async {
     try {
-      // Realiza o join através da tabela de relacionamento usando !inner
+      // Realiza o join através da tabela de relacionamento e traz as tabelas filhas (nomes)
       final response = await _client
           .from('projeto_estruturas')
-          .select('estruturas!inner(*)')
+          .select('''
+            estruturas (
+              *,
+              conjuntos_estruturais(nome),
+              utilizacoes_estrutura(nome),
+              tipos_estrutura(nome),
+              tipologias_estrutura(nome)
+            )
+          ''')
           .eq('projeto_id', projetoId);
 
       return (response as List)
           .where((item) => item['estruturas'] != null)
-          .map((item) => EstruturaModel.fromMap(item['estruturas']))
+          .map((item) => EstruturaModel.fromJson(item['estruturas']))
           .toList();
     } catch (e) {
       throw Exception('Erro ao carregar lista de estruturas: $e');

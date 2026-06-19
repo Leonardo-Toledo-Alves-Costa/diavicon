@@ -94,7 +94,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                 children: [
                   Text(estrutura.nome ?? 'Sem nome', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textDark)),
                   const SizedBox(height: 4),
-                  Text('${estrutura.tipologiaEstrutural ?? 'Sem tipologia'} - ${estrutura.tipo ?? 'Sem tipo'}\n${estrutura.idadeAnos ?? 'X'} Anos  CAA ${estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
+                  Text('${estrutura.tipologiaNome ?? 'Sem tipologia'} - ${estrutura.tipoNome ?? 'Sem tipo'}\n${estrutura.idadeCalculada} Anos  CAA ${estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
                   const SizedBox(height: 24),
 
                   // O NOVO WIDGET DE PROGRESSO AQUI

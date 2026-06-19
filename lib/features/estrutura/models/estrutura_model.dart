@@ -1,15 +1,10 @@
 class EstruturaModel {
   final String id;
   final String? nome;
-  final String? tipo;
   final String? descricao;
   final DateTime? criadoEm;
-  final String? imageUrl;
   final String? caa;
-  final int? idadeAnos;
-  final String? conjuntoEstrutural;
-  final String? utilizacao;
-  final String? tipologiaEstrutural;
+  final int? anoConcepcao;
   final double? latitude;
   final double? longitude;
   final String? cep;
@@ -19,19 +14,41 @@ class EstruturaModel {
   final String? pais;
   final String? uf;
   final String? status;
+  final String? imageUrl;
+  final String? userId;
+  final String? empresaGestoraId;
+  final String? projetoId;
+
+  final String? conjuntoNome;
+  final String? utilizacaoNome;
+  final String? tipoNome;
+  final String? tipologiaNome;
+
+  // NOVOS CAMPOS (Substituíram os antigos de texto livre)
+  final String? conjuntoEstruturalId;
+  final String? utilizacaoId;
+  final String? tipoId;
+  final String? tipologiaId;
+
+  // DONO DA ESTRUTURA
+  final String? proprietariaId;
+
+  // calculo idade
+  String get idadeCalculada {
+    if (anoConcepcao == null) return '-';
+    final anoAtual = DateTime.now().year;
+    final idade = anoAtual - anoConcepcao!;
+    return idade < 0 ? '0' : idade.toString(); // Proteção caso digitem um ano no futuro
+  }
 
   EstruturaModel({
     required this.id,
     this.nome,
-    this.tipo,
+    this.empresaGestoraId,
     this.descricao,
     this.criadoEm,
-    this.imageUrl,
     this.caa,
-    this.idadeAnos,
-    this.conjuntoEstrutural,
-    this.utilizacao,
-    this.tipologiaEstrutural,
+    this.anoConcepcao,
     this.latitude,
     this.longitude,
     this.cep,
@@ -41,60 +58,89 @@ class EstruturaModel {
     this.pais,
     this.uf,
     this.status,
+    this.imageUrl,
+    this.userId,
+    this.projetoId,
+    this.conjuntoEstruturalId,
+    this.utilizacaoId,
+    this.tipoId,
+    this.tipologiaId,
+    this.proprietariaId,
+    this.conjuntoNome,
+    this.tipoNome,
+    this.tipologiaNome,
+    this.utilizacaoNome,
   });
 
-  // Converte o JSON que vem do Supabase em um Objeto Dart
-  factory EstruturaModel.fromMap(Map<String, dynamic> map) {
+  factory EstruturaModel.fromJson(Map<String, dynamic> json) {
+    final conjuntoData = json['conjuntos_estruturais'] as Map<String, dynamic>?;
+    final utilizacaoData = json['utilizacoes_estrutura'] as Map<String, dynamic>?;
+    final tipoData = json['tipos_estrutura'] as Map<String, dynamic>?;
+    final tipologiaData = json['tipologias_estrutura'] as Map<String, dynamic>?;
     return EstruturaModel(
-      id: map['id'] ?? '',
-      nome: map['nome'],
-      tipo: map['tipo'],
-      descricao: map['descricao'],
-      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
-      imageUrl: map['image_url'],
-      caa: map['caa'],
-      // Usamos num.tryParse para evitar erros caso o banco devolva um número como texto
-      idadeAnos: map['idade_anos'] != null ? int.tryParse(map['idade_anos'].toString()) : null,
-      conjuntoEstrutural: map['conjunto_estrutural'],
-      utilizacao: map['utilizacao'],
-      tipologiaEstrutural: map['tipologia_estrutural'],
-      latitude: map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null,
-      longitude: map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null,
-      cep: map['cep'],
-      endereco: map['endereco'],
-      cidade: map['cidade'],
-      numero: map['numero'],
-      pais: map['pais'],
-      uf: map['uf'],
-      status: map['status'] ?? 'Pendente',
+      id: json['id'] as String,
+      nome: json['nome'] as String?,
+      descricao: json['descricao'] as String?,
+      criadoEm: json['criado_em'] != null
+          ? DateTime.parse(json['criado_em'])
+          : null,
+      caa: json['caa'] as String?,
+      anoConcepcao: json['ano_concepcao'] as int?,
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
+      cep: json['cep'] as String?,
+      endereco: json['endereco'] as String?,
+      cidade: json['cidade'] as String?,
+      numero: json['numero'] as String?,
+      pais: json['pais'] as String?,
+      uf: json['uf'] as String?,
+      status: json['status'] as String?,
+      imageUrl: json['image_url'] as String?,
+      userId: json['user_id'] as String?,
+      projetoId: json['projeto_id'] as String?,
+      empresaGestoraId: json['empresa_gestora_id'] as String?,
+      conjuntoEstruturalId: json['conjunto_estrutural_id'] as String?,
+      utilizacaoId: json['utilizacao_id'] as String?,
+      tipoId: json['tipo_id'] as String?,
+      tipologiaId: json['tipologia_id'] as String?,
+      proprietariaId: json['proprietaria_id'] as String?,
+      conjuntoNome: conjuntoData?['nome'],
+      utilizacaoNome: utilizacaoData?['nome'],
+      tipoNome: tipoData?['nome'],
+      tipologiaNome: tipologiaData?['nome'],
     );
   }
 
-  // Converte o Objeto Dart em JSON para enviar ao Supabase
-  Map<String, dynamic> toMap() {
-    return {
-      // Usamos o 'if' para só enviar o dado se ele não for nulo. 
-      if (id.isNotEmpty) 'id': id,
-      if (nome != null) 'nome': nome,
-      if (tipo != null) 'tipo': tipo,
-      if (descricao != null) 'descricao': descricao,
-      if (imageUrl != null) 'image_url': imageUrl,
-      if (caa != null) 'caa': caa,
-      if (idadeAnos != null) 'idade_anos': idadeAnos,
-      if (conjuntoEstrutural != null) 'conjunto_estrutural': conjuntoEstrutural,
-      if (utilizacao != null) 'utilizacao': utilizacao,
-      if (tipologiaEstrutural != null) 'tipologia_estrutural': tipologiaEstrutural,
-      if (latitude != null) 'latitude': latitude,
-      if (longitude != null) 'longitude': longitude,
-      if (cep != null) 'cep': cep,
-      if (endereco != null) 'endereco': endereco,
-      if (cidade != null) 'cidade': cidade,
-      if (numero != null) 'numero': numero,
-      if (pais != null) 'pais': pais,
-      if (uf != null) 'uf': uf,
-      if (status != null) 'status': status,
-      
-      //criado_em preenchido automaticamente pelo supabase
+  Map<String, dynamic> toJson() {
+    final map = <String, dynamic>{
+      'nome': nome,
+      'descricao': descricao,
+      'criado_em': criadoEm?.toIso8601String(),
+      'caa': caa,
+      'ano_concepcao': anoConcepcao,
+      'latitude': latitude,
+      'longitude': longitude,
+      'cep': cep,
+      'endereco': endereco,
+      'cidade': cidade,
+      'numero': numero,
+      'pais': pais,
+      'uf': uf,
+      'status': status,
+      'image_url': imageUrl,
+      'user_id': userId,
+      'empresa_gestora_id': empresaGestoraId,
+      'conjunto_estrutural_id': conjuntoEstruturalId,
+      'utilizacao_id': utilizacaoId,
+      'tipo_id': tipoId,
+      'tipologia_id': tipologiaId,
+      'proprietaria_id': proprietariaId,
     };
+
+    if (id.isNotEmpty) {
+      map['id'] = id;
+    }
+
+    return map;
   }
 }

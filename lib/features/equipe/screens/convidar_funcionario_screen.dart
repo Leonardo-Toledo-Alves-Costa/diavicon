@@ -59,7 +59,7 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
           'projeto_id': widget.projetoId, // Passando o ID aqui!
         },
       );
-
+/*ta, e agr la no cadastro precisamos mudar o jeito que o cep ta funcionando, quando ele acha o cep, ele ta deixando os campos de rua e etc tudo sem poder editar, mas como tem ceps que nao acham rua, bairo, ai fica ruim, entao, se nao achou rua nem bairro, ai os campos ficam editaveis, se achou  eles nao podem ser editados e ficam como ta aualmente */
       if (response.status == 200) {
         final data = response.data;
         final senhaTemporaria = data['senhaProvisoria'];

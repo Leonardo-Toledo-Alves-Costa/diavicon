@@ -1,13 +1,13 @@
 import 'dart:convert';
-import 'dart:io'; // 🔥 Import do dart:io para exibir o File da imagem
+import 'dart:io'; 
 import 'package:diavicon/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:image_picker/image_picker.dart'; // 🔥 Import do ImagePicker
-import 'package:image_cropper/image_cropper.dart'; // 🔥 Import do ImageCropper
+import 'package:image_picker/image_picker.dart'; 
+import 'package:image_cropper/image_cropper.dart'; 
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
@@ -39,7 +39,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     type: MaskAutoCompletionType.lazy,
   );
 
-  // 🔥 Variável de estado para guardar a foto da empresa
   XFile? _fotoEmpresa;
 
   final _cnpjController = TextEditingController();
@@ -62,8 +61,12 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   final _linkedinController = TextEditingController();
   final _instagramController = TextEditingController();
 
-  // Controlos da API de CEP
-  bool _enderecoBloqueado = false;
+  // 🔥 Controlos da API de CEP (Agora independentes)
+  bool _cepBuscado = false;
+  bool _cidadeBloqueada = false;
+  bool _ruaBloqueada = false;
+  bool _bairroBloqueado = false;
+  bool _estadoBloqueado = false;
   bool _carregandoCep = false;
 
   static const _opcoesColaboradores = [
@@ -108,7 +111,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     super.dispose();
   }
 
-  // ── Lógica da Foto ───────────────────────────────────────────────────────
   Future<void> _selecionarFotoEmpresa() async {
     final img = await ImagePicker().pickImage(
       source: ImageSource.gallery,
@@ -146,7 +148,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     }
   }
 
-  // ── Lógica do CEP (ViaCEP) ───────────────────────────────────────────────
   void _mostrarAviso(String mensagem, Color cor) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -167,13 +168,19 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   void _ouvinteCep() {
     final apenasNumeros = _cepController.text.replaceAll(RegExp(r'\D'), '');
     
-    if (apenasNumeros.length == 8 && !_enderecoBloqueado && !_carregandoCep) {
+    if (apenasNumeros.length == 8 && !_cepBuscado && !_carregandoCep) {
       _buscarCep(apenasNumeros);
     }
     
-    if (apenasNumeros.isEmpty && _enderecoBloqueado) {
+    // Se apagar o CEP, libera tudo
+    if (apenasNumeros.isEmpty && _cepBuscado) {
       setState(() {
-        _enderecoBloqueado = false;
+        _cepBuscado = false;
+        _cidadeBloqueada = false;
+        _ruaBloqueada = false;
+        _bairroBloqueado = false;
+        _estadoBloqueado = false;
+
         _cidadeController.clear();
         _ruaController.clear();
         _bairroController.clear();
@@ -195,20 +202,31 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         if (dados.containsKey('erro')) {
           _mostrarAviso('CEP não encontrado ou inválido!', Colors.red);
           setState(() {
-            _enderecoBloqueado = false;
+            _cepBuscado = false;
             _carregandoCep = false;
           });
           return;
         }
 
         setState(() {
-          _cidadeController.text = dados['localidade'] ?? '';
-          _ruaController.text = dados['logradouro'] ?? '';
-          _bairroController.text = dados['bairro'] ?? '';
-          _estadoController.text = dados['uf'] ?? '';
+          final localidade = dados['localidade'] ?? '';
+          final logradouro = dados['logradouro'] ?? '';
+          final bairro = dados['bairro'] ?? '';
+          final uf = dados['uf'] ?? '';
+
+          _cidadeController.text = localidade;
+          _ruaController.text = logradouro;
+          _bairroController.text = bairro;
+          _estadoController.text = uf;
           _paisController.text = 'Brasil';
           
-          _enderecoBloqueado = true; 
+          _cepBuscado = true;
+          // 🔥 A inteligência entra aqui: só bloqueia se tiver vindo preenchido da API!
+          _cidadeBloqueada = localidade.isNotEmpty;
+          _ruaBloqueada = logradouro.isNotEmpty;
+          _bairroBloqueado = bairro.isNotEmpty;
+          _estadoBloqueado = uf.isNotEmpty;
+
           _carregandoCep = false;
         });
 
@@ -224,7 +242,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     }
   }
 
-  // ── Submissão do Formulário ──────────────────────────────────────────────
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -246,8 +263,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         'pais': _paisController.text.trim(),
         'site': _siteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
-        'instagram': _instagramController.text.trim(),
-        'fotoPath': _fotoEmpresa?.path, // 🔥 Passando o caminho da foto para o Provider!
+        'fotoPath': _fotoEmpresa?.path, 
       },
     };
 
@@ -304,7 +320,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // ── SEÇÃO: DADOS BÁSICOS ───────────────────────────────────────
                   const _SectionTitle(titulo: 'Dados básicos'),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -342,7 +357,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ── SEÇÃO: SEU CARGO ───────────────────────────────────────────
                   const _SectionTitle(titulo: 'Seu Cargo'),
                   const Text(
                     'Você terá permissões de administrator automaticamente.',
@@ -369,7 +383,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ── SEÇÃO: ENDEREÇO COMERCIAL ──────────────────────────────────
                   const _SectionTitle(titulo: 'Endereço Comercial'),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -388,7 +401,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: 'Cidade',
                     isRequired: true,
                     controller: _cidadeController,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_cidadeBloqueada, // 🔥 Usando a variável individual
                     validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
@@ -397,7 +410,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: 'Logradouro',
                     isRequired: true,
                     controller: _ruaController,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_ruaBloqueada, // 🔥 Usando a variável individual
                     validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
@@ -423,7 +436,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                           isRequired: true,
                           hint: 'Bairro',
                           controller: _bairroController,
-                          enabled: !_enderecoBloqueado,
+                          enabled: !_bairroBloqueado, // 🔥 Usando a variável individual
                           validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                         ),
                       ),
@@ -435,7 +448,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: 'Ex: São Paulo',
                     isRequired: true,
                     controller: _estadoController,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_estadoBloqueado, // 🔥 Usando a variável individual
                     validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
@@ -447,7 +460,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
                   const SizedBox(height: 24),
 
-                  // ── SEÇÃO: REDES SOCIAIS ───────────────────────────────────────
                   const _SectionTitle(titulo: 'Redes Sociais (Opcional)'),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -464,7 +476,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
                   const SizedBox(height: 40),
 
-                  // ── BOTOES DE AÇÃO ─────────────────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -491,7 +502,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
     );
   }
 
-  // 🔥 Atualizado: O onTap agora chama a função e exibe a imagem local caso exista
   Widget _buildLogoPicker() {
     return Center(
       child: GestureDetector(
@@ -509,7 +519,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                       size: 52,
                       color: AppColors.greyLight,
                     )
-                  : null, // Se tem foto, some o ícone
+                  : null, 
             ),
             Positioned(
               bottom: 2,

@@ -76,10 +76,8 @@ final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dyna
       .eq('projeto_id', projetoId)
       .eq('usuario_id', userId)
       .maybeSingle();
-
-  final bool isMinhaEmpresaDona = usuarioData?['empresa_id'] != null && usuarioData?['empresa_id'] == projetoData['empresa_gestora_id'];
   
-  // A CHAVE MESTRA: Ele é o dono/fundador da empresa?
+  // A CHAVE MESTRA: Ele é o dono/fundador da empresa logada?
   final bool isAdminGlobal = usuarioData?['is_admin_empresa'] ?? false;
 
   // Ou ele tem a permissão manual concedida por outro chefe neste projeto específico?
@@ -88,7 +86,9 @@ final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dyna
   return {
     'empresa_gestora_id': projetoData['empresa_gestora_id'],
     'empresa_usuario_logado_id': usuarioData?['empresa_id'],
-    // Libera os botões de edição APENAS se ele for Admin da empresa gestora OU se for gestor explícito do projeto
-    'is_user_gestor_equipe': (isMinhaEmpresaDona && isAdminGlobal) || isGestorEspecifico, 
+    
+    // 🔥 A CORREÇÃO MÁGICA: Se ele é Admin da PRÓPRIA empresa ou Gestor do Projeto, ele manda na equipe dele!
+    // Tiramos a trava que exigia que ele fosse da "empresa dona".
+    'is_user_gestor_equipe': isAdminGlobal || isGestorEspecifico, 
   };
 });

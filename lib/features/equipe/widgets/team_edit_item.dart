@@ -5,6 +5,7 @@ class TeamEditItem extends StatefulWidget {
   final String name;
   final String role;
   final String subRole;
+  final String? imageUrl; // 🔥 Novo parâmetro adicionado!
   final bool isSelected;
   final bool isUserGestor; 
   final bool isViewerGestor; 
@@ -18,6 +19,7 @@ class TeamEditItem extends StatefulWidget {
     required this.name,
     required this.role,
     required this.subRole,
+    this.imageUrl, // 🔥 Recebe aqui
     required this.isSelected,
     required this.isUserGestor,
     required this.isViewerGestor,
@@ -36,6 +38,9 @@ class _TeamEditItemState extends State<TeamEditItem> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 Lógica simples: Tem link e começa com http? Então é da web. Se não, usa asset.
+    final bool hasValidImage = widget.imageUrl != null && widget.imageUrl!.startsWith('http');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -55,15 +60,18 @@ class _TeamEditItemState extends State<TeamEditItem> {
           // CABEÇALHO DO CARD
           InkWell(
             borderRadius: BorderRadius.circular(16),
-            // 🔥 MÁGICA DA UI LIMPA: Se não pode editar, o card nem abre e nem mostra efeito de clique!
             onTap: widget.isEditable ? () => setState(() => _expanded = !_expanded) : null,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 28,
-                    backgroundImage: AssetImage('assets/images/user.png'),
+                    backgroundColor: AppColors.greyVeryLight,
+                    // 🔥 Aplica a imagem dinâmica aqui
+                    backgroundImage: hasValidImage 
+                        ? NetworkImage(widget.imageUrl!) 
+                        : const AssetImage('assets/images/user.png') as ImageProvider,
                   ),
                   const SizedBox(width: 16),
                   Expanded(

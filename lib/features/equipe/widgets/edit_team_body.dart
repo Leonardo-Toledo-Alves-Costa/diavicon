@@ -266,34 +266,30 @@ class EditTeamBody extends ConsumerWidget {
                           return Column(
                             children: [
                               ...listaColaboradores.map((item) {
-                                final usuario =
-                                    item['usuario'] as Map<String, dynamic>? ??
-                                        {};
-                                final String nomeCompleto =
-                                    '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'
-                                        .trim();
-                                final String cargo =
-                                    usuario['cargo'] ?? 'Colaborador';
-                                final String tituloPrincipal =
-                                    usuario['titulo_principal'] ?? '';
+                                final usuario = item['usuario'] as Map<String, dynamic>? ?? {};
+                                final String nomeCompleto = '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'.trim();
+                                final String cargo = usuario['cargo'] ?? 'Colaborador';
+                                final String tituloPrincipal = usuario['titulo_principal'] ?? '';
+                                
+                                // 🔥 Puxando a foto direto do banco
+                                final String? fotoUrl = usuario['foto_url'];
 
                                 final bool isAtivo = item['ativo'] ?? false;
-                                final bool isUserGestor =
-                                    item['is_gestor'] ?? false;
-                                final bool isMe =
-                                    usuario['id'] == currentUserId;
+                                final bool isUserGestor = item['is_gestor'] ?? false;
+                                final bool isMe = usuario['id'] == currentUserId;
                                 final bool podeEditar = isViewerGestor && !isMe;
 
                                 return TeamEditItem(
                                   name: nomeCompleto,
                                   role: cargo,
                                   subRole: tituloPrincipal,
+                                  imageUrl: fotoUrl, // 🔥 Passando pro Card!
                                   isSelected: isAtivo,
                                   isUserGestor: isUserGestor,
                                   isViewerGestor: isViewerGestor,
                                   isEditable: podeEditar,
 
-                                  onChanged: (val) async {
+                                  onChanged: (val) {
                                     if (isMe) {
                                       _mostrarAvisoFlutuante(
                                         context,
@@ -314,44 +310,24 @@ class EditTeamBody extends ConsumerWidget {
                                     }
 
                                     if (val == false) {
-                                      _confirmarRemocao(
-                                        context,
-                                        ref,
-                                        usuario['id'],
-                                        nomeCompleto,
-                                      );
+                                      _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
                                     } else if (val == true) {
-                                      try {
-                                        await ref
-                                            .read(equipeControllerProvider)
-                                            .atualizarStatusColaborador(
-                                              projetoId: projetoId,
-                                              usuarioId: usuario['id'],
-                                              ativo: true,
-                                            );
+                                      ref.read(equipeControllerProvider).atualizarStatusColaborador(
+                                        projetoId: projetoId,
+                                        usuarioId: usuario['id'],
+                                        ativo: true,
+                                      ).then((_) {
                                         if (!context.mounted) return;
-                                        
-                                        // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
                                         ref.invalidate(colaboradoresProjetoProvider(projetoId));
-
-                                        _mostrarAvisoFlutuante(
-                                          context,
-                                          'Sucesso!',
-                                          '$nomeCompleto foi adicionado ao projeto.',
-                                        );
-                                      } catch (e) {
+                                        _mostrarAvisoFlutuante(context, 'Sucesso!', '$nomeCompleto foi adicionado ao projeto.');
+                                      }).catchError((e) {
                                         if (!context.mounted) return;
-                                        _mostrarAvisoFlutuante(
-                                          context,
-                                          'Ops!',
-                                          'Erro ao adicionar membro: $e',
-                                          isErro: true,
-                                        );
-                                      }
+                                        _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao adicionar membro: $e', isErro: true);
+                                      });
                                     }
                                   },
 
-                                  onToggleGestor: (val) async {
+                                  onToggleGestor: (val) {
                                     if (isMe) {
                                       _mostrarAvisoFlutuante(
                                         context,
@@ -371,34 +347,18 @@ class EditTeamBody extends ConsumerWidget {
                                       return;
                                     }
 
-                                    try {
-                                      await ref
-                                          .read(equipeControllerProvider)
-                                          .alterarGestorEquipe(
-                                            projetoId: projetoId,
-                                            usuarioId: usuario['id'],
-                                            isGestor: val,
-                                          );
+                                    ref.read(equipeControllerProvider).alterarGestorEquipe(
+                                      projetoId: projetoId,
+                                      usuarioId: usuario['id'],
+                                      isGestor: val,
+                                    ).then((_) {
                                       if (!context.mounted) return;
-                                      
-                                      // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
                                       ref.invalidate(colaboradoresProjetoProvider(projetoId));
-
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Gestão Alterada',
-                                        'O nível de acesso foi atualizado com sucesso.',
-                                        isAviso: false,
-                                      );
-                                    } catch (e) {
+                                      _mostrarAvisoFlutuante(context, 'Gestão Alterada', 'O nível de acesso foi atualizado com sucesso.', isAviso: false);
+                                    }).catchError((e) {
                                       if (!context.mounted) return;
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Ops!',
-                                        'Erro ao alterar gestão: $e',
-                                        isErro: true,
-                                      );
-                                    }
+                                      _mostrarAvisoFlutuante(context, 'Ops!', 'Erro ao alterar gestão: $e', isErro: true);
+                                    });
                                   },
 
                                   onRemove: () {
@@ -421,12 +381,7 @@ class EditTeamBody extends ConsumerWidget {
                                       return;
                                     }
 
-                                    _confirmarRemocao(
-                                      context,
-                                      ref,
-                                      usuario['id'],
-                                      nomeCompleto,
-                                    );
+                                    _confirmarRemocao(context, ref, usuario['id'], nomeCompleto);
                                   },
                                 );
                               }),

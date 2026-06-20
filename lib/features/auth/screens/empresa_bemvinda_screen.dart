@@ -131,7 +131,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 70),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -184,7 +184,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 35),
 
             Center(
               child: CustomButton(

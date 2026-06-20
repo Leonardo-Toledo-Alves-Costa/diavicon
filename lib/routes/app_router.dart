@@ -22,6 +22,8 @@
   import '../../features/auth/screens/cadastro_r1_screen.dart';
   import '../../features/auth/screens/cadastro_r2_screen.dart';
   import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/recupera_senha_screen.dart';
+import '../../features/auth/screens/nova_senha_screen.dart';
 
   import '../../features/auth/screens/cadastro0_empresa.dart';
   import '../../features/auth/screens/cadastro1_empresa.dart';
@@ -97,7 +99,9 @@
               path == '/login' ||
               path.startsWith('/register') ||
               path.startsWith('/empresa/') ||
-              path == '/completar-cadastro'; 
+              path == '/completar-cadastro' ||
+              path == '/recuperar-senha' || 
+              path == '/nova-senha';
 
           if (!isPublic) return '/login';
           return null;
@@ -178,6 +182,14 @@
           builder: (context, state) => Cadastro1Empresa(
             dadosCadastro: state.extra as Map<String, dynamic>? ?? {},
           ),
+        ),
+        GoRoute(
+          path: '/recuperar-senha',
+          builder: (context, state) => const RecuperaSenhaScreen(),
+        ),
+        GoRoute(
+          path: '/nova-senha',
+          builder: (context, state) => const NovaSenhaScreen(),
         ),
         GoRoute(
           path: '/empresa/servicos',

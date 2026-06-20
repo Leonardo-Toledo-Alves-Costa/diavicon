@@ -8,6 +8,7 @@ class ElementoEstruturalCard extends StatelessWidget {
   final String local;
   final String imageUrl;
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
 
   const ElementoEstruturalCard({
     super.key,
@@ -16,7 +17,36 @@ class ElementoEstruturalCard extends StatelessWidget {
     required this.local,
     required this.imageUrl,
     this.onTap,
+    this.onLongPress,
   });
+
+  Widget _buildAvatar() {
+    Widget fallback() => Container(
+          width: 60,
+          height: 60,
+          color: Colors.grey[200],
+          child: const Icon(Icons.image_not_supported, color: Colors.grey),
+        );
+
+    // Fotos de elementos reais vêm como URL do Storage; mocks usam asset.
+    if (imageUrl.startsWith('http')) {
+      return Image.network(
+        imageUrl,
+        width: 60,
+        height: 60,
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => fallback(),
+      );
+    }
+
+    return Image.asset(
+      imageUrl,
+      width: 60,
+      height: 60,
+      fit: BoxFit.cover,
+      errorBuilder: (context, error, stackTrace) => fallback(),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -38,28 +68,13 @@ class ElementoEstruturalCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           onTap: onTap,
+          onLongPress: onLongPress,
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                ClipOval(
-                  child: Image.asset(
-                    imageUrl,
-                    width: 60,
-                    height: 60,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Container(
-                      width: 60,
-                      height: 60,
-                      color: Colors.grey[200],
-                      child: const Icon(
-                        Icons.image_not_supported,
-                        color: Colors.grey,
-                      ),
-                    ),
-                  ),
-                ),
+                ClipOval(child: _buildAvatar()),
                 const SizedBox(width: 16),
                 Expanded(
                   child: Column(

@@ -19,7 +19,7 @@ class ElementosScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final elementosAsync = ref.watch(elementosProvider(estruturaId));
+    final elementosAsync = ref.watch(elementosPorEstruturaProvider(estruturaId));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -72,7 +72,7 @@ class ElementosScreen extends ConsumerWidget {
                 style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primary),
                 onPressed: () =>
-                    ref.read(elementosProvider(estruturaId).notifier).carregar(),
+                    ref.invalidate(elementosPorEstruturaProvider(estruturaId)),
                 child: const Text('Tentar novamente',
                     style: TextStyle(color: AppColors.white)),
               ),
@@ -154,9 +154,8 @@ class ElementosScreen extends ConsumerWidget {
         builder: (_) => ElementoFormScreen(
           estruturaId: estruturaId,
           elemento: elemento,
-          onSalvo: () => ref
-              .read(elementosProvider(estruturaId).notifier)
-              .carregar(),
+          onSalvo: () =>
+              ref.invalidate(elementosPorEstruturaProvider(estruturaId)),
         ),
       ),
     );
@@ -192,8 +191,8 @@ class ElementosScreen extends ConsumerWidget {
     if (confirmar == true && context.mounted) {
       try {
         await ref
-            .read(elementosProvider(estruturaId).notifier)
-            .deletar(elemento.id!);
+            .read(elementoRepositoryProvider)
+            .desativarElemento(elemento.id);
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Elemento excluído com sucesso.')),
@@ -260,9 +259,9 @@ class _ElementoCard extends StatelessWidget {
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.greyMedium),
               ),
-            if (elemento.topologia != null)
+            if (elemento.tipologiaEstrutural != null)
               Text(
-                elemento.topologia!,
+                elemento.tipologiaEstrutural!,
                 style: const TextStyle(
                     fontSize: 12, color: AppColors.greyMedium),
               ),
@@ -381,7 +380,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     _posYController.text = el.posicaoY?.toString() ?? '';
     _posZController.text = el.posicaoZ?.toString() ?? '';
     _tipoSelecionado = el.tipo;
-    _topologiaSelecionada = el.topologia;
+    _topologiaSelecionada = el.tipologiaEstrutural;
     _revestimentoSelecionado = el.revestimento;
     _microclimasSelecionado = el.microclima;
     _caaSelecionada = el.caa;
@@ -735,10 +734,10 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
     try {
       final elemento = ElementoModel(
-        id: widget.elemento?.id,
+        id: widget.elemento?.id ?? '',
         nome: _nomeController.text.trim(),
         tipo: _tipoSelecionado,
-        topologia: _topologiaSelecionada,
+        tipologiaEstrutural: _topologiaSelecionada,
         revestimento: _revestimentoSelecionado,
         posicaoX: double.tryParse(_posXController.text),
         posicaoY: double.tryParse(_posYController.text),
@@ -754,13 +753,11 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       );
 
       if (_isEditing) {
-        await ref
-            .read(elementosProvider(widget.estruturaId).notifier)
-            .atualizar(elemento);
+        await ref.read(elementoRepositoryProvider).atualizarElemento(elemento);
       } else {
         await ref
-            .read(elementosProvider(widget.estruturaId).notifier)
-            .criar(elemento);
+            .read(elementoRepositoryProvider)
+            .criarElemento(elemento, widget.estruturaId);
       }
 
       widget.onSalvo?.call();

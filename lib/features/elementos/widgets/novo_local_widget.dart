@@ -161,7 +161,17 @@ class _NovoLocalModalState extends State<NovoLocalModal> {
                       height: 34,
                       text: 'Salvar',
                       onPressed: () {
-                        Navigator.of(context).pop();
+                        final nome = _nomeController.text.trim();
+                        if (nome.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Informe o nome do local.'),
+                            ),
+                          );
+                          return;
+                        }
+                        // Devolve o nome para ser adicionado/selecionado no dropdown.
+                        Navigator.of(context).pop(nome);
                       },
                     ),
                   ),

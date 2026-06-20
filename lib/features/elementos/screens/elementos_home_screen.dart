@@ -50,7 +50,10 @@ class _ElementoScreenState extends State<ElementoScreen> {
       widget.onNovoEnsaio!();
       return;
     }
-    showIncluirElementoEstruturalSheet<void>(context: context);
+    showIncluirElementoEstruturalSheet<void>(
+      context: context,
+      estruturaId: widget.estruturaId,
+    );
   }
 
   Map<String, dynamic> get _routeExtra => <String, dynamic>{

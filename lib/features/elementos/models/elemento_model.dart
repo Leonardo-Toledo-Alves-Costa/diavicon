@@ -1,28 +1,40 @@
+/// Modelo de um elemento estrutural, espelhando a tabela
+/// `elementos_estruturais` do Supabase.
+///
+/// Atenção: a coluna do banco se chama `topologia` (sem "i"), mas no app
+/// expomos como [tipologiaEstrutural] para casar com o front existente.
 class ElementoModel {
-  final String? id;
+  final String id;
+  final String? estruturaId;
   final String? nome;
   final String? tipo;
-  final String? topologia;
+  final String? local;
+  final String? tipologiaEstrutural; // DB: "topologia"
   final String? revestimento;
+  final double? latitude;
+  final double? longitude;
   final double? posicaoX;
   final double? posicaoY;
   final double? posicaoZ;
   final String? dimensoes;
   final String? secao;
   final String? microclima;
-  final String? caa; // Classe de Agressividade Ambiental
-  final String? estruturaId;
+  final String? caa;
   final List<String>? fotos;
   final String? observacoes;
   final bool? ativo;
   final DateTime? criadoEm;
 
   ElementoModel({
-    this.id,
+    required this.id,
+    this.estruturaId,
     this.nome,
     this.tipo,
-    this.topologia,
+    this.local,
+    this.tipologiaEstrutural,
     this.revestimento,
+    this.latitude,
+    this.longitude,
     this.posicaoX,
     this.posicaoY,
     this.posicaoZ,
@@ -30,94 +42,76 @@ class ElementoModel {
     this.secao,
     this.microclima,
     this.caa,
-    this.estruturaId,
     this.fotos,
     this.observacoes,
     this.ativo,
     this.criadoEm,
   });
 
+  // Converte o JSON vindo do Supabase em um objeto Dart.
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
     return ElementoModel(
-      id: map['id'],
+      id: map['id'] ?? '',
+      estruturaId: map['estrutura_id'],
       nome: map['nome'],
       tipo: map['tipo'],
-      topologia: map['topologia'],
+      local: map['local'],
+      tipologiaEstrutural: map['topologia'],
       revestimento: map['revestimento'],
-      posicaoX: (map['posicao_x'] as num?)?.toDouble(),
-      posicaoY: (map['posicao_y'] as num?)?.toDouble(),
-      posicaoZ: (map['posicao_z'] as num?)?.toDouble(),
+      latitude: map['latitude'] != null
+          ? double.tryParse(map['latitude'].toString())
+          : null,
+      longitude: map['longitude'] != null
+          ? double.tryParse(map['longitude'].toString())
+          : null,
+      posicaoX: map['posicao_x'] != null
+          ? double.tryParse(map['posicao_x'].toString())
+          : null,
+      posicaoY: map['posicao_y'] != null
+          ? double.tryParse(map['posicao_y'].toString())
+          : null,
+      posicaoZ: map['posicao_z'] != null
+          ? double.tryParse(map['posicao_z'].toString())
+          : null,
       dimensoes: map['dimensoes'],
       secao: map['secao'],
       microclima: map['microclima'],
       caa: map['caa'],
-      estruturaId: map['estrutura_id'],
       fotos: map['fotos'] != null
-          ? List<String>.from(map['fotos'])
+          ? (map['fotos'] as List).map((e) => e.toString()).toList()
           : null,
       observacoes: map['observacoes'],
       ativo: map['ativo'],
       criadoEm: map['criado_em'] != null
-          ? DateTime.parse(map['criado_em'])
+          ? DateTime.parse(map['criado_em'].toString())
           : null,
     );
   }
 
+  // Converte o objeto Dart em JSON para enviar ao Supabase.
+  // Só inclui campos não nulos; `id` e `criado_em` ficam por conta do banco.
   Map<String, dynamic> toMap() {
     return {
-      'nome': nome,
-      'tipo': tipo,
-      'topologia': topologia,
-      'revestimento': revestimento,
-      'posicao_x': posicaoX,
-      'posicao_y': posicaoY,
-      'posicao_z': posicaoZ,
-      'dimensoes': dimensoes,
-      'secao': secao,
-      'microclima': microclima,
-      'caa': caa,
-      'estrutura_id': estruturaId,
-      'fotos': fotos,
-      'observacoes': observacoes,
-      'ativo': ativo ?? true,
+      if (id.isNotEmpty) 'id': id,
+      if (estruturaId != null) 'estrutura_id': estruturaId,
+      if (nome != null) 'nome': nome,
+      if (tipo != null) 'tipo': tipo,
+      if (local != null) 'local': local,
+      if (tipologiaEstrutural != null) 'topologia': tipologiaEstrutural,
+      if (revestimento != null) 'revestimento': revestimento,
+      if (latitude != null) 'latitude': latitude,
+      if (longitude != null) 'longitude': longitude,
+      if (posicaoX != null) 'posicao_x': posicaoX,
+      if (posicaoY != null) 'posicao_y': posicaoY,
+      if (posicaoZ != null) 'posicao_z': posicaoZ,
+      if (dimensoes != null) 'dimensoes': dimensoes,
+      if (secao != null) 'secao': secao,
+      if (microclima != null) 'microclima': microclima,
+      if (caa != null) 'caa': caa,
+      if (fotos != null) 'fotos': fotos,
+      if (observacoes != null) 'observacoes': observacoes,
+      if (ativo != null) 'ativo': ativo,
+      // criado_em é preenchido automaticamente pelo Supabase.
     };
-  }
-
-  ElementoModel copyWith({
-    String? id,
-    String? nome,
-    String? tipo,
-    String? topologia,
-    String? revestimento,
-    double? posicaoX,
-    double? posicaoY,
-    double? posicaoZ,
-    String? dimensoes,
-    String? secao,
-    String? microclima,
-    String? caa,
-    String? estruturaId,
-    List<String>? fotos,
-    String? observacoes,
-    bool? ativo,
-  }) {
-    return ElementoModel(
-      id: id ?? this.id,
-      nome: nome ?? this.nome,
-      tipo: tipo ?? this.tipo,
-      topologia: topologia ?? this.topologia,
-      revestimento: revestimento ?? this.revestimento,
-      posicaoX: posicaoX ?? this.posicaoX,
-      posicaoY: posicaoY ?? this.posicaoY,
-      posicaoZ: posicaoZ ?? this.posicaoZ,
-      dimensoes: dimensoes ?? this.dimensoes,
-      secao: secao ?? this.secao,
-      microclima: microclima ?? this.microclima,
-      caa: caa ?? this.caa,
-      estruturaId: estruturaId ?? this.estruturaId,
-      fotos: fotos ?? this.fotos,
-      observacoes: observacoes ?? this.observacoes,
-      ativo: ativo ?? this.ativo,
-    );
   }
 }

@@ -1,21 +1,25 @@
+import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
+import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
-import '../providers/equipe_provider.dart';
 
-class InviteTeamBody extends ConsumerStatefulWidget {
+
+
+class ConvidarEmpresaColabBody extends ConsumerStatefulWidget {
   final String projetoId;
 
-  const InviteTeamBody({super.key, required this.projetoId});
+  const ConvidarEmpresaColabBody({super.key, required this.projetoId});
 
   @override
-  ConsumerState<InviteTeamBody> createState() => _InviteTeamBodyState();
+  ConsumerState<ConvidarEmpresaColabBody> createState() => _InviteColabCompanyBodyState();
 }
 
-class _InviteTeamBodyState extends ConsumerState<InviteTeamBody> {
+class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBody> {
   final _cnpjController = TextEditingController();
   String _cnpjBusca = '';
   bool _enviandoConvite = false;
@@ -36,8 +40,9 @@ class _InviteTeamBodyState extends ConsumerState<InviteTeamBody> {
     setState(() => _enviandoConvite = true);
 
     try {
-      await ref.read(equipeControllerProvider).enviarConvite(
-            projetoId: widget.projetoId, // Use widget.projetoId
+      // Chama o método que criamos no controller de empresas colaboradoras
+      await ref.read(empresasProjetoControllerProvider).enviarConviteEmpresa(
+            projetoId: widget.projetoId,
             empresaConvidadaId: empresaId,
           );
 
@@ -47,7 +52,7 @@ class _InviteTeamBodyState extends ConsumerState<InviteTeamBody> {
       DiaviconAlerts.show(
         context,
         'Convite Enviado',
-        'Empresa convidada com sucesso!',
+        'Empresa colaboradora convidada com sucesso!',
       );
     } catch (e) {
       if (!mounted) return;
@@ -59,29 +64,28 @@ class _InviteTeamBodyState extends ConsumerState<InviteTeamBody> {
 
   @override
   Widget build(BuildContext context) {
+    // Certifique-se de importar o provider que faz a busca por CNPJ
     final buscaAsync = ref.watch(buscarEmpresaPorCnpjProvider(_cnpjBusca));
 
-    // 🔥 Removemos a lógica do teclado e deixamos SÓ a barra de navegação nativa
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Padding(
-      // Agora ele vai dar apenas o respiro da barra inferior (nav bar)
       padding: EdgeInsets.only(bottom: bottomPadding),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           CustomTextField(
-            label: 'CNPJ da Empresa',
+            label: 'CNPJ da Empresa Colaboradora',
             hint: '00.000.000/0000-00',
             controller: _cnpjController,
             keyboardType: TextInputType.number,
+            inputFormatters: [CnpjFormatter.mask],
           ),
           const SizedBox(height: 16),
 
           CustomButton(text: 'Buscar Empresa', onPressed: _dispararBusca),
 
-          // TUDO DAQUI PRA BAIXO SÓ APARECE SE TIVER BUSCADO ALGO
           if (_cnpjBusca.isNotEmpty) ...[
             const SizedBox(height: 32),
             const Divider(),
@@ -129,7 +133,7 @@ class _InviteTeamBodyState extends ConsumerState<InviteTeamBody> {
                                 backgroundColor: AppColors.primary,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                               ),
-                              onPressed: () => _enviarConvite(empresaEncontrada['id']), // 🔥 AQUI ESTÁ A CORREÇÃO
+                              onPressed: () => _enviarConvite(empresaEncontrada['id']),
                               child: const Text('Convidar', style: TextStyle(color: Colors.white)),
                             ),
                     ),

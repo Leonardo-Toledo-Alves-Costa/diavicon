@@ -2,10 +2,16 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
+import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
+import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
+import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// Opcoes padrao iniciais para o campo "Tipo do Elemento".
@@ -41,10 +47,11 @@ const List<String> _defaultRevestimentoOptions = <String>[
 /// Esta tela recebe dados iniciais, carrega opcoes dinamicas quando disponiveis,
 /// permite adicionar novos itens aos dropdowns e envia o rascunho final no
 /// callback de submissao.
-class NovoElemEstruturalScreen extends StatefulWidget {
+class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
   /// Cria a tela com valores iniciais e callbacks opcionais para integracao.
   const NovoElemEstruturalScreen({
     super.key,
+    this.estruturaId,
     this.initialNome = 'ABC Corp.',
     this.initialTipoElemento,
     this.initialTipologiaEstrutural,
@@ -64,6 +71,11 @@ class NovoElemEstruturalScreen extends StatefulWidget {
     this.onOpenRelatorios,
   });
 
+  /// Estrutura à qual o novo elemento será vinculado.
+  ///
+  /// Necessário quando [onSubmit] não é informado: nesse caso a tela salva
+  /// o elemento diretamente via [elementoRepositoryProvider].
+  final String? estruturaId;
   final String initialNome;
   final String? initialTipoElemento;
   final String? initialTipologiaEstrutural;
@@ -84,7 +96,7 @@ class NovoElemEstruturalScreen extends StatefulWidget {
 
   /// Cria o estado mutavel da tela.
   @override
-  State<NovoElemEstruturalScreen> createState() =>
+  ConsumerState<NovoElemEstruturalScreen> createState() =>
       _NovoElemEstruturalScreenState();
 }
 
@@ -92,7 +104,8 @@ class NovoElemEstruturalScreen extends StatefulWidget {
 ///
 /// Mantem os controles de formulario, as selecoes atuais e as listas mutaveis
 /// usadas pelos dropdowns.
-class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
+class _NovoElemEstruturalScreenState
+    extends ConsumerState<NovoElemEstruturalScreen> {
   final GlobalKey<RightMenuBarState> _rightMenuKey =
       GlobalKey<RightMenuBarState>();
   late final TextEditingController _nomeController;
@@ -110,6 +123,9 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
   bool _isLoadingFormData = false;
   bool _isSubmitting = false;
   EstruturalDropdownField? _fieldBeingAdded;
+
+  /// Marcação posicionada na planta (null enquanto não houver marcação).
+  MarcacaoPlanta? _marcacaoPlanta;
 
   /// Inicializa os valores do formulario, copia as listas padrao e tenta
   /// carregar dados remotos adicionais, se o callback existir.
@@ -189,62 +205,112 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
   /// resposta vier preenchida, adiciona essa opcao a lista correspondente e a
   /// seleciona imediatamente.
   Future<void> _handleAddOption(EstruturalDropdownField field) async {
-    if (field == EstruturalDropdownField.localElemento) {
-      await showDialog<void>(
-        context: context,
-        barrierColor: Colors.transparent,
-        builder: (_) => const NovoLocalModal(),
-      );
-      return;
-    }
-
-    final onAddOption = widget.onAddOption;
-    if (onAddOption == null) return;
     if (_fieldBeingAdded != null) return;
 
-    setState(() => _fieldBeingAdded = field);
+    String? novaOpcao;
 
-    try {
-      final newOption = await onAddOption(field);
-      if (!mounted || newOption == null) return;
-
-      final normalizedOption = newOption.trim();
-      if (normalizedOption.isEmpty) return;
-
-      setState(() {
-        final list = _getOptionsList(field);
-        if (!list.contains(normalizedOption)) {
-          list.add(normalizedOption);
-        }
-        _setSelectedValue(field, normalizedOption);
-      });
-    } catch (error) {
-      if (!mounted) return;
-      _showSnackBar('Erro ao adicionar opcao: $error');
-    } finally {
-      if (mounted) {
-        setState(() => _fieldBeingAdded = null);
+    if (field == EstruturalDropdownField.localElemento) {
+      // Local tem um cadastro mais rico (tipologia/condição); reaproveitamos
+      // o modal dedicado, que agora devolve o nome do local criado.
+      novaOpcao = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black.withValues(alpha: 0.42),
+        builder: (_) => const NovoLocalModal(),
+      );
+    } else if (widget.onAddOption != null) {
+      // Hook injetado (ex.: persistir no backend) tem prioridade quando existe.
+      setState(() => _fieldBeingAdded = field);
+      try {
+        novaOpcao = await widget.onAddOption!(field);
+      } catch (error) {
+        if (mounted) _showSnackBar('Erro ao adicionar opção: $error');
+      } finally {
+        if (mounted) setState(() => _fieldBeingAdded = null);
       }
+    } else {
+      // Tipo/Tipologia/Revestimento: opção é apenas texto livre.
+      novaOpcao = await showNovaOpcaoModal(
+        context,
+        titulo: _tituloNovaOpcao(field),
+      );
+    }
+
+    if (!mounted || novaOpcao == null) return;
+    final normalizedOption = novaOpcao.trim();
+    if (normalizedOption.isEmpty) return;
+
+    setState(() {
+      final list = _getOptionsList(field);
+      if (!list.contains(normalizedOption)) {
+        list.add(normalizedOption);
+      }
+      _setSelectedValue(field, normalizedOption);
+    });
+  }
+
+  /// Título do popup de nova opção conforme o campo.
+  String _tituloNovaOpcao(EstruturalDropdownField field) {
+    switch (field) {
+      case EstruturalDropdownField.tipoElemento:
+        return 'Novo Tipo de Elemento';
+      case EstruturalDropdownField.tipologiaEstrutural:
+        return 'Nova Tipologia Estrutural';
+      case EstruturalDropdownField.localElemento:
+        return 'Novo Local na Estrutura';
+      case EstruturalDropdownField.revestimento:
+        return 'Novo Revestimento';
     }
   }
 
-  /// Monta o rascunho atual do formulario e o envia ao callback de submit.
+  /// Indica se o botão "Criar" consegue salvar: ou há um [onSubmit] injetado,
+  /// ou há uma [estruturaId] para o salvamento padrão via repository.
+  bool get _canSubmit =>
+      widget.onSubmit != null || widget.estruturaId != null;
+
+  /// Fluxo de marcação em planta: primeiro o usuário escolhe a planta/formato
+  /// (cards mockados), depois posiciona a marcação sobre a planta escolhida.
+  Future<void> _handleAddMarcacao() async {
+    final planta = await showSelecionarPlantaPopup(context);
+    if (planta == null || !mounted) return;
+
+    final resultado = await showMarcacaoPlantaPopup(
+      context,
+      plantaAsset: planta.plantaAsset ?? kPlantaMockAsset,
+      inicial: _marcacaoPlanta,
+    );
+    if (resultado == null || !mounted) return;
+    setState(() => _marcacaoPlanta = resultado);
+    _showSnackBar('Marcação adicionada à planta.');
+  }
+
+  /// Monta o rascunho atual do formulario e o persiste.
+  ///
+  /// Usa o [onSubmit] injetado quando existir; caso contrário, grava o
+  /// elemento diretamente na estrutura via [elementoRepositoryProvider].
   Future<void> _handleSubmit() async {
-    final onSubmit = widget.onSubmit;
-    if (onSubmit == null) return;
+    if (!_canSubmit) return;
+
+    final draft = NovoElemEstruturalDraft(
+      nome: _nomeController.text.trim(),
+      tipoElemento: _tipoElemento,
+      tipologiaEstrutural: _tipologiaEstrutural,
+      localElemento: _localElemento,
+      revestimento: _revestimento,
+      marcacao: _marcacaoPlanta,
+    );
 
     setState(() => _isSubmitting = true);
 
     try {
-      await onSubmit(
-        NovoElemEstruturalDraft(
-          nome: _nomeController.text.trim(),
-          tipoElemento: _tipoElemento,
-          tipologiaEstrutural: _tipologiaEstrutural,
-          localElemento: _localElemento,
-          revestimento: _revestimento,
-        ),
-      );
+      final onSubmit = widget.onSubmit;
+      if (onSubmit != null) {
+        await onSubmit(draft);
+      } else {
+        await _criarElementoPadrao(draft);
+      }
+      if (mounted) {
+        Navigator.of(context).maybePop();
+      }
     } catch (error) {
       if (!mounted) return;
       _showSnackBar('Erro ao salvar elemento: $error');
@@ -253,6 +319,32 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
         setState(() => _isSubmitting = false);
       }
     }
+  }
+
+  /// Salvamento padrão: cria o elemento na estrutura atual.
+  Future<void> _criarElementoPadrao(NovoElemEstruturalDraft draft) async {
+    final estruturaId = widget.estruturaId;
+    if (estruturaId == null) return;
+
+    await ref.read(elementoRepositoryProvider).criarElemento(
+          ElementoModel(
+            id: '',
+            nome: draft.nome.isEmpty ? null : draft.nome,
+            tipo: draft.tipoElemento,
+            tipologiaEstrutural: draft.tipologiaEstrutural,
+            local: draft.localElemento,
+            revestimento: draft.revestimento,
+            ativo: true,
+            // Backend preparado: a marcação na planta mapeia para posicao_x/y.
+            // Já há colunas no banco; descomente quando o fluxo for liberado.
+            // posicaoX: draft.marcacao?.x,
+            // posicaoY: draft.marcacao?.y,
+          ),
+          estruturaId,
+        );
+
+    // Garante que a lista da estrutura reflita o novo elemento mesmo sem realtime.
+    ref.invalidate(elementosPorEstruturaProvider(estruturaId));
   }
 
   /// Retorna a lista mutavel de opcoes correspondente ao campo recebido.
@@ -339,13 +431,9 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     required List<String> options,
     required EstruturalDropdownField field,
   }) {
-    final isLocalField = field == EstruturalDropdownField.localElemento;
     final isAddingThisField = _fieldBeingAdded == field;
     final isAddEnabled =
-        !_isLoadingFormData &&
-        !_isSubmitting &&
-        (isLocalField || widget.onAddOption != null) &&
-        _fieldBeingAdded == null;
+        !_isLoadingFormData && !_isSubmitting && _fieldBeingAdded == null;
 
     return CustomDropdownWithAdd<String>(
       label: label,
@@ -429,13 +517,17 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             field: EstruturalDropdownField.localElemento,
                           ),
                           const SizedBox(height: 18),
-                          _PlanImageCard(onPressed: widget.onPlanPressed),
+                          _PlanImageCard(
+                            onPressed: widget.onPlanPressed ?? _handleAddMarcacao,
+                            marcacao: _marcacaoPlanta,
+                          ),
                           const SizedBox(height: 18),
                           BiggerCustomButton(
                             text: 'Adicionar marcacao em Planta',
                             width: 292,
                             height: 40,
-                            onPressed: widget.onAddMarcacaoPressed ?? () {},
+                            onPressed:
+                                widget.onAddMarcacaoPressed ?? _handleAddMarcacao,
                           ),
                           const SizedBox(height: 16),
                           _buildDropdownField(
@@ -449,11 +541,9 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             text: _isSubmitting ? 'Salvando...' : 'Criar',
                             width: 139,
                             height: 54,
-                            onPressed: _isSubmitting
+                            onPressed: (_isSubmitting || !_canSubmit)
                                 ? () {}
-                                : (widget.onSubmit == null
-                                      ? () {}
-                                      : _handleSubmit),
+                                : _handleSubmit,
                           ),
                         ],
                       ),
@@ -620,13 +710,15 @@ class _ElementoAvatar extends StatelessWidget {
 /// Cartao ilustrado que representa a planta e dispara uma acao ao tocar.
 class _PlanImageCard extends StatelessWidget {
   /// Cria o cartao da planta com callback obrigatorio.
-  const _PlanImageCard({this.onPressed});
+  const _PlanImageCard({this.onPressed, this.marcacao});
 
   final VoidCallback? onPressed;
+  final MarcacaoPlanta? marcacao;
 
   /// Renderiza uma imagem da planta com moldura e area clicavel.
   @override
   Widget build(BuildContext context) {
+    final marcacao = this.marcacao;
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -637,11 +729,28 @@ class _PlanImageCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFF858585)),
         ),
         padding: const EdgeInsets.all(5),
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-          child: Image.asset(
-            'assets/images/planta_elementos_info.png',
-            fit: BoxFit.cover,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final h = constraints.maxHeight;
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  Image.asset(
+                    kPlantaMockAsset,
+                    fit: BoxFit.cover,
+                  ),
+                  if (marcacao != null)
+                    Positioned(
+                      left: (marcacao.x * w) - 11,
+                      top: (marcacao.y * h) - 11,
+                      child: MarcacaoBolinha(numero: marcacao.numero, tamanho: 22),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -692,6 +801,7 @@ class NovoElemEstruturalDraft {
     required this.tipologiaEstrutural,
     required this.localElemento,
     required this.revestimento,
+    this.marcacao,
   });
 
   final String nome;
@@ -699,6 +809,10 @@ class NovoElemEstruturalDraft {
   final String? tipologiaEstrutural;
   final String? localElemento;
   final String? revestimento;
+
+  /// Marcação na planta, quando definida pelo usuário. Mapeia para
+  /// `posicao_x`/`posicao_y` no backend (ver [MarcacaoPlanta]).
+  final MarcacaoPlanta? marcacao;
 
   /// Converte o rascunho em mapa para persistencia ou envio em API.
   Map<String, dynamic> toMap() {
@@ -708,6 +822,7 @@ class NovoElemEstruturalDraft {
       'tipologiaEstrutural': tipologiaEstrutural,
       'localElemento': localElemento,
       'revestimento': revestimento,
+      if (marcacao != null) ...marcacao!.toPosicaoMap(),
     };
   }
 }

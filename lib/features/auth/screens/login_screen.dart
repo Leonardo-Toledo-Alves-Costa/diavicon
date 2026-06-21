@@ -104,7 +104,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onChanged: (val) => setState(() => _lembrarMe = val!),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        // 🔥 A MÁGICA ACONTECE AQUI
+                        context.push('/recuperar-senha');
+                      },
                       child: const Text(
                         'Resgatar Senha',
                         style: TextStyle(
@@ -160,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     GestureDetector(
-                      onTap: () => context.go('/register'),
+                      onTap: () => context.push('/register'),
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 4),
                         child: Text(

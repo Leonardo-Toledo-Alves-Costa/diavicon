@@ -3,12 +3,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart'; 
-import '../../../../core/widgets/custom_button.dart';      
+import '../../../../core/widgets/custom_button.dart';
 
 class ConvidarFuncionarioScreen extends ConsumerStatefulWidget {
-  const ConvidarFuncionarioScreen({super.key});
+  // 🔥 AGORA ELA RECEBE O PROJETO ID
+  final String projetoId;
+
+  const ConvidarFuncionarioScreen({super.key, required this.projetoId});
 
   @override
   ConsumerState<ConvidarFuncionarioScreen> createState() => _ConvidarFuncionarioScreenState();
@@ -38,13 +42,12 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
     setState(() => _isLoading = true);
 
     try {
-      // 1. Pega a empresa_id do gestor logado no momento
       final usuarioAtual = ref.read(currentUserProvider);
       if (usuarioAtual == null || usuarioAtual.empresaId == null) {
         throw Exception('Erro: Empresa não identificada.');
       }
 
-      // 2. Chama a nossa Edge Function
+      // 🔥 ENVIANDO O projeto_id PARA A EDGE FUNCTION
       final response = await Supabase.instance.client.functions.invoke(
         'convidar-funcionario',
         body: {
@@ -53,17 +56,16 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
           'sobrenome': _sobrenomeController.text.trim(),
           'cargo': _cargoController.text.trim(),
           'empresa_id': usuarioAtual.empresaId, 
+          'projeto_id': widget.projetoId, // Passando o ID aqui!
         },
       );
-
-      // 3. Verifica se deu tudo certo (Status 200)
+/*ta, e agr la no cadastro precisamos mudar o jeito que o cep ta funcionando, quando ele acha o cep, ele ta deixando os campos de rua e etc tudo sem poder editar, mas como tem ceps que nao acham rua, bairo, ai fica ruim, entao, se nao achou rua nem bairro, ai os campos ficam editaveis, se achou  eles nao podem ser editados e ficam como ta aualmente */
       if (response.status == 200) {
         final data = response.data;
         final senhaTemporaria = data['senhaProvisoria'];
 
         if (!mounted) return;
 
-        // 🔥 A MÁGICA: Mostra a senha na tela para o Gestor copiar!
         showDialog(
           context: context,
           barrierDismissible: false, 
@@ -83,7 +85,7 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
                     borderRadius: BorderRadius.circular(8),
                     border: Border.all(color: Colors.grey.shade400),
                   ),
-                  child: SelectableText( // O gestor pode segurar o dedo e copiar!
+                  child: SelectableText(
                     senhaTemporaria,
                     textAlign: TextAlign.center,
                     style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
@@ -99,8 +101,8 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
             actions: [
               TextButton(
                 onPressed: () {
-                  Navigator.of(context).pop(); // Fecha o pop-up
-                  context.pop(); // Volta para a tela da lista de equipe
+                  Navigator.of(context).pop(); 
+                  context.pop(); 
                 },
                 child: const Text('Entendi'),
               ),

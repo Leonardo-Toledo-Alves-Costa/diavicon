@@ -87,6 +87,11 @@ class CustomTextField extends StatelessWidget {
           onTap: onTap,
           decoration: InputDecoration(
             hintText: hint,
+            contentPadding: const EdgeInsets.symmetric(
+              vertical: 14.0,
+              horizontal: 16.0,
+            ),
+
             hintStyle: GoogleFonts.lato(
               color: AppColors.hintText,
               fontSize: 18,

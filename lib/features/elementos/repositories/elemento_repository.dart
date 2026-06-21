@@ -1,67 +1,97 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/elemento_model.dart';
 
+/// Acesso à tabela `elementos_estruturais` no Supabase.
+///
+/// Um elemento sempre pertence a uma estrutura (`estrutura_id`).
 class ElementoRepository {
-  final SupabaseClient _supabase = Supabase.instance.client;
+  final SupabaseClient _client;
 
-  // ── Listar elementos de uma estrutura ──────────────────────────────────────
-  Future<List<ElementoModel>> listarPorEstrutura(String estruturaId) async {
-    final data = await _supabase
-        .from('elementos_estruturais')
-        .select()
-        .eq('estrutura_id', estruturaId)
-        .eq('ativo', true)
-        .order('nome');
+  ElementoRepository(this._client);
 
-    return (data as List)
-        .map((e) => ElementoModel.fromMap(e))
-        .toList();
+  /// Cria um elemento vinculado a uma estrutura e devolve o registro criado.
+  Future<ElementoModel> criarElemento(
+    ElementoModel elemento,
+    String estruturaId,
+  ) async {
+    try {
+      final map = elemento.toMap();
+      map['estrutura_id'] = estruturaId;
+
+      final response = await _client
+          .from('elementos_estruturais')
+          .insert(map)
+          .select()
+          .single();
+
+      return ElementoModel.fromMap(response);
+    } catch (e) {
+      throw Exception('Falha ao criar elemento: $e');
+    }
   }
 
-  // ── Buscar elemento por ID ─────────────────────────────────────────────────
-  Future<ElementoModel?> buscarPorId(String id) async {
-    final data = await _supabase
-        .from('elementos_estruturais')
-        .select()
-        .eq('id', id)
-        .maybeSingle();
+  /// Lista os elementos ativos de uma estrutura, mais recentes primeiro.
+  Future<List<ElementoModel>> buscarElementosPorEstrutura(
+    String estruturaId,
+  ) async {
+    try {
+      final response = await _client
+          .from('elementos_estruturais')
+          .select()
+          .eq('estrutura_id', estruturaId)
+          .order('criado_em', ascending: false);
 
-    if (data == null) return null;
-    return ElementoModel.fromMap(data);
+      return (response as List)
+          .map((item) => ElementoModel.fromMap(item))
+          .toList();
+    } catch (e) {
+      throw Exception('Erro ao carregar elementos: $e');
+    }
   }
 
-  // ── Criar elemento ─────────────────────────────────────────────────────────
-  Future<ElementoModel> criar(ElementoModel elemento) async {
-    final response = await _supabase
-        .from('elementos_estruturais')
-        .insert(elemento.toMap())
-        .select()
-        .single();
+  /// Atualiza um elemento existente (identificado pelo `id`).
+  Future<ElementoModel> atualizarElemento(ElementoModel elemento) async {
+    try {
+      final response = await _client
+          .from('elementos_estruturais')
+          .update(elemento.toMap())
+          .eq('id', elemento.id)
+          .select()
+          .single();
 
-    return ElementoModel.fromMap(response);
+      return ElementoModel.fromMap(response);
+    } catch (e) {
+      throw Exception('Falha ao atualizar elemento: $e');
+    }
   }
 
-  // ── Atualizar elemento ─────────────────────────────────────────────────────
-  Future<ElementoModel> atualizar(ElementoModel elemento) async {
-    final response = await _supabase
-        .from('elementos_estruturais')
-        .update(elemento.toMap())
-        .eq('id', elemento.id!)
-        .select()
-        .single();
-
-    return ElementoModel.fromMap(response);
+  /// Soft delete: marca o elemento como inativo em vez de apagá-lo.
+  Future<void> desativarElemento(String elementoId) async {
+    try {
+      await _client
+          .from('elementos_estruturais')
+          .update({'ativo': false})
+          .eq('id', elementoId);
+    } catch (e) {
+      throw Exception('Falha ao desativar elemento: $e');
+    }
   }
 
-  // ── Deletar (soft delete) ──────────────────────────────────────────────────
-  Future<void> deletar(String id) async {
-    await _supabase
-        .from('elementos_estruturais')
-        .update({'ativo': false})
-        .eq('id', id);
+  /// Define se o elemento está incluído na estrutura (`ativo`).
+  ///
+  /// `true` deixa o elemento visível na lista da estrutura; `false` o oculta
+  /// sem apagá-lo, permitindo reincluí-lo depois (recuperável).
+  Future<void> definirInclusao(String elementoId, bool incluido) async {
+    try {
+      await _client
+          .from('elementos_estruturais')
+          .update({'ativo': incluido})
+          .eq('id', elementoId);
+    } catch (e) {
+      throw Exception('Falha ao atualizar inclusão do elemento: $e');
+    }
   }
 
-  // ── Upload de fotos do elemento ────────────────────────────────────────────
   /// Faz upload de uma foto para o Storage do Supabase e retorna a URL pública.
   Future<String> uploadFoto({
     required String elementoId,
@@ -70,14 +100,12 @@ class ElementoRepository {
     final nomeArquivo =
         '$elementoId/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    await _supabase.storage
+    await _client.storage
         .from('elementos-fotos')
         .upload(nomeArquivo, Uri.file(caminhoLocalFoto) as dynamic);
 
-    final url = _supabase.storage
+    return _client.storage
         .from('elementos-fotos')
         .getPublicUrl(nomeArquivo);
-
-    return url;
   }
 }

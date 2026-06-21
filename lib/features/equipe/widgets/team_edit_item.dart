@@ -5,24 +5,28 @@ class TeamEditItem extends StatefulWidget {
   final String name;
   final String role;
   final String subRole;
+  final String? imageUrl; // 🔥 Novo parâmetro adicionado!
   final bool isSelected;
-  final bool isUserGestor; // Se o cara desse card é o gestor
-  final bool isViewerGestor; // Se quem está com o celular na mão tem permissão de gestor
+  final bool isUserGestor; 
+  final bool isViewerGestor; 
   final ValueChanged<bool?> onChanged;
   final ValueChanged<bool> onToggleGestor;
   final VoidCallback onRemove;
+  final bool isEditable;
 
   const TeamEditItem({
     super.key,
     required this.name,
     required this.role,
     required this.subRole,
+    this.imageUrl, // 🔥 Recebe aqui
     required this.isSelected,
     required this.isUserGestor,
     required this.isViewerGestor,
     required this.onChanged,
     required this.onToggleGestor,
-    required this.onRemove,
+    required this.onRemove, 
+    required this.isEditable,
   });
 
   @override
@@ -34,6 +38,9 @@ class _TeamEditItemState extends State<TeamEditItem> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 Lógica simples: Tem link e começa com http? Então é da web. Se não, usa asset.
+    final bool hasValidImage = widget.imageUrl != null && widget.imageUrl!.startsWith('http');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
@@ -50,17 +57,21 @@ class _TeamEditItemState extends State<TeamEditItem> {
       ),
       child: Column(
         children: [
-          // CABEÇALHO DO CARD (Sempre visível)
+          // CABEÇALHO DO CARD
           InkWell(
             borderRadius: BorderRadius.circular(16),
-            onTap: () => setState(() => _expanded = !_expanded),
+            onTap: widget.isEditable ? () => setState(() => _expanded = !_expanded) : null,
             child: Padding(
               padding: const EdgeInsets.all(12),
               child: Row(
                 children: [
-                  const CircleAvatar(
+                  CircleAvatar(
                     radius: 28,
-                    backgroundImage: AssetImage('assets/images/user.png'),
+                    backgroundColor: AppColors.greyVeryLight,
+                    // 🔥 Aplica a imagem dinâmica aqui
+                    backgroundImage: hasValidImage 
+                        ? NetworkImage(widget.imageUrl!) 
+                        : const AssetImage('assets/images/user.png') as ImageProvider,
                   ),
                   const SizedBox(width: 16),
                   Expanded(
@@ -87,20 +98,19 @@ class _TeamEditItemState extends State<TeamEditItem> {
                       ],
                     ),
                   ),
-                  // O checkbox ou "D" só aparece se não estiver expandido (seguindo o protótipo)
                   if (!_expanded)
                     Checkbox(
                       value: widget.isSelected,
                       activeColor: AppColors.primary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-                      onChanged: widget.onChanged,
+                      onChanged: widget.isEditable ? widget.onChanged : null,
                     ),
                 ],
               ),
             ),
           ),
           
-          // ÁREA EXPANDIDA (Visível ao clicar no card)
+          // ÁREA EXPANDIDA (Visível apenas se o usuário clicou e TEM permissão)
           if (_expanded)
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
@@ -109,7 +119,6 @@ class _TeamEditItemState extends State<TeamEditItem> {
                 children: [
                   const Divider(),
                   
-                  // 🚨 SÓ MOSTRA O TOGGLE DE GESTOR SE O USUÁRIO LOGADO TIVER PERMISSÃO
                   if (widget.isViewerGestor) ...[
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,12 +143,11 @@ class _TeamEditItemState extends State<TeamEditItem> {
                   ),
                   const SizedBox(height: 4),
                   const Text(
-                    'Ao remover integrante do projeto, ele perderá acesso aos dados desenvolvidos, mas ainda será vistos os dados criados e modificados por ele.',
+                    'Ao remover integrante do projeto, ele perderá acesso aos dados desenvolvidos.',
                     style: TextStyle(fontSize: 10, color: Colors.grey),
                   ),
                   const SizedBox(height: 12),
                   
-                  // Botão de Remover vermelho
                   Align(
                     alignment: Alignment.centerLeft,
                     child: OutlinedButton(

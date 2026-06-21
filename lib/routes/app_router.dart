@@ -3,8 +3,8 @@
   import 'package:diavicon/features/auth/screens/cadastro2_cliente.dart';
   import 'package:diavicon/features/auth/screens/cadastro3_cliente.dart';
   import 'package:diavicon/features/auth/screens/completar_cadastro_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_bemvinda_screen.dart';
-  import 'package:diavicon/features/empresa/screens/empresa_cadastro_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_bemvinda_screen.dart';
+  import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
   import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
   import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
   import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
@@ -22,6 +22,8 @@
   import '../../features/auth/screens/cadastro_r1_screen.dart';
   import '../../features/auth/screens/cadastro_r2_screen.dart';
   import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/recupera_senha_screen.dart';
+import '../../features/auth/screens/nova_senha_screen.dart';
 
   import '../../features/auth/screens/cadastro0_empresa.dart';
   import '../../features/auth/screens/cadastro1_empresa.dart';
@@ -97,7 +99,9 @@
               path == '/login' ||
               path.startsWith('/register') ||
               path.startsWith('/empresa/') ||
-              path == '/completar-cadastro'; 
+              path == '/completar-cadastro' ||
+              path == '/recuperar-senha' || 
+              path == '/nova-senha';
 
           if (!isPublic) return '/login';
           return null;
@@ -178,6 +182,14 @@
           builder: (context, state) => Cadastro1Empresa(
             dadosCadastro: state.extra as Map<String, dynamic>? ?? {},
           ),
+        ),
+        GoRoute(
+          path: '/recuperar-senha',
+          builder: (context, state) => const RecuperaSenhaScreen(),
+        ),
+        GoRoute(
+          path: '/nova-senha',
+          builder: (context, state) => const NovaSenhaScreen(),
         ),
         GoRoute(
           path: '/empresa/servicos',
@@ -264,51 +276,51 @@
           ],
         ),
 
-        ShellRoute(
-          navigatorKey: shellNavigatorKey,
-          builder: (context, state, child) => MainScreen(child: child),
-          routes: [
-            // Projetos e suas sub-rotas (detalhes)
-            GoRoute(
-              path: '/projetos',
-              builder: (context, state) => const ProjetosScreen(),
-              routes: [
-                GoRoute(
-                  path: 'detalhes',
-                  parentNavigatorKey: rootNavigatorKey,
-                  builder: (context, state) => ProjectDetailScreen(
-                    projetoId: state.extra as String? ?? '',
-                  ),
-                ),
-              ],
-            ),
-            // Outras abas da Bottom Bar
-            GoRoute(
-              path: '/estruturas',
-              builder: (context, state) => EstruturaHomeScreen(
-                projetoId: 'demo-projeto',
-                estrutura: EstruturaModel(
-                  id: 'demo-estrutura',
-                  nome: 'Estrutura BCDE',
-                  tipo: 'Concreto armado',
-                  status: 'Em andamento',
-                  caa: 'II',
-                  idadeAnos: 26,
-                  conjuntoEstrutural: 'Conjunto Estrutural A',
-                  tipologiaEstrutural: 'Viga',
+      ShellRoute(
+        navigatorKey: shellNavigatorKey,
+        builder: (context, state, child) => MainScreen(child: child),
+        routes: [
+          // Projetos e suas sub-rotas (detalhes)
+          GoRoute(
+            path: '/projetos',
+            builder: (context, state) => const ProjetosScreen(),
+            routes: [
+              GoRoute(
+                path: 'detalhes',
+                parentNavigatorKey: rootNavigatorKey,
+                builder: (context, state) => ProjectDetailScreen(
+                  projetoId: state.extra as String? ?? '',
                 ),
               ),
+            ],
+          ),
+          // Outras abas da Bottom Bar
+          GoRoute(
+            path: '/estruturas',
+            builder: (context, state) => EstruturaHomeScreen(
+              projetoId: 'demo-projeto',
+              estrutura: EstruturaModel(
+                id: 'demo-estrutura',
+                nome: 'Estrutura BCDE',
+                tipoId: 'Concreto armado',
+                status: 'Em andamento',
+                caa: 'II',
+                anoConcepcao: 26,
+                conjuntoEstruturalId: 'Conjunto Estrutural A',
+                tipologiaId: 'Viga',
+              ),
             ),
-            GoRoute(
-              path: '/minha-empresa',
-              builder: (context, state) =>
-                  const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
-            ),
-            GoRoute(
-              path: '/educacao',
-              builder: (context, state) =>
-                  const Scaffold(body: Center(child: Text('Educação'))),
-            ),
+          ),
+          GoRoute(
+            path: '/minha-empresa',
+            builder: (context, state) =>
+                const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
+          ),
+          GoRoute(
+            path: '/educacao',
+            builder: (context, state) =>
+                const Scaffold(body: Center(child: Text('Educação'))),
+          ),
 
             // NOTIFICACOES
             GoRoute(

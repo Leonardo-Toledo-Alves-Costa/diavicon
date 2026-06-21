@@ -102,7 +102,7 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    estrutura.tipo ?? 'Sem tipo',
+                    estrutura.tipoNome ?? 'Sem tipo',
                     style: const TextStyle(
                       fontSize: 10,
                       color: AppColors.hintText,
@@ -112,7 +112,7 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${estrutura.idadeAnos ?? '-'} Anos  CAA ${estrutura.caa ?? '-'}',
+                    '${estrutura.idadeCalculada } Anos  CAA ${estrutura.caa ?? '-'}',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.hintText,
@@ -122,7 +122,7 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    estrutura.conjuntoEstrutural ?? 'Sem setor vinculado',
+                    estrutura.conjuntoNome ?? 'Sem setor vinculado',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.hintText,

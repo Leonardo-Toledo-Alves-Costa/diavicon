@@ -21,13 +21,23 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   int _planoPagina = 0;
   bool _planoInicializado = false;
 
-  int _indicePlanoPadrao(List<PlanosModel> planos) {
-    final indiceAdvanced = planos.indexWhere(
-      (plano) => plano.nome.toLowerCase() == 'advanced',
-    );
+  int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) {
 
-    if (indiceAdvanced != -1) {
-      return indiceAdvanced;
+    int indicePlanoPadrao = 0;
+
+    if (pontos <= 19){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'starter');
+    }
+    else if (pontos >=20 && pontos < 30){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'basic');
+    }
+    else if (pontos >=30){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'professional');
+    }
+
+
+    if (indicePlanoPadrao != -1) {
+      return indicePlanoPadrao;
     }
 
     var melhorIndex = 0;
@@ -40,20 +50,20 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
     return melhorIndex;
   }
 
-  PlanosModel _planoAtivo(List<PlanosModel> planos) {
+  PlanosModel _planoAtivo(List<PlanosModel> planos, int pontos) {
     final index = _planoInicializado
         ? _planoPagina.clamp(0, planos.length - 1).toInt()
-        : _indicePlanoPadrao(planos);
+        : _indicePlanoPadrao(planos, pontos);
     return planos[index];
   }
 
-  void _garantirPlanoInicial(List<PlanosModel> planos) {
+  void _garantirPlanoInicial(List<PlanosModel> planos, int pontos) {
     if (_planoInicializado || planos.isEmpty) {
       return;
     }
 
     _planoInicializado = true;
-    final indicePadrao = _indicePlanoPadrao(planos);
+    final indicePadrao = _indicePlanoPadrao(planos, pontos);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -127,6 +137,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authControllerProvider);
     final planosAsync = ref.watch(planosListProvider);
+    int pontuacaoTotal = widget.dadosUsuario['pontos'] ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -157,13 +168,13 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                           nome == 'advanced');
                       return isPlanoEmpresa;
                     }).toList();
-                    print(planos);
+                    print(pontuacaoTotal);
                     if (planos.isEmpty) {
                       return _buildEmptyState();
                     }
 
-                    _garantirPlanoInicial(planos);
-                    final planoAtivo = _planoAtivo(planos);
+                    _garantirPlanoInicial(planos, pontuacaoTotal);
+                    final planoAtivo = _planoAtivo(planos, pontuacaoTotal);
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,

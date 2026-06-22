@@ -26,13 +26,13 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
     int indicePlanoPadrao = 0;
 
     if (pontos <= 6){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'starter');
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'initial');
     }
     else if (pontos >=7 && pontos < 20){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'basic');
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'pro');
     }
     else if (pontos >=20){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'professional');
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'business');
     }
 
 

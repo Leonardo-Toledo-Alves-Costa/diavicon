@@ -11,7 +11,7 @@ import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../elementos/models/elemento_model.dart';
 import '../../elementos/providers/elemento_provider.dart';
 import '../../elementos/screens/elementos_screen.dart' show ElementoFormScreen;
-import '../../elementos/screens/planejamento_screen.dart';
+import '../../elementos/screens/planejamento_plantas_screen.dart';
 import '../../elementos/widgets/incluir_elemento_estrutural_sheet.dart';
 import '../models/estrutura_model.dart';
 import '../widgets/elemento_estrutural_card.dart';
@@ -218,7 +218,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) =>  PlanejamentoScreen(estruturaId: estrutura.id)),
+                MaterialPageRoute(builder: (_) =>  PlanejamentoPlantasScreen(estruturaId: estrutura.id)),
               );
             },
           ),

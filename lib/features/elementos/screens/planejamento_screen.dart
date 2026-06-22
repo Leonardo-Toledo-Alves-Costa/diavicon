@@ -1,338 +1,491 @@
+import 'dart:io';
+import 'package:diavicon/features/elementos/widgets/marcar_elemento_planejamento_modal.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:pdfx/pdfx.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/core/widgets/custom_appbar.dart';
-import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
+import 'package:diavicon/core/widgets/compact_button.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
-import 'package:diavicon/features/elementos/widgets/novo_arquivo_popup.dart';
-import 'package:diavicon/features/elementos/widgets/planta_formato_card.dart';
-import 'package:diavicon/features/estrutura/models/local_model.dart';
-import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Adicionado import do Riverpod
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-// 🔥 Imports dos novos arquivos de planta que criamos
-import '../models/planta_model.dart';
-import '../providers/plantas_provider.dart';
-
-/// Tela "Planejamento" da estrutura: lista as plantas/formatos cadastrados.
-class PlanejamentoScreen extends ConsumerWidget { // 🔥 Alterado para ConsumerWidget
+class PlanejamentoScreen extends ConsumerStatefulWidget {
   const PlanejamentoScreen({
     super.key,
-    required this.estruturaId, // 🔥 Agora o ID da estrutura é obrigatório para buscar as plantas
+    required this.estruturaId,
+    required this.plantaId,
+    required this.plantaUrl,
+    required this.plantaTitulo,
+    required this.plantaLocal,
   });
 
   final String estruturaId;
+  final String plantaId;
+  final String plantaUrl;
+  final String plantaTitulo;
+  final String plantaLocal;
 
-  // 🔥 Função que intercepta o arquivo do popup e envia para o controlador
-  Future<void> _adicionarNovaPlanta(BuildContext context, WidgetRef ref) async {
-    // 🔥 CORREÇÃO 1: Faltava passar o estruturaId aqui!
-    final result = await showNovoArquivoPopup(context, estruturaId);
+  @override
+  ConsumerState<PlanejamentoScreen> createState() => _PlanejamentoScreenState();
+}
+
+class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
+  int _abaSelecionada = 0; 
+  bool _visualizarNomeElementos = true;
+
+  void _abrirSeletorElementosParaPosicionar() async {
+    final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => MarcarElementoPlanejamentoModal(estruturaId: widget.estruturaId),
+    );
+
+    if (elementoEscolhido != null) {
+      _iniciarMarcacaoElemento(elementoEscolhido);
+    }
+  }
+
+  Future<void> _iniciarMarcacaoElemento(ElementoModel elemento) async {
+    String formatoPadrao = 'Ponto'; // Fallback de segurança
     
-    if (result != null && context.mounted) {
-      try {
-        final arquivo = result.arquivo;
-        
-        // Dispara o salvamento através do nosso Controller
-        await ref.read(plantaControllerProvider.notifier).salvarNovaPlanta(
-              estruturaId: estruturaId,
-              titulo: result.nome,
-              // 🔥 CORREÇÃO 2: Como localId agora é obrigatório no model, não precisa do "?? 'Não informado'"
-              localVinculado: result.localId, 
-              caminhoLocal: arquivo.path!,
-              extensao: arquivo.extension ?? 'pdf',
-              tamanhoArquivo: '${(arquivo.size / (1024 * 1024)).toStringAsFixed(2)} MB',
-            );
-
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Planta adicionada com sucesso!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } catch (e) {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Erro ao fazer upload da planta: $e'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+    // 🔥 BUSCA INTELIGENTE: Pergunta ao banco qual o formato gráfico daquele tipo!
+    try {
+      final resp = await Supabase.instance.client
+          .from('tipos_elemento')
+          .select('formato_marcacao')
+          .eq('nome', elemento.tipo ?? '')
+          .maybeSingle();
+          
+      if (resp != null) {
+        formatoPadrao = resp['formato_marcacao']; // Recebe Linha, Círculo, Retângulo, etc.
       }
+    } catch (e) {
+      debugPrint('Erro ao buscar formato: $e'); // Ignora e segue com 'Ponto'
+    }
+
+    final resultado = await showMarcacaoPlantaPopup(
+      context,
+      arquivoUrl: widget.plantaUrl,
+      plantaId: widget.plantaId,
+      estruturaId: widget.estruturaId, // 🔥 NOVO: Passa o ID para o popup ver os outros pinos
+      nomeElemento: elemento.nome,
+      inicial: MarcacaoPlanta(
+        x: 0.5, 
+        y: 0.5, 
+        plantaId: widget.plantaId,
+        tipoMarcacao: formatoPadrao,
+      ),
+    );
+
+    if (resultado == null) return;
+
+    try {
+      final elementoAtualizado = ElementoModel(
+        id: elemento.id,
+        estruturaId: elemento.estruturaId,
+        nome: elemento.nome,
+        tipo: elemento.tipo,
+        local: elemento.local,
+        tipologiaEstrutural: elemento.tipologiaEstrutural,
+        revestimento: elemento.revestimento,
+        latitude: elemento.latitude,
+        longitude: elemento.longitude,
+        posicaoX: resultado.x, 
+        posicaoY: resultado.y, 
+        posicaoZ: elemento.posicaoZ,
+        plantaId: widget.plantaId, 
+        tipoMarcacao: resultado.tipoMarcacao, 
+        dimensoes: elemento.dimensoes,
+        secao: elemento.secao,
+        microclima: elemento.microclima,
+        caa: elemento.caa,
+        fotos: elemento.fotos,
+        observacoes: elemento.observacoes,
+        ativo: elemento.ativo,
+        criadoEm: elemento.criadoEm,
+      );
+
+      await ref.read(elementoRepositoryProvider).atualizarElemento(elementoAtualizado);
+      if (!mounted) return;
+
+      ref.invalidate(todosElementosPorEstruturaProvider(widget.estruturaId));
+      ref.invalidate(elementosPorEstruturaProvider(widget.estruturaId));
+
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Elemento posicionado com sucesso na planta!')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ao salvar posição: $e')));
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // 🔥 Adicionado WidgetRef
-    // 🔥 Escuta a lista de plantas em tempo real
-    final plantasAsync = ref.watch(plantasPorEstruturaProvider(estruturaId));
-    // 🔥 Escuta o estado de loading do upload
-    final isSubmitting = ref.watch(plantaControllerProvider);
-    final locaisAsync = ref.watch(locaisPorEstruturaProvider(estruturaId));
-
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: CustomAppBar(
-        title: 'Estrutura',
-        showBackButton: true,
-        showMenuButton: false,
-        titleWidget: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Projeto',
-              style: GoogleFonts.lato(
-                fontSize: 11,
-                color: Colors.white.withOpacity(0.8),
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Estrutura',
-              style: GoogleFonts.lato(
-                fontSize: 18,
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              'Planejamento',
-              style: GoogleFonts.lato(
-                fontSize: 14,
-                color: Colors.white,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-      body: SafeArea(
-        top: false,
-        child: Stack(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Plantas e Formatos da Estrutura',
-                    style: GoogleFonts.lato(
-                      color: const Color(0xFF3E3E3D),
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    children: [
-                      const Expanded(child: _BuscaMock()),
-                      const SizedBox(width: 12),
-                      _NovoButton(
-                        onPressed: isSubmitting 
-                            ? null 
-                            : () => _adicionarNovaPlanta(context, ref),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  
-                  // 🔥 Tratamento do estado assíncrono do banco de dados
-                  Expanded(
-                    child: plantasAsync.when(
-                      loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
-                      ),
-                      error: (err, _) => Center(
-                        child: Text(
-                          'Erro ao carregar plantas: $err',
-                          style: const TextStyle(color: AppColors.error),
-                        ),
-                      ),
-                      data: (plantas) {
-                        // Pega a lista de locais carregada (ou vazia se der erro/loading)
-                        final locais = locaisAsync.value ?? [];
-
-                        if (plantas.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.architecture, size: 64, color: Colors.grey),
-                                const SizedBox(height: 16),
-                                Text(
-                                  'Nenhuma planta cadastrada.',
-                                  style: GoogleFonts.lato(color: Colors.grey, fontSize: 16),
-                                ),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          padding: EdgeInsets.zero,
-                          itemCount: plantas.length,
-                          itemBuilder: (context, index) {
-                            final planta = plantas[index];
-                            
-                            // 🔥 CORREÇÃO DO ÍCONE: Transforma a URL em minúsculo antes de checar
-                            final urlLower = planta.arquivoUrl.toLowerCase();
-                            final esImagem = urlLower.contains('.png') || 
-                                             urlLower.contains('.jpg') || 
-                                             urlLower.contains('.jpeg');
-
-                            // 🔥 CORREÇÃO DO LOCAL: Traduz o ID (UUID) para o Nome real
-                            final localReal = locais.firstWhere(
-                              (l) => l.id == planta.localVinculado,
-                              orElse: () => LocalModel(id: '', estruturaId: '', nome: 'Local desconhecido'),
-                            );
-
-                            return PlantaFormatoCard(
-                              titulo: planta.titulo,
-                              local: localReal.nome, // Mostra o nome bonito agora!
-                              detalhe: planta.tamanhoArquivo ?? 'Tamanho desconhecido',
-                              iconAsset: esImagem ? 'assets/images/image_icon.png' : 'assets/images/pdf.png',
-                              onTap: () async {
-                                // 1. Abre o popup para o usuário espetar o pino
-                                final novaMarcacao = await showMarcacaoPlantaPopup(
-                                  context,
-                                  arquivoUrl: planta.arquivoUrl,
-                                  plantaId: planta.id,
-                                );
-
-                                // 2. Se ele salvou o pino, manda para a tela de criar elemento
-                                if (novaMarcacao != null && context.mounted) {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => NovoElemEstruturalScreen(
-                                        estruturaId: estruturaId, 
-                                        // 🔥 Vamos enviar esses dois dados para a tela!
-                                        initialMarcacao: novaMarcacao,
-                                        initialPlantaUrl: planta.arquivoUrl,
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            // 🔥 Overlay visual de bloqueio enquanto o arquivo sobe pro Storage
-            if (isSubmitting)
-              Container(
-                color: Colors.black.withOpacity(0.3),
-                child: const Center(
-                  child: Card(
-                    child: Padding(
-                      padding: EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          CircularProgressIndicator(color: AppColors.primary),
-                          SizedBox(height: 16),
-                          Text('Enviando arquivo da planta...', style: TextStyle(fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
+      appBar: _buildAppBar(),
+      body: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildCabecalhoPlanta(),
+          _buildCustomTabBar(),
+          
+          Expanded(
+            child: _abaSelecionada == 0 
+                ? _buildAbaElementos() 
+                : _buildAbaRegioesEnsaio(),
+          ),
+        ],
       ),
     );
   }
-}
 
-class _BuscaMock extends StatelessWidget {
-  const _BuscaMock();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 30,
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: const Color(0xFFD9D9D9).withOpacity(0.62)),
-        borderRadius: BorderRadius.circular(9999),
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      backgroundColor: AppColors.primary,
+      elevation: 6, 
+      shadowColor: Colors.black.withOpacity(0.5),
+      centerTitle: true,
+      toolbarHeight: 75, 
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(bottom: Radius.circular(30))),
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
       ),
+      title: Column(
+        children: [
+          Text('Projeto', style: GoogleFonts.lato(color: Colors.white.withOpacity(0.8), fontSize: 12, fontWeight: FontWeight.w300)),
+          Text('Estrutura', style: GoogleFonts.lato(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800)),
+          Text('Planejamento', style: GoogleFonts.lato(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500)),
+        ],
+      ),
+      actions: [
+        IconButton(icon: const Icon(Icons.notifications_none, color: Colors.white), onPressed: () {}),
+        IconButton(icon: const Icon(Icons.menu, color: Colors.white), onPressed: () {}),
+      ],
+    );
+  }
+
+  Widget _buildCabecalhoPlanta() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
       child: Row(
         children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(border: Border.all(color: const Color(0xFF686868)), borderRadius: BorderRadius.circular(8)),
+            child: Image.asset('assets/images/pdf.png', width: 28, height: 28),
+          ),
+          const SizedBox(width: 16),
           Expanded(
-            child: Text(
-              'Nome do arquivo ou local',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.lato(
-                color: const Color(0xFFCCCCCC),
-                fontSize: 10,
-                fontWeight: FontWeight.w400,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.plantaTitulo, style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.w600, color: const Color(0xFF3E3E3D))),
+                Text(widget.plantaLocal, style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.w400, color: const Color(0xFF686868))),
+              ],
             ),
           ),
-          const Icon(Icons.search, size: 17, color: Color(0xFFCCCCCC)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomTabBar() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Color(0xFFD9D9D9), width: 2))),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildTabButton(titulo: 'Elementos', index: 0),
+            _buildTabButton(titulo: 'Regiões de Ensaio', index: 1),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabButton({required String titulo, required int index}) {
+    final isSelected = _abaSelecionada == index;
+    return GestureDetector(
+      onTap: () => setState(() => _abaSelecionada = index),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        margin: const EdgeInsets.only(bottom: 12),
+        decoration: BoxDecoration(color: isSelected ? AppColors.primary : Colors.transparent, borderRadius: BorderRadius.circular(20)),
+        child: Text(
+          titulo,
+          style: GoogleFonts.lato(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? Colors.white : const Color(0xFF686868),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAbaElementos() {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 24,
+                height: 24,
+                child: Checkbox(
+                  value: _visualizarNomeElementos,
+                  activeColor: AppColors.primary,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _visualizarNomeElementos = val);
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text('Visualizar nome dos elementos', style: GoogleFonts.lato(fontSize: 16, color: const Color(0xFF3E3E3D))),
+            ],
+          ),
+        ),
+        
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(color: const Color(0xFFD9D9D9), border: Border.all(color: const Color(0xFF686868))),
+            child: _VisualizadorPlantaPlanejamento(
+              arquivoUrl: widget.plantaUrl,
+              estruturaId: widget.estruturaId,
+              plantaId: widget.plantaId,
+              mostrarNomes: _visualizarNomeElementos,
+            ),
+          ),
+        ),
+        
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: CompactButton(
+              text: 'Adicionar elemento em Planta',
+              height: 52,
+              onPressed: _abrirSeletorElementosParaPosicionar, 
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAbaRegioesEnsaio() {
+    return Column(
+      children: [
+        SizedBox(
+          height: 105,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            children: [
+              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nCarbonatação', contador: '01/04', selecionado: false),
+              const SizedBox(width: 12),
+              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nPotencial de c...', contador: '02/02', selecionado: true),
+              const SizedBox(width: 12),
+              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nResistividade', contador: '03/04', selecionado: false),
+            ],
+          ),
+        ),
+
+        Expanded(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            decoration: BoxDecoration(color: const Color(0xFFD9D9D9), border: Border.all(color: const Color(0xFF686868))),
+            child: _VisualizadorPlantaPlanejamento(
+              arquivoUrl: widget.plantaUrl,
+              estruturaId: widget.estruturaId,
+              plantaId: widget.plantaId,
+              mostrarNomes: false,
+            ),
+          ),
+        ),
+
+        SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.all(24.0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: CompactButton(
+                    text: 'Quantitativos\nContratados',
+                    icon: Icons.assignment_outlined,
+                    height: 54,
+                    backgroundColor: Colors.white,
+                    foregroundColor: const Color(0xFF3E3E3D), 
+                    iconColor: AppColors.primary,             
+                    borderColor: const Color(0xFFD9D9D9),     
+                    elevation: 0,
+                    onPressed: () {},
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: CompactButton(
+                    text: 'Regiões de\nEnsaio',
+                    icon: Icons.science_outlined,
+                    height: 54,
+                    onPressed: () {},
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFiltroEnsaioCard({required String titulo, required String contador, required bool selecionado}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: selecionado ? const Color(0xFFF2F9F7) : const Color(0xFFF5F5F5),
+        border: Border.all(color: selecionado ? const Color(0xFF238E5A) : const Color(0xFFD9D9D9), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Text(titulo, textAlign: TextAlign.center, style: GoogleFonts.lato(fontSize: 12, color: const Color(0xFF3E3E3D))),
+          Text(contador, style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFF686868))),
         ],
       ),
     );
   }
 }
 
-class _NovoButton extends StatelessWidget {
-  const _NovoButton({this.onPressed});
+class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
+  const _VisualizadorPlantaPlanejamento({
+    required this.arquivoUrl,
+    required this.estruturaId,
+    required this.plantaId,
+    required this.mostrarNomes,
+  });
 
-  final VoidCallback? onPressed;
+  final String arquivoUrl;
+  final String estruturaId;
+  final String plantaId;
+  final bool mostrarNomes;
+
+  @override
+  ConsumerState<_VisualizadorPlantaPlanejamento> createState() => _VisualizadorPlantaPlanejamentoState();
+}
+
+class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPlantaPlanejamento> {
+  bool _isPdf = false;
+  bool _isLoading = false;
+  Uint8List? _imageBytes;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarMidia();
+  }
+
+  Future<void> _carregarMidia() async {
+    final urlLower = widget.arquivoUrl.toLowerCase();
+    if (urlLower.contains('.pdf')) {
+      setState(() { _isPdf = true; _isLoading = true; });
+      try {
+        final request = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
+        final response = await request.close();
+        if (response.statusCode != 200) throw Exception('Status: ${response.statusCode}');
+        final bytes = await consolidateHttpClientResponseBytes(response);
+        final doc = await PdfDocument.openData(bytes);
+        final page = await doc.getPage(1);
+
+        double w = page.width; double h = page.height;
+        if (w < 1000) { w *= 2.0; h *= 2.0; }
+        const maxDim = 2500.0;
+        if (w > maxDim || h > maxDim) {
+          final prop = w / h;
+          if (w > h) { w = maxDim; h = maxDim / prop; } else { h = maxDim; w = maxDim * prop; }
+        }
+        final pageImg = await page.render(width: w, height: h, format: PdfPageImageFormat.jpeg, backgroundColor: '#FFFFFF');
+        if (pageImg != null && mounted) setState(() => _imageBytes = pageImg.bytes);
+        await page.close(); await doc.close();
+      } catch (e) { if (mounted) setState(() => _error = e.toString()); }
+      finally { if (mounted) setState(() => _isLoading = false); }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3A57E8).withOpacity(0.30),
-            blurRadius: 2,
-            offset: const Offset(0, 2),
+    if (_isLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    if (_error != null) return Center(child: Text('Erro: $_error', style: const TextStyle(color: Colors.red, fontSize: 12)));
+
+    final elementosAsync = ref.watch(elementosPorEstruturaProvider(widget.estruturaId));
+
+    return elementosAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, _) => Center(child: Text('Erro ao carregar pinos: $err')),
+      data: (elementos) {
+        final elementosDaPlanta = elementos.where((el) => el.plantaId == widget.plantaId && el.posicaoX != null && el.posicaoY != null).toList();
+
+        return InteractiveViewer(
+          minScale: 1.0,
+          maxScale: 5.0,
+          child: Center(
+            child: Stack(
+              children: [
+                _isPdf 
+                    ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
+                    : Image.network(widget.arquivoUrl),
+
+                // Camada Superior: Loop desenhando os pinos reais
+                Positioned.fill(
+                  child: LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: elementosDaPlanta.map((el) {
+                          final xAbsoluto = el.posicaoX! * constraints.maxWidth;
+                          final yAbsoluto = el.posicaoY! * constraints.maxHeight;
+
+                          // 🔥 Calcula o tamanho exato da forma para o "furo" ficar bem no centro
+                          final tipo = (el.tipoMarcacao ?? 'Retângulo').toLowerCase();
+                          final isLinha = tipo == 'linha';
+                          final isPonto = tipo == 'ponto';
+                          
+                          final larguraPino = isLinha ? 50.0 : (isPonto ? 16.0 : 26.0);
+                          final alturaPino = isLinha ? 12.0 : (isPonto ? 16.0 : 26.0);
+
+                          return Positioned(
+                            left: xAbsoluto - (larguraPino / 2), 
+                            top: yAbsoluto - (alturaPino / 2),
+                            // 🔥 Chama o nosso Widget Inteligente!
+                            child: PinoDinamico(
+                              tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
+                              nomeElemento: widget.mostrarNomes ? el.nome : null,
+                            ),
+                          );
+                        }).toList(),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
-        ],
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-          minimumSize: Size.zero,
-          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(30),
-          ),
-        ),
-        child: Text(
-          'Novo',
-          style: GoogleFonts.lato(
-            color: Colors.white,
-            fontSize: 16,
-            fontWeight: FontWeight.w400,
-            height: 1,
-          ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

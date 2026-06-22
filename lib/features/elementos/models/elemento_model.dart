@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Modelo de um elemento estrutural, espelhando a tabela
 /// `elementos_estruturais` do Supabase.
 class ElementoModel {
@@ -50,6 +52,28 @@ class ElementoModel {
   });
 
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
+    
+    // 🔥 NOVA LÓGICA BLINDADA: Lê as fotos seja como Lista ou como Texto (JSON)
+    List<String>? fotosParseadas;
+    if (map['fotos'] != null) {
+      if (map['fotos'] is List) {
+        // Se vier certinho como Lista, ótimo.
+        fotosParseadas = (map['fotos'] as List).map((e) => e.toString()).toList();
+      } else if (map['fotos'] is String) {
+        // Se vier como Texto (como está no seu JSON), tentamos decodificar!
+        try {
+          final decoded = jsonDecode(map['fotos']);
+          if (decoded is List) {
+            fotosParseadas = decoded.map((e) => e.toString()).toList();
+          } else {
+            fotosParseadas = [map['fotos']];
+          }
+        } catch (_) {
+          fotosParseadas = [map['fotos']]; // Se não for JSON, trata como URL única
+        }
+      }
+    }
+
     return ElementoModel(
       id: map['id'] ?? '',
       estruturaId: map['estrutura_id'],
@@ -58,35 +82,21 @@ class ElementoModel {
       local: map['local'],
       tipologiaEstrutural: map['topologia'],
       revestimento: map['revestimento'],
-      latitude: map['latitude'] != null
-          ? double.tryParse(map['latitude'].toString())
-          : null,
-      longitude: map['longitude'] != null
-          ? double.tryParse(map['longitude'].toString())
-          : null,
-      posicaoX: map['posicao_x'] != null
-          ? double.tryParse(map['posicao_x'].toString())
-          : null,
-      posicaoY: map['posicao_y'] != null
-          ? double.tryParse(map['posicao_y'].toString())
-          : null,
-      posicaoZ: map['posicao_z'] != null
-          ? double.tryParse(map['posicao_z'].toString())
-          : null,
+      latitude: map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null,
+      longitude: map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null,
+      posicaoX: map['posicao_x'] != null ? double.tryParse(map['posicao_x'].toString()) : null,
+      posicaoY: map['posicao_y'] != null ? double.tryParse(map['posicao_y'].toString()) : null,
+      posicaoZ: map['posicao_z'] != null ? double.tryParse(map['posicao_z'].toString()) : null,
       plantaId: map['planta_id'],
-      tipoMarcacao: map['tipo_marcacao'], // 🔥 NOVO: Lê do banco
+      tipoMarcacao: map['tipo_marcacao'],
       dimensoes: map['dimensoes'],
       secao: map['secao'],
       microclima: map['microclima'],
       caa: map['caa'],
-      fotos: map['fotos'] != null
-          ? (map['fotos'] as List).map((e) => e.toString()).toList()
-          : null,
+      fotos: fotosParseadas, // 🔥 Usa a nossa variável segura aqui!
       observacoes: map['observacoes'],
-      ativo: map['ativo'],
-      criadoEm: map['criado_em'] != null
-          ? DateTime.parse(map['criado_em'].toString())
-          : null,
+      ativo: map['ativo'], 
+      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
     );
   }
 

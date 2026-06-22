@@ -14,6 +14,7 @@ class ElementoEstruturalOption {
     required this.title,
     required this.subtitle,
     required this.detail,
+    this.imageUrl, // 🔥 NOVO: Recebe a URL da foto
     this.incluido = true,
   });
 
@@ -21,6 +22,7 @@ class ElementoEstruturalOption {
   final String title;
   final String subtitle;
   final String detail;
+  final String? imageUrl; // 🔥 NOVO
 
   /// Se o elemento está atualmente incluído (visível) na estrutura. Reflete a
   /// coluna `ativo` no banco; controla o checkbox vir marcado ou não.
@@ -125,6 +127,11 @@ class _IncluirElementoEstruturalSheetState
       elemento.tipologiaEstrutural,
     ].where((parte) => parte != null && parte.trim().isNotEmpty).cast<String>();
 
+    // 🔥 NOVO: Puxa a primeira URL de foto se existir
+    final imageUrl = (elemento.fotos != null && elemento.fotos!.isNotEmpty)
+        ? elemento.fotos!.first
+        : null;
+
     return ElementoEstruturalOption(
       id: elemento.id,
       title: (elemento.nome?.trim().isNotEmpty ?? false)
@@ -132,6 +139,7 @@ class _IncluirElementoEstruturalSheetState
           : 'Elemento sem nome',
       subtitle: subtitlePartes.join(' - '),
       detail: elemento.local ?? '',
+      imageUrl: imageUrl, // 🔥 NOVO: Passa a URL para o card
       incluido: elemento.ativo != false,
     );
   }
@@ -462,7 +470,8 @@ class _ElementoSelectionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 15, 12),
             child: Row(
               children: [
-                const _CompanyAvatar(),
+                // 🔥 NOVO: Repassa a URL para o avatar
+                _ElementoAvatar(imageUrl: elemento.imageUrl), 
                 const SizedBox(width: 15),
                 Expanded(
                   child: Column(
@@ -518,8 +527,11 @@ class _ElementoSelectionCard extends StatelessWidget {
   }
 }
 
-class _CompanyAvatar extends StatelessWidget {
-  const _CompanyAvatar();
+// 🔥 NOVO: Avatar atualizado para suportar Image.network
+class _ElementoAvatar extends StatelessWidget {
+  const _ElementoAvatar({this.imageUrl});
+
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -527,19 +539,25 @@ class _CompanyAvatar extends StatelessWidget {
       width: 54,
       height: 54,
       decoration: const BoxDecoration(
-        color: Colors.white,
+        color: Color(0xFFE6E7E8), // Fundo cinza para quem não tem foto
         shape: BoxShape.circle,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        'assets/images/empresa.png',
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.business_outlined,
-          color: AppColors.greyDarkest,
-          size: 28,
-        ),
-      ),
+      child: imageUrl != null
+          ? Image.network(
+              imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.broken_image_outlined,
+                color: AppColors.greyDarkest,
+                size: 28,
+              ),
+            )
+          : const Icon( // Ícone padrão caso o elemento ainda não tenha foto
+              Icons.business_outlined,
+              color: AppColors.greyDarkest,
+              size: 28,
+            ),
     );
   }
 }

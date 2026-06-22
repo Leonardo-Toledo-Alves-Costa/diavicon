@@ -1,4 +1,5 @@
-import 'dart:io'; // 🔥 Necessário para o FileImage
+import 'dart:io'; 
+import 'dart:typed_data'; 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
@@ -6,6 +7,7 @@ import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
+import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
 import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
@@ -45,9 +47,9 @@ class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
   const NovoElemEstruturalScreen({
     super.key,
     this.estruturaId,
-    this.initialNome = '', // 🔥 Alterado: agora vem vazio, sem o "ABC Corp." chato
-    this.initialMarcacao,  // 🔥 NOVO: Recebe a marcação vinda do Planejamento
-    this.initialPlantaUrl, // 🔥 NOVO: Recebe a URL da planta vinda do Planejamento
+    this.initialNome = '', 
+    this.initialMarcacao,  
+    this.initialPlantaUrl, 
     this.initialTipoElemento,
     this.initialTipologiaEstrutural,
     this.initialLocalElemento,
@@ -68,8 +70,8 @@ class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
 
   final String? estruturaId;
   final String initialNome;
-  final MarcacaoPlanta? initialMarcacao; // 🔥 NOVO
-  final String? initialPlantaUrl;        // 🔥 NOVO
+  final MarcacaoPlanta? initialMarcacao; 
+  final String? initialPlantaUrl;        
   final String? initialTipoElemento;
   final String? initialTipologiaEstrutural;
   final String? initialLocalElemento;
@@ -121,8 +123,11 @@ class _NovoElemEstruturalScreenState
   void initState() {
     super.initState();
     _nomeController = TextEditingController(text: widget.initialNome);
+
+    _nomeController.addListener(() {
+      if (mounted) setState(() {});
+    });
     
-    // 🔥 NOVO: Inicia a tela já com a marcação e a planta se vierem preenchidas
     _marcacaoPlanta = widget.initialMarcacao;
     _plantaUrlSelecionada = widget.initialPlantaUrl;
 
@@ -230,8 +235,14 @@ class _NovoElemEstruturalScreenState
     if (field == EstruturalDropdownField.localElemento) {
       novaOpcao = await showDialog<String>(
         context: context,
-        barrierColor: Colors.black.withValues(alpha: 0.42),
+        barrierColor: Colors.black.withOpacity(0.42),
         builder: (_) => const NovoLocalModal(),
+      );
+    } else if (field == EstruturalDropdownField.tipoElemento) {
+      novaOpcao = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.42),
+        builder: (_) => const NovoTipoElementoModal(),
       );
     } else if (widget.onAddOption != null) {
       setState(() => _fieldBeingAdded = field);
@@ -281,22 +292,36 @@ class _NovoElemEstruturalScreenState
   Future<void> _handleAddMarcacao() async {
     if (widget.estruturaId == null) return;
 
-    final planta = await showSelecionarPlantaPopup(context, widget.estruturaId!);
-    if (planta == null || !mounted) return;
+    String urlPlanta = _plantaUrlSelecionada ?? '';
+    String idPlanta = _marcacaoPlanta?.plantaId ?? '';
+
+    if (urlPlanta.isEmpty || idPlanta.isEmpty) {
+      final planta = await showSelecionarPlantaPopup(context, widget.estruturaId!);
+      if (planta == null || !mounted) return;
+      
+      urlPlanta = planta.arquivoUrl;
+      idPlanta = planta.id;
+    }
+
+    // Pega o nome atual digitado no campo (se houver)
+    final nomeDigitado = _nomeController.text.trim();
 
     final resultado = await showMarcacaoPlantaPopup(
       context,
-      arquivoUrl: planta.arquivoUrl, 
-      plantaId: planta.id,          
+      arquivoUrl: urlPlanta, 
+      plantaId: idPlanta,          
       inicial: _marcacaoPlanta,
+      nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null, // 🔥 Manda pro popup!
     );
 
     if (resultado == null || !mounted) return;
+    
     setState(() {
       _marcacaoPlanta = resultado;
-      _plantaUrlSelecionada = planta.arquivoUrl; 
+      _plantaUrlSelecionada = urlPlanta; 
     });
-    _showSnackBar('Marcação adicionada à planta.');
+    
+    _showSnackBar('Posição da marcação atualizada.');
   }
 
   Future<void> _handleSubmit() async {
@@ -361,7 +386,7 @@ class _NovoElemEstruturalScreenState
         posicaoX: draft.marcacao?.x, 
         posicaoY: draft.marcacao?.y,
         plantaId: draft.marcacao?.plantaId, 
-        tipoMarcacao: draft.marcacao?.tipoMarcacao, // 🔥 Envia o tipo (Retângulo/Círculo/Ponto)
+        tipoMarcacao: draft.marcacao?.tipoMarcacao, 
         ativo: true,
       ),
       estruturaId,
@@ -465,6 +490,8 @@ class _NovoElemEstruturalScreenState
 
   @override
   Widget build(BuildContext context) {
+    final nomeAtual = _nomeController.text.trim();
+
     return RightMenuBar(
       key: _rightMenuKey,
       onInformacoesPressed: widget.onOpenInformacoes,
@@ -508,6 +535,7 @@ class _NovoElemEstruturalScreenState
                             label: 'Nome do Elemento',
                             hint: 'Digite o nome',
                             controller: _nomeController,
+                            // Atualiza a tela se digitar o nome para o Card da Planta pegar!
                           ),
                           const SizedBox(height: 10),
                           _buildDropdownField(
@@ -536,6 +564,8 @@ class _NovoElemEstruturalScreenState
                             onPressed: widget.onPlanPressed ?? _handleAddMarcacao,
                             marcacao: _marcacaoPlanta,
                             arquivoUrl: _plantaUrlSelecionada,
+                            // 🔥 O Card agora também recebe o nome
+                            nomeElemento: nomeAtual.isNotEmpty ? nomeAtual : null,
                           ),
                           
                           const SizedBox(height: 18),
@@ -552,7 +582,7 @@ class _NovoElemEstruturalScreenState
                             value: _revestimento,
                             options: _revestimentoOptions,
                             field: EstruturalDropdownField.revestimento,
-                          ),
+          ),
                           const SizedBox(height: 24),
                           BiggerCustomButton(
                             text: _isSubmitting ? 'Salvando...' : 'Criar',
@@ -728,19 +758,19 @@ class _ElementoAvatar extends StatelessWidget {
 }
 
 class _PlanImageCard extends StatelessWidget {
-  const _PlanImageCard({this.onPressed, this.marcacao, this.arquivoUrl});
+  const _PlanImageCard({this.onPressed, this.marcacao, this.arquivoUrl, this.nomeElemento});
 
   final VoidCallback? onPressed;
   final MarcacaoPlanta? marcacao;
   final String? arquivoUrl;
+  final String? nomeElemento; // 🔥 Recebe o nome
 
   @override
   Widget build(BuildContext context) {
     final marcacao = this.marcacao;
     final url = arquivoUrl;
-    
-    // 🔥 Descobre se a URL atual é um PDF
     final isPdf = url != null && url.toLowerCase().contains('.pdf');
+    final bytesThumbnail = marcacao?.thumbnailBytes; 
 
     return GestureDetector(
       onTap: onPressed,
@@ -758,22 +788,31 @@ class _PlanImageCard extends StatelessWidget {
             builder: (context, constraints) {
               final w = constraints.maxWidth;
               final h = constraints.maxHeight;
+              
+              final temFundoReal = (bytesThumbnail != null) || (url != null && !isPdf);
+
               return Stack(
                 fit: StackFit.expand,
                 children: [
-                  // 🔥 Renderiza Ícone para PDF ou Imagem para os demais
-                  if (url != null)
-                    isPdf 
-                        ? const Center(child: Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D)))
-                        : Image.network(url, fit: BoxFit.cover)
+                  if (bytesThumbnail != null)
+                    Image.memory(bytesThumbnail, fit: BoxFit.cover)
+                  else if (url != null && !isPdf)
+                    Image.network(url, fit: BoxFit.cover)
+                  else if (isPdf)
+                    const Center(child: Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D)))
                   else
                     const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
                     
-                  if (marcacao != null)
+                  // 🔥 Substituído para o PinoDinamico
+                  if (marcacao != null && temFundoReal)
                     Positioned(
-                      left: (marcacao.x * w) - 11,
-                      top: (marcacao.y * h) - 11,
-                      child: MarcacaoBolinha(numero: marcacao.numero, tamanho: 22),
+                      left: (marcacao.x * w) - 13, // Ajustado de 11 para 13 (metade de 26)
+                      top: (marcacao.y * h) - 13,
+                      child: PinoDinamico(
+                        tipoMarcacao: marcacao.tipoMarcacao, 
+                        nomeElemento: nomeElemento, 
+                        numero: marcacao.numero
+                      ),
                     ),
                 ],
               );

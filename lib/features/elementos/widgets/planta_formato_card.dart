@@ -21,6 +21,9 @@ class PlantaFormatoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Descobre se estamos lidando com uma imagem só pelo nome da string
+    final esImagem = iconAsset.contains('image');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
       decoration: BoxDecoration(
@@ -47,12 +50,14 @@ class PlantaFormatoCard extends StatelessWidget {
                 SizedBox(
                   width: 39,
                   height: 39,
+                  // 🔥 Voltamos com o seu Image.asset para manter o seu PDF original!
                   child: Image.asset(
                     iconAsset,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(
-                      Icons.picture_as_pdf_outlined,
-                      color: Color(0xFF3E3E3D),
+                    // 🔥 O segredo está aqui: se a imagem não existir na pasta, ele mostra o ícone de erro certo!
+                    errorBuilder: (_, __, ___) => Icon(
+                      esImagem ? Icons.image_outlined : Icons.picture_as_pdf_outlined,
+                      color: const Color(0xFF3E3E3D),
                       size: 32,
                     ),
                   ),

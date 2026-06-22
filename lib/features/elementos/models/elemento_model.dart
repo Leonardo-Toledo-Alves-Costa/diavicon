@@ -1,8 +1,5 @@
 /// Modelo de um elemento estrutural, espelhando a tabela
 /// `elementos_estruturais` do Supabase.
-///
-/// Atenção: a coluna do banco se chama `topologia` (sem "i"), mas no app
-/// expomos como [tipologiaEstrutural] para casar com o front existente.
 class ElementoModel {
   final String id;
   final String? estruturaId;
@@ -16,6 +13,8 @@ class ElementoModel {
   final double? posicaoX;
   final double? posicaoY;
   final double? posicaoZ;
+  final String? plantaId; 
+  final String? tipoMarcacao; // 🔥 NOVO: Recebe o tipo da marcação (Retângulo, Círculo, Ponto)
   final String? dimensoes;
   final String? secao;
   final String? microclima;
@@ -38,6 +37,8 @@ class ElementoModel {
     this.posicaoX,
     this.posicaoY,
     this.posicaoZ,
+    this.plantaId,
+    this.tipoMarcacao, // 🔥 NOVO
     this.dimensoes,
     this.secao,
     this.microclima,
@@ -48,7 +49,6 @@ class ElementoModel {
     this.criadoEm,
   });
 
-  // Converte o JSON vindo do Supabase em um objeto Dart.
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
     return ElementoModel(
       id: map['id'] ?? '',
@@ -73,6 +73,8 @@ class ElementoModel {
       posicaoZ: map['posicao_z'] != null
           ? double.tryParse(map['posicao_z'].toString())
           : null,
+      plantaId: map['planta_id'],
+      tipoMarcacao: map['tipo_marcacao'], // 🔥 NOVO: Lê do banco
       dimensoes: map['dimensoes'],
       secao: map['secao'],
       microclima: map['microclima'],
@@ -88,8 +90,6 @@ class ElementoModel {
     );
   }
 
-  // Converte o objeto Dart em JSON para enviar ao Supabase.
-  // Só inclui campos não nulos; `id` e `criado_em` ficam por conta do banco.
   Map<String, dynamic> toMap() {
     return {
       if (id.isNotEmpty) 'id': id,
@@ -104,6 +104,8 @@ class ElementoModel {
       if (posicaoX != null) 'posicao_x': posicaoX,
       if (posicaoY != null) 'posicao_y': posicaoY,
       if (posicaoZ != null) 'posicao_z': posicaoZ,
+      if (plantaId != null) 'planta_id': plantaId,
+      if (tipoMarcacao != null) 'tipo_marcacao': tipoMarcacao, // 🔥 NOVO: Envia para o banco
       if (dimensoes != null) 'dimensoes': dimensoes,
       if (secao != null) 'secao': secao,
       if (microclima != null) 'microclima': microclima,
@@ -111,7 +113,6 @@ class ElementoModel {
       if (fotos != null) 'fotos': fotos,
       if (observacoes != null) 'observacoes': observacoes,
       if (ativo != null) 'ativo': ativo,
-      // criado_em é preenchido automaticamente pelo Supabase.
     };
   }
 }

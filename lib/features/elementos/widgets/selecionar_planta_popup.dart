@@ -1,67 +1,70 @@
+import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/features/elementos/widgets/novo_arquivo_popup.dart';
 import 'package:diavicon/features/elementos/widgets/planta_formato_card.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Import do Riverpod
 import 'package:google_fonts/google_fonts.dart';
 
-/// Uma planta/formato da estrutura exibida na seleção.
-///
-/// Mockado enquanto o upload de plantas reais não está disponível (outro dev
-/// cuida dessa parte). Quando o backend for liberado, esta lista deve vir do
-/// repositório de plantas da estrutura.
-class PlantaFormato {
-  const PlantaFormato({
-    required this.titulo,
-    required this.local,
-    required this.detalhe,
-    this.plantaAsset,
-  });
+// 🔥 Imports dos providers e models reais
+import '../models/planta_model.dart';
+import '../providers/plantas_provider.dart';
 
-  final String titulo;
-  final String local;
-  final String detalhe;
-
-  /// Asset da planta a ser usada no popup de marcação. Nulo usa o mock padrão.
-  final String? plantaAsset;
-}
-
-/// Plantas mockadas (espelham o design "Plantas e Formatos da Estrutura").
-const List<PlantaFormato> _plantasMock = <PlantaFormato>[
-  PlantaFormato(
-    titulo: 'Planta Baixa do Subsolo',
-    local: '2º Subsolo',
-    detalhe: '15 Marcações de Ensaio',
-  ),
-  PlantaFormato(
-    titulo: 'Proj Est Fundações',
-    local: '3º Subsolo',
-    detalhe: '05 Marcações de Ensaio',
-  ),
-  PlantaFormato(
-    titulo: 'Proj Est Vigas',
-    local: '2º Andar',
-    detalhe: '02 Marcações de Ensaio',
-  ),
-];
-
-/// Abre o popup "Plantas e Formatos da Estrutura" e devolve a [PlantaFormato]
-/// escolhida, ou `null` se o usuário fechar sem selecionar.
-Future<PlantaFormato?> showSelecionarPlantaPopup(BuildContext context) {
-  return showDialog<PlantaFormato>(
+/// Abre o popup "Plantas e Formatos da Estrutura" passando o [estruturaId] 
+/// e devolve a [PlantaModel] escolhida, ou `null` se o usuário fechar sem selecionar.
+Future<PlantaModel?> showSelecionarPlantaPopup(BuildContext context, String estruturaId) {
+  return showDialog<PlantaModel>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.42),
-    builder: (_) => const SelecionarPlantaPopup(),
+    builder: (_) => SelecionarPlantaPopup(estruturaId: estruturaId),
   );
 }
 
-/// Popup que lista as plantas/formatos da estrutura para o usuário escolher
-/// sobre qual planta fará a marcação.
-class SelecionarPlantaPopup extends StatelessWidget {
-  const SelecionarPlantaPopup({super.key, this.plantas = _plantasMock});
+/// Popup que lista as plantas reais da estrutura lidas do Supabase
+class SelecionarPlantaPopup extends ConsumerWidget { // 🔥 Alterado para ConsumerWidget
+  const SelecionarPlantaPopup({
+    super.key,
+    required this.estruturaId,
+  });
 
-  final List<PlantaFormato> plantas;
+  final String estruturaId;
+
+  // Função para chamar o botão de "Novo" de dentro deste popup
+  Future<void> _criarNovaPlanta(BuildContext context, WidgetRef ref) async {
+    final result = await showNovoArquivoPopup(context, estruturaId);
+    
+    if (result != null && context.mounted) {
+      try {
+        final arquivo = result.arquivo;
+        
+        await ref.read(plantaControllerProvider.notifier).salvarNovaPlanta(
+              estruturaId: estruturaId,
+              titulo: result.nome,
+              localVinculado: result.localId, 
+              caminhoLocal: arquivo.path!,
+              extensao: arquivo.extension ?? 'pdf',
+              tamanhoArquivo: '${(arquivo.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+            );
+
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Planta adicionada com sucesso!'), backgroundColor: Colors.green),
+          );
+        }
+      } catch (e) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao fazer upload: $e'), backgroundColor: AppColors.error),
+          );
+        }
+      }
+    }
+  }
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 🔥 Escuta as plantas em tempo real do banco de dados
+    final plantasAsync = ref.watch(plantasPorEstruturaProvider(estruturaId));
+
     final mediaQuery = MediaQuery.of(context);
     final largura = (mediaQuery.size.width - 32).clamp(280.0, 350.0).toDouble();
 
@@ -101,33 +104,67 @@ class SelecionarPlantaPopup extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 16),
-                // ── Busca (mock) + botão Novo (mock) ─────────────────────────
+                // ── Busca (mock) + botão Novo ─────────────────────────────────
                 Row(
                   children: [
                     const Expanded(child: _BuscaMock()),
                     const SizedBox(width: 12),
                     _NovoButton(
-                      onPressed: () => showNovoArquivoPopup(context),
+                      onPressed: () => _criarNovaPlanta(context, ref),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
-                // ── Lista de plantas ─────────────────────────────────────────
+                
+                // ── Lista de plantas real do Supabase ─────────────────────────
                 Flexible(
-                  child: SingleChildScrollView(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        for (final planta in plantas)
-                          PlantaFormatoCard(
-                            titulo: planta.titulo,
-                            local: planta.local,
-                            detalhe: planta.detalhe,
-                            onTap: () =>
-                                Navigator.of(context).pop<PlantaFormato>(planta),
-                          ),
-                      ],
+                  child: plantasAsync.when(
+                    loading: () => const Padding(
+                      padding: EdgeInsets.all(24.0),
+                      child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
                     ),
+                    error: (err, _) => Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(child: Text('Erro ao carregar plantas: $err', style: const TextStyle(color: AppColors.error))),
+                    ),
+                    data: (plantas) {
+                      if (plantas.isEmpty) {
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 32.0),
+                          child: Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.architecture, size: 48, color: Colors.grey),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'Nenhuma planta encontrada.',
+                                  style: GoogleFonts.lato(color: Colors.grey, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }
+
+                      return SingleChildScrollView(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            for (final planta in plantas)
+                              PlantaFormatoCard(
+                                titulo: planta.titulo,
+                                local: 'Ver Local', // Como mudamos o model, ajustaríamos aqui para buscar o nome se necessário
+                                detalhe: planta.tamanhoArquivo ?? 'Tamanho desconhecido',
+                                iconAsset: (planta.arquivoUrl.contains('.png') || planta.arquivoUrl.contains('.jpg')) 
+                                    ? 'assets/images/image_icon.png' 
+                                    : 'assets/images/pdf.png',
+                                onTap: () => Navigator.of(context).pop<PlantaModel>(planta), // Retorna a planta real
+                              ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
               ],
@@ -174,8 +211,6 @@ class _BuscaMock extends StatelessWidget {
   }
 }
 
-/// Botão "Novo" (mock — o cadastro de novas plantas é responsabilidade de
-/// outra parte do app).
 class _NovoButton extends StatelessWidget {
   const _NovoButton({this.onPressed});
 

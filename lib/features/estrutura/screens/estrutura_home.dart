@@ -218,7 +218,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const PlanejamentoScreen()),
+                MaterialPageRoute(builder: (_) =>  PlanejamentoScreen(estruturaId: estrutura.id)),
               );
             },
           ),

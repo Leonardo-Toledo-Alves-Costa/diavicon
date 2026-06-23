@@ -43,6 +43,8 @@ class CadastroR2Screen extends StatelessWidget {
     final extra = {...dadosCadastro, 'perfil': perfilKey};
     switch (perfilKey) {
       case 'engenheiro':
+        context.push('/register/cliente/gate', extra: extra);
+        break;
       case 'proprietario':
         context.push('/empresa/gate', extra: extra);
         break;

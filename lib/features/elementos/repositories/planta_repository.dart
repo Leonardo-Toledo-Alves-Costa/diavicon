@@ -16,7 +16,7 @@ class PlantaRepository {
     final nomeArquivo = '${estruturaId}_${DateTime.now().millisecondsSinceEpoch}.$extensao';
     final caminhoNoBucket = 'plantas/$nomeArquivo'; 
     
-    // 🔥 Usando o seu bucket "estruturas" que já existe e é público!
+    // Usa o seu bucket "estruturas" que já existe e é público
     await _client.storage
         .from('estruturas')
         .upload(caminhoNoBucket, File(caminhoLocal));
@@ -29,7 +29,7 @@ class PlantaRepository {
   // Salva os dados na tabela
   Future<PlantaModel> criarPlanta(PlantaModel planta) async {
     final response = await _client
-        .from('estruturas_plantas') // 🔥 Tabela nova no Supabase
+        .from('estruturas_plantas') 
         .insert(planta.toMap())
         .select()
         .single();

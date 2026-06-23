@@ -2,10 +2,9 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/features/elementos/widgets/novo_arquivo_popup.dart';
 import 'package:diavicon/features/elementos/widgets/planta_formato_card.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Import do Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 
-// 🔥 Imports dos providers e models reais
 import '../models/planta_model.dart';
 import '../providers/plantas_provider.dart';
 
@@ -20,7 +19,7 @@ Future<PlantaModel?> showSelecionarPlantaPopup(BuildContext context, String estr
 }
 
 /// Popup que lista as plantas reais da estrutura lidas do Supabase
-class SelecionarPlantaPopup extends ConsumerWidget { // 🔥 Alterado para ConsumerWidget
+class SelecionarPlantaPopup extends ConsumerWidget { 
   const SelecionarPlantaPopup({
     super.key,
     required this.estruturaId,
@@ -62,7 +61,6 @@ class SelecionarPlantaPopup extends ConsumerWidget { // 🔥 Alterado para Consu
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🔥 Escuta as plantas em tempo real do banco de dados
     final plantasAsync = ref.watch(plantasPorEstruturaProvider(estruturaId));
 
     final mediaQuery = MediaQuery.of(context);

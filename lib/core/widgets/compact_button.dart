@@ -7,7 +7,6 @@ class CompactButton extends StatelessWidget {
   final IconData? icon;
   final double? width;
   
-  // 🔥 NOVO: Parâmetros opcionais para o botão ser super flexível
   final double height;
   final Color? backgroundColor;
   final Color? foregroundColor;
@@ -31,7 +30,7 @@ class CompactButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Se não passarmos cor, ele assume o padrão (Laranja e Branco)
+   
     final bg = backgroundColor ?? AppColors.primary;
     final fg = foregroundColor ?? Colors.white;
     final iColor = iconColor ?? fg;
@@ -44,7 +43,7 @@ class CompactButton extends StatelessWidget {
           backgroundColor: bg,
           foregroundColor: fg,
           elevation: elevation,
-          padding: const EdgeInsets.symmetric(horizontal: 12), // Reduzido um pouco para caber textos grandes
+          padding: const EdgeInsets.symmetric(horizontal: 12), 
           shape: StadiumBorder(
             side: borderColor != null
                 ? BorderSide(color: borderColor!, width: 1.2)
@@ -63,10 +62,10 @@ class CompactButton extends StatelessWidget {
             Flexible(
               child: Text(
                 text,
-                textAlign: TextAlign.center, // 🔥 Importante para o \n funcionar bem
+                textAlign: TextAlign.center, 
                 style: const TextStyle(
                   fontSize: 14,
-                  fontWeight: FontWeight.w500, // Um pouco mais forte para leitura
+                  fontWeight: FontWeight.w500, 
                   fontFamily: 'Lato',
                   height: 1.2,
                 ),

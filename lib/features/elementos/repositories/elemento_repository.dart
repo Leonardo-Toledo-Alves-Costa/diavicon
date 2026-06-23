@@ -101,7 +101,6 @@ class ElementoRepository {
     final nomeArquivo =
         '$elementoId/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
-    // 🔥 CORREÇÃO: Lê o arquivo fisicamente usando o File do dart:io
     final arquivoFisico = File(caminhoLocalFoto);
 
     await _client.storage

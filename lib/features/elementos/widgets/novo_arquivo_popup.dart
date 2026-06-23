@@ -3,14 +3,14 @@ import 'package:diavicon/features/estrutura/models/local_model.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart'; 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Adicionado Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
 
 class NovoArquivoResult {
   const NovoArquivoResult({
     required this.nome,
-    required this.localId, // 🔥 Agora retornamos o ID do local do banco de dados
+    required this.localId, 
     required this.arquivo,
   });
 
@@ -28,7 +28,7 @@ Future<NovoArquivoResult?> showNovoArquivoPopup(BuildContext context, String est
   );
 }
 
-class NovoArquivoPopup extends ConsumerStatefulWidget { // 🔥 Convertido para ConsumerStatefulWidget
+class NovoArquivoPopup extends ConsumerStatefulWidget { 
   const NovoArquivoPopup({super.key, required this.estruturaId});
 
   final String estruturaId;
@@ -80,12 +80,12 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
     }
   }
 
-  // 🔥 Abre o modal de criar local e atualiza a lista do dropdown na hora
+  // Abre o modal de criar local e atualiza a lista do dropdown na hora
   Future<void> _criarNovoLocal() async {
     final novoLocalNome = await showDialog<String>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => const NovoLocalModal(), // Widget que você já tem criado
+      builder: (_) => const NovoLocalModal(), 
     );
 
     if (novoLocalNome != null && novoLocalNome.trim().isNotEmpty && mounted) {
@@ -109,7 +109,7 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Escutando a lista de locais reais vindas do Supabase
+    // Escutando a lista de locais reais vindas do Supabase
     final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId));
 
     final mediaQuery = MediaQuery.of(context);
@@ -255,7 +255,7 @@ class _LocalDropdown extends StatelessWidget {
   const _LocalDropdown({required this.valor, required this.onChanged, required this.locais});
   final String? valor;
   final ValueChanged<String?> onChanged;
-  final List<LocalModel> locais; // 🔥 Agora recebe a lista mapeada do banco de dados
+  final List<LocalModel> locais; 
 
   @override
   Widget build(BuildContext context) {
@@ -277,7 +277,7 @@ class _LocalDropdown extends StatelessWidget {
           items: [
             for (final local in locais)
               DropdownMenuItem<String>(
-                value: local.id, // 🔥 O valor do dropdown passa a ser o UUID
+                value: local.id, 
                 child: Text(local.nome),
               ),
           ],

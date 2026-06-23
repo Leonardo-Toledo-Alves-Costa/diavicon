@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'package:flutter/foundation.dart'; 
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Novo Import
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:pdfx/pdfx.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/elementos/models/elemento_model.dart'; // 🔥 Novo Import
-import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; // 🔥 Novo Import
+import 'package:diavicon/features/elementos/models/elemento_model.dart'; 
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -104,7 +104,7 @@ Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
   BuildContext context, {
   required String arquivoUrl,
   required String plantaId,
-  String? estruturaId, // 🔥 NOVO
+  String? estruturaId, 
   MarcacaoPlanta? inicial,
   int numero = 1,
   String? nomeElemento, 
@@ -115,7 +115,7 @@ Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
     builder: (_) => MarcacaoPlantaPopup(
       arquivoUrl: arquivoUrl,
       plantaId: plantaId,
-      estruturaId: estruturaId, // 🔥 REPASSA
+      estruturaId: estruturaId,
       marcacaoInicial: inicial,
       numero: numero,
       nomeElemento: nomeElemento, 
@@ -128,7 +128,7 @@ class MarcacaoPlantaPopup extends StatefulWidget {
     super.key,
     required this.arquivoUrl,
     required this.plantaId,
-    this.estruturaId, // 🔥 NOVO
+    this.estruturaId, 
     this.marcacaoInicial,
     this.numero = 1,
     this.nomeElemento, 
@@ -342,7 +342,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 BUSCA INTELIGENTE: Pega os pinos que já existem nesta planta
+    //  Pega os pinos que já existem nesta planta
     List<ElementoModel> pinosVizinhos = [];
     if (widget.estruturaId != null) {
       final elementosAsync = ref.watch(elementosPorEstruturaProvider(widget.estruturaId!));
@@ -381,7 +381,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                   Image.network(widget.arquivoUrl, fit: BoxFit.contain),
                 ],
 
-                // 🔥 CAMADA NOVA: Desenha os pinos que já existem (com opacidade reduzida)
+                //  Desenha os pinos que já existem (com opacidade reduzida)
                 ...pinosVizinhos.map((el) {
                   final xAbs = el.posicaoX! * constraints.maxWidth;
                   final yAbs = el.posicaoY! * constraints.maxHeight;
@@ -396,7 +396,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                     left: xAbs - (wPino / 2),
                     top: yAbs - (hPino / 2),
                     child: Opacity(
-                      opacity: 0.45, // 🔥 Transparente para indicar que é do "fundo"
+                      opacity: 0.45, //  Transparente para indicar que é do "fundo"
                       child: PinoDinamico(
                         tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
                         nomeElemento: el.nome,

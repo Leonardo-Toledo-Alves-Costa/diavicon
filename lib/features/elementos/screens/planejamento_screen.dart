@@ -53,7 +53,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _iniciarMarcacaoElemento(ElementoModel elemento) async {
     String formatoPadrao = 'Ponto'; // Fallback de segurança
     
-    // 🔥 BUSCA INTELIGENTE: Pergunta ao banco qual o formato gráfico daquele tipo!
+    // Pergunta ao banco qual o formato gráfico daquele tipo
     try {
       final resp = await Supabase.instance.client
           .from('tipos_elemento')
@@ -449,7 +449,7 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                     ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
                     : Image.network(widget.arquivoUrl),
 
-                // Camada Superior: Loop desenhando os pinos reais
+                // Loop desenhando os pinos reais
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -459,7 +459,7 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                           final xAbsoluto = el.posicaoX! * constraints.maxWidth;
                           final yAbsoluto = el.posicaoY! * constraints.maxHeight;
 
-                          // 🔥 Calcula o tamanho exato da forma para o "furo" ficar bem no centro
+                          // Calcula o tamanho exato da forma para o "furo" ficar bem no centro
                           final tipo = (el.tipoMarcacao ?? 'Retângulo').toLowerCase();
                           final isLinha = tipo == 'linha';
                           final isPonto = tipo == 'ponto';
@@ -470,7 +470,6 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                           return Positioned(
                             left: xAbsoluto - (larguraPino / 2), 
                             top: yAbsoluto - (alturaPino / 2),
-                            // 🔥 Chama o nosso Widget Inteligente!
                             child: PinoDinamico(
                               tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
                               nomeElemento: widget.mostrarNomes ? el.nome : null,

@@ -50,7 +50,7 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
                         loading: () => const Center(child: CircularProgressIndicator()),
                         error: (e, _) => Center(child: Text('Erro: $e')),
                         data: (elementos) {
-                          // 🔥 Só mostra elementos que não têm planta associada!
+                          //  Só mostra elementos que não têm planta associada
                           final naoPosicionados = elementos.where((el) => el.plantaId == null && el.ativo != false).toList();
                           
                           if (naoPosicionados.isEmpty) {
@@ -71,7 +71,7 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
                               final el = naoPosicionados[index];
                               return _ElementoCard(
                                 elemento: el,
-                                // 🔥 Retorna o elemento clicado para a tela anterior
+                                // Retorna o elemento clicado para a tela anterior
                                 onTap: () => Navigator.of(context).pop(el), 
                               );
                             },

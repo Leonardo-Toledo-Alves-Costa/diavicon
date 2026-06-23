@@ -8,7 +8,7 @@ class ElementoModel {
   final String? nome;
   final String? tipo;
   final String? local;
-  final String? tipologiaEstrutural; // DB: "topologia"
+  final String? tipologiaEstrutural; 
   final String? revestimento;
   final double? latitude;
   final double? longitude;
@@ -16,7 +16,7 @@ class ElementoModel {
   final double? posicaoY;
   final double? posicaoZ;
   final String? plantaId; 
-  final String? tipoMarcacao; // 🔥 NOVO: Recebe o tipo da marcação (Retângulo, Círculo, Ponto)
+  final String? tipoMarcacao;
   final String? dimensoes;
   final String? secao;
   final String? microclima;
@@ -40,7 +40,7 @@ class ElementoModel {
     this.posicaoY,
     this.posicaoZ,
     this.plantaId,
-    this.tipoMarcacao, // 🔥 NOVO
+    this.tipoMarcacao,
     this.dimensoes,
     this.secao,
     this.microclima,
@@ -53,7 +53,6 @@ class ElementoModel {
 
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
     
-    // 🔥 NOVA LÓGICA BLINDADA: Lê as fotos seja como Lista ou como Texto (JSON)
     List<String>? fotosParseadas;
     if (map['fotos'] != null) {
       if (map['fotos'] is List) {
@@ -93,7 +92,7 @@ class ElementoModel {
       secao: map['secao'],
       microclima: map['microclima'],
       caa: map['caa'],
-      fotos: fotosParseadas, // 🔥 Usa a nossa variável segura aqui!
+      fotos: fotosParseadas, 
       observacoes: map['observacoes'],
       ativo: map['ativo'], 
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
@@ -115,7 +114,7 @@ class ElementoModel {
       if (posicaoY != null) 'posicao_y': posicaoY,
       if (posicaoZ != null) 'posicao_z': posicaoZ,
       if (plantaId != null) 'planta_id': plantaId,
-      if (tipoMarcacao != null) 'tipo_marcacao': tipoMarcacao, // 🔥 NOVO: Envia para o banco
+      if (tipoMarcacao != null) 'tipo_marcacao': tipoMarcacao, 
       if (dimensoes != null) 'dimensoes': dimensoes,
       if (secao != null) 'secao': secao,
       if (microclima != null) 'microclima': microclima,

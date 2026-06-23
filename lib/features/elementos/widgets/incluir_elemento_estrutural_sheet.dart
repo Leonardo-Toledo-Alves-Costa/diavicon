@@ -14,7 +14,7 @@ class ElementoEstruturalOption {
     required this.title,
     required this.subtitle,
     required this.detail,
-    this.imageUrl, // 🔥 NOVO: Recebe a URL da foto
+    this.imageUrl, 
     this.incluido = true,
   });
 
@@ -22,7 +22,7 @@ class ElementoEstruturalOption {
   final String title;
   final String subtitle;
   final String detail;
-  final String? imageUrl; // 🔥 NOVO
+  final String? imageUrl;
 
   /// Se o elemento está atualmente incluído (visível) na estrutura. Reflete a
   /// coluna `ativo` no banco; controla o checkbox vir marcado ou não.
@@ -127,7 +127,7 @@ class _IncluirElementoEstruturalSheetState
       elemento.tipologiaEstrutural,
     ].where((parte) => parte != null && parte.trim().isNotEmpty).cast<String>();
 
-    // 🔥 NOVO: Puxa a primeira URL de foto se existir
+    // Puxa a primeira URL de foto se existir
     final imageUrl = (elemento.fotos != null && elemento.fotos!.isNotEmpty)
         ? elemento.fotos!.first
         : null;
@@ -470,7 +470,7 @@ class _ElementoSelectionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 15, 12),
             child: Row(
               children: [
-                // 🔥 NOVO: Repassa a URL para o avatar
+                // Repassa a URL para o avatar
                 _ElementoAvatar(imageUrl: elemento.imageUrl), 
                 const SizedBox(width: 15),
                 Expanded(
@@ -527,7 +527,6 @@ class _ElementoSelectionCard extends StatelessWidget {
   }
 }
 
-// 🔥 NOVO: Avatar atualizado para suportar Image.network
 class _ElementoAvatar extends StatelessWidget {
   const _ElementoAvatar({this.imageUrl});
 

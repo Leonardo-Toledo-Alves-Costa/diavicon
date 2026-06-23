@@ -105,7 +105,6 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        // 🔥 A MÁGICA ACONTECE AQUI
                         context.push('/recuperar-senha');
                       },
                       child: const Text(

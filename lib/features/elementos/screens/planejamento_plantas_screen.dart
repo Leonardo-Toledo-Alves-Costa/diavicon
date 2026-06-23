@@ -10,20 +10,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 
-// 🔥 Imports dos novos arquivos de planta que criamos
 
 /// Tela "Planejamento" da estrutura: lista as plantas/formatos cadastrados.
-class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para ConsumerWidget
+class PlanejamentoPlantasScreen extends ConsumerWidget { 
   const PlanejamentoPlantasScreen({
     super.key,
-    required this.estruturaId, // 🔥 Agora o ID da estrutura é obrigatório para buscar as plantas
+    required this.estruturaId, 
   });
 
   final String estruturaId;
 
-  // 🔥 Função que intercepta o arquivo do popup e envia para o controlador
+  // Função que intercepta o arquivo do popup e envia para o controlador
   Future<void> _adicionarNovaPlanta(BuildContext context, WidgetRef ref) async {
-    // 🔥 CORREÇÃO 1: Faltava passar o estruturaId aqui!
     final result = await showNovoArquivoPopup(context, estruturaId);
     
     if (result != null && context.mounted) {
@@ -34,7 +32,6 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
         await ref.read(plantaControllerProvider.notifier).salvarNovaPlanta(
               estruturaId: estruturaId,
               titulo: result.nome,
-              // 🔥 CORREÇÃO 2: Como localId agora é obrigatório no model, não precisa do "?? 'Não informado'"
               localVinculado: result.localId, 
               caminhoLocal: arquivo.path!,
               extensao: arquivo.extension ?? 'pdf',
@@ -63,10 +60,10 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // 🔥 Adicionado WidgetRef
-    // 🔥 Escuta a lista de plantas em tempo real
+  Widget build(BuildContext context, WidgetRef ref) { 
+    // Escuta a lista de plantas em tempo real
     final plantasAsync = ref.watch(plantasPorEstruturaProvider(estruturaId));
-    // 🔥 Escuta o estado de loading do upload
+    // Escuta o estado de loading do upload
     final isSubmitting = ref.watch(plantaControllerProvider);
     final locaisAsync = ref.watch(locaisPorEstruturaProvider(estruturaId));
 
@@ -141,7 +138,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
                   ),
                   const SizedBox(height: 20),
                   
-                  // 🔥 Tratamento do estado assíncrono do banco de dados
+                  // Tratamento do estado assíncrono do banco de dados
                   Expanded(
                     child: plantasAsync.when(
                       loading: () => const Center(
@@ -179,13 +176,13 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
                           itemBuilder: (context, index) {
                             final planta = plantas[index];
                             
-                            // 🔥 CORREÇÃO DO ÍCONE: Transforma a URL em minúsculo antes de checar
+                            // Transforma a URL em minúsculo antes de checar
                             final urlLower = planta.arquivoUrl.toLowerCase();
                             final esImagem = urlLower.contains('.png') || 
                                              urlLower.contains('.jpg') || 
                                              urlLower.contains('.jpeg');
 
-                            // 🔥 CORREÇÃO DO LOCAL: Traduz o ID (UUID) para o Nome real
+                            //  Traduz o ID (UUID) para o Nome real
                             final localReal = locais.firstWhere(
                               (l) => l.id == planta.localVinculado,
                               orElse: () => LocalModel(id: '', estruturaId: '', nome: 'Local desconhecido'),
@@ -193,7 +190,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
 
                             return PlantaFormatoCard(
                               titulo: planta.titulo,
-                              local: localReal.nome, // Mostra o nome bonito agora!
+                              local: localReal.nome,
                               detalhe: planta.tamanhoArquivo ?? 'Tamanho desconhecido',
                               iconAsset: esImagem ? 'assets/images/image_icon.png' : 'assets/images/pdf.png',
                               onTap: () async {
@@ -201,7 +198,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => PlanejamentoScreen(
-                                        // 🔥 O PARÂMETRO QUE FALTA: Passando o ID da estrutura
+                                        // Passando o ID da estrutura
                                         estruturaId: estruturaId, // ou 'estrutura.id', dependendo de como está o nome da sua variável nessa tela
                                         plantaId: planta.id,
                                         plantaUrl: planta.arquivoUrl,
@@ -221,7 +218,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget { // 🔥 Alterado para C
               ),
             ),
             
-            // 🔥 Overlay visual de bloqueio enquanto o arquivo sobe pro Storage
+            //  Overlay visual de bloqueio enquanto o arquivo sobe pro Storage
             if (isSubmitting)
               Container(
                 color: Colors.black.withOpacity(0.3),

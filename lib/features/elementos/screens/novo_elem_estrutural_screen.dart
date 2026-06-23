@@ -311,7 +311,7 @@ class _NovoElemEstruturalScreenState
       arquivoUrl: urlPlanta, 
       plantaId: idPlanta,          
       inicial: _marcacaoPlanta,
-      nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null, // 🔥 Manda pro popup!
+      nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null, 
     );
 
     if (resultado == null || !mounted) return;
@@ -564,7 +564,6 @@ class _NovoElemEstruturalScreenState
                             onPressed: widget.onPlanPressed ?? _handleAddMarcacao,
                             marcacao: _marcacaoPlanta,
                             arquivoUrl: _plantaUrlSelecionada,
-                            // 🔥 O Card agora também recebe o nome
                             nomeElemento: nomeAtual.isNotEmpty ? nomeAtual : null,
                           ),
                           
@@ -763,7 +762,7 @@ class _PlanImageCard extends StatelessWidget {
   final VoidCallback? onPressed;
   final MarcacaoPlanta? marcacao;
   final String? arquivoUrl;
-  final String? nomeElemento; // 🔥 Recebe o nome
+  final String? nomeElemento; 
 
   @override
   Widget build(BuildContext context) {
@@ -803,7 +802,6 @@ class _PlanImageCard extends StatelessWidget {
                   else
                     const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
                     
-                  // 🔥 Substituído para o PinoDinamico
                   if (marcacao != null && temFundoReal)
                     Positioned(
                       left: (marcacao.x * w) - 13, // Ajustado de 11 para 13 (metade de 26)

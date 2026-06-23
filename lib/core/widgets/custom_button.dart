@@ -59,7 +59,7 @@ class CustomButton extends StatelessWidget {
                       fontSize: fontSize,
                       fontWeight: fontWeight,
                       letterSpacing: 0.5,
-                      color: Colors.white, // Garante que a cor base seja branca se não passar estilo
+                      color: Colors.white, 
                     ),
                   ),
                   if (showArrow) ...[

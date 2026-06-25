@@ -1,21 +1,22 @@
+import 'dart:convert';
+
 /// Modelo de um elemento estrutural, espelhando a tabela
 /// `elementos_estruturais` do Supabase.
-///
-/// Atenção: a coluna do banco se chama `topologia` (sem "i"), mas no app
-/// expomos como [tipologiaEstrutural] para casar com o front existente.
 class ElementoModel {
   final String id;
   final String? estruturaId;
   final String? nome;
   final String? tipo;
   final String? local;
-  final String? tipologiaEstrutural; // DB: "topologia"
+  final String? tipologiaEstrutural; 
   final String? revestimento;
   final double? latitude;
   final double? longitude;
   final double? posicaoX;
   final double? posicaoY;
   final double? posicaoZ;
+  final String? plantaId; 
+  final String? tipoMarcacao;
   final String? dimensoes;
   final String? secao;
   final String? microclima;
@@ -38,6 +39,8 @@ class ElementoModel {
     this.posicaoX,
     this.posicaoY,
     this.posicaoZ,
+    this.plantaId,
+    this.tipoMarcacao,
     this.dimensoes,
     this.secao,
     this.microclima,
@@ -48,8 +51,28 @@ class ElementoModel {
     this.criadoEm,
   });
 
-  // Converte o JSON vindo do Supabase em um objeto Dart.
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
+    
+    List<String>? fotosParseadas;
+    if (map['fotos'] != null) {
+      if (map['fotos'] is List) {
+        // Se vier certinho como Lista, ótimo.
+        fotosParseadas = (map['fotos'] as List).map((e) => e.toString()).toList();
+      } else if (map['fotos'] is String) {
+        // Se vier como Texto (como está no seu JSON), tentamos decodificar!
+        try {
+          final decoded = jsonDecode(map['fotos']);
+          if (decoded is List) {
+            fotosParseadas = decoded.map((e) => e.toString()).toList();
+          } else {
+            fotosParseadas = [map['fotos']];
+          }
+        } catch (_) {
+          fotosParseadas = [map['fotos']]; // Se não for JSON, trata como URL única
+        }
+      }
+    }
+
     return ElementoModel(
       id: map['id'] ?? '',
       estruturaId: map['estrutura_id'],
@@ -58,38 +81,24 @@ class ElementoModel {
       local: map['local'],
       tipologiaEstrutural: map['topologia'],
       revestimento: map['revestimento'],
-      latitude: map['latitude'] != null
-          ? double.tryParse(map['latitude'].toString())
-          : null,
-      longitude: map['longitude'] != null
-          ? double.tryParse(map['longitude'].toString())
-          : null,
-      posicaoX: map['posicao_x'] != null
-          ? double.tryParse(map['posicao_x'].toString())
-          : null,
-      posicaoY: map['posicao_y'] != null
-          ? double.tryParse(map['posicao_y'].toString())
-          : null,
-      posicaoZ: map['posicao_z'] != null
-          ? double.tryParse(map['posicao_z'].toString())
-          : null,
+      latitude: map['latitude'] != null ? double.tryParse(map['latitude'].toString()) : null,
+      longitude: map['longitude'] != null ? double.tryParse(map['longitude'].toString()) : null,
+      posicaoX: map['posicao_x'] != null ? double.tryParse(map['posicao_x'].toString()) : null,
+      posicaoY: map['posicao_y'] != null ? double.tryParse(map['posicao_y'].toString()) : null,
+      posicaoZ: map['posicao_z'] != null ? double.tryParse(map['posicao_z'].toString()) : null,
+      plantaId: map['planta_id'],
+      tipoMarcacao: map['tipo_marcacao'],
       dimensoes: map['dimensoes'],
       secao: map['secao'],
       microclima: map['microclima'],
       caa: map['caa'],
-      fotos: map['fotos'] != null
-          ? (map['fotos'] as List).map((e) => e.toString()).toList()
-          : null,
+      fotos: fotosParseadas, 
       observacoes: map['observacoes'],
-      ativo: map['ativo'],
-      criadoEm: map['criado_em'] != null
-          ? DateTime.parse(map['criado_em'].toString())
-          : null,
+      ativo: map['ativo'], 
+      criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
     );
   }
 
-  // Converte o objeto Dart em JSON para enviar ao Supabase.
-  // Só inclui campos não nulos; `id` e `criado_em` ficam por conta do banco.
   Map<String, dynamic> toMap() {
     return {
       if (id.isNotEmpty) 'id': id,
@@ -104,6 +113,8 @@ class ElementoModel {
       if (posicaoX != null) 'posicao_x': posicaoX,
       if (posicaoY != null) 'posicao_y': posicaoY,
       if (posicaoZ != null) 'posicao_z': posicaoZ,
+      if (plantaId != null) 'planta_id': plantaId,
+      if (tipoMarcacao != null) 'tipo_marcacao': tipoMarcacao, 
       if (dimensoes != null) 'dimensoes': dimensoes,
       if (secao != null) 'secao': secao,
       if (microclima != null) 'microclima': microclima,
@@ -111,7 +122,6 @@ class ElementoModel {
       if (fotos != null) 'fotos': fotos,
       if (observacoes != null) 'observacoes': observacoes,
       if (ativo != null) 'ativo': ativo,
-      // criado_em é preenchido automaticamente pelo Supabase.
     };
   }
 }

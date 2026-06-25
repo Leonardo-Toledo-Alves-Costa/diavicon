@@ -14,7 +14,7 @@ class UsuarioModel {
   final String? linkedin;
   final String? instagram;
   final DateTime? criadoEm;
-  final bool? isAdminEmpresa; // 🔥 NOVA COLUNA AQUI
+  final bool? isAdminEmpresa; 
 
   UsuarioModel({
     required this.id,
@@ -32,7 +32,7 @@ class UsuarioModel {
     this.linkedin,
     this.instagram,
     this.criadoEm,
-    this.isAdminEmpresa, // 🔥 AQUI
+    this.isAdminEmpresa, 
   });
 
   factory UsuarioModel.fromMap(Map<String, dynamic> map) {
@@ -52,7 +52,7 @@ class UsuarioModel {
       linkedin: map['linkedin'],
       instagram: map['instagram'],
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
-      isAdminEmpresa: map['is_admin_empresa'], // 🔥 AQUI
+      isAdminEmpresa: map['is_admin_empresa'], 
     );
   }
 
@@ -72,7 +72,7 @@ class UsuarioModel {
       'foto_url': fotoUrl,
       'linkedin': linkedin,
       'instagram': instagram,
-      'is_admin_empresa': isAdminEmpresa ?? false, // 🔥 AQUI
+      'is_admin_empresa': isAdminEmpresa ?? false, 
     };
   }
 }

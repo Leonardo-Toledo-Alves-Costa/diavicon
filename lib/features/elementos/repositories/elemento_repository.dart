@@ -1,3 +1,4 @@
+import 'dart:io'; // 🔥 Necessário para ler o arquivo físico
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/elemento_model.dart';
 
@@ -100,9 +101,11 @@ class ElementoRepository {
     final nomeArquivo =
         '$elementoId/${DateTime.now().millisecondsSinceEpoch}.jpg';
 
+    final arquivoFisico = File(caminhoLocalFoto);
+
     await _client.storage
         .from('elementos-fotos')
-        .upload(nomeArquivo, Uri.file(caminhoLocalFoto) as dynamic);
+        .upload(nomeArquivo, arquivoFisico); // Envia o arquivo puro para o Supabase
 
     return _client.storage
         .from('elementos-fotos')

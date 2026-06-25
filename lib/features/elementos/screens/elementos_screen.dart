@@ -1,6 +1,10 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
@@ -676,8 +680,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                         color: AppColors.greyVeryLight,
                         image: isLocal
                             ? DecorationImage(
-                                image: FileImage(
-                                    Uri.file(foto) as dynamic),
+                                image: FileImage(File(foto)),
                                 fit: BoxFit.cover,
                               )
                             : DecorationImage(
@@ -710,11 +713,39 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     );
   }
 
+  // ── FUNÇÃO DE CROP DE IMAGEM ADICIONADA ────────────────────────────────────
   Future<void> _adicionarFoto() async {
-    // TODO: usar image_picker
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Seleção de foto em breve.')),
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80, // Compressão inicial
     );
+
+    if (pickedFile != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar Foto do Elemento',
+            toolbarColor: AppColors.primary,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false, // Permite formato livre para elementos estruturais
+          ),
+          IOSUiSettings(
+            title: 'Ajustar Foto',
+            cancelButtonTitle: 'Cancelar',
+            doneButtonTitle: 'Concluir',
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _novasFotos.add(croppedFile.path); 
+        });
+      }
+    }
   }
 
   void _removerFoto(int index) {
@@ -727,12 +758,31 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     });
   }
 
-  // ── Salvar ─────────────────────────────────────────────────────────────────
+  // ── Salvar e Fazer Upload ──────────────────────────────────────────────────
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _isLoading = true);
 
     try {
+      final repo = ref.read(elementoRepositoryProvider);
+      final List<String> fotosFinais = List.from(_fotosExistentes);
+
+      // 1. Upload das fotos cropadas pro Supabase Storage
+      if (_novasFotos.isNotEmpty) {
+        final elementoRefId = _isEditing 
+            ? widget.elemento!.id 
+            : 'novo_${DateTime.now().millisecondsSinceEpoch}';
+        
+        for (String caminhoLocal in _novasFotos) {
+          final urlPublica = await repo.uploadFoto(
+            elementoId: elementoRefId,
+            caminhoLocalFoto: caminhoLocal,
+          );
+          fotosFinais.add(urlPublica);
+        }
+      }
+
+      // 2. Monta o model
       final elemento = ElementoModel(
         id: widget.elemento?.id ?? '',
         nome: _nomeController.text.trim(),
@@ -747,17 +797,16 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         microclima: _microclimasSelecionado,
         caa: _caaSelecionada,
         estruturaId: widget.estruturaId,
-        fotos: _fotosExistentes,
+        fotos: fotosFinais.isNotEmpty ? fotosFinais : null,
         observacoes: _observacoesController.text.trim(),
         ativo: true,
       );
 
+      // 3. Salva no Supabase DB
       if (_isEditing) {
-        await ref.read(elementoRepositoryProvider).atualizarElemento(elemento);
+        await repo.atualizarElemento(elemento);
       } else {
-        await ref
-            .read(elementoRepositoryProvider)
-            .criarElemento(elemento, widget.estruturaId);
+        await repo.criarElemento(elemento, widget.estruturaId);
       }
 
       widget.onSalvo?.call();
@@ -776,7 +825,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar: $e')),
+          SnackBar(content: Text('Erro ao salvar: $e'), backgroundColor: AppColors.error),
         );
       }
     } finally {

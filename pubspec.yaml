@@ -44,6 +44,8 @@ dependencies:
 
   # Arquivos e mídia
   file_picker: ^11.0.2
+  pdfx: ^2.9.2
+  internet_file: ^1.3.0
 
   # Navegação
 

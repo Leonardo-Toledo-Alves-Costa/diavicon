@@ -22,7 +22,6 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
   bool _planoInicializado = false;
 
   int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) {
-
     int indicePlanoPadrao = 0;
 
     if (pontos <= 6){
@@ -34,7 +33,6 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
     else if (pontos >=20){
       indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'business');
     }
-
 
     if (indicePlanoPadrao != -1) {
       return indicePlanoPadrao;
@@ -49,6 +47,7 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
 
     return melhorIndex;
   }
+
   PlanosModel _planoAtivo(List<PlanosModel> planos, int pontos) {
     final index = _planoInicializado
         ? _planoPagina.clamp(0, planos.length - 1).toInt()
@@ -108,7 +107,9 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
       'plano_escolhido_features': plano.features,
     };
 
-    context.push('/cliente/welcome', extra: dadosComPlano);
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
+    // 🔥 AGORA VAI PARA O CADASTRO DA EMPRESA!
+    context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
   void _finalizarTrial() {
@@ -121,7 +122,10 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
       'plano_escolhido_features': null,
     };
 
-    context.push('/cliente/welcome', extra: dadosComPlano);
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
+
+    // 🔥 AGORA VAI PARA O CADASTRO DA EMPRESA!
+    context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
   String _formatarValor(double valor) {
@@ -190,7 +194,6 @@ class _Cadastro2ClienteState extends ConsumerState<Cadastro2Cliente> {
                               key: ValueKey(planoAtivo.id),
                               plano: planoAtivo,
                               isLoading: isLoading,
-
                             ),
                           ),
                         ),

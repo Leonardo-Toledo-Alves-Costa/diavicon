@@ -221,16 +221,18 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
           _paisController.text = 'Brasil';
           
           _cepBuscado = true;
-          // 🔥 A inteligência entra aqui: só bloqueia se tiver vindo preenchido da API!
-          _cidadeBloqueada = localidade.isNotEmpty;
-          _ruaBloqueada = logradouro.isNotEmpty;
-          _bairroBloqueado = bairro.isNotEmpty;
-          _estadoBloqueado = uf.isNotEmpty;
+          
+          // 🔥 INTELEGÊNCIA DO CEP: Só bloqueia o campo se a API realmente retornou o dado!
+          // Se vier em branco (vazio), a variável assume 'false' e o campo fica editável.
+          _cidadeBloqueada = localidade.toString().trim().isNotEmpty;
+          _ruaBloqueada = logradouro.toString().trim().isNotEmpty;
+          _bairroBloqueado = bairro.toString().trim().isNotEmpty;
+          _estadoBloqueado = uf.toString().trim().isNotEmpty;
 
           _carregandoCep = false;
         });
 
-        _mostrarAviso('Endereço comercial preenchido!', Colors.green);
+        _mostrarAviso('Endereço comercial carregado!', Colors.green);
 
       } else {
         _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);

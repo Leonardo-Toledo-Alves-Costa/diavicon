@@ -97,6 +97,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   }
 
   void _finalizarCadastroEmpresa(PlanosModel plano) {
+    // 1. Monta o pacote de dados
     final Map<String, dynamic> dadosComPlano = {
       ...widget.dadosUsuario,
       'perfil': 'Empresa',
@@ -109,7 +110,11 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': plano.features,
     };
 
-    context.push('/empresa/cadastro', extra: dadosComPlano);
+    // 2. 🔥 Salva no Riverpod de forma persistente durante a navegação
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
+
+    // 3. Navega limpo, sem passar 'extra'
+    context.go('/empresa/cadastro');
   }
 
   void _finalizarTrial() {
@@ -122,7 +127,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': null,
     };
 
-    context.push('/empresa/cadastro', extra: dadosComPlano);
+    context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
   String _formatarValor(double valor) {

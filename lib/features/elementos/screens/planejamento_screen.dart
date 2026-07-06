@@ -51,9 +51,8 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 
   Future<void> _iniciarMarcacaoElemento(ElementoModel elemento) async {
-    String formatoPadrao = 'Ponto'; // Fallback de segurança
+    String formatoPadrao = 'Retângulo'; 
     
-    // Pergunta ao banco qual o formato gráfico daquele tipo
     try {
       final resp = await Supabase.instance.client
           .from('tipos_elemento')
@@ -61,30 +60,33 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
           .eq('nome', elemento.tipo ?? '')
           .maybeSingle();
           
-      if (resp != null) {
-        formatoPadrao = resp['formato_marcacao']; // Recebe Linha, Círculo, Retângulo, etc.
+      if (resp != null && resp['formato_marcacao'] != null) {
+        formatoPadrao = resp['formato_marcacao']; 
       }
     } catch (e) {
-      debugPrint('Erro ao buscar formato: $e'); // Ignora e segue com 'Ponto'
+      debugPrint('Erro ao buscar formato: $e'); 
     }
 
     final resultado = await showMarcacaoPlantaPopup(
       context,
       arquivoUrl: widget.plantaUrl,
       plantaId: widget.plantaId,
-      estruturaId: widget.estruturaId, // 🔥 NOVO: Passa o ID para o popup ver os outros pinos
+      estruturaId: widget.estruturaId, 
       nomeElemento: elemento.nome,
       inicial: MarcacaoPlanta(
         x: 0.5, 
         y: 0.5, 
         plantaId: widget.plantaId,
         tipoMarcacao: formatoPadrao,
+        largura: 0.12, // Tamanho inicial padrão da área
+        altura: 0.06,
       ),
     );
 
     if (resultado == null) return;
 
     try {
+      // 🔥 AQUI SALVAMOS AS DIMENSÕES DA ÁREA NO BANCO!
       final elementoAtualizado = ElementoModel(
         id: elemento.id,
         estruturaId: elemento.estruturaId,
@@ -100,6 +102,8 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
         posicaoZ: elemento.posicaoZ,
         plantaId: widget.plantaId, 
         tipoMarcacao: resultado.tipoMarcacao, 
+        marcacaoLargura: resultado.largura, // 🔥 NOVO: Largura regulada
+        marcacaoAltura: resultado.altura,   // 🔥 NOVO: Altura regulada
         dimensoes: elemento.dimensoes,
         secao: elemento.secao,
         microclima: elemento.microclima,
@@ -327,8 +331,8 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                     height: 54,
                     backgroundColor: Colors.white,
                     foregroundColor: const Color(0xFF3E3E3D), 
-                    iconColor: AppColors.primary,             
-                    borderColor: const Color(0xFFD9D9D9),     
+                    iconColor: AppColors.primary,            
+                    borderColor: const Color(0xFFD9D9D9),    
                     elevation: 0,
                     onPressed: () {},
                   ),
@@ -449,7 +453,7 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                     ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
                     : Image.network(widget.arquivoUrl),
 
-                // Loop desenhando os pinos reais
+                // 🔥 AQUI RENDERIZAMOS OS PINOS REAIS COM AS DIMENSÕES SALVAS!
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -459,20 +463,18 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                           final xAbsoluto = el.posicaoX! * constraints.maxWidth;
                           final yAbsoluto = el.posicaoY! * constraints.maxHeight;
 
-                          // Calcula o tamanho exato da forma para o "furo" ficar bem no centro
-                          final tipo = (el.tipoMarcacao ?? 'Retângulo').toLowerCase();
-                          final isLinha = tipo == 'linha';
-                          final isPonto = tipo == 'ponto';
-                          
-                          final larguraPino = isLinha ? 50.0 : (isPonto ? 16.0 : 26.0);
-                          final alturaPino = isLinha ? 12.0 : (isPonto ? 16.0 : 26.0);
+                          // Resgata o tamanho salvo. Se for elemento antigo (null), assume o tamanho padrão.
+                          final wPino = (el.marcacaoLargura ?? 0.12) * constraints.maxWidth;
+                          final hPino = (el.marcacaoAltura ?? 0.06) * constraints.maxHeight;
 
                           return Positioned(
-                            left: xAbsoluto - (larguraPino / 2), 
-                            top: yAbsoluto - (alturaPino / 2),
+                            left: xAbsoluto - (wPino / 2), 
+                            top: yAbsoluto - (hPino / 2),
                             child: PinoDinamico(
                               tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
                               nomeElemento: widget.mostrarNomes ? el.nome : null,
+                              largura: wPino, // Passa a largura calculada para o widget
+                              altura: hPino,  // Passa a altura calculada para o widget
                             ),
                           );
                         }).toList(),

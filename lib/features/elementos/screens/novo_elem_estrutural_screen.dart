@@ -386,7 +386,9 @@ class _NovoElemEstruturalScreenState
         posicaoX: draft.marcacao?.x, 
         posicaoY: draft.marcacao?.y,
         plantaId: draft.marcacao?.plantaId, 
-        tipoMarcacao: draft.marcacao?.tipoMarcacao, 
+        tipoMarcacao: draft.marcacao?.tipoMarcacao,
+        marcacaoLargura: draft.marcacao?.largura,
+        marcacaoAltura: draft.marcacao?.altura,
         ativo: true,
       ),
       estruturaId,
@@ -803,15 +805,22 @@ class _PlanImageCard extends StatelessWidget {
                     const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
                     
                   if (marcacao != null && temFundoReal)
-                    Positioned(
-                      left: (marcacao.x * w) - 13, // Ajustado de 11 para 13 (metade de 26)
-                      top: (marcacao.y * h) - 13,
-                      child: PinoDinamico(
-                        tipoMarcacao: marcacao.tipoMarcacao, 
-                        nomeElemento: nomeElemento, 
-                        numero: marcacao.numero
-                      ),
-                    ),
+                    () {
+                      final wPino = marcacao.largura * w;
+                      final hPino = marcacao.altura * h;
+
+                      return Positioned(
+                        left: (marcacao.x * w) - (wPino / 2),
+                        top: (marcacao.y * h) - (hPino / 2),
+                        child: PinoDinamico(
+                          tipoMarcacao: marcacao.tipoMarcacao,
+                          nomeElemento: nomeElemento,
+                          numero: marcacao.numero,
+                          largura: wPino,
+                          altura: hPino,
+                        ),
+                      );
+                    }()
                 ],
               );
             },

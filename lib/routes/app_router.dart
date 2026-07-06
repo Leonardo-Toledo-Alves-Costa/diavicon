@@ -10,6 +10,10 @@ import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
 import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
 import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
+import 'package:diavicon/features/home/screens/perfil_Minha_Conta.dart';
+import 'package:diavicon/features/home/screens/perfil_Screen.dart';
+import 'package:diavicon/features/home/screens/perfil_drawer.dart';
+import 'package:diavicon/features/home/screens/perfil_notificacoes.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -164,7 +168,19 @@ final routerProvider = Provider<GoRouter>((ref) {
       // --- ROTAS PÚBLICAS / AUTH ---
       GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-
+      GoRoute(
+        path: '/perfis', builder: (context, state) => const PerfilDrawer(),
+        routes: [
+          GoRoute(path: 'perfil_dados',
+          builder: (context, state) => PerfilScreen(dadosCadastro: _routeExtra(state.extra)),
+          ),
+          GoRoute(path: 'perfil_minha_conta',
+          builder: (context, state) =>  PerfilMinhaConta(dadosCadastro: _routeExtra(state.extra)),
+          ),
+          GoRoute(path: 'perfil_notificacoes',
+          builder: (context, state) => const PerfilNotificacoes(),
+          ),
+          ]),
       // --- FLUXO DE CADASTRO ACADÊMICO E CLIENTE ---
       GoRoute(
         path: '/register',

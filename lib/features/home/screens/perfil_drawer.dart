@@ -42,7 +42,7 @@ class PerfilDrawer extends StatelessWidget {
                       shape: BoxShape.circle,
                       border: Border.all(color: Colors.orange, width: 2),
                       image: const DecorationImage(
-                        image: AssetImage('assets/images/foto_usuario.png'), // Substitua pela sua foto!
+                        image: AssetImage('assets/images/user.png'), // Substitua pela sua foto!
                         fit: BoxFit.cover,
                       ),
                     ),
@@ -85,9 +85,15 @@ class PerfilDrawer extends StatelessWidget {
                 children: [
                   Text('Destaques', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3E3E3D))),
                   const SizedBox(height: 12),
-                  _ListTileCard(icon: Icons.person_outline, label: 'Perfil', onTap: () {}),
-                  _ListTileCard(icon: Icons.manage_accounts_outlined, label: 'Minha Conta', onTap: () {}),
-                  _ListTileCard(icon: Icons.notifications_none, label: 'Notificações', onTap: () {}),
+                  _ListTileCard(icon: Icons.person_outline, label: 'Perfil', onTap: () {
+                    context.push('/perfis/perfil_dados');
+                  }),
+                  _ListTileCard(icon: Icons.manage_accounts_outlined, label: 'Minha Conta', onTap: () {
+                    context.push('/perfis/perfil_minha_conta');
+                  }),
+                  _ListTileCard(icon: Icons.notifications_none, label: 'Notificações', onTap: () {
+                    context.push('/perfis/perfil_notificacoes');
+                  }),
                   _ListTileCard(icon: Icons.shield_outlined, label: 'Privacidade', onTap: () {}),
                   
                   const SizedBox(height: 32),

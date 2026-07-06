@@ -33,9 +33,11 @@ class ProjetosHeader extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundImage: AssetImage('assets/images/user.png'),
+                  IconButton(
+                    icon:  Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                    onPressed: () {
+                      context.push('/perfis');
+                    },
                   ),
                   const Text(
                     'Projetos',

@@ -113,6 +113,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
         observacoes: elemento.observacoes,
         ativo: elemento.ativo,
         criadoEm: elemento.criadoEm,
+        marcacaoCor: resultado.cor,
+        marcacaoNomeX: resultado.nomeX,
+        marcacaoNomeY: resultado.nomeY,
       );
 
       await ref.read(elementoRepositoryProvider).atualizarElemento(elementoAtualizado);
@@ -458,27 +461,67 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
+                      final w = constraints.maxWidth;
+                      final h = constraints.maxHeight;
+
                       return Stack(
                         clipBehavior: Clip.none,
-                        children: elementosDaPlanta.map((el) {
-                          final xAbsoluto = el.posicaoX! * constraints.maxWidth;
-                          final yAbsoluto = el.posicaoY! * constraints.maxHeight;
+                        // Trocamos o .map pelo .expand para retornar 2 widgets por elemento (Pino e Nome)
+                        children: elementosDaPlanta.expand<Widget>((el) {
+                          final cx = el.posicaoX! * w;
+                          final cy = el.posicaoY! * h;
 
                           // Resgata o tamanho salvo. Se for elemento antigo (null), assume o tamanho padrão.
-                          final wPino = (el.marcacaoLargura ?? 0.12) * constraints.maxWidth;
-                          final hPino = (el.marcacaoAltura ?? 0.06) * constraints.maxHeight;
+                          final wPino = (el.marcacaoLargura ?? 0.12) * w;
+                          final hPino = (el.marcacaoAltura ?? 0.06) * h;
+                          
+                          // Trata a cor salva no banco
+                          final corVizinho = el.marcacaoCor != null 
+                              ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) 
+                              : Colors.orange;
 
-                          return Positioned(
-                            left: xAbsoluto - (wPino / 2), 
-                            top: yAbsoluto - (hPino / 2),
+                          // 1. O PINO
+                          final pino = Positioned(
+                            left: cx - (wPino / 2), 
+                            top: cy - (hPino / 2),
                             child: PinoDinamico(
                               tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
-                              nomeElemento: widget.mostrarNomes ? el.nome : null,
-                              largura: wPino, // Passa a largura calculada para o widget
-                              altura: hPino,  // Passa a altura calculada para o widget
+                              largura: wPino,
+                              altura: hPino,
                               rotacao: el.marcacaoRotacao ?? 0.0,
+                              corBase: corVizinho, // Passando a cor
                             ),
                           );
+
+                          // 2. O NOME SOLTO NA TELA (Só renderiza se mostrarNomes for true)
+                          Widget? nomeVizinho;
+                          if (widget.mostrarNomes && el.nome != null && el.nome!.isNotEmpty) {
+                             double nx = el.marcacaoNomeX ?? el.posicaoX!;
+                             double ny = el.marcacaoNomeY ?? el.posicaoY!;
+                             
+                             // Proteção para marcações antigas com bug de coordenada
+                             if (ny < -1.0 || ny > 2.0) { nx = el.posicaoX!; ny = el.posicaoY! - 0.06; }
+                             
+                             nomeVizinho = Positioned(
+                               left: nx * w, 
+                               top: ny * h,
+                               child: FractionalTranslation(
+                                 translation: const Offset(-0.5, -0.5), // Centraliza o texto no próprio eixo
+                                 child: Text(
+                                   el.nome!, 
+                                   style: TextStyle(
+                                     color: corVizinho, 
+                                     fontSize: 12, 
+                                     fontWeight: FontWeight.bold,
+                                     shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
+                                   )
+                                 ),
+                               ),
+                             );
+                          }
+
+                          // Retorna os dois na pilha!
+                          return [pino, if (nomeVizinho != null) nomeVizinho];
                         }).toList(),
                       );
                     },

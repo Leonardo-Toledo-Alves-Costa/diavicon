@@ -395,13 +395,13 @@ class _NovoElemEstruturalScreenState
         marcacaoLargura: draft.marcacao?.largura,
         marcacaoAltura: draft.marcacao?.altura,
         marcacaoRotacao: draft.marcacao?.rotacao,
+        marcacaoCor: draft.marcacao?.cor,
+        marcacaoNomeX: draft.marcacao?.nomeX,
+        marcacaoNomeY: draft.marcacao?.nomeY,
         ativo: true,
       ),
       estruturaId,
     );
-
-    // ✅ REMOVIDO: O ref.invalidate do provider de elementos.
-    // O stream do Supabase já atualiza a tela automaticamente!
   }
 
   List<String> _getOptionsList(EstruturalDropdownField field) {
@@ -883,7 +883,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
     final url = widget.arquivoUrl;
     final isPdf = url != null && url.toLowerCase().contains('.pdf');
     
-    // Se a marcação já vier com thumbnail usa ela, senão tenta usar o PDF renderizado!
     final bytesThumbnail = marcacao?.thumbnailBytes ?? _pdfBytes; 
     final temFundoReal = (bytesThumbnail != null) || (url != null && !isPdf);
 
@@ -899,50 +898,76 @@ class _PlanImageCardState extends State<_PlanImageCard> {
         padding: const EdgeInsets.all(5),
         child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-          child: ClipRect( // Garante que o pino não vaze pra fora da caixa
-            child: Center( // O Center faz a imagem não ser cortada e ficar proporcional!
+          child: ClipRect( 
+            child: Center( 
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // --- 1. A IMAGEM DE FUNDO QUE DITA O TAMANHO ---
+                  // --- 1. A IMAGEM DE FUNDO ---
                   if (_isLoadingPdf)
                     const CircularProgressIndicator(color: AppColors.primary)
                   else if (bytesThumbnail != null)
-                    Image.memory(bytesThumbnail) // Renderiza natural sem cortar
+                    Image.memory(bytesThumbnail) 
                   else if (url != null && !isPdf)
-                    Image.network(url) // Renderiza natural sem cortar
+                    Image.network(url) 
                   else if (isPdf)
                     const Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D))
                   else
                     const Icon(Icons.image_not_supported, color: Colors.grey),
 
-                  // --- 2. O PINO (ESCALADO PROPORCIONALMENTE) ---
+                  // --- 2. O PINO E O NOME (SEPARADOS) ---
                   if (marcacao != null && temFundoReal)
                     Positioned.fill(
                       child: LayoutBuilder(
                         builder: (context, constraints) {
-                          // Aqui o w e h são exatamente o tamanho da imagem renderizada
                           final w = constraints.maxWidth;
                           final h = constraints.maxHeight;
 
                           final wPino = marcacao.largura * w;
                           final hPino = marcacao.altura * h;
+                          
+                          // Resgata a cor salva
+                          final corSalva = Color(int.parse(marcacao.cor.replaceFirst('#', '0xff')));
+                          
+                          // Resgata a posição do nome (com proteção contra valores antigos)
+                          double nx = marcacao.nomeX;
+                          double ny = marcacao.nomeY;
+                          if (ny < -1.0 || ny > 2.0) { nx = marcacao.x; ny = marcacao.y - 0.06; }
 
                           return Stack(
                             clipBehavior: Clip.none,
                             children: [
+                              // DESENHA SÓ O PINO
                               Positioned(
                                 left: (marcacao.x * w) - (wPino / 2),
                                 top: (marcacao.y * h) - (hPino / 2),
                                 child: PinoDinamico(
                                   tipoMarcacao: marcacao.tipoMarcacao,
-                                  nomeElemento: widget.nomeElemento,
                                   numero: marcacao.numero,
                                   largura: wPino,
                                   altura: hPino,
                                   rotacao: marcacao.rotacao,
+                                  corBase: corSalva,
                                 ),
                               ),
+                              // DESENHA SÓ O NOME (Se existir)
+                              if (widget.nomeElemento != null && widget.nomeElemento!.isNotEmpty)
+                                Positioned(
+                                  left: nx * w, 
+                                  top: ny * h,
+                                  child: FractionalTranslation(
+                                    translation: const Offset(-0.5, -0.5),
+                                    child: Text(
+                                      widget.nomeElemento!,
+                                      style: TextStyle(
+                                        color: corSalva,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
+                                      )
+                                    ),
+                                  ),
+                                ),
                             ],
                           );
                         },

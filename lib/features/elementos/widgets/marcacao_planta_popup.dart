@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/foundation.dart'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:pdfx/pdfx.dart';
@@ -16,9 +17,10 @@ class MarcacaoPlanta {
     this.tipoMarcacao = 'Retângulo', this.numero = 1,
     this.thumbnailBytes, this.nomeElemento,
     this.largura = 0.08, this.altura = 0.06,  
+    this.rotacao = 0.0, // 🔥 NOVO: Rotação em graus
   });
 
-  final double x, y, largura, altura;
+  final double x, y, largura, altura, rotacao;
   final String plantaId, tipoMarcacao;
   final int numero;
   final Uint8List? thumbnailBytes;
@@ -26,30 +28,33 @@ class MarcacaoPlanta {
 
   MarcacaoPlanta copyWith({
     double? x, double? y, String? plantaId, String? tipoMarcacao, 
-    int? numero, Uint8List? thumbnailBytes, double? largura, double? altura,
+    int? numero, Uint8List? thumbnailBytes, double? largura, double? altura, double? rotacao,
   }) {
     return MarcacaoPlanta(
       x: x ?? this.x, y: y ?? this.y, plantaId: plantaId ?? this.plantaId,
       tipoMarcacao: tipoMarcacao ?? this.tipoMarcacao, numero: numero ?? this.numero,
       thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
       largura: largura ?? this.largura, altura: altura ?? this.altura,
+      rotacao: rotacao ?? this.rotacao,
     );
   }
 
   Map<String, dynamic> toPosicaoMap() => <String, dynamic>{
         'posicao_x': x, 'posicao_y': y, 'planta_id': plantaId,
         'tipo_marcacao': tipoMarcacao, 'marcacao_largura': largura, 'marcacao_altura': altura,
+        'marcacao_rotacao': rotacao, 
       };
 }
 
 class PinoDinamico extends StatelessWidget {
-  const PinoDinamico({super.key, required this.tipoMarcacao, this.nomeElemento, this.numero = 1, this.largura, this.altura, this.ocultarTexto = false});
+  const PinoDinamico({super.key, required this.tipoMarcacao, this.nomeElemento, this.numero = 1, this.largura, this.altura, this.ocultarTexto = false, this.rotacao = 0.0});
 
   final String tipoMarcacao;
   final String? nomeElemento;
   final int numero;
   final double? largura, altura;
   final bool ocultarTexto;
+  final double rotacao; // 🔥 NOVO
 
   @override
   Widget build(BuildContext context) {
@@ -68,19 +73,27 @@ class PinoDinamico extends StatelessWidget {
     return Stack(
       clipBehavior: Clip.none, alignment: Alignment.center,
       children: [
-        Container(
-          width: larguraPino, height: alturaPino, alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.45),
-            shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: (!isCirculo && !isLinha) ? BorderRadius.circular(4) : null,
-            border: Border.all(color: Colors.orange.shade900, width: 2),
-            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+        //  Transform.rotate gira apenas a figura
+        Transform.rotate(
+          angle: rotacao * (math.pi / 180), // Converte de graus para radianos
+          child: Container(
+            width: larguraPino, height: alturaPino, alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.orange.withValues(alpha: 0.45),
+              shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
+              borderRadius: (!isCirculo && !isLinha) ? BorderRadius.circular(4) : null,
+              border: Border.all(color: Colors.orange.shade900, width: 2),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+            ),
+            child: (!ocultarTexto && nomeElemento == null && tipo != 'ponto' && !isLinha) 
+                ? Transform.rotate( // Desfaz a rotação pro número ficar reto
+                    angle: -rotacao * (math.pi / 180),
+                    child: Text('$numero', style: GoogleFonts.lato(color: Colors.orange.shade900, fontSize: larguraPino > 24 ? 13 : 9, fontWeight: FontWeight.w900)),
+                  )
+                : null,
           ),
-          child: (!ocultarTexto && nomeElemento == null && tipo != 'ponto' && !isLinha) 
-              ? Text('$numero', style: GoogleFonts.lato(color: Colors.orange.shade900, fontSize: larguraPino > 24 ? 13 : 9, fontWeight: FontWeight.w900))
-              : null,
         ),
+        // O texto do nome do elemento fica de fora do Transform para não girar junto
         if (!ocultarTexto && nomeElemento != null)
           Positioned(
             top: -24,
@@ -128,6 +141,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
   String _tipoMarcacaoSelecionado = 'Retângulo'; 
   double _largura = 0.08;
   double _altura = 0.08;
+  double _rotacao = 0.0;
   ModoFerramenta _modoAtivo = ModoFerramenta.navegar;
 
   @override
@@ -147,6 +161,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
       
       _largura = widget.marcacaoInicial!.largura;
       _altura = widget.marcacaoInicial!.altura;
+      _rotacao = widget.marcacaoInicial!.rotacao;
       _modoAtivo = ModoFerramenta.mover; 
     }
   }
@@ -156,7 +171,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
       Navigator.of(context).pop(MarcacaoPlanta(
         x: _ponto!.dx, y: _ponto!.dy, plantaId: widget.plantaId, 
         tipoMarcacao: _tipoMarcacaoSelecionado, numero: widget.numero, 
-        largura: _largura, altura: _altura,
+        largura: _largura, altura: _altura, rotacao: _rotacao, 
       ));
     }
   }
@@ -188,8 +203,8 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
   }
 
   Widget _buildPainelDinamico() {
-    // 🔥 O SEGREDO DO LAYOUT ESTÁVEL: Todos os painéis têm minHeight de 90px.
-    // Assim o mapa nunca é esmagado quando você troca de ferramenta!
+    // Todos os painéis têm minHeight de 90px
+    // Assim o mapa nunca é esmagado quando troca de ferramenta
     if (_ponto == null) {
       return Container(
         constraints: const BoxConstraints(minHeight: 90),
@@ -275,6 +290,21 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                 ),
               ],
             ),
+            Row(
+              children: [
+                Icon(Icons.rotate_right, size: 18, color: Colors.orange.shade800),
+                Expanded(
+                  child: SliderTheme(
+                    data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                    child: Slider(
+                      value: _rotacao, min: 0, max: 360,
+                      activeColor: Colors.orange.shade600, inactiveColor: Colors.orange.shade200,
+                      onChanged: (val) => setState(() => _rotacao = val),
+                    ),
+                  ),
+                ),
+              ],
+            ),
         ],
       ),
     );
@@ -345,6 +375,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                         numero: widget.numero, ponto: _ponto, largura: _largura, altura: _altura,
                         tipoMarcacao: _tipoMarcacaoSelecionado, nomeElemento: widget.nomeElemento,   
                         modo: _modoAtivo,   
+                        rotacao: _rotacao,
                         onInitialTap: (pontoInicial) {
                           setState(() {
                             _ponto = pontoInicial;
@@ -375,17 +406,18 @@ class _PlantaInterativa extends ConsumerStatefulWidget {
     required this.arquivoUrl, required this.plantaId, this.estruturaId,
     required this.numero, required this.ponto, required this.largura, required this.altura,
     required this.tipoMarcacao, this.nomeElemento, required this.onChanged,
-    required this.modo, required this.onInitialTap,
+    required this.modo, required this.onInitialTap, required this.rotacao,
   });
 
   final String arquivoUrl, plantaId, tipoMarcacao;
   final String? estruturaId, nomeElemento;
   final int numero;
   final Offset? ponto;
-  final double largura, altura;
+  final double largura, altura, rotacao;
   final ModoFerramenta modo;
   final ValueChanged<Offset> onInitialTap;
   final ValueChanged<Offset> onChanged;
+
 
   @override
   ConsumerState<_PlantaInterativa> createState() => _PlantaInterativaState();
@@ -481,7 +513,15 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                           final hPino = (el.marcacaoAltura ?? 0.08) * h;
                           return Positioned(
                             left: cx - (wPino / 2), top: cy - (hPino / 2),
-                            child: Opacity(opacity: 0.35, child: PinoDinamico(tipoMarcacao: el.tipoMarcacao ?? 'Retângulo', largura: wPino, altura: hPino)),
+                            child: Opacity(
+                              opacity: 0.35, 
+                              child: PinoDinamico(
+                                tipoMarcacao: el.tipoMarcacao ?? 'Retângulo', 
+                                largura: wPino, 
+                                altura: hPino,
+                                rotacao: el.marcacaoRotacao ?? 0.0, // 🔥 AQUI: Gira os vizinhos também
+                              )
+                            ),
                           );
                         }),
 
@@ -498,9 +538,13 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                               // O pino agora é apenas visual, o usuário não clica nele
                               child: IgnorePointer(
                                 child: PinoDinamico(
-                                  tipoMarcacao: widget.tipoMarcacao, largura: wPixels, altura: hPixels,
-                                  numero: widget.numero, nomeElemento: widget.nomeElemento,
+                                  tipoMarcacao: widget.tipoMarcacao, 
+                                  largura: wPixels, 
+                                  altura: hPixels,
+                                  numero: widget.numero, 
+                                  nomeElemento: widget.nomeElemento,
                                   ocultarTexto: widget.modo == ModoFerramenta.redimensionar, 
+                                  rotacao: widget.rotacao, // 🔥 AQUI: Faz o pino girar ao vivo!
                                 ),
                               ),
                             );

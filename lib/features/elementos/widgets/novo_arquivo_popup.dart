@@ -162,11 +162,23 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                       child: locaisAsync.when(
                         loading: () => const Center(child: LinearProgressIndicator(color: AppColors.primary)),
                         error: (err, _) => Text('Erro ao carregar locais', style: TextStyle(color: AppColors.error, fontSize: 12)),
-                        data: (locais) => _LocalDropdown(
-                          valor: _localSelecionadoId,
-                          locais: locais,
-                          onChanged: (valor) => setState(() => _localSelecionadoId = valor),
-                        ),
+                        data: (locais) {
+                          // 🔥 TRATAMENTO DE LISTA VAZIA
+                          if (locais.isEmpty) {
+                            return _EmptyLocalButton(onPressed: _criarNovoLocal);
+                          }
+                          
+                          // Garante que o valor selecionado seja válido
+                          if (_localSelecionadoId != null && !locais.any((l) => l.id == _localSelecionadoId)) {
+                             _localSelecionadoId = null;
+                          }
+
+                          return _LocalDropdown(
+                            valor: _localSelecionadoId,
+                            locais: locais,
+                            onChanged: (valor) => setState(() => _localSelecionadoId = valor),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -395,6 +407,33 @@ class _CloseButton extends StatelessWidget {
         padding: EdgeInsets.zero,
         splashRadius: 18,
         icon: Icon(Icons.close, color: const Color(0xFF626365).withOpacity(0.40), size: 24),
+      ),
+    );
+  }
+}
+
+// arquivo: novo_arquivo_popup.dart
+class _EmptyLocalButton extends StatelessWidget {
+  const _EmptyLocalButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.greyVeryLight,
+          border: Border.all(color: AppColors.error.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Nenhum local cadastrado. Toque no +',
+          style: GoogleFonts.lato(color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

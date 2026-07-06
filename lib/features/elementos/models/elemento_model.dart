@@ -26,9 +26,9 @@ class ElementoModel {
   final bool? ativo;
   final DateTime? criadoEm;
   
-  // 🔥 AQUI ESTÃO OS DOIS CAMPOS QUE ESTAVAM FALTANDO:
   final double? marcacaoLargura;
   final double? marcacaoAltura;
+  final double? marcacaoRotacao; // 🔥 NOVO: Campo de rotação
 
   ElementoModel({
     required this.id,
@@ -53,8 +53,9 @@ class ElementoModel {
     this.observacoes,
     this.ativo,
     this.criadoEm,
-    this.marcacaoLargura, // 🔥 Adicionado no construtor
-    this.marcacaoAltura,  // 🔥 Adicionado no construtor
+    this.marcacaoLargura,
+    this.marcacaoAltura,
+    this.marcacaoRotacao, // 🔥 Adicionado no construtor
   });
 
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
@@ -101,6 +102,7 @@ class ElementoModel {
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
       marcacaoLargura: map['marcacao_largura'] != null ? double.tryParse(map['marcacao_largura'].toString()) : null,
       marcacaoAltura: map['marcacao_altura'] != null ? double.tryParse(map['marcacao_altura'].toString()) : null,
+      marcacaoRotacao: map['marcacao_rotacao'] != null ? double.tryParse(map['marcacao_rotacao'].toString()) : null, // 🔥 NOVO
     );
   }
 
@@ -129,6 +131,7 @@ class ElementoModel {
       if (ativo != null) 'ativo': ativo,
       if (marcacaoLargura != null) 'marcacao_largura': marcacaoLargura,
       if (marcacaoAltura != null) 'marcacao_altura': marcacaoAltura,
+      if (marcacaoRotacao != null) 'marcacao_rotacao': marcacaoRotacao, // 🔥 NOVO
     };
   }
 }

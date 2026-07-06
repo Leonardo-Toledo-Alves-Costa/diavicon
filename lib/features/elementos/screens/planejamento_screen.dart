@@ -102,8 +102,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
         posicaoZ: elemento.posicaoZ,
         plantaId: widget.plantaId, 
         tipoMarcacao: resultado.tipoMarcacao, 
-        marcacaoLargura: resultado.largura, // 🔥 NOVO: Largura regulada
-        marcacaoAltura: resultado.altura,   // 🔥 NOVO: Altura regulada
+        marcacaoLargura: resultado.largura, 
+        marcacaoAltura: resultado.altura, 
+        marcacaoRotacao: resultado.rotacao, 
         dimensoes: elemento.dimensoes,
         secao: elemento.secao,
         microclima: elemento.microclima,
@@ -475,6 +476,7 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                               nomeElemento: widget.mostrarNomes ? el.nome : null,
                               largura: wPino, // Passa a largura calculada para o widget
                               altura: hPino,  // Passa a altura calculada para o widget
+                              rotacao: el.marcacaoRotacao ?? 0.0,
                             ),
                           );
                         }).toList(),

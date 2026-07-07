@@ -35,6 +35,49 @@ class PlanejamentoScreen extends ConsumerStatefulWidget {
 class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   int _abaSelecionada = 0; 
   bool _visualizarNomeElementos = true;
+  
+  double _tamanhoFonteNome = 12.0;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPreferenciasPlanta();
+  }
+
+  // Busca como a planta foi salva da última vez
+  Future<void> _carregarPreferenciasPlanta() async {
+    try {
+      final resp = await Supabase.instance.client
+          .from('plantas') // Ajuste se a tabela tiver outro nome
+          .select('mostrar_nomes, tamanho_fonte_nomes')
+          .eq('id', widget.plantaId)
+          .maybeSingle();
+          
+      if (resp != null && mounted) {
+        setState(() {
+          if (resp['mostrar_nomes'] != null) _visualizarNomeElementos = resp['mostrar_nomes'];
+          if (resp['tamanho_fonte_nomes'] != null) _tamanhoFonteNome = (resp['tamanho_fonte_nomes'] as num).toDouble();
+        });
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar preferências da planta: $e');
+    }
+  }
+
+  //  Salva as configurações sempre que o usuário mexer
+  Future<void> _salvarPreferenciasPlanta() async {
+    try {
+      await Supabase.instance.client
+          .from('plantas') // Ajuste se a tabela tiver outro nome
+          .update({
+            'mostrar_nomes': _visualizarNomeElementos,
+            'tamanho_fonte_nomes': _tamanhoFonteNome,
+          })
+          .eq('id', widget.plantaId);
+    } catch (e) {
+      debugPrint('Erro ao salvar preferências da planta: $e');
+    }
+  }
 
   void _abrirSeletorElementosParaPosicionar() async {
     final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
@@ -78,15 +121,16 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
         y: 0.5, 
         plantaId: widget.plantaId,
         tipoMarcacao: formatoPadrao,
-        largura: 0.12, // Tamanho inicial padrão da área
+        largura: 0.12, 
         altura: 0.06,
+        nomeX: 0.5,        // 🔥 Adicionado para nascer no meio (X)
+        nomeY: 0.5 - 0.06, // 🔥 Adicionado para nascer logo acima do pino (Y)
       ),
     );
 
     if (resultado == null) return;
 
     try {
-      // 🔥 AQUI SALVAMOS AS DIMENSÕES DA ÁREA NO BANCO!
       final elementoAtualizado = ElementoModel(
         id: elemento.id,
         estruturaId: elemento.estruturaId,
@@ -183,11 +227,8 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
       padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(border: Border.all(color: const Color(0xFF686868)), borderRadius: BorderRadius.circular(8)),
-            child: Image.asset('assets/images/pdf.png', width: 28, height: 28),
-          ),
+          // 🔥 Removido o Container com a borda! Apenas a imagem do PDF agora.
+          Image.asset('assets/images/pdf.png', width: 36, height: 36),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
@@ -243,22 +284,85 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
           child: Row(
             children: [
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: Checkbox(
-                  value: _visualizarNomeElementos,
-                  activeColor: AppColors.primary,
-                  onChanged: (val) {
-                    if (val != null) setState(() => _visualizarNomeElementos = val);
-                  },
+              Expanded(
+                child: FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    'Nome dos elementos', 
+                    style: GoogleFonts.lato(fontSize: 15, fontWeight: FontWeight.w600, color: const Color(0xFF3E3E3D)),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text('Visualizar nome dos elementos', style: GoogleFonts.lato(fontSize: 16, color: const Color(0xFF3E3E3D))),
+              
+              // O OLHINHO
+              IconButton(
+                icon: Icon(
+                  _visualizarNomeElementos ? Icons.visibility : Icons.visibility_off,
+                  color: _visualizarNomeElementos ? AppColors.primary : AppColors.greyMedium,
+                  size: 24,
+                ),
+                padding: const EdgeInsets.symmetric(horizontal: 4),
+                constraints: const BoxConstraints(),
+                onPressed: () {
+                  setState(() => _visualizarNomeElementos = !_visualizarNomeElementos);
+                  _salvarPreferenciasPlanta(); // Salva no banco!
+                },
+              ),
+              
+              // 🔥 SOLUÇÃO: Usamos o widget Visibility com maintainSize para travar o layout
+              Visibility(
+                visible: _visualizarNomeElementos,
+                maintainSize: true, // Mantém o espaço reservado mesmo escondido!
+                maintainAnimation: true,
+                maintainState: true,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 8.0),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF5F5F5), 
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.remove_circle_outline, color: AppColors.greyMedium, size: 22),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            setState(() {
+                              if (_tamanhoFonteNome > 2.0) _tamanhoFonteNome -= 2.0; 
+                            });
+                            _salvarPreferenciasPlanta(); 
+                          },
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          '${_tamanhoFonteNome.toInt()}', 
+                          style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.add_circle_outline, color: AppColors.primary, size: 22),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                          onPressed: () {
+                            setState(() {
+                              if (_tamanhoFonteNome < 32.0) _tamanhoFonteNome += 2.0; 
+                            });
+                            _salvarPreferenciasPlanta(); 
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             ],
           ),
         ),
@@ -272,6 +376,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
               estruturaId: widget.estruturaId,
               plantaId: widget.plantaId,
               mostrarNomes: _visualizarNomeElementos,
+              tamanhoFonteNome: _tamanhoFonteNome, 
             ),
           ),
         ),
@@ -318,6 +423,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
               estruturaId: widget.estruturaId,
               plantaId: widget.plantaId,
               mostrarNomes: false,
+              tamanhoFonteNome: _tamanhoFonteNome, // 🔥 Passa a variável (mesmo com os nomes desligados)
             ),
           ),
         ),
@@ -384,12 +490,14 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
     required this.estruturaId,
     required this.plantaId,
     required this.mostrarNomes,
+    required this.tamanhoFonteNome, // 🔥 NOVO: Recebendo a variável do pai
   });
 
   final String arquivoUrl;
   final String estruturaId;
   final String plantaId;
   final bool mostrarNomes;
+  final double tamanhoFonteNome; // 🔥 NOVO
 
   @override
   ConsumerState<_VisualizadorPlantaPlanejamento> createState() => _VisualizadorPlantaPlanejamentoState();
@@ -457,7 +565,6 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                     ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
                     : Image.network(widget.arquivoUrl),
 
-                // 🔥 AQUI RENDERIZAMOS OS PINOS REAIS COM AS DIMENSÕES SALVAS!
                 Positioned.fill(
                   child: LayoutBuilder(
                     builder: (context, constraints) {
@@ -466,21 +573,17 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
 
                       return Stack(
                         clipBehavior: Clip.none,
-                        // Trocamos o .map pelo .expand para retornar 2 widgets por elemento (Pino e Nome)
                         children: elementosDaPlanta.expand<Widget>((el) {
                           final cx = el.posicaoX! * w;
                           final cy = el.posicaoY! * h;
 
-                          // Resgata o tamanho salvo. Se for elemento antigo (null), assume o tamanho padrão.
                           final wPino = (el.marcacaoLargura ?? 0.12) * w;
                           final hPino = (el.marcacaoAltura ?? 0.06) * h;
                           
-                          // Trata a cor salva no banco
                           final corVizinho = el.marcacaoCor != null 
                               ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) 
                               : Colors.orange;
 
-                          // 1. O PINO
                           final pino = Positioned(
                             left: cx - (wPino / 2), 
                             top: cy - (hPino / 2),
@@ -489,38 +592,41 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                               largura: wPino,
                               altura: hPino,
                               rotacao: el.marcacaoRotacao ?? 0.0,
-                              corBase: corVizinho, // Passando a cor
+                              corBase: corVizinho, 
                             ),
                           );
 
-                          // 2. O NOME SOLTO NA TELA (Só renderiza se mostrarNomes for true)
                           Widget? nomeVizinho;
                           if (widget.mostrarNomes && el.nome != null && el.nome!.isNotEmpty) {
                              double nx = el.marcacaoNomeX ?? el.posicaoX!;
                              double ny = el.marcacaoNomeY ?? el.posicaoY!;
                              
-                             // Proteção para marcações antigas com bug de coordenada
-                             if (ny < -1.0 || ny > 2.0) { nx = el.posicaoX!; ny = el.posicaoY! - 0.06; }
+                             if (ny < -1.0 || ny > 2.0 || (nx == 0.0 && ny == 0.0)) { 
+                               nx = el.posicaoX!; 
+                               ny = el.posicaoY! - 0.06; 
+                             }
                              
                              nomeVizinho = Positioned(
                                left: nx * w, 
                                top: ny * h,
-                               child: FractionalTranslation(
-                                 translation: const Offset(-0.5, -0.5), // Centraliza o texto no próprio eixo
-                                 child: Text(
-                                   el.nome!, 
-                                   style: TextStyle(
-                                     color: corVizinho, 
-                                     fontSize: 12, 
-                                     fontWeight: FontWeight.bold,
-                                     shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
-                                   )
+                               // 🔥 A MÁGICA AQUI: IgnorePointer faz os cliques atravessarem o texto!
+                               child: IgnorePointer(
+                                 child: FractionalTranslation(
+                                   translation: const Offset(-0.5, -0.5),
+                                   child: Text(
+                                     el.nome!, 
+                                     style: TextStyle(
+                                       color: corVizinho, 
+                                       fontSize: widget.tamanhoFonteNome, // (Ou 12, dependendo de como está o seu código atual)
+                                       fontWeight: FontWeight.bold,
+                                       shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
+                                     )
+                                   ),
                                  ),
                                ),
                              );
                           }
 
-                          // Retorna os dois na pilha!
                           return [pino, if (nomeVizinho != null) nomeVizinho];
                         }).toList(),
                       );

@@ -81,29 +81,22 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
   }
 
   // Abre o modal de criar local e atualiza a lista do dropdown na hora
+  // Abre o modal de criar local, o próprio modal salva no banco, e devolve o ID!
   Future<void> _criarNovoLocal() async {
-    final novoLocalNome = await showDialog<String>(
+    final novoLocalId = await showDialog<String>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => const NovoLocalModal(), 
+      // 🔥 AQUI: Agora passamos o estruturaId pro Modal fazer o trabalho duro!
+      builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId), 
     );
 
-    if (novoLocalNome != null && novoLocalNome.trim().isNotEmpty && mounted) {
-      try {
-        final repo = ref.read(localRepositoryProvider);
-        final localSalvo = await repo.criarLocal(widget.estruturaId, novoLocalNome.trim());
-        
-        // Invalida o provider para recarregar do banco de dados
-        ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
-        
-        setState(() {
-          _localSelecionadoId = localSalvo.id; // Já deixa o novo local selecionado
-        });
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar local: $e'), backgroundColor: AppColors.error),
-        );
-      }
+    if (novoLocalId != null && mounted) {
+      // Como o Modal já salvou no Supabase, nós só atualizamos a lista da tela
+      ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
+      
+      setState(() {
+        _localSelecionadoId = novoLocalId; // Já seleciona o dropdown magicamente
+      });
     }
   }
 

@@ -130,7 +130,6 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
   double _nomeX = 0.0;
   double _nomeY = 0.0;
 
-  // 🔥 NOVO: Lista estática! Ela não zera quando fecha o popup, lembrando as escolhas do usuário
   static final List<String> _coresSalvas = ['#FF9800', '#F44336', '#2196F3']; 
 
   @override
@@ -139,7 +138,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
     if (widget.marcacaoInicial != null) {
       _ponto = Offset(widget.marcacaoInicial!.x, widget.marcacaoInicial!.y);
       final tipoSalvo = widget.marcacaoInicial!.tipoMarcacao;
-      if (tipoSalvo.isNotEmpty && ['Retângulo', 'Círculo', 'Linha', 'Ponto'].contains(tipoSalvo)) {
+      if (tipoSalvo.isNotEmpty && ['Retângulo', 'Círculo'].contains(tipoSalvo)) {
         _tipoMarcacaoSelecionado = tipoSalvo;
       }
       _largura = widget.marcacaoInicial!.largura;
@@ -154,7 +153,6 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
         _nomeY = _ponto!.dy - 0.06;
       }
 
-      // 🔥 NOVO: Se o elemento já tiver uma cor que não está na lista, adiciona ela!
       if (!_coresSalvas.contains(_corSelecionada)) {
         _coresSalvas.add(_corSelecionada);
       }
@@ -216,8 +214,6 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
             onPressed: () {
               setState(() {
                 _corSelecionada = '#${corTemporaria.value.toRadixString(16).substring(2).toUpperCase()}';
-                
-                // 🔥 NOVO: Adiciona a cor escolhida à lista se ela ainda não existir
                 if (!_coresSalvas.contains(_corSelecionada)) {
                   _coresSalvas.add(_corSelecionada);
                 }
@@ -243,7 +239,6 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                // 🔥 NOVO: Agora usa a nossa lista estática em vez de uma lista fixa
                 ..._coresSalvas.map((cor) {
                   final isSelected = _corSelecionada == cor;
                   return GestureDetector(
@@ -411,7 +406,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                                   enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
                                 ),
                                 style: AppTextStyles.corpoTextoEscuro,
-                                items: ['Retângulo', 'Círculo', 'Linha', 'Ponto']
+                                items: ['Retângulo', 'Círculo']
                                     .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                                     .toList(),
                                 onChanged: (val) => setState(() => _tipoMarcacaoSelecionado = val!),
@@ -527,7 +522,7 @@ class PinoDinamico extends StatelessWidget {
     this.ocultarTexto = false, 
     this.rotacao = 0.0,
     this.corBase = Colors.orange,
-    this.mostrarNumero = false, // 🔥 NOVO: Agora inicia oculto por padrão!
+    this.mostrarNumero = false, 
   });
 
   final String tipoMarcacao;
@@ -536,22 +531,15 @@ class PinoDinamico extends StatelessWidget {
   final bool ocultarTexto;
   final double rotacao;
   final Color corBase;
-  final bool mostrarNumero; // 🔥 NOVO
+  final bool mostrarNumero; 
 
   @override
   Widget build(BuildContext context) {
-    final tipo = tipoMarcacao.toLowerCase();
-    final isCirculo = tipo == 'círculo' || tipo == 'ponto';
-    final isLinha = tipo == 'linha';
+    final isCirculo = tipoMarcacao.toLowerCase() == 'círculo';
 
     double larguraPino = largura ?? 26.0;
     double alturaPino = altura ?? 26.0;
     
-    if (largura == null && altura == null) {
-      if (isLinha) { larguraPino = 50; alturaPino = 12; } 
-      if (tipo == 'ponto') { larguraPino = 16; alturaPino = 16; } 
-    } else if (isCirculo) { alturaPino = larguraPino; }
-
     return Stack(
       clipBehavior: Clip.none, 
       alignment: Alignment.center,
@@ -565,12 +553,12 @@ class PinoDinamico extends StatelessWidget {
             decoration: BoxDecoration(
               color: corBase.withValues(alpha: 0.45), 
               shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
-              borderRadius: (!isCirculo && !isLinha) ? BorderRadius.circular(2) : null,
-              border: Border.all(color: corBase, width: 1.0), 
+              // 🔥 AQUI ESTÁ: Bordas quase perfeitas (quinas vivas), apenas 1 de raio pra não ficar serrilhado feio
+              borderRadius: isCirculo ? null : BorderRadius.circular(1.0),
+              border: Border.all(color: corBase, width: 1.5), 
               boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
             ),
-            // 🔥 SÓ EXIBE SE mostrarNumero FOR PASSADO COMO TRUE
-            child: (mostrarNumero && !ocultarTexto && tipo != 'ponto' && !isLinha) 
+            child: (mostrarNumero && !ocultarTexto) 
                 ? Transform.rotate(
                     angle: -rotacao * (math.pi / 180), 
                     child: Text(
@@ -713,7 +701,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                                 largura: wPino, altura: hPino,
                                 rotacao: el.marcacaoRotacao ?? 0.0,
                                 corBase: corVizinho,
-                                mostrarNumero: false, // Oculto aqui
+                                mostrarNumero: false, 
                               )
                             ),
                           );
@@ -758,7 +746,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                                 ocultarTexto: widget.modo == ModoFerramenta.redimensionar, 
                                 rotacao: widget.rotacao,
                                 corBase: Color(int.parse(widget.corSelecionada.replaceFirst('#', '0xff'))),
-                                mostrarNumero: false, // Oculto aqui também
+                                mostrarNumero: false, 
                               ),
                             );
                           }(),
@@ -773,8 +761,9 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                                   onPanUpdate: (details) {
                                     widget.onNomeDrag(Offset(details.delta.dx / w, details.delta.dy / h));
                                   },
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0), 
+                                  // 🔥 AQUI ESTÁ A CORREÇÃO DO CLICKBOX! Um Container justinho só pro dedo não escorregar, sem invadir a área de baixo.
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0), 
                                     child: Text(
                                       widget.nomeElemento!,
                                       style: TextStyle(

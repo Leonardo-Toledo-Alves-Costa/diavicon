@@ -1,5 +1,8 @@
 import 'dart:io';
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/features/elementos/providers/info_planejamento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/marcar_elemento_planejamento_modal.dart';
+import 'package:diavicon/features/ensaios/widgets/lista_regioes_ensaio_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfx/pdfx.dart';
@@ -37,6 +40,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   bool _visualizarNomeElementos = true;
   
   double _tamanhoFonteNome = 12.0;
+  String? _empresaSelecionadaId;
 
   @override
   void initState() {
@@ -397,70 +401,130 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 
   Widget _buildAbaRegioesEnsaio() {
-    return Column(
-      children: [
-        SizedBox(
-          height: 105,
-          child: ListView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            children: [
-              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nCarbonatação', contador: '01/04', selecionado: false),
-              const SizedBox(width: 12),
-              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nPotencial de c...', contador: '02/02', selecionado: true),
-              const SizedBox(width: 12),
-              _buildFiltroEnsaioCard(titulo: 'Ensaio de\nResistividade', contador: '03/04', selecionado: false),
-            ],
-          ),
-        ),
+    final infoAsync = ref.watch(infoPlanejamentoProvider(widget.estruturaId));
 
-        Expanded(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            decoration: BoxDecoration(color: const Color(0xFFD9D9D9), border: Border.all(color: const Color(0xFF686868))),
-            child: _VisualizadorPlantaPlanejamento(
-              arquivoUrl: widget.plantaUrl,
-              estruturaId: widget.estruturaId,
-              plantaId: widget.plantaId,
-              mostrarNomes: false,
-              tamanhoFonteNome: _tamanhoFonteNome, // 🔥 Passa a variável (mesmo com os nomes desligados)
+    // 🔥 1. A ABA INTEIRA AGORA ESPERA OS DADOS CARREGAREM
+    return infoAsync.when(
+      loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      error: (err, _) => Center(child: Text('Erro ao carregar: $err', style: const TextStyle(color: Colors.red))),
+      data: (info) {
+        final minhaEmpresaId = info['minhaEmpresaId'];
+        final gestoraId = info['gestoraId'];
+        final List<Map<String, dynamic>> empresas = info['empresas'];
+
+        if (empresas.isEmpty) return const Center(child: Text('Nenhuma empresa disponível.'));
+
+        final isGestora = minhaEmpresaId == gestoraId;
+        String valorDropdown = _empresaSelecionadaId ?? minhaEmpresaId ?? empresas.first['id'];
+        
+        if (!empresas.any((e) => e['id'] == valorDropdown)) {
+          valorDropdown = empresas.first['id'];
+        }
+
+        final empSelecionada = empresas.firstWhere((e) => e['id'] == valorDropdown);
+
+        // CONSTRÓI O DROPDOWN
+        Widget dropdown = Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFD9D9D9), width: 1.5),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              isExpanded: true,
+              value: valorDropdown,
+              icon: const Icon(Icons.keyboard_arrow_down, color: AppColors.greyMedium),
+              items: empresas.map((emp) {
+                return DropdownMenuItem<String>(
+                  value: emp['id'],
+                  child: Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 14, 
+                        backgroundColor: AppColors.greyVeryLight,
+                        backgroundImage: emp['foto_url'] != null ? NetworkImage(emp['foto_url']) : null,
+                        child: emp['foto_url'] == null ? const Icon(Icons.business, size: 16, color: AppColors.primary) : null,
+                      ),
+                      const SizedBox(width: 12),
+                      Text(emp['nome'], style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF3E3E3D))),
+                    ],
+                  ),
+                );
+              }).toList(),
+              onChanged: (val) {
+                if (isGestora && val != null) setState(() => _empresaSelecionadaId = val);
+              },
             ),
           ),
-        ),
+        );
 
-        SafeArea(
-          top: false,
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: CompactButton(
-                    text: 'Quantitativos\nContratados',
-                    icon: Icons.assignment_outlined,
-                    height: 54,
-                    backgroundColor: Colors.white,
-                    foregroundColor: const Color(0xFF3E3E3D), 
-                    iconColor: AppColors.primary,            
-                    borderColor: const Color(0xFFD9D9D9),    
-                    elevation: 0,
-                    onPressed: () {},
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: CompactButton(
-                    text: 'Regiões de\nEnsaio',
-                    icon: Icons.science_outlined,
-                    height: 54,
-                    onPressed: () {},
-                  ),
-                ),
-              ],
+        if (!isGestora) {
+          dropdown = GestureDetector(
+            onTap: () => DiaviconAlerts.show(context, 'Acesso Restrito', 'Apenas a gestora do projeto pode alterar.', isAviso: true),
+            child: AbsorbPointer(child: dropdown),
+          );
+        }
+
+        // 🔥 RETORNA A TELA MONTADA (Com a variável valorDropdown injetada no Mapa!)
+        return Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 16, 24, 16),
+              child: dropdown,
             ),
-          ),
-        ),
-      ],
+
+            Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 24),
+                decoration: BoxDecoration(color: const Color(0xFFD9D9D9), border: Border.all(color: const Color(0xFF686868))),
+                child: _VisualizadorPlantaPlanejamento(
+                  arquivoUrl: widget.plantaUrl,
+                  estruturaId: widget.estruturaId,
+                  plantaId: widget.plantaId,
+                  mostrarNomes: true,
+                  tamanhoFonteNome: _tamanhoFonteNome,
+                  empresaIdParaRegioes: valorDropdown, // ✨ A MÁGICA COMEÇA AQUI!
+                ),
+              ),
+            ),
+
+            SafeArea(
+              top: false,
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: CompactButton(
+                        text: 'Quantitativos\nContratados', icon: Icons.assignment_outlined, height: 54, backgroundColor: Colors.white, foregroundColor: const Color(0xFF3E3E3D), iconColor: AppColors.primary, borderColor: const Color(0xFFD9D9D9), elevation: 0, onPressed: () {},
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: CompactButton(
+                        text: 'Regiões de\nEnsaio', icon: Icons.science_outlined, height: 54,
+                        onPressed: () {
+                          showListaRegioesModal(
+                            context,
+                            estruturaId: widget.estruturaId,
+                            plantaId: widget.plantaId,
+                            plantaUrl: widget.plantaUrl,
+                            empresaIdSelecionada: empSelecionada['id'],
+                            empresaNome: empSelecionada['nome'],
+                            empresaFotoUrl: empSelecionada['foto_url'],
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -490,30 +554,28 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
     required this.estruturaId,
     required this.plantaId,
     required this.mostrarNomes,
-    required this.tamanhoFonteNome, // 🔥 NOVO: Recebendo a variável do pai
+    required this.tamanhoFonteNome, 
+    this.empresaIdParaRegioes, // 🔥 NOVO: Recebe a empresa se estiver na aba de regiões
   });
 
   final String arquivoUrl;
   final String estruturaId;
   final String plantaId;
   final bool mostrarNomes;
-  final double tamanhoFonteNome; // 🔥 NOVO
+  final double tamanhoFonteNome; 
+  final String? empresaIdParaRegioes; // 🔥 NOVO
 
   @override
   ConsumerState<_VisualizadorPlantaPlanejamento> createState() => _VisualizadorPlantaPlanejamentoState();
 }
 
 class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPlantaPlanejamento> {
-  bool _isPdf = false;
-  bool _isLoading = false;
+  bool _isPdf = false, _isLoading = false;
   Uint8List? _imageBytes;
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _carregarMidia();
-  }
+  void initState() { super.initState(); _carregarMidia(); }
 
   Future<void> _carregarMidia() async {
     final urlLower = widget.arquivoUrl.toLowerCase();
@@ -547,7 +609,17 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
     if (_isLoading) return const Center(child: CircularProgressIndicator(color: AppColors.primary));
     if (_error != null) return Center(child: Text('Erro: $_error', style: const TextStyle(color: Colors.red, fontSize: 12)));
 
+    // 1. Busca os Pinos de Elementos (Pilares, Vigas, etc)
     final elementosAsync = ref.watch(elementosPorEstruturaProvider(widget.estruturaId));
+
+    // 🔥 2. Busca as Regiões APENAS se estivermos na aba de Regiões
+    AsyncValue<List<dynamic>>? regioesAsync;
+    if (widget.empresaIdParaRegioes != null) {
+      regioesAsync = ref.watch(regioesEnsaioProvider(RegioesFiltro(
+        plantaId: widget.plantaId, 
+        empresaId: widget.empresaIdParaRegioes!
+      )));
+    }
 
     return elementosAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -561,9 +633,7 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
           child: Center(
             child: Stack(
               children: [
-                _isPdf 
-                    ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
-                    : Image.network(widget.arquivoUrl),
+                _isPdf ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox()) : Image.network(widget.arquivoUrl),
 
                 Positioned.fill(
                   child: LayoutBuilder(
@@ -571,64 +641,77 @@ class _VisualizadorPlantaPlanejamentoState extends ConsumerState<_VisualizadorPl
                       final w = constraints.maxWidth;
                       final h = constraints.maxHeight;
 
-                      return Stack(
-                        clipBehavior: Clip.none,
-                        children: elementosDaPlanta.expand<Widget>((el) {
-                          final cx = el.posicaoX! * w;
-                          final cy = el.posicaoY! * h;
+                      // 🔥 PREPARA AS BOLINHAS DAS REGIÕES PARA SEREM DESENHADAS
+                      List<Widget> marcacoesRegioes = [];
+                      if (regioesAsync != null && regioesAsync.value != null) {
+                        marcacoesRegioes = regioesAsync.value!.map((regiao) {
+                          final cx = regiao.posicaoX * w;
+                          final cy = regiao.posicaoY * h;
+                          final wPino = regiao.marcacaoLargura * w;
+                          final hPino = regiao.marcacaoAltura * h;
+                          final corPino = Color(int.parse(regiao.corMarcacao.replaceFirst('#', '0xff'))).withOpacity(0.85);
 
-                          final wPino = (el.marcacaoLargura ?? 0.12) * w;
-                          final hPino = (el.marcacaoAltura ?? 0.06) * h;
-                          
-                          final corVizinho = el.marcacaoCor != null 
-                              ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) 
-                              : Colors.orange;
-
-                          final pino = Positioned(
-                            left: cx - (wPino / 2), 
+                          return Positioned(
+                            left: cx - (wPino / 2),
                             top: cy - (hPino / 2),
-                            child: PinoDinamico(
-                              tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
-                              largura: wPino,
-                              altura: hPino,
-                              rotacao: el.marcacaoRotacao ?? 0.0,
-                              corBase: corVizinho, 
+                            child: Stack(
+                              alignment: Alignment.center,
+                              children: [
+                                // Desenha a Forma
+                                PinoDinamico(
+                                  tipoMarcacao: regiao.tipoMarcacao,
+                                  largura: wPino, altura: hPino, rotacao: regiao.marcacaoRotacao,
+                                  corBase: corPino, mostrarNumero: false,
+                                ),
+                                // Desenha o Número por cima
+                                Text(
+                                  regiao.numero.toString(),
+                                  style: GoogleFonts.lato(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, shadows: const [Shadow(color: Colors.black45, blurRadius: 2)]),
+                                ),
+                              ],
                             ),
                           );
+                        }).toList();
+                      }
 
-                          Widget? nomeVizinho;
-                          if (widget.mostrarNomes && el.nome != null && el.nome!.isNotEmpty) {
-                             double nx = el.marcacaoNomeX ?? el.posicaoX!;
-                             double ny = el.marcacaoNomeY ?? el.posicaoY!;
-                             
-                             if (ny < -1.0 || ny > 2.0 || (nx == 0.0 && ny == 0.0)) { 
-                               nx = el.posicaoX!; 
-                               ny = el.posicaoY! - 0.06; 
-                             }
-                             
-                             nomeVizinho = Positioned(
-                               left: nx * w, 
-                               top: ny * h,
-                               // 🔥 A MÁGICA AQUI: IgnorePointer faz os cliques atravessarem o texto!
-                               child: IgnorePointer(
-                                 child: FractionalTranslation(
-                                   translation: const Offset(-0.5, -0.5),
-                                   child: Text(
-                                     el.nome!, 
-                                     style: TextStyle(
-                                       color: corVizinho, 
-                                       fontSize: widget.tamanhoFonteNome, // (Ou 12, dependendo de como está o seu código atual)
-                                       fontWeight: FontWeight.bold,
-                                       shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
-                                     )
+                      return Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          // 🔥 SÓ DESENHA OS ELEMENTOS SE NÃO ESTIVER NA ABA DE REGIÕES
+                          if (widget.empresaIdParaRegioes == null)
+                            ...elementosDaPlanta.expand<Widget>((el) {
+                              final cx = el.posicaoX! * w;
+                              final cy = el.posicaoY! * h;
+                              final wPino = (el.marcacaoLargura ?? 0.12) * w;
+                              final hPino = (el.marcacaoAltura ?? 0.06) * h;
+                              final corVizinho = el.marcacaoCor != null ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) : Colors.orange;
+
+                              final pino = Positioned(
+                                left: cx - (wPino / 2), top: cy - (hPino / 2),
+                                child: PinoDinamico(tipoMarcacao: el.tipoMarcacao ?? 'Retângulo', largura: wPino, altura: hPino, rotacao: el.marcacaoRotacao ?? 0.0, corBase: corVizinho),
+                              );
+
+                              Widget? nomeVizinho;
+                              if (widget.mostrarNomes && el.nome != null && el.nome!.isNotEmpty) {
+                                 double nx = el.marcacaoNomeX ?? el.posicaoX!; double ny = el.marcacaoNomeY ?? el.posicaoY!;
+                                 if (ny < -1.0 || ny > 2.0 || (nx == 0.0 && ny == 0.0)) { nx = el.posicaoX!; ny = el.posicaoY! - 0.06; }
+                                 
+                                 nomeVizinho = Positioned(
+                                   left: nx * w, top: ny * h,
+                                   child: IgnorePointer(
+                                     child: FractionalTranslation(
+                                       translation: const Offset(-0.5, -0.5),
+                                       child: Text(el.nome!, style: TextStyle(color: corVizinho, fontSize: widget.tamanhoFonteNome, fontWeight: FontWeight.bold, shadows: const [Shadow(color: Colors.white, blurRadius: 4)]))
+                                     ),
                                    ),
-                                 ),
-                               ),
-                             );
-                          }
-
-                          return [pino, if (nomeVizinho != null) nomeVizinho];
-                        }).toList(),
+                                 );
+                              }
+                              return [pino, if (nomeVizinho != null) nomeVizinho];
+                            }),
+                          
+                          // 🔥 DESENHA AS REGIÕES DE ENSAIO POR CIMA
+                          ...marcacoesRegioes,
+                        ],
                       );
                     },
                   ),

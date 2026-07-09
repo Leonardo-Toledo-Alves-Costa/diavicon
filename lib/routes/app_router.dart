@@ -249,7 +249,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/estruturas/:estruturaId/elementos/:elementoId',
         builder: (context, state) {
           final extra = _routeExtra(state.extra);
-          return ElementoScreen(
+          return ElementosHomeScreen(
             estruturaId: state.pathParameters['estruturaId'],
             elementoId: state.pathParameters['elementoId'],
             projetoId: _stringExtra(extra, 'projetoId'),

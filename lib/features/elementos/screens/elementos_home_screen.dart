@@ -1,4 +1,6 @@
+import 'package:diavicon/features/ensaios/screens/pontos_ensaio_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart'; // 🔥 Importação do SVG
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -9,8 +11,8 @@ import '../../../core/widgets/menu_app_bar.dart';
 import '../widgets/incluir_elemento_estrutural_sheet.dart';
 import '../widgets/right_menu_bar.dart';
 
-class ElementoScreen extends StatefulWidget {
-  const ElementoScreen({
+class ElementosHomeScreen extends StatefulWidget {
+  const ElementosHomeScreen({
     super.key,
     this.onOpenInformacoes,
     this.onOpenRelatorios,
@@ -38,10 +40,10 @@ class ElementoScreen extends StatefulWidget {
   final String? imageUrl;
 
   @override
-  State<ElementoScreen> createState() => _ElementoScreenState();
+  State<ElementosHomeScreen> createState() => _ElementosHomeScreenState();
 }
 
-class _ElementoScreenState extends State<ElementoScreen> {
+class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
   final GlobalKey<RightMenuBarState> _rightMenuKey =
       GlobalKey<RightMenuBarState>();
 
@@ -132,15 +134,32 @@ class _ElementoScreenState extends State<ElementoScreen> {
                         ),
                       ),
                       const SizedBox(height: 18),
-                      const _EnsaioCard(
-                        iconAsset: 'assets/images/co2_1.png',
+
+                      // Substitua a chamada dos cards por isto:
+                      _EnsaioCard(
+                        iconAsset: 'assets/images/ensaios/carbonatacao.png',
                         title: 'Frente de carbonatação',
                         subtitle: 'Ponto 01',
                         detail: 'Prof. 42 mm',
+                        onTap: () {
+                          // 🔥 NAVEGAÇÃO PRONTA COM PNG
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const PontosEnsaioScreen(
+                                elementoNome: 'V102',
+                                tipoEnsaioNome: 'Frente de carbonatação',
+                                iconeEnsaio: 'assets/images/ensaios/carbonatacao.png',
+                                projetoNome: '0233_Proj. Ensaios Estruturais', 
+                                localElemento: '2ª Subsolo',
+                              ),
+                            ),
+                          );
+                        },
                       ),
                       const SizedBox(height: 16),
                       const _EnsaioCard(
-                        iconAsset: 'assets/images/voltage_1.png',
+                        iconAsset: 'assets/images/ensaios/potencial_corrosao.png',
                         title: 'Potencial de Corrosão',
                         subtitle: 'Ponto 01',
                         detail: 'Alta probabilidade de corrosão',
@@ -359,7 +378,7 @@ class _SectionHeader extends StatelessWidget {
             ),
           ),
         ),
-        CompactButton(text: 'Incluir', onPressed: onIncluirElemento ?? () {}),
+        CompactButton(text: 'Novo', onPressed: onIncluirElemento ?? () {}),
       ],
     );
   }
@@ -371,12 +390,14 @@ class _EnsaioCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.detail,
+    this.onTap,
   });
 
   final String iconAsset;
   final String title;
   final String subtitle;
   final String detail;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -385,68 +406,69 @@ class _EnsaioCard extends StatelessWidget {
       elevation: 4,
       shadowColor: Colors.black.withOpacity(0.25),
       borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 16, 20, 14),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 42,
-              height: 42,
-              child: Image.asset(
-                iconAsset,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const Icon(
-                  Icons.science_outlined,
-                  color: AppColors.textDark,
-                  size: 32,
+      child: InkWell(
+        onTap: onTap, // 🔥 CLICÁVEL AQUI
+        borderRadius: BorderRadius.circular(20),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 20, 14),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 42,
+                height: 42,
+                // 🔥 VOLTOU PARA IMAGE.ASSET
+                child: Image.asset(
+                  iconAsset,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
                 ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    title,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.lato(
-                      color: const Color(0xFF3E3E3D),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w400,
-                      height: 1.1,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF3E3E3D),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    subtitle,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.lato(
-                      color: const Color(0xFF686868),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w300,
-                      height: 1.1,
+                    const SizedBox(height: 5),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF686868),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w300,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    detail,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.lato(
-                      color: const Color(0xFFA0A0A0),
-                      fontSize: 14,
-                      fontWeight: FontWeight.w300,
-                      height: 1.1,
+                    const SizedBox(height: 5),
+                    Text(
+                      detail,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFFA0A0A0),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w300,
+                        height: 1.1,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

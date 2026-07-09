@@ -47,6 +47,7 @@ dependencies:
   pdfx: ^2.9.2
   internet_file: ^1.3.0
   flutter_colorpicker: ^1.1.0
+  flutter_svg: ^2.3.0
 
   # Navegação
 
@@ -81,3 +82,4 @@ flutter:
     - assets/images/frame_135.png
     - assets/images/voltage_1.png
     - assets/images/
+    - assets/images/ensaios/

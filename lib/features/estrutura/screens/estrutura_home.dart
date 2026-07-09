@@ -1,3 +1,4 @@
+import 'package:diavicon/features/ensaios/screens/estrutura_ensaios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -222,7 +223,22 @@ class EstruturaHomeScreen extends ConsumerWidget {
               );
             },
           ),
-          DiaviconMenuItem(icon: Icons.science_outlined, label: 'Ensaios', onTap: () {}),
+          DiaviconMenuItem(
+            icon: Icons.science_outlined, 
+            label: 'Ensaios', 
+            onTap: () {
+              Navigator.pop(context); // Fecha o drawer
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EstruturaEnsaiosScreen(
+                    estruturaId: estrutura.id,
+                    projetoId: projetoId,
+                  ),
+                ),
+              );
+            }
+          ),
           DiaviconMenuItem(icon: Icons.description_outlined, label: 'Relatórios', onTap: () {}),
           DiaviconMenuItem(icon: Icons.pie_chart_outline, label: 'Dashboard', onTap: () {}),
         ],

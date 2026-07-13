@@ -10,10 +10,12 @@ import '../providers/projetos_provider.dart';
 
 class ProjetosHeader extends ConsumerWidget {
   final double topPadding;
+  final VoidCallback? onOpenDrawer;
 
   const ProjetosHeader({
     super.key,
     required this.topPadding,
+    required this.onOpenDrawer,
   });
 
   @override
@@ -33,11 +35,11 @@ class ProjetosHeader extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  IconButton(
-                    icon:  Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
-                    onPressed: () {
-                      context.push('/perfis');
-                    },
+                  Builder(
+                    builder: (context) => IconButton(
+                      icon:  Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                      onPressed: onOpenDrawer,
+                    ),
                   ),
                   const Text(
                     'Projetos',

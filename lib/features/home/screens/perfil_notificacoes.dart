@@ -66,8 +66,8 @@ class PerfilNotificacoes extends StatelessWidget {
                               child: Text(
                                 'Notificações push estão desativadas',
                                 style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.bold,
                                   color: Color(0xFF1C1C1C),
                                 ),
                               ),
@@ -248,7 +248,8 @@ class _NotificationRow extends StatelessWidget {
               style: TextStyle(
                 color: Color(0xFF3E3E3D),
                 fontSize: 13,
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.bold,
+                decoration: TextDecoration.underline,
               ),
             ),
           ),

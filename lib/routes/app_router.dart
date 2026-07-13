@@ -12,7 +12,9 @@ import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
 import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
 import 'package:diavicon/features/home/screens/perfil_Minha_Conta.dart';
 import 'package:diavicon/features/home/screens/perfil_Screen.dart';
+import 'package:diavicon/features/home/screens/perfil_central_ajuda.dart';
 import 'package:diavicon/features/home/screens/perfil_drawer.dart';
+import 'package:diavicon/features/home/screens/perfil_minha_privacidade.dart';
 import 'package:diavicon/features/home/screens/perfil_notificacoes.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
 import 'package:flutter/material.dart';
@@ -73,10 +75,10 @@ final routerProvider = Provider<GoRouter>((ref) {
   final shellNavigatorKey = GlobalKey<NavigatorState>();
 
   final routerAlarme = ValueNotifier<bool>(false);
-  
+
   // Se o Riverpod mudar, recarrega as rotas
   ref.listen(currentUserProvider, (previous, next) {
-    routerAlarme.value = !routerAlarme.value; 
+    routerAlarme.value = !routerAlarme.value;
   });
 
   // Se o Supabase logar/deslogar, recarrega as rotas
@@ -87,7 +89,7 @@ final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: rootNavigatorKey,
     initialLocation: '/',
-    refreshListenable: routerAlarme, 
+    refreshListenable: routerAlarme,
 
     redirect: (context, state) {
       // O ROTEADOR VÊ SE O ESCUDO ESTÁ ATIVADO
@@ -95,14 +97,14 @@ final routerProvider = Provider<GoRouter>((ref) {
       final bloqueioAtivo = ref.read(bloqueioDeRotaProvider);
       if (bloqueioAtivo) {
         print('[ROUTER] Escudo ativado! Ignorando redirecionamentos.');
-        return null; 
+        return null;
       }
 
-      final path = state.uri.path; 
+      final path = state.uri.path;
       final usuario = ref.read(currentUserProvider);
 
       final bool isLoggedIn = usuario != null;
-      final bool isAtivo = usuario?.ativo ?? false; 
+      final bool isAtivo = usuario?.ativo ?? false;
 
       print('====== [RASTREADOR DIRETRIZ] ======');
       print('• Tentando ir para: $path');
@@ -116,7 +118,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             path.startsWith('/register') ||
             path.startsWith('/empresa/') ||
             path == '/completar-cadastro' ||
-            path == '/recuperar-senha' || 
+            path == '/recuperar-senha' ||
             path == '/nova-senha';
 
         if (!isPublic) {
@@ -127,40 +129,48 @@ final routerProvider = Provider<GoRouter>((ref) {
       }
 
       // --- Redirecionamento para usuários LOGADOS ---
-        if (isLoggedIn) {
-          // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA):
-          // Se já tem empresa, não pode acessar os formulários de cadastro.
-          // MAS a tela '/empresa/bemvinda' está liberada para o fluxo de finalização
-          // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA E CADASTRO):
+      if (isLoggedIn) {
+        // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA):
+        // Se já tem empresa, não pode acessar os formulários de cadastro.
+        // MAS a tela '/empresa/bemvinda' está liberada para o fluxo de finalização
+        // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA E CADASTRO):
         // Adiciono '/empresa/cadastro' nas exceções. Assim o roteador não
         // se desespera e não te chuta pra projetos no exato milissegundo em que o banco salva os dados!
         final bool jaTemEmpresa = usuario.empresaId != null;
-        if (jaTemEmpresa && 
-            path.startsWith('/empresa/') && 
-            path != '/empresa/bemvinda' && 
+        if (jaTemEmpresa &&
+            path.startsWith('/empresa/') &&
+            path != '/empresa/bemvinda' &&
             path != '/empresa/cadastro') {
           print('➡️ [DESVIO] Usuário já tem empresa. Indo para /projetos');
           return '/projetos';
         }
 
-          // Se estiver no ecossistema da empresa (e não foi barrado acima), deixa passar!
-          if (path.startsWith('/empresa/')) {
-            print('✅ [PERMISSÃO] Fluxo de Empresa detectado. Acesso liberado.');
-            return null; 
-          }
-
-          // Se NÃO está ativo e não está na tela de completar cadastro, joga pra lá
-          if (!isAtivo && path != '/completar-cadastro') {
-            print('➡️ [DESVIO] Usuário inativo fora do fluxo. Indo para: /completar-cadastro');
-            return '/completar-cadastro';
-          }
-
-          // Se ESTÁ ativo e tentar acessar telas iniciais, joga pra Projetos
-          if (isAtivo && (path == '/completar-cadastro' || path == '/' || path == '/login' || path.startsWith('/register'))) {
-            print('➡️ [DESVIO] Usuário ativo em tela de entrada. Indo para: /projetos');
-            return '/projetos';
-          }
+        // Se estiver no ecossistema da empresa (e não foi barrado acima), deixa passar!
+        if (path.startsWith('/empresa/')) {
+          print('✅ [PERMISSÃO] Fluxo de Empresa detectado. Acesso liberado.');
+          return null;
         }
+
+        // Se NÃO está ativo e não está na tela de completar cadastro, joga pra lá
+        if (!isAtivo && path != '/completar-cadastro') {
+          print(
+            '➡️ [DESVIO] Usuário inativo fora do fluxo. Indo para: /completar-cadastro',
+          );
+          return '/completar-cadastro';
+        }
+
+        // Se ESTÁ ativo e tentar acessar telas iniciais, joga pra Projetos
+        if (isAtivo &&
+            (path == '/completar-cadastro' ||
+                path == '/' ||
+                path == '/login' ||
+                path.startsWith('/register'))) {
+          print(
+            '➡️ [DESVIO] Usuário ativo em tela de entrada. Indo para: /projetos',
+          );
+          return '/projetos';
+        }
+      }
       return null;
     },
 
@@ -169,18 +179,35 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
-        path: '/perfis', builder: (context, state) => const PerfilDrawer(),
+        path: '/perfis',
+        builder: (context, state) => const Scaffold(
+          body: SizedBox.shrink(),
+        ),
         routes: [
-          GoRoute(path: 'perfil_dados',
-          builder: (context, state) => PerfilScreen(dadosCadastro: _routeExtra(state.extra)),
+          GoRoute(
+            path: 'perfil_dados',
+            builder: (context, state) =>
+                PerfilScreen(dadosCadastro: _routeExtra(state.extra)),
           ),
-          GoRoute(path: 'perfil_minha_conta',
-          builder: (context, state) =>  PerfilMinhaConta(dadosCadastro: _routeExtra(state.extra)),
+          GoRoute(
+            path: 'perfil_minha_conta',
+            builder: (context, state) =>
+                PerfilMinhaConta(dadosCadastro: _routeExtra(state.extra)),
           ),
-          GoRoute(path: 'perfil_notificacoes',
-          builder: (context, state) => const PerfilNotificacoes(),
+          GoRoute(
+            path: 'perfil_notificacoes',
+            builder: (context, state) => const PerfilNotificacoes(),
           ),
-          ]),
+          GoRoute(
+            path: 'perfil_privacidade',
+            builder: (context, state) => const PerfilMinhaPrivacidade(),
+          ),
+          GoRoute(
+            path: 'perfil_central_ajuda',
+            builder: (context, state) => const PerfilCentralAjuda(),
+          ),
+        ],
+      ),
       // --- FLUXO DE CADASTRO ACADÊMICO E CLIENTE ---
       GoRoute(
         path: '/register',
@@ -188,32 +215,40 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: 'dados',
-            builder: (context, state) => CadastroR1Screen(dadosCadastro: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                CadastroR1Screen(dadosCadastro: _routeExtra(state.extra)),
           ),
           GoRoute(
             path: 'perfil',
-            builder: (context, state) => CadastroR2Screen(dadosCadastro: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                CadastroR2Screen(dadosCadastro: _routeExtra(state.extra)),
           ),
           GoRoute(
             path: 'academico',
-            builder: (context, state) => CadastroAcademicoScreen(dadosCadastro: _routeExtra(state.extra)),
+            builder: (context, state) => CadastroAcademicoScreen(
+              dadosCadastro: _routeExtra(state.extra),
+            ),
           ),
           GoRoute(
             path: 'cliente/gate',
-            builder: (context, state) => Cadastro0Cliente(dadosUsuario: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                Cadastro0Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
           GoRoute(
             path: 'cliente/checkboxes',
-            builder: (context, state) => Cadastro1Cliente(dadosUsuario: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                Cadastro1Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
           GoRoute(
             path: 'cliente/planos',
-            builder: (context, state) => Cadastro2Cliente(dadosUsuario: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                Cadastro2Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
           // Mantido caso precise de fallback, mas o fluxo normal agora pula pro /empresa/cadastro
           GoRoute(
             path: 'cliente/welcome',
-            builder: (context, state) => Cadastro3Cliente(dadosUsuario: _routeExtra(state.extra)),
+            builder: (context, state) =>
+                Cadastro3Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
         ],
       ),
@@ -221,11 +256,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       // --- FLUXO DE ONBOARDING EMPRESA (FORA DO SHELL) ---
       GoRoute(
         path: '/empresa/gate',
-        builder: (context, state) => Cadastro0Empresa(dadosCadastro: _routeExtra(state.extra)),
+        builder: (context, state) =>
+            Cadastro0Empresa(dadosCadastro: _routeExtra(state.extra)),
       ),
       GoRoute(
         path: '/empresa/onboarding',
-        builder: (context, state) => Cadastro1Empresa(dadosCadastro: _routeExtra(state.extra)),
+        builder: (context, state) =>
+            Cadastro1Empresa(dadosCadastro: _routeExtra(state.extra)),
       ),
       GoRoute(
         path: '/recuperar-senha',
@@ -237,11 +274,13 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/empresa/servicos',
-        builder: (context, state) => Cadastro2Empresa(dadosUsuario: _routeExtra(state.extra)),
+        builder: (context, state) =>
+            Cadastro2Empresa(dadosUsuario: _routeExtra(state.extra)),
       ),
       GoRoute(
         path: '/empresa/planos',
-        builder: (context, state) => Cadastro3Empresa(dadosUsuario: _routeExtra(state.extra)),
+        builder: (context, state) =>
+            Cadastro3Empresa(dadosUsuario: _routeExtra(state.extra)),
       ),
       GoRoute(
         path: '/empresa/cadastro',
@@ -253,7 +292,8 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/empresa/bemvinda',
-        builder: (context, state) => EmpresaBemVindaScreen(dadosUsuario: _routeExtra(state.extra)),
+        builder: (context, state) =>
+            EmpresaBemVindaScreen(dadosUsuario: _routeExtra(state.extra)),
       ),
       GoRoute(
         path: '/completar-cadastro',
@@ -280,13 +320,15 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'informacoes',
             builder: (context, state) {
               final extra = _routeExtra(state.extra);
-              final basePath = '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+              final basePath =
+                  '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
               return ElementoInfoScreen(
                 initialNome: _stringExtra(extra, 'titulo') ?? 'ABC Corp.',
                 initialTipoElemento: _elementoTipo(extra),
                 initialTipologiaEstrutural: _elementoTipologia(extra),
                 initialLocalElemento: _stringExtra(extra, 'local'),
-                onOpenRelatorios: () => context.push('$basePath/relatorios', extra: extra),
+                onOpenRelatorios: () =>
+                    context.push('$basePath/relatorios', extra: extra),
               );
             },
           ),
@@ -294,9 +336,11 @@ final routerProvider = Provider<GoRouter>((ref) {
             path: 'relatorios',
             builder: (context, state) {
               final extra = _routeExtra(state.extra);
-              final basePath = '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+              final basePath =
+                  '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
               return RelatoriosScreen(
-                onOpenInformacoes: () => context.push('$basePath/informacoes', extra: extra),
+                onOpenInformacoes: () =>
+                    context.push('$basePath/informacoes', extra: extra),
               );
             },
           ),
@@ -340,11 +384,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/minha-empresa',
-            builder: (context, state) => const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
+            builder: (context, state) =>
+                const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
           ),
           GoRoute(
             path: '/educacao',
-            builder: (context, state) => const Scaffold(body: Center(child: Text('Educação'))),
+            builder: (context, state) =>
+                const Scaffold(body: Center(child: Text('Educação'))),
           ),
           GoRoute(
             path: '/notificacoes',

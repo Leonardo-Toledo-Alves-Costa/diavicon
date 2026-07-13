@@ -94,7 +94,9 @@ class PerfilDrawer extends StatelessWidget {
                   _ListTileCard(icon: Icons.notifications_none, label: 'Notificações', onTap: () {
                     context.push('/perfis/perfil_notificacoes');
                   }),
-                  _ListTileCard(icon: Icons.shield_outlined, label: 'Privacidade', onTap: () {}),
+                  _ListTileCard(icon: Icons.shield_outlined, label: 'Privacidade', onTap: () {
+                    context.push('/perfis/perfil_privacidade');
+                  }),
                   
                   const SizedBox(height: 32),
                   const Divider(height: 1, color: Colors.black12),
@@ -103,7 +105,9 @@ class PerfilDrawer extends StatelessWidget {
                   // --- OUTROS ---
                   Text('Outros', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.w700, color: const Color(0xFF3E3E3D))),
                   const SizedBox(height: 12),
-                  _ListTileCard(icon: Icons.help_outline, label: 'Central de Ajuda', onTap: () {}),
+                  _ListTileCard(icon: Icons.help_outline, label: 'Central de Ajuda', onTap: () {
+                    context.push('/perfis/perfil_central_ajuda');
+                  }),
                   _ListTileCard(
                     icon: Icons.logout, 
                     label: 'Sair', 

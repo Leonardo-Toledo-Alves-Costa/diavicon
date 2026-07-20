@@ -127,7 +127,7 @@ class Cadastro1Empresa extends StatelessWidget {
                     width: 120,
                     text: 'Começar',
                     onPressed: () {
-                      context.go('/empresa/servicos', extra: dadosCadastro);
+                      context.push('/empresa/servicos', extra: dadosCadastro);
                     },
                   ),
                 ],

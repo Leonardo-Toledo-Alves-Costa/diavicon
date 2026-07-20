@@ -24,7 +24,8 @@ class EquipeController {
     // Verifica se já existe um registro na tabela de ligação para este usuário neste projeto
     final existe = await _supabase
         .from('projeto_equipe_interna')
-        .select('id')
+        // 🔥 CORREÇÃO: Buscando 'projeto_id' em vez de 'id', porque a coluna 'id' não existe!
+        .select('projeto_id') 
         .eq('projeto_id', projetoId)
         .eq('usuario_id', usuarioId)
         .maybeSingle();

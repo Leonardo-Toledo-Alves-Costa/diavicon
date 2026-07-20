@@ -9,14 +9,14 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
   final supabase = Supabase.instance.client;
   
   return supabase
-      .from('projeto_empresas_colaboradoras') // 🔥 TABELA NOVA
+      .from('projeto_empresas_colaboradoras') 
       .stream(primaryKey: ['id'])
       .eq('projeto_id', projetoId)
       .asyncMap((maps) async {
         List<Map<String, dynamic>> listaCompleta = [];
         
         for (var vinculo in maps) {
-          final empresaId = vinculo['empresa_id']; // 🔥 COLUNA NOVA
+          final empresaId = vinculo['empresa_id']; 
           
           try {
             final empData = await supabase
@@ -28,6 +28,14 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
             if (empData != null) {
               final endereco = empData['enderecos'] is Map ? empData['enderecos'] : null;
               
+              // 🔥 CORREÇÃO DA SINTAXE NOVA DO SUPABASE COUNT:
+              final int qtdColaboradores = await supabase
+                  .from('projeto_equipe_interna')
+                  .count(CountOption.exact)
+                  .eq('projeto_id', projetoId)
+                  .eq('empresa_id', empresaId)
+                  .eq('ativo', true);
+              
               listaCompleta.add({
                 'id': empData['id'],
                 'nome': empData['nome'] ?? 'Empresa Sem Nome',
@@ -36,7 +44,8 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
                 'uf': endereco != null ? endereco['estado'] ?? '--' : '--',
                 'status_vinculo': vinculo['status'], 
                 'is_gestora': false,
-                'convite_id': vinculo['id'], // 🔥 Útil para usar na hora de aceitar!
+                'convite_id': vinculo['id'], 
+                'total_colaboradores': qtdColaboradores,
               });
             }
           } catch (e) {
@@ -48,11 +57,9 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
 });
 
 // Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
-// Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
 final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   
-  // 🔥 CORREÇÃO: Buscando cidade e estado dentro do relacionamento enderecos()
   final response = await supabase
       .from('projeto_empresas_colaboradoras')
       .select('empresas:empresa_id(id, nome, foto_url, enderecos(cidade, estado))')
@@ -64,7 +71,6 @@ final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<Lis
   return data.map((item) {
     final emp = item['empresas'] as Map<String, dynamic>;
     
-    // O Supabase pode retornar o endereço como lista (se for 1:N) ou mapa (1:1)
     final enderecoData = emp['enderecos'];
     Map? endereco;
     if (enderecoData is List && enderecoData.isNotEmpty) {
@@ -92,39 +98,32 @@ final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<Strin
   
   final supabase = Supabase.instance.client;
   try {
-    // UUID check
     final isUuid = RegExp(r'^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$').hasMatch(filtroTrimmed);
 
     if (isUuid) {
-      final response = await supabase
-          .from('empresas')
-          .select('id, nome, cnpj, foto_url')
-          .eq('id', filtroTrimmed)
-          .limit(1); 
-      return (response as List).isNotEmpty ? response.first : null;
+      return await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('id', filtroTrimmed).maybeSingle();
     }
 
-    // Extrai números
     final String cnpjLimpo = filtroTrimmed.replaceAll(RegExp(r'[^0-9]'), '');
-    if (cnpjLimpo.length != 14) return null;
-    
-    // Formata igual a como tá no banco (agora sempre formatado!)
-    final String cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    String cnpjFormatado = filtroTrimmed;
+    if (cnpjLimpo.length == 14) {
+      cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    }
 
-    debugPrint('🔍 Buscando: $cnpjFormatado');
+    var response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjFormatado).maybeSingle();
 
-    final response = await supabase
-        .from('empresas')
-        .select('id, nome, cnpj, foto_url')
-        .or('cnpj.eq.$cnpjFormatado,cnpj.eq.$cnpjLimpo')
-        .limit(1);
+    if (response == null) {
+      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjLimpo).maybeSingle();
+    }
 
-    debugPrint('✅ Encontrado: $response');
+    if (response == null) {
+      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', filtroTrimmed).maybeSingle();
+    }
 
-    return (response as List).isNotEmpty ? response.first : null;
+    return response;
     
   } catch (e) {
-    debugPrint('🚨 Erro: $e');
+    debugPrint('🚨 Erro crítico na busca de empresa: $e');
     return null;
   }
 });
@@ -139,37 +138,62 @@ class EmpresasProjetoController {
 
   EmpresasProjetoController(this._ref);
 
-  // 1. Busca a empresa pelo CNPJ para mostrar no Modal
   Future<Map<String, dynamic>> buscarEmpresaParaPreview(String cnpj) async {
-    final cnpjLimpo = cnpj.replaceAll(RegExp(r'[^0-9]'), '');
+    final String filtroTrimmed = cnpj.trim();
+    if (filtroTrimmed.isEmpty) {
+      throw Exception('O CNPJ não pode estar vazio.');
+    }
 
-    final empresa = await _supabase
+    final String cnpjLimpo = filtroTrimmed.replaceAll(RegExp(r'[^0-9]'), '');
+
+    String cnpjFormatado = filtroTrimmed;
+    if (cnpjLimpo.length == 14) {
+      cnpjFormatado = '${cnpjLimpo.substring(0,2)}.${cnpjLimpo.substring(2,5)}.${cnpjLimpo.substring(5,8)}/${cnpjLimpo.substring(8,12)}-${cnpjLimpo.substring(12,14)}';
+    }
+
+    var empresa = await _supabase
         .from('empresas')
         .select('id, nome, foto_url, enderecos(cidade, estado)')
-        .eq('cnpj', cnpjLimpo)
+        .eq('cnpj', cnpjFormatado)
         .maybeSingle();
+
+    if (empresa == null) {
+      empresa = await _supabase
+          .from('empresas')
+          .select('id, nome, foto_url, enderecos(cidade, estado)')
+          .eq('cnpj', cnpjLimpo)
+          .maybeSingle();
+    }
+
+    if (empresa == null) {
+      empresa = await _supabase
+          .from('empresas')
+          .select('id, nome, foto_url, enderecos(cidade, estado)')
+          .eq('cnpj', filtroTrimmed)
+          .maybeSingle();
+    }
 
     if (empresa == null) {
       throw Exception('Nenhuma empresa encontrada com este CNPJ.');
     }
+    
     return empresa;
   }
 
-  // 2. Envia o convite para a Empresa Colaboradora
   Future<void> enviarConviteEmpresa({required String projetoId, required String empresaConvidadaId}) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Sessão expirada. Faça login novamente.');
 
     final jaVinculada = await _supabase
-        .from('projeto_empresas_colaboradoras') // 🔥 TABELA NOVA
+        .from('projeto_empresas_colaboradoras') 
         .select('status')
         .eq('projeto_id', projetoId)
-        .eq('empresa_id', empresaConvidadaId)   // 🔥 COLUNA NOVA
+        .eq('empresa_id', empresaConvidadaId)   
         .maybeSingle();
 
     if (jaVinculada != null) {
       if (jaVinculada['status'] == 'aceito') {
-        throw Exception('Esta empresa já é colaboradora ativa do projeto.');
+        throw Exception('Esta empresa já é colaboradora activa do projeto.');
       } else {
         throw Exception('Um convite pendente já foi enviado para esta empresa.');
       }
@@ -183,8 +207,6 @@ class EmpresasProjetoController {
     });
   }
 
-
-  // 3. A Empresa aceita o convite
   Future<void> aceitarConviteEmpresa({
     required String conviteId, 
     required String projetoId, 
@@ -201,58 +223,51 @@ class EmpresasProjetoController {
     final empresaId = usuarioData?['empresa_id'];
     if (empresaId == null) throw Exception('Seu usuário não está vinculado a uma empresa.');
 
-    // Atualiza o convite na tabela de empresas colaboradoras para 'aceito'
     await _supabase
-        .from('projeto_empresas_colaboradoras') // 🔥 TABELA NOVA
+        .from('projeto_empresas_colaboradoras') 
         .update({'status': 'aceito'})
         .eq('id', conviteId);
 
-    // Garante que quem aceitou o convite (o dono/gestor da empresa parceira) 
-    // entre na equipe interna do projeto para poder acessá-lo.
     final jaNaEquipe = await _supabase
-        .from('projeto_equipe_interna') // 🔥 TABELA NOVA
+        .from('projeto_equipe_interna') 
         .select('usuario_id')
         .eq('projeto_id', projetoId)
         .eq('usuario_id', userId)
         .maybeSingle();
 
     if (jaNaEquipe != null) {
-      // Reativa caso estivesse inativo
       await _supabase
           .from('projeto_equipe_interna')
-          .update({'ativo': true})
+          .update({
+            'ativo': true,
+            'is_gestor': true, 
+          })
           .eq('projeto_id', projetoId)
           .eq('usuario_id', userId);
     } else {
-      // Insere o usuário na equipe do projeto
       await _supabase.from('projeto_equipe_interna').insert({
         'projeto_id': projetoId,
         'empresa_id': empresaId,
         'usuario_id': userId,
         'ativo': true,
+        'is_gestor': true, 
       });
     }
 
-    // Invalida os providers para a UI reagir na hora!
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(empresasVinculadasProjetoProvider(projetoId));
-    _ref.invalidate(colaboradoresProjetoProvider(projetoId)); // 🔥 Atualiza a tela de equipe tbm
+    _ref.invalidate(colaboradoresProjetoProvider(projetoId)); 
   }
 
-  
-  // 🔥 ADICIONE NO SEU EmpresasProjetoController
   Future<void> alterarEmpresaGestora({
     required String projetoId, 
     required String novaEmpresaGestoraId,
   }) async {
-    // 1. Atualiza quem é a dona do projeto na tabela 'projetos'
     await _supabase
         .from('projetos')
         .update({'empresa_gestora_id': novaEmpresaGestoraId})
         .eq('id', projetoId);
 
-    // 2. Invalida os providers para a tela atualizar
-    // (Lembre-se de importar o gestaoProjetoProvider e filteredProjectsProvider no topo do arquivo)
     _ref.invalidate(gestaoProjetoProvider(projetoId));
     _ref.invalidate(filteredProjectsProvider);
   }

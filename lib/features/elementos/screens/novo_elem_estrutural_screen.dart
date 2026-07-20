@@ -1,51 +1,55 @@
+import 'dart:io'; 
+import 'dart:typed_data'; 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
+import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
+import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
+import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
+import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart'; 
+import 'package:image_cropper/image_cropper.dart'; 
 
-/// Opcoes padrao iniciais para o campo "Tipo do Elemento".
 const List<String> _defaultTipoElementoOptions = <String>[
   'Pilar',
   'Viga',
   'Laje',
 ];
 
-/// Opcoes padrao iniciais para o campo "Tipologia Estrutural".
 const List<String> _defaultTipologiaOptions = <String>[
   'Concreto armado',
   'Metalica',
   'Mista',
 ];
 
-/// Opcoes padrao iniciais para o campo "Local do Elemento".
 const List<String> _defaultLocalOptions = <String>[
   'Interno',
   'Externo',
   'Cobertura',
 ];
 
-/// Opcoes padrao iniciais para o campo "Revestimento".
 const List<String> _defaultRevestimentoOptions = <String>[
   'Pintura',
   'Argamassa',
   'Ceramica',
 ];
 
-/// Tela de criacao de um novo elemento estrutural.
-///
-/// Esta tela recebe dados iniciais, carrega opcoes dinamicas quando disponiveis,
-/// permite adicionar novos itens aos dropdowns e envia o rascunho final no
-/// callback de submissao.
-class NovoElemEstruturalScreen extends StatefulWidget {
-  /// Cria a tela com valores iniciais e callbacks opcionais para integracao.
+class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
   const NovoElemEstruturalScreen({
     super.key,
-    this.initialNome = 'ABC Corp.',
+    this.estruturaId,
+    this.initialNome = '', 
+    this.initialMarcacao,  
+    this.initialPlantaUrl, 
     this.initialTipoElemento,
     this.initialTipologiaEstrutural,
     this.initialLocalElemento,
@@ -64,7 +68,10 @@ class NovoElemEstruturalScreen extends StatefulWidget {
     this.onOpenRelatorios,
   });
 
+  final String? estruturaId;
   final String initialNome;
+  final MarcacaoPlanta? initialMarcacao; 
+  final String? initialPlantaUrl;        
   final String? initialTipoElemento;
   final String? initialTipologiaEstrutural;
   final String? initialLocalElemento;
@@ -82,17 +89,13 @@ class NovoElemEstruturalScreen extends StatefulWidget {
   final VoidCallback? onOpenInformacoes;
   final VoidCallback? onOpenRelatorios;
 
-  /// Cria o estado mutavel da tela.
   @override
-  State<NovoElemEstruturalScreen> createState() =>
+  ConsumerState<NovoElemEstruturalScreen> createState() =>
       _NovoElemEstruturalScreenState();
 }
 
-/// Estado interno da tela de novo elemento estrutural.
-///
-/// Mantem os controles de formulario, as selecoes atuais e as listas mutaveis
-/// usadas pelos dropdowns.
-class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
+class _NovoElemEstruturalScreenState
+    extends ConsumerState<NovoElemEstruturalScreen> {
   final GlobalKey<RightMenuBarState> _rightMenuKey =
       GlobalKey<RightMenuBarState>();
   late final TextEditingController _nomeController;
@@ -111,12 +114,23 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
   bool _isSubmitting = false;
   EstruturalDropdownField? _fieldBeingAdded;
 
-  /// Inicializa os valores do formulario, copia as listas padrao e tenta
-  /// carregar dados remotos adicionais, se o callback existir.
+  MarcacaoPlanta? _marcacaoPlanta;
+  String? _plantaUrlSelecionada; 
+
+  XFile? _fotoElemento;
+
   @override
   void initState() {
     super.initState();
     _nomeController = TextEditingController(text: widget.initialNome);
+
+    _nomeController.addListener(() {
+      if (mounted) setState(() {});
+    });
+    
+    _marcacaoPlanta = widget.initialMarcacao;
+    _plantaUrlSelecionada = widget.initialPlantaUrl;
+
     _tipoElemento = widget.initialTipoElemento;
     _tipologiaEstrutural = widget.initialTipologiaEstrutural;
     _localElemento = widget.initialLocalElemento;
@@ -129,18 +143,46 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     _loadFormData();
   }
 
-  /// Libera o controller do campo de nome para evitar vazamento de memoria.
   @override
   void dispose() {
     _nomeController.dispose();
     super.dispose();
   }
 
-  /// Carrega dados iniciais do formulario por meio do callback opcional.
-  ///
-  /// Quando a resposta chega, atualiza o texto, as listas de dropdown e as
-  /// selecoes validas, ignorando o resultado caso o widget ja tenha sido
-  /// desmontado.
+  Future<void> _selecionarFoto() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
+
+    if (pickedFile != null) {
+      final croppedFile = await ImageCropper().cropImage(
+        sourcePath: pickedFile.path,
+        uiSettings: [
+          AndroidUiSettings(
+            toolbarTitle: 'Ajustar Foto do Elemento',
+            toolbarColor: AppColors.primary,
+            toolbarWidgetColor: Colors.white,
+            initAspectRatio: CropAspectRatioPreset.original,
+            lockAspectRatio: false, 
+          ),
+          IOSUiSettings(
+            title: 'Ajustar Foto',
+            cancelButtonTitle: 'Cancelar',
+            doneButtonTitle: 'Concluir',
+          ),
+        ],
+      );
+
+      if (croppedFile != null) {
+        setState(() {
+          _fotoElemento = XFile(croppedFile.path);
+        });
+      }
+    }
+  }
+
   Future<void> _loadFormData() async {
     final loader = widget.onLoadFormData;
     if (loader == null) return;
@@ -185,66 +227,127 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Solicita a criacao de uma nova opcao para o dropdown informado e, se a
-  /// resposta vier preenchida, adiciona essa opcao a lista correspondente e a
-  /// seleciona imediatamente.
   Future<void> _handleAddOption(EstruturalDropdownField field) async {
-    if (field == EstruturalDropdownField.localElemento) {
-      await showDialog<void>(
-        context: context,
-        barrierColor: Colors.transparent,
-        builder: (_) => const NovoLocalModal(),
-      );
-      return;
-    }
-
-    final onAddOption = widget.onAddOption;
-    if (onAddOption == null) return;
     if (_fieldBeingAdded != null) return;
 
-    setState(() => _fieldBeingAdded = field);
+    String? novaOpcao;
 
-    try {
-      final newOption = await onAddOption(field);
-      if (!mounted || newOption == null) return;
-
-      final normalizedOption = newOption.trim();
-      if (normalizedOption.isEmpty) return;
-
-      setState(() {
-        final list = _getOptionsList(field);
-        if (!list.contains(normalizedOption)) {
-          list.add(normalizedOption);
-        }
-        _setSelectedValue(field, normalizedOption);
-      });
-    } catch (error) {
-      if (!mounted) return;
-      _showSnackBar('Erro ao adicionar opcao: $error');
-    } finally {
-      if (mounted) {
-        setState(() => _fieldBeingAdded = null);
+    if (field == EstruturalDropdownField.localElemento) {
+      novaOpcao = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.42),
+        builder: (_) => const NovoLocalModal(),
+      );
+    } else if (field == EstruturalDropdownField.tipoElemento) {
+      novaOpcao = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.42),
+        builder: (_) => const NovoTipoElementoModal(),
+      );
+    } else if (widget.onAddOption != null) {
+      setState(() => _fieldBeingAdded = field);
+      try {
+        novaOpcao = await widget.onAddOption!(field);
+      } catch (error) {
+        if (mounted) _showSnackBar('Erro ao adicionar opção: $error');
+      } finally {
+        if (mounted) setState(() => _fieldBeingAdded = null);
       }
+    } else {
+      novaOpcao = await showNovaOpcaoModal(
+        context,
+        titulo: _tituloNovaOpcao(field),
+      );
+    }
+
+    if (!mounted || novaOpcao == null) return;
+    final normalizedOption = novaOpcao.trim();
+    if (normalizedOption.isEmpty) return;
+
+    setState(() {
+      final list = _getOptionsList(field);
+      if (!list.contains(normalizedOption)) {
+        list.add(normalizedOption);
+      }
+      _setSelectedValue(field, normalizedOption);
+    });
+  }
+
+  String _tituloNovaOpcao(EstruturalDropdownField field) {
+    switch (field) {
+      case EstruturalDropdownField.tipoElemento:
+        return 'Novo Tipo de Elemento';
+      case EstruturalDropdownField.tipologiaEstrutural:
+        return 'Nova Tipologia Estrutural';
+      case EstruturalDropdownField.localElemento:
+        return 'Novo Local na Estrutura';
+      case EstruturalDropdownField.revestimento:
+        return 'Novo Revestimento';
     }
   }
 
-  /// Monta o rascunho atual do formulario e o envia ao callback de submit.
+  bool get _canSubmit =>
+      widget.onSubmit != null || widget.estruturaId != null;
+
+  Future<void> _handleAddMarcacao() async {
+    if (widget.estruturaId == null) return;
+
+    String urlPlanta = _plantaUrlSelecionada ?? '';
+    String idPlanta = _marcacaoPlanta?.plantaId ?? '';
+
+    if (urlPlanta.isEmpty || idPlanta.isEmpty) {
+      final planta = await showSelecionarPlantaPopup(context, widget.estruturaId!);
+      if (planta == null || !mounted) return;
+      
+      urlPlanta = planta.arquivoUrl;
+      idPlanta = planta.id;
+    }
+
+    // Pega o nome atual digitado no campo (se houver)
+    final nomeDigitado = _nomeController.text.trim();
+
+    final resultado = await showMarcacaoPlantaPopup(
+      context,
+      arquivoUrl: urlPlanta, 
+      plantaId: idPlanta,          
+      inicial: _marcacaoPlanta,
+      nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null, 
+    );
+
+    if (resultado == null || !mounted) return;
+    
+    setState(() {
+      _marcacaoPlanta = resultado;
+      _plantaUrlSelecionada = urlPlanta; 
+    });
+    
+    _showSnackBar('Posição da marcação atualizada.');
+  }
+
   Future<void> _handleSubmit() async {
-    final onSubmit = widget.onSubmit;
-    if (onSubmit == null) return;
+    if (!_canSubmit) return;
+
+    final draft = NovoElemEstruturalDraft(
+      nome: _nomeController.text.trim(),
+      tipoElemento: _tipoElemento,
+      tipologiaEstrutural: _tipologiaEstrutural,
+      localElemento: _localElemento,
+      revestimento: _revestimento,
+      marcacao: _marcacaoPlanta,
+    );
 
     setState(() => _isSubmitting = true);
 
     try {
-      await onSubmit(
-        NovoElemEstruturalDraft(
-          nome: _nomeController.text.trim(),
-          tipoElemento: _tipoElemento,
-          tipologiaEstrutural: _tipologiaEstrutural,
-          localElemento: _localElemento,
-          revestimento: _revestimento,
-        ),
-      );
+      final onSubmit = widget.onSubmit;
+      if (onSubmit != null) {
+        await onSubmit(draft);
+      } else {
+        await _criarElementoPadrao(draft);
+      }
+      if (mounted) {
+        Navigator.of(context).maybePop();
+      }
     } catch (error) {
       if (!mounted) return;
       _showSnackBar('Erro ao salvar elemento: $error');
@@ -255,7 +358,43 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Retorna a lista mutavel de opcoes correspondente ao campo recebido.
+  Future<void> _criarElementoPadrao(NovoElemEstruturalDraft draft) async {
+    final estruturaId = widget.estruturaId;
+    if (estruturaId == null) return;
+
+    final repo = ref.read(elementoRepositoryProvider);
+    List<String>? urlsDeFotos;
+
+    if (_fotoElemento != null) {
+      final elementoRefId = 'novo_${DateTime.now().millisecondsSinceEpoch}';
+      final urlPublica = await repo.uploadFoto(
+        elementoId: elementoRefId,
+        caminhoLocalFoto: _fotoElemento!.path,
+      );
+      urlsDeFotos = [urlPublica];
+    }
+
+    await repo.criarElemento(
+      ElementoModel(
+        id: '',
+        nome: draft.nome.isEmpty ? null : draft.nome,
+        tipo: draft.tipoElemento,
+        tipologiaEstrutural: draft.tipologiaEstrutural,
+        local: draft.localElemento,
+        revestimento: draft.revestimento,
+        fotos: urlsDeFotos, 
+        posicaoX: draft.marcacao?.x, 
+        posicaoY: draft.marcacao?.y,
+        plantaId: draft.marcacao?.plantaId, 
+        tipoMarcacao: draft.marcacao?.tipoMarcacao, 
+        ativo: true,
+      ),
+      estruturaId,
+    );
+
+    ref.invalidate(elementosPorEstruturaProvider(estruturaId));
+  }
+
   List<String> _getOptionsList(EstruturalDropdownField field) {
     switch (field) {
       case EstruturalDropdownField.tipoElemento:
@@ -269,7 +408,6 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Atualiza o valor selecionado de um dos dropdowns controlados pela tela.
   void _setSelectedValue(EstruturalDropdownField field, String? value) {
     switch (field) {
       case EstruturalDropdownField.tipoElemento:
@@ -283,10 +421,6 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Garante que as selecoes atuais ainda existam nas listas de opcoes.
-  ///
-  /// Se algum valor inicial nao estiver mais presente, ele e limpo para evitar
-  /// estados inconsistentes no formulario.
   void _sanitizeSelections() {
     if (!_tipoElementoOptions.contains(_tipoElemento)) {
       _tipoElemento = null;
@@ -302,14 +436,12 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     }
   }
 
-  /// Exibe uma mensagem breve na tela via SnackBar.
   void _showSnackBar(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  /// Mantem lista atual quando carga remota nao trouxer opcoes novas.
   List<String> _resolveOptions({
     required List<String> current,
     required List<String> incoming,
@@ -320,7 +452,6 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     return List<String>.from(incoming);
   }
 
-  /// Converte uma lista simples de strings em itens prontos para um dropdown.
   List<DropdownMenuItem<String>> _buildDropdownItems(List<String> options) {
     return options
         .map(
@@ -332,20 +463,15 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
         .toList();
   }
 
-  /// Monta um dropdown estrutural padronizado com suporte a add assíncrono.
   Widget _buildDropdownField({
     required String label,
     required String? value,
     required List<String> options,
     required EstruturalDropdownField field,
   }) {
-    final isLocalField = field == EstruturalDropdownField.localElemento;
     final isAddingThisField = _fieldBeingAdded == field;
     final isAddEnabled =
-        !_isLoadingFormData &&
-        !_isSubmitting &&
-        (isLocalField || widget.onAddOption != null) &&
-        _fieldBeingAdded == null;
+        !_isLoadingFormData && !_isSubmitting && _fieldBeingAdded == null;
 
     return CustomDropdownWithAdd<String>(
       label: label,
@@ -362,10 +488,10 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
     );
   }
 
-  /// Construi a interface da tela com o cabeçalho fixo, o formulario e os
-  /// botoes de acao.
   @override
   Widget build(BuildContext context) {
+    final nomeAtual = _nomeController.text.trim();
+
     return RightMenuBar(
       key: _rightMenuKey,
       onInformacoesPressed: widget.onOpenInformacoes,
@@ -398,14 +524,18 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
+                          
                           _ElementoAvatar(
-                            onPressed: widget.onAvatarEditPressed,
+                            foto: _fotoElemento,
+                            onPressed: widget.onAvatarEditPressed ?? _selecionarFoto,
                           ),
                           const SizedBox(height: 24),
+                          
                           CustomTextField(
                             label: 'Nome do Elemento',
                             hint: 'Digite o nome',
                             controller: _nomeController,
+                            // Atualiza a tela se digitar o nome para o Card da Planta pegar!
                           ),
                           const SizedBox(height: 10),
                           _buildDropdownField(
@@ -429,13 +559,21 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             field: EstruturalDropdownField.localElemento,
                           ),
                           const SizedBox(height: 18),
-                          _PlanImageCard(onPressed: widget.onPlanPressed),
+                          
+                          _PlanImageCard(
+                            onPressed: widget.onPlanPressed ?? _handleAddMarcacao,
+                            marcacao: _marcacaoPlanta,
+                            arquivoUrl: _plantaUrlSelecionada,
+                            nomeElemento: nomeAtual.isNotEmpty ? nomeAtual : null,
+                          ),
+                          
                           const SizedBox(height: 18),
                           BiggerCustomButton(
                             text: 'Adicionar marcacao em Planta',
                             width: 292,
                             height: 40,
-                            onPressed: widget.onAddMarcacaoPressed ?? () {},
+                            onPressed:
+                                widget.onAddMarcacaoPressed ?? _handleAddMarcacao,
                           ),
                           const SizedBox(height: 16),
                           _buildDropdownField(
@@ -443,17 +581,15 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
                             value: _revestimento,
                             options: _revestimentoOptions,
                             field: EstruturalDropdownField.revestimento,
-                          ),
+          ),
                           const SizedBox(height: 24),
                           BiggerCustomButton(
                             text: _isSubmitting ? 'Salvando...' : 'Criar',
                             width: 139,
                             height: 54,
-                            onPressed: _isSubmitting
+                            onPressed: (_isSubmitting || !_canSubmit)
                                 ? () {}
-                                : (widget.onSubmit == null
-                                      ? () {}
-                                      : _handleSubmit),
+                                : _handleSubmit,
                           ),
                         ],
                       ),
@@ -477,14 +613,11 @@ class _NovoElemEstruturalScreenState extends State<NovoElemEstruturalScreen> {
   }
 }
 
-/// Cabecalho fixo da tela com navegação, titulo e icones decorativos.
 class _EstruturaHeader extends StatelessWidget {
-  /// Cria o cabecalho sem estado.
   const _EstruturaHeader({this.onMenuPressed});
 
   final VoidCallback? onMenuPressed;
 
-  /// Monta a faixa superior com o nome do modulo e as acoes visuais.
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -560,14 +693,12 @@ class _EstruturaHeader extends StatelessWidget {
   }
 }
 
-/// Avatar ilustrativo do elemento estrutural com acao de edicao opcional.
 class _ElementoAvatar extends StatelessWidget {
-  /// Cria o avatar clicavel.
-  const _ElementoAvatar({this.onPressed});
+  const _ElementoAvatar({this.onPressed, this.foto});
 
   final VoidCallback? onPressed;
+  final XFile? foto;
 
-  /// Exibe o circulo com o icone do edificio e o botao de edicao sobreposto.
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -581,17 +712,25 @@ class _ElementoAvatar extends StatelessWidget {
             Container(
               width: 123,
               height: 123,
-              decoration: const BoxDecoration(
-                color: Color(0xFFD9D9D9),
+              decoration: BoxDecoration(
+                color: const Color(0xFFD9D9D9),
                 shape: BoxShape.circle,
+                image: foto != null
+                    ? DecorationImage(
+                        image: FileImage(File(foto!.path)),
+                        fit: BoxFit.cover,
+                      )
+                    : null,
               ),
-              child: Center(
-                child: Icon(
-                  Icons.location_city_outlined,
-                  size: 64,
-                  color: AppColors.greyDarkest.withOpacity(0.8),
-                ),
-              ),
+              child: foto == null
+                  ? Center(
+                      child: Icon(
+                        Icons.location_city_outlined,
+                        size: 64,
+                        color: AppColors.greyDarkest.withOpacity(0.8),
+                      ),
+                    )
+                  : null,
             ),
             Positioned(
               right: -2,
@@ -617,16 +756,21 @@ class _ElementoAvatar extends StatelessWidget {
   }
 }
 
-/// Cartao ilustrado que representa a planta e dispara uma acao ao tocar.
 class _PlanImageCard extends StatelessWidget {
-  /// Cria o cartao da planta com callback obrigatorio.
-  const _PlanImageCard({this.onPressed});
+  const _PlanImageCard({this.onPressed, this.marcacao, this.arquivoUrl, this.nomeElemento});
 
   final VoidCallback? onPressed;
+  final MarcacaoPlanta? marcacao;
+  final String? arquivoUrl;
+  final String? nomeElemento; 
 
-  /// Renderiza uma imagem da planta com moldura e area clicavel.
   @override
   Widget build(BuildContext context) {
+    final marcacao = this.marcacao;
+    final url = arquivoUrl;
+    final isPdf = url != null && url.toLowerCase().contains('.pdf');
+    final bytesThumbnail = marcacao?.thumbnailBytes; 
+
     return GestureDetector(
       onTap: onPressed,
       child: Container(
@@ -637,11 +781,40 @@ class _PlanImageCard extends StatelessWidget {
           border: Border.all(color: const Color(0xFF858585)),
         ),
         padding: const EdgeInsets.all(5),
-        child: Container(
+        child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-          child: Image.asset(
-            'assets/images/planta_elementos_info.png',
-            fit: BoxFit.cover,
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final w = constraints.maxWidth;
+              final h = constraints.maxHeight;
+              
+              final temFundoReal = (bytesThumbnail != null) || (url != null && !isPdf);
+
+              return Stack(
+                fit: StackFit.expand,
+                children: [
+                  if (bytesThumbnail != null)
+                    Image.memory(bytesThumbnail, fit: BoxFit.cover)
+                  else if (url != null && !isPdf)
+                    Image.network(url, fit: BoxFit.cover)
+                  else if (isPdf)
+                    const Center(child: Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D)))
+                  else
+                    const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
+                    
+                  if (marcacao != null && temFundoReal)
+                    Positioned(
+                      left: (marcacao.x * w) - 13, // Ajustado de 11 para 13 (metade de 26)
+                      top: (marcacao.y * h) - 13,
+                      child: PinoDinamico(
+                        tipoMarcacao: marcacao.tipoMarcacao, 
+                        nomeElemento: nomeElemento, 
+                        numero: marcacao.numero
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
         ),
       ),
@@ -649,7 +822,6 @@ class _PlanImageCard extends StatelessWidget {
   }
 }
 
-/// Identifica qual dropdown estrutural esta sendo manipulado.
 enum EstruturalDropdownField {
   tipoElemento,
   tipologiaEstrutural,
@@ -657,9 +829,7 @@ enum EstruturalDropdownField {
   revestimento,
 }
 
-/// Dados iniciais recebidos para popular a tela do formulario.
 class NovoElemEstruturalFormData {
-  /// Cria um pacote de dados com selecoes e listas opcionais.
   const NovoElemEstruturalFormData({
     this.nome,
     this.tipoElemento,
@@ -683,15 +853,14 @@ class NovoElemEstruturalFormData {
   final List<String> revestimentoOptions;
 }
 
-/// Rascunho final do elemento estrutural pronto para envio.
 class NovoElemEstruturalDraft {
-  /// Cria um rascunho com os campos finais do formulario.
   const NovoElemEstruturalDraft({
     required this.nome,
     required this.tipoElemento,
     required this.tipologiaEstrutural,
     required this.localElemento,
     required this.revestimento,
+    this.marcacao,
   });
 
   final String nome;
@@ -699,8 +868,8 @@ class NovoElemEstruturalDraft {
   final String? tipologiaEstrutural;
   final String? localElemento;
   final String? revestimento;
+  final MarcacaoPlanta? marcacao;
 
-  /// Converte o rascunho em mapa para persistencia ou envio em API.
   Map<String, dynamic> toMap() {
     return <String, dynamic>{
       'nome': nome,
@@ -708,6 +877,7 @@ class NovoElemEstruturalDraft {
       'tipologiaEstrutural': tipologiaEstrutural,
       'localElemento': localElemento,
       'revestimento': revestimento,
+      if (marcacao != null) ...marcacao!.toPosicaoMap(),
     };
   }
 }

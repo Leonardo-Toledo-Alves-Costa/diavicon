@@ -21,11 +21,19 @@ class EmpresaController extends StateNotifier<bool> {
 
   Future<void> cadastrarEmpresa(Map<String, dynamic> dados) async {
     state = true;
+    //ATIVA O ESCUDO DO ROTEADOR: O App_Router agora vai ignorar qualquer mudança
+    _ref.read(bloqueioDeRotaProvider.notifier).state = true;
     try {
+      //  PROTEÇÃO 1: Conversão segura (Safe Cast) dos dados de Autenticação.
+      // Se a chave vier nula ou com nome diferente (ex: 'password' em vez de 'senha'),
+      // o '.toString() ?? ''' impede o erro "Null is not a subtype of String".
+      final emailSeguro = dados['email']?.toString() ?? '';
+      final senhaSegura = (dados['senha'] ?? dados['password'])?.toString() ?? '';
+
       // 1. Cria o usuário (Auth + Tabela Usuarios)
       await _ref.read(authControllerProvider.notifier).registrar(
-            email: dados['email'],
-            password: dados['senha'],
+            email: emailSeguro,
+            password: senhaSegura,
             dados: dados,
           );
 
@@ -36,14 +44,16 @@ class EmpresaController extends StateNotifier<bool> {
       }
 
       // 3. Salva Empresa + Endereço e vincula ao ID do usuário no banco
-      final empresaDados = dados['empresa'] as Map<String, dynamic>;
+      // 🔥 PROTEÇÃO 2: Garante que os dados da empresa não venham nulos
+      final empresaDados = (dados['empresa'] as Map<String, dynamic>?) ?? {};
       final repo = _ref.read(empresaRepositoryProvider);
       
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
           ...empresaDados,
-          'plano_id': dados['plano_escolhido_id'],
-          'tipo': dados['tipo'] ?? 'Profissional',
+          // Mantém a possibilidade de ser null (para planos Freemium), mas protege a tipagem
+          'plano_id': dados['plano_escolhido_id'], 
+          'tipo': dados['tipo']?.toString() ?? 'Profissional',
         },
         userId: usuario.id,
       );
@@ -70,6 +80,7 @@ class EmpresaController extends StateNotifier<bool> {
       rethrow;
     } finally {
       state = false;
+      _ref.read(bloqueioDeRotaProvider.notifier).state = false;
     }
   }
 }

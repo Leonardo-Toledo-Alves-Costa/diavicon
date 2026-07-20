@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class CompactButton extends StatelessWidget {
   final String text;
   final VoidCallback onPressed;
   final IconData? icon;
   final double? width;
+  
+  final double height;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final Color? iconColor;
+  final Color? borderColor;
+  final double elevation;
 
   const CompactButton({
     super.key,
@@ -14,20 +20,35 @@ class CompactButton extends StatelessWidget {
     required this.onPressed,
     this.icon,
     this.width,
+    this.height = 40,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.iconColor,
+    this.borderColor,
+    this.elevation = 2,
   });
 
   @override
   Widget build(BuildContext context) {
+   
+    final bg = backgroundColor ?? AppColors.primary;
+    final fg = foregroundColor ?? Colors.white;
+    final iColor = iconColor ?? fg;
+
     return SizedBox(
-      height: 40,
+      height: height,
       width: width,
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primary,
-          foregroundColor: Colors.white,
-          elevation: 2,
-          padding: const EdgeInsets.symmetric(horizontal: 20),
-          shape: const StadiumBorder(),
+          backgroundColor: bg,
+          foregroundColor: fg,
+          elevation: elevation,
+          padding: const EdgeInsets.symmetric(horizontal: 12), 
+          shape: StadiumBorder(
+            side: borderColor != null
+                ? BorderSide(color: borderColor!, width: 1.2)
+                : BorderSide.none,
+          ),
         ),
         onPressed: onPressed,
         child: Row(
@@ -35,15 +56,19 @@ class CompactButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 18),
+              Icon(icon, size: 20, color: iColor),
               const SizedBox(width: 8),
             ],
-            Text(
-              text,
-              style: const TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w400,
-                fontFamily: 'Lato',
+            Flexible(
+              child: Text(
+                text,
+                textAlign: TextAlign.center, 
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500, 
+                  fontFamily: 'Lato',
+                  height: 1.2,
+                ),
               ),
             ),
           ],

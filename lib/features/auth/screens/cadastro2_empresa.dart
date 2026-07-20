@@ -19,14 +19,15 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
       chaveMapa: 'servicos',
       multiplaEscolha: true,
       opcoes: [
-        'Execução de intervenções estruturais de reparo ou reforço, bem como manutenção',
         'Ensaios Não Destrutivos (END)',
-        'Gerenciamento e monitoramento de estruturas',
-        'Elaboração de planos de ensaio',
-        'Gerenciamento de outras empresas de ensaios',
         'Consultoria acerca de estruturas',
+        'Gerenciamento de outras empresas de ensaios',
+        'Elaboração de planos de ensaio',
+        'Gerenciamento e monitoramento de estruturas',
+        'Execução de intervenções estruturais de reparo ou reforço, bem como manutenção',
         'Projeto de intervenções como recuperação e/ou reforço estrutural',
       ],
+      ponto: [2, 3, 3, 3, 3, 1, 1],
     ),
     _QuestionarioPasso(
       id: 'ensaios',
@@ -39,6 +40,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Apenas utilizo o resultado final e diagnóstico da empresa',
         'Nenhuma das alternativas',
       ],
+      ponto: [3, 2, 1, 1],
     ),
     _QuestionarioPasso(
       id: 'gerenciamento_estrutura',
@@ -52,6 +54,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Apenas gerenciamos os arquivos e histórico daquela estrutura',
         'Nenhuma das alternativas',
       ],
+      ponto: [1, 2, 3, 2, 1],
     ),
     _QuestionarioPasso(
       id: 'intervencoes',
@@ -65,6 +68,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Fazemos recuperações de baixa complexidade',
         'Damos manutenção básica',
       ],
+      ponto: [2, 1, 3, 2, 1],
     ),
     _QuestionarioPasso(
       id: 'engenharia_diagnostica',
@@ -79,6 +83,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Temos muita expertise e apenas oferecemos consultoria a diversos projetos e estruturas',
         'Não atuamos nessa área',
       ],
+      ponto: [1, 1, 2, 3, 3, 1],
     ),
     _QuestionarioPasso(
       id: 'estruturas',
@@ -99,6 +104,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Saneamento',
         'Rodoviárias',
       ],
+      ponto: [1, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3],
     ),
     _QuestionarioPasso(
       id: 'tamanho',
@@ -111,6 +117,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Média (de 6 até 10 colaboradores)',
         'Grande (acima de 10 colaboradores)',
       ],
+      ponto: [1, 1, 2, 3],
     ),
     _QuestionarioPasso(
       id: 'complexidade',
@@ -124,6 +131,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Grande, uma ou mais grandes estruturas complexas, tendo várias relatórios',
         'Gigantes onde cada projeto contém várias estruturas complexas',
       ],
+      ponto: [1, 2, 2, 3, 3],
     ),
     _QuestionarioPasso(
       id: 'projetos',
@@ -136,6 +144,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         '10 a 50 projetos',
         'mais de 50 projetos',
       ],
+      ponto: [1, 2, 3, 3],
     ),
     _QuestionarioPasso(
       id: 'relacionamento_relatorios',
@@ -149,6 +158,7 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
         'Trabalhamos acima do limite e temos a maioria dos relatórios atrasados',
         'Não trabalhamos com relatórios',
       ],
+      ponto: [1, 2, 3, 3, 1],
     ),
   ];
 
@@ -168,7 +178,11 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
 
   void _voltar() {
     if (_etapaAtual == 0) {
-      context.pop();
+      if (context.canPop()) {
+        context.pop();
+      } else {
+        context.push('/empresa/gate', extra: widget.dadosUsuario);
+      }
       return;
     }
 
@@ -194,10 +208,23 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
     }
 
     final respostas = _respostasSelecionadas();
+    int pontos = 0;
+    for (var entry in respostas.entries) {
+      final passo = _passos.firstWhere((p) => p.chaveMapa == entry.key);
+      final ponto = entry.value.fold<int>(0, (total, opcao) {
+        final index = passo.opcoes.indexOf(opcao);
+        if (index != -1 && index < passo.ponto.length) {
+          return total + passo.ponto[index];
+        }
+        return total;
+      });
+      pontos += ponto;
+    }
     final dadosAtualizados = {
       ...widget.dadosUsuario,
       ...respostas,
       'questionario_empresa': respostas,
+      'pontos': pontos,
     };
 
     context.push('/empresa/planos', extra: dadosAtualizados);
@@ -447,6 +474,7 @@ class _QuestionarioPasso {
   final String pergunta;
   final String chaveMapa;
   final List<String> opcoes;
+  final List<int> ponto;
   final bool multiplaEscolha;
 
   const _QuestionarioPasso({
@@ -455,5 +483,6 @@ class _QuestionarioPasso {
     required this.chaveMapa,
     required this.opcoes,
     this.multiplaEscolha = false,
+    this.ponto = const [],
   });
 }

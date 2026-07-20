@@ -54,14 +54,17 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
 
   String? _escolaridade;
 
-  // Controlo de estado para a API de CEP
-  bool _enderecoBloqueado = false;
+  // 🔥 Controlos de estado para a API de CEP (Agora independentes)
+  bool _cepBuscado = false;
+  bool _cidadeBloqueada = false;
+  bool _ruaBloqueada = false;
+  bool _bairroBloqueado = false;
+  bool _estadoBloqueado = false;
   bool _carregandoCep = false;
 
   @override
   void initState() {
     super.initState();
-    // Ouve as alterações do CEP em tempo real
     _cepCtrl.addListener(_ouvinteCep);
   }
 
@@ -86,15 +89,18 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
   void _ouvinteCep() {
     final apenasNumeros = _cepCtrl.text.replaceAll(RegExp(r'\D'), '');
 
-    // Dispara a busca automaticamente ao atingir 8 dígitos
-    if (apenasNumeros.length == 8 && !_enderecoBloqueado && !_carregandoCep) {
+    if (apenasNumeros.length == 8 && !_cepBuscado && !_carregandoCep) {
       _buscarCep(apenasNumeros);
     }
 
-    // Se o utilizador apagar o CEP, liberta os campos para edição manual
-    if (apenasNumeros.isEmpty && _enderecoBloqueado) {
+    if (apenasNumeros.isEmpty && _cepBuscado) {
       setState(() {
-        _enderecoBloqueado = false;
+        _cepBuscado = false;
+        _cidadeBloqueada = false;
+        _ruaBloqueada = false;
+        _bairroBloqueado = false;
+        _estadoBloqueado = false;
+
         _cidadeCtrl.clear();
         _ruaCtrl.clear();
         _bairroCtrl.clear();
@@ -104,7 +110,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
     }
   }
 
-  //Função auxiliar que garante que o aviso aparece no lugar certo!
   void _mostrarAviso(String mensagem, Color cor) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).clearSnackBars();
@@ -118,10 +123,8 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
           ),
         ),
         backgroundColor: cor,
-        behavior: SnackBarBehavior.floating, // Faz flutuar
-        margin: const EdgeInsets.all(
-          20,
-        ), // O Flutter já cuida de subir isso acima do teclado!
+        behavior: SnackBarBehavior.floating, 
+        margin: const EdgeInsets.all(20), 
         duration: const Duration(seconds: 3),
       ),
     );
@@ -137,37 +140,43 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
       if (response.statusCode == 200) {
         final dados = jsonDecode(response.body);
 
-        //  containsKey('erro') ignora se é texto ou booleano, só vê se a palavra "erro" veio da API.
         if (dados.containsKey('erro')) {
           _mostrarAviso('CEP não encontrado ou inválido!', Colors.red);
           setState(() {
-            _enderecoBloqueado = false;
+            _cepBuscado = false;
             _carregandoCep = false;
           });
           return;
         }
 
-        // Se deu tudo certo, preenche os campos
         setState(() {
-          _cidadeCtrl.text = dados['localidade'] ?? '';
-          _ruaCtrl.text = dados['logradouro'] ?? '';
-          _bairroCtrl.text = dados['bairro'] ?? '';
-          _estadoCtrl.text = dados['uf'] ?? '';
+          final localidade = dados['localidade'] ?? '';
+          final logradouro = dados['logradouro'] ?? '';
+          final bairro = dados['bairro'] ?? '';
+          final uf = dados['uf'] ?? '';
+
+          _cidadeCtrl.text = localidade;
+          _ruaCtrl.text = logradouro;
+          _bairroCtrl.text = bairro;
+          _estadoCtrl.text = uf;
           _paisCtrl.text = 'Brasil';
 
-          _enderecoBloqueado = true;
+          _cepBuscado = true;
+          // 🔥 A inteligência entra aqui: só bloqueia se tiver vindo preenchido da API!
+          _cidadeBloqueada = localidade.isNotEmpty;
+          _ruaBloqueada = logradouro.isNotEmpty;
+          _bairroBloqueado = bairro.isNotEmpty;
+          _estadoBloqueado = uf.isNotEmpty;
+          
           _carregandoCep = false;
         });
 
-        // Aviso verde de sucesso!
         _mostrarAviso('Endereço preenchido com sucesso!', Colors.green);
       } else {
-        // Se a API retornar código 400 ou 500
         _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);
         setState(() => _carregandoCep = false);
       }
     } catch (e) {
-      // Se não tiver internet
       _mostrarAviso('Erro de conexão ao buscar o CEP.', Colors.red);
       setState(() => _carregandoCep = false);
     }
@@ -176,8 +185,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
   Future<void> _selecionarFoto() async {
     final img = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      maxWidth:
-          1024,
+      maxWidth: 1024,
       maxHeight: 1024,
     );
 
@@ -209,7 +217,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
       if (croppedFile != null) {
         setState(() {
           _foto = XFile(croppedFile.path);
-
         });
       }
     }
@@ -284,7 +291,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // ── Informações Pessoais ─────────────────────────
                   const _SectionTitle('Informações Pessoais'),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -314,7 +320,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                   ),
                   const SizedBox(height: 28),
 
-                  // ── Endereço ────────────────────────────────────
                   const _SectionTitle('Endereço'),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -333,7 +338,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     hint: 'Belo Horizonte',
                     isRequired: true,
                     controller: _cidadeCtrl,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_cidadeBloqueada, // 🔥 Usando variável individual
                     validator: (v) =>
                         ValidatorsCadastro.obrigatorio(v, 'Informe a cidade'),
                   ),
@@ -343,7 +348,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     hint: 'Rua Abc',
                     isRequired: true,
                     controller: _ruaCtrl,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_ruaBloqueada, // 🔥 Usando variável individual
                     validator: (v) =>
                         ValidatorsCadastro.obrigatorio(v, 'Informe a rua'),
                   ),
@@ -353,7 +358,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     hint: 'Bairro Xyz',
                     isRequired: true,
                     controller: _bairroCtrl,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_bairroBloqueado, // 🔥 Usando variável individual
                     validator: (v) =>
                         ValidatorsCadastro.obrigatorio(v, 'Informe o bairro'),
                   ),
@@ -393,7 +398,7 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     hint: 'Minas Gerais',
                     isRequired: true,
                     controller: _estadoCtrl,
-                    enabled: !_enderecoBloqueado,
+                    enabled: !_estadoBloqueado, // 🔥 Usando variável individual
                     validator: (v) =>
                         ValidatorsCadastro.obrigatorio(v, 'Informe o estado'),
                   ),
@@ -403,13 +408,12 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                     isRequired: true,
                     hint: 'Brasil',
                     controller: _paisCtrl,
-                    enabled: !_enderecoBloqueado,
+                    enabled: false, // País normalmente fica sempre bloqueado
                     validator: (v) =>
                         ValidatorsCadastro.obrigatorio(v, 'Informe o país'),
                   ),
                   const SizedBox(height: 28),
 
-                  // ── Título e Escolaridade ────────────────────────
                   const _SectionTitle('Título e Escolaridade'),
                   const SizedBox(height: 12),
                   _DropdownEscolaridade(
@@ -424,7 +428,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // ── Ações ────────────────────────────────────────
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -450,8 +453,6 @@ class _CadastroR1ScreenState extends State<CadastroR1Screen> {
     );
   }
 }
-
-// ─────────────────────────────────────────────────────────────────
 
 class _AvatarPicker extends StatelessWidget {
   final XFile? foto;

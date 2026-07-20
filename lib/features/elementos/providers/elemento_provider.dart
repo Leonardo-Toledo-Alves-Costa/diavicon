@@ -1,79 +1,43 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
-import '../models/elemento_model.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repositories/elemento_repository.dart';
+import '../models/elemento_model.dart';
 
-final elementoRepositoryProvider =
-    Provider((ref) => ElementoRepository());
+// --- REPOSITORY PROVIDER ---
+final elementoRepositoryProvider = Provider<ElementoRepository>((ref) {
+  return ElementoRepository(Supabase.instance.client);
+});
 
-// ── Lista de elementos da estrutura atual ──────────────────────────────────
-final elementosProvider = StateNotifierProvider.family<
-    ElementosNotifier, AsyncValue<List<ElementoModel>>, String>(
-  (ref, estruturaId) =>
-      ElementosNotifier(ref.read(elementoRepositoryProvider), estruturaId),
-);
+// --- PROVIDER: ELEMENTOS (ATIVOS) DE UMA ESTRUTURA, EM TEMPO REAL ---
+// O Supabase vigia a tabela; qualquer INSERT/UPDATE/DELETE dispara o fluxo.
+final elementosPorEstruturaProvider = StreamProvider.autoDispose
+    .family<List<ElementoModel>, String>((ref, estruturaId) {
+  final supabase = Supabase.instance.client;
 
-class ElementosNotifier
-    extends StateNotifier<AsyncValue<List<ElementoModel>>> {
-  final ElementoRepository _repo;
-  final String estruturaId;
+  return supabase
+      .from('elementos_estruturais')
+      .stream(primaryKey: ['id'])
+      .eq('estrutura_id', estruturaId)
+      .order('criado_em', ascending: false)
+      .map((lista) => lista
+          .where((item) => item['ativo'] != false)
+          .map((item) => ElementoModel.fromMap(item))
+          .toList());
+});
 
-  ElementosNotifier(this._repo, this.estruturaId)
-      : super(const AsyncValue.loading()) {
-    carregar();
-  }
+// --- PROVIDER: TODOS OS ELEMENTOS DE UMA ESTRUTURA (INCLUSIVE OCULTOS) ---
+// Diferente de [elementosPorEstruturaProvider], NÃO filtra por `ativo`. Usado
+// no sheet "Incluir", onde os elementos ocultos precisam aparecer desmarcados
+// para poderem ser reincluídos.
+final todosElementosPorEstruturaProvider = StreamProvider.autoDispose
+    .family<List<ElementoModel>, String>((ref, estruturaId) {
+  final supabase = Supabase.instance.client;
 
-  // ── Carregar ───────────────────────────────────────────────────────────────
-  Future<void> carregar() async {
-    state = const AsyncValue.loading();
-    try {
-      final lista = await _repo.listarPorEstrutura(estruturaId);
-      state = AsyncValue.data(lista);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-    }
-  }
-
-  // ── Criar ──────────────────────────────────────────────────────────────────
-  Future<void> criar(ElementoModel elemento) async {
-    try {
-      final novo = await _repo.criar(elemento);
-      state.whenData((lista) {
-        state = AsyncValue.data([...lista, novo]);
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ── Atualizar ──────────────────────────────────────────────────────────────
-  Future<void> atualizar(ElementoModel elemento) async {
-    try {
-      final atualizado = await _repo.atualizar(elemento);
-      state.whenData((lista) {
-        state = AsyncValue.data(
-          lista.map((e) => e.id == atualizado.id ? atualizado : e).toList(),
-        );
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-
-  // ── Deletar ────────────────────────────────────────────────────────────────
-  Future<void> deletar(String id) async {
-    try {
-      await _repo.deletar(id);
-      state.whenData((lista) {
-        state = AsyncValue.data(
-          lista.where((e) => e.id != id).toList(),
-        );
-      });
-    } catch (e) {
-      rethrow;
-    }
-  }
-}
-
-// ── Controller de loading para form ───────────────────────────────────────
-final elementoFormLoadingProvider = StateProvider<bool>((ref) => false);
+  return supabase
+      .from('elementos_estruturais')
+      .stream(primaryKey: ['id'])
+      .eq('estrutura_id', estruturaId)
+      .order('criado_em', ascending: false)
+      .map((lista) =>
+          lista.map((item) => ElementoModel.fromMap(item)).toList());
+});

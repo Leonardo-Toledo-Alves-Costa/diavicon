@@ -12,6 +12,7 @@ class ProjectCard extends StatelessWidget {
   final String priority;
   final String imageUrl;
   final List<String> teamAvatars;
+  final String? empresaFotoUrl; // 🔥 ADICIONADO: URL da logo da empresa
 
   const ProjectCard({
     super.key,
@@ -21,6 +22,7 @@ class ProjectCard extends StatelessWidget {
     required this.priority,
     required this.imageUrl,
     required this.teamAvatars,
+    this.empresaFotoUrl, // 🔥 ADICIONADO NO CONSTRUTOR
   });
 
   @override
@@ -72,9 +74,17 @@ class ProjectCard extends StatelessWidget {
                       BoxShadow(color: Colors.black12, blurRadius: 4),
                     ],
                   ),
-                  child: Image.asset(
-                    'assets/images/logo_diavicon.png', // O logo "escudo" vai aqui
-                    height: 32, // Um pouco maior para destacar o escudo
+                  // 🔥 AQUI ENTRA A LOGO DA EMPRESA GESTORA
+                  child: ClipOval(
+                    child: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty
+                        ? Image.network(
+                            empresaFotoUrl!,
+                            height: 32,
+                            width: 32,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => _fallbackLogo(),
+                          )
+                        : _fallbackLogo(),
                   ),
                 ),
               ),
@@ -147,6 +157,16 @@ class ProjectCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  // Helper para o logo padrão da Diavicon se a empresa não tiver foto
+  Widget _fallbackLogo() {
+    return Image.asset(
+      'assets/images/logo_diavicon.png', 
+      height: 32, 
+      width: 32,
+      fit: BoxFit.contain, // contain para não cortar o escudo
     );
   }
 
@@ -242,7 +262,7 @@ class ProjectCard extends StatelessWidget {
       avatars.add(
         _positionedAvatar(
           i * (2 * avatarRadius - avatarOverlap), 
-          teamAvatars[i],
+          teamAvatars[i], 
           avatarRadius,
         ),
       );
@@ -252,15 +272,21 @@ class ProjectCard extends StatelessWidget {
       avatars.add(
         Positioned(
           left: visibleCount * (2 * avatarRadius - avatarOverlap), 
-          child: CircleAvatar(
-            radius: avatarRadius,
-            backgroundColor: Colors.orange,
-            child: Text(
-              '+$extraCount',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: avatarRadius - 4, 
-                fontWeight: FontWeight.bold,
+          child: Container(
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.white, width: 2), 
+            ),
+            child: CircleAvatar(
+              radius: avatarRadius,
+              backgroundColor: Colors.orange,
+              child: Text(
+                '+$extraCount',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: avatarRadius - 4, 
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ),
           ),
@@ -284,7 +310,9 @@ class ProjectCard extends StatelessWidget {
     );
   }
 
-  Widget _positionedAvatar(double left, String asset, double radius) {
+  Widget _positionedAvatar(double left, String imageUrl, double radius) {
+    final bool isNetwork = imageUrl.startsWith('http');
+
     return Positioned(
       left: left,
       child: Container(
@@ -294,7 +322,10 @@ class ProjectCard extends StatelessWidget {
         ),
         child: CircleAvatar(
           radius: radius, 
-          backgroundImage: AssetImage(asset),
+          backgroundColor: AppColors.greyVeryLight,
+          backgroundImage: isNetwork
+              ? NetworkImage(imageUrl)
+              : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
       ),
     );

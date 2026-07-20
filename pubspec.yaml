@@ -2,6 +2,7 @@ name: diavicon
 description: "A new Flutter project."
 publish_to: 'none'
 
+
 version: 1.0.0+1
 
 environment:
@@ -12,14 +13,19 @@ dependencies:
     sdk: flutter
     
 
+
+  # UI
   cupertino_icons: ^1.0.8
-  supabase_flutter: ^2.12.2
-  flutter_dotenv: ^6.0.0
-  provider: ^6.1.5+1
-  mask_text_input_formatter: ^2.9.0
   google_fonts: ^8.0.2
-  go_router: ^17.2.0
-  file_picker: ^11.0.2
+
+  # Supabase
+  supabase_flutter: ^2.12.2
+
+  # Env
+  flutter_dotenv: ^6.0.0
+
+  # State management
+  provider: ^6.1.5+1
   riverpod: ^3.2.1
   flutter_riverpod: ^3.3.1
   google_sign_in: ^7.2.0
@@ -29,6 +35,23 @@ dependencies:
   geocoding: ^4.0.0
   geolocator: ^14.0.2
   image_cropper: ^12.2.1
+
+  # Navegação
+  go_router: ^17.2.0
+
+  # Formulários
+  mask_text_input_formatter: ^2.9.0
+
+  # Arquivos e mídia
+  file_picker: ^11.0.2
+  pdfx: ^2.9.2
+  internet_file: ^1.3.0
+
+  # Navegação
+
+  # Formulários
+
+  # Arquivos e mídia
 
 dev_dependencies:
   flutter_test:

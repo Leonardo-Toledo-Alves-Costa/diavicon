@@ -6,6 +6,9 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 
+// 🔥 Importe os provedores para ter acesso à memória e ao usuário real
+import '../../auth/providers/auth_provider.dart'; 
+
 class EmpresaBemVindaScreen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
 
@@ -13,15 +16,21 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final nome = dadosUsuario['nome'] as String? ?? 'Fulano';
-    final sobrenome = dadosUsuario['sobrenome'] as String? ?? 'Ciclano';
-    
-    final empresaMap = dadosUsuario['empresa'] as Map?;
-    final cargo = empresaMap?['cargo'] as String? ?? 'Engenheiro Civil';
-    final nivel = empresaMap?['nivel'] as String? ?? 'Diretor (CEO)';
+    // 🔥 1. BLINDAGEM DE DADOS: Puxa da memória caso a rota perca o parâmetro 'extra'
+    final rascunho = ref.watch(rascunhoCadastroProvider);
+    final usuarioLogado = ref.watch(currentUserProvider);
 
-    final String? fotoUsuario = dadosUsuario['foto_url'] ?? dadosUsuario['fotoPath'];
-    final String nomeExibicao = nome.isNotEmpty ? nome : 'Fulano';
+    // Cruzamento inteligente: tenta pegar do Usuário Banco -> Rota -> Rascunho Memória
+    final nome = usuarioLogado?.nome ?? dadosUsuario['nome'] ?? rascunho['nome'] ?? 'Gestor';
+    final sobrenome = usuarioLogado?.sobrenome ?? dadosUsuario['sobrenome'] ?? rascunho['sobrenome'] ?? '';
+    
+    final empresaMap = dadosUsuario['empresa'] as Map? ?? rascunho['empresa'] as Map?;
+    final cargo = empresaMap?['cargo'] as String? ?? 'Administrador';
+    final nivel = empresaMap?['nivel'] as String? ?? '';
+
+    final String? fotoUsuario = usuarioLogado?.fotoUrl ?? dadosUsuario['foto_url'] ?? dadosUsuario['fotoPath'] ?? empresaMap?['fotoPath'];
+    
+    final String nomeExibicao = nome.toString().isNotEmpty ? nome.toString() : 'Gestor';
 
     // AJUSTE O BALÃO AQUI:
     const double bubbleOffsetX = -15.0; 
@@ -36,7 +45,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
           borderRadius: BorderRadius.circular(32),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 20,
               offset: const Offset(0, 10),
             ),
@@ -131,7 +140,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 80),
+            const SizedBox(height: 70),
 
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
@@ -184,7 +193,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 48),
+            const SizedBox(height: 35),
 
             Center(
               child: CustomButton(
@@ -194,6 +203,10 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 onPressed: () {
+                  // 🔥 2. A FAXINA: Limpa todos os dados de formulário que estavam no Riverpod
+                  ref.invalidate(rascunhoCadastroProvider);
+                  
+                  // Entra na aplicação de vez!
                   context.go('/projetos');
                 },
               ),

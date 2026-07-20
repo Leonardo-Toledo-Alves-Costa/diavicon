@@ -17,259 +17,282 @@ import 'package:diavicon/features/estrutura/screens/estruturas_tab_screen.dart';
   import 'package:go_router/go_router.dart';
   import 'package:supabase_flutter/supabase_flutter.dart';
 
-  import '../../features/auth/screens/welcome_screen.dart';
-  import '../../features/auth/screens/login_screen.dart';
-  import '../../features/auth/screens/cadastro_r0_screen.dart';
-  import '../../features/auth/screens/cadastro_r1_screen.dart';
-  import '../../features/auth/screens/cadastro_r2_screen.dart';
-  import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/welcome_screen.dart';
+import '../../features/auth/screens/login_screen.dart';
+import '../../features/auth/screens/cadastro_r0_screen.dart';
+import '../../features/auth/screens/cadastro_r1_screen.dart';
+import '../../features/auth/screens/cadastro_r2_screen.dart';
+import '../../features/auth/screens/cadastro_academico_screen.dart';
+import '../../features/auth/screens/recupera_senha_screen.dart';
+import '../../features/auth/screens/nova_senha_screen.dart';
 
-  import '../../features/auth/screens/cadastro0_empresa.dart';
-  import '../../features/auth/screens/cadastro1_empresa.dart';
-  import '../../features/auth/screens/cadastro2_empresa.dart';
-  import '../../features/auth/screens/cadastro3_empresa.dart';
+import '../../features/auth/screens/cadastro0_empresa.dart';
+import '../../features/auth/screens/cadastro1_empresa.dart';
+import '../../features/auth/screens/cadastro2_empresa.dart';
+import '../../features/auth/screens/cadastro3_empresa.dart';
 
-  // ── Elementos Estruturais ─────────────────────────────────────────────────────
-  import '../../features/elementos/screens/elementos_screen.dart';
+// ── Elementos Estruturais ─────────────────────────────────────────────────────
+import '../../features/elementos/screens/elementos_screen.dart';
 
-  import '../../features/home/screens/main_screen.dart';
-  import '../../features/projetos/screens/projetos_screen.dart';
-  import '../../features/projetos/screens/project_detail_screen.dart';
-  import '../../features/auth/providers/auth_provider.dart';
+import '../../features/home/screens/main_screen.dart';
+import '../../features/projetos/screens/projetos_screen.dart';
+import '../../features/projetos/screens/project_detail_screen.dart';
+import '../../features/auth/providers/auth_provider.dart';
 
-  Map<String, dynamic> _routeExtra(Object? extra) {
-    if (extra is Map<String, dynamic>) return extra;
-    if (extra is Map) {
-      return extra.map((key, value) => MapEntry(key.toString(), value));
-    }
-    return <String, dynamic>{};
+Map<String, dynamic> _routeExtra(Object? extra) {
+  if (extra is Map<String, dynamic>) return extra;
+  if (extra is Map) {
+    return extra.map((key, value) => MapEntry(key.toString(), value));
   }
+  return <String, dynamic>{};
+}
 
-  String? _stringExtra(Map<String, dynamic> extra, String key) {
-    final value = extra[key];
-    if (value == null) return null;
-    return value.toString();
-  }
+String? _stringExtra(Map<String, dynamic> extra, String key) {
+  final value = extra[key];
+  if (value == null) return null;
+  return value.toString();
+}
 
-  String? _elementoTipo(Map<String, dynamic> extra) {
-    final tipo = _stringExtra(extra, 'tipo');
-    if (tipo == null || tipo.trim().isEmpty) return null;
-    return tipo.split('-').first.trim();
-  }
+String? _elementoTipo(Map<String, dynamic> extra) {
+  final tipo = _stringExtra(extra, 'tipo');
+  if (tipo == null || tipo.trim().isEmpty) return null;
+  return tipo.split('-').first.trim();
+}
 
-  String? _elementoTipologia(Map<String, dynamic> extra) {
-    final tipo = _stringExtra(extra, 'tipo');
-    if (tipo == null || !tipo.contains('-')) return null;
-    return tipo.split('-').skip(1).join('-').trim();
-  }
+String? _elementoTipologia(Map<String, dynamic> extra) {
+  final tipo = _stringExtra(extra, 'tipo');
+  if (tipo == null || !tipo.contains('-')) return null;
+  return tipo.split('-').skip(1).join('-').trim();
+}
 
-  final routerProvider = Provider<GoRouter>((ref) {
-    final rootNavigatorKey = GlobalKey<NavigatorState>();
-    final shellNavigatorKey = GlobalKey<NavigatorState>();
+final routerProvider = Provider<GoRouter>((ref) {
+  final rootNavigatorKey = GlobalKey<NavigatorState>();
+  final shellNavigatorKey = GlobalKey<NavigatorState>();
 
-    final routerAlarme = ValueNotifier<bool>(false);
-    
-    // Se o Riverpod mudar, recarrega as rotas
-    ref.listen(currentUserProvider, (previous, next) {
-      routerAlarme.value = !routerAlarme.value; 
-    });
+  final routerAlarme = ValueNotifier<bool>(false);
+  
+  // Se o Riverpod mudar, recarrega as rotas
+  ref.listen(currentUserProvider, (previous, next) {
+    routerAlarme.value = !routerAlarme.value; 
+  });
 
-    //  Se o Supabase logar/deslogar, recarrega as rotas
-    Supabase.instance.client.auth.onAuthStateChange.listen((_) {
-      routerAlarme.value = !routerAlarme.value;
-    });
+  // Se o Supabase logar/deslogar, recarrega as rotas
+  Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+    routerAlarme.value = !routerAlarme.value;
+  });
 
-    return GoRouter(
-      navigatorKey: rootNavigatorKey,
-      initialLocation: '/',
-      refreshListenable: routerAlarme, 
+  return GoRouter(
+    navigatorKey: rootNavigatorKey,
+    initialLocation: '/',
+    refreshListenable: routerAlarme, 
 
-      redirect: (context, state) {
-        final path = state.uri.toString();
-        final usuario = ref.read(currentUserProvider);
+    redirect: (context, state) {
+      // O ROTEADOR VÊ SE O ESCUDO ESTÁ ATIVADO
+      // Se estiver, ele aborta qualquer redirecionamento e deixa a tela atual em paz!
+      final bloqueioAtivo = ref.read(bloqueioDeRotaProvider);
+      if (bloqueioAtivo) {
+        print('[ROUTER] Escudo ativado! Ignorando redirecionamentos.');
+        return null; 
+      }
 
-        final bool isLoggedIn = usuario != null;
-        final bool isAtivo = usuario?.ativo ?? false; 
+      final path = state.uri.path; 
+      final usuario = ref.read(currentUserProvider);
 
-        // --- Redirecionamento para usuários NÃO logados ---
-        if (!isLoggedIn) {
-          final bool isPublic =
-              path == '/' ||
-              path == '/login' ||
-              path.startsWith('/register') ||
-              path.startsWith('/empresa/') ||
-              path == '/completar-cadastro'; 
+      final bool isLoggedIn = usuario != null;
+      final bool isAtivo = usuario?.ativo ?? false; 
 
-          if (!isPublic) return '/login';
-          return null;
+      print('====== [RASTREADOR DIRETRIZ] ======');
+      print('• Tentando ir para: $path');
+      print('• Estado -> Logado: $isLoggedIn | Ativo: $isAtivo');
+
+      // --- Redirecionamento para usuários NÃO logados ---
+      if (!isLoggedIn) {
+        final bool isPublic =
+            path == '/' ||
+            path == '/login' ||
+            path.startsWith('/register') ||
+            path.startsWith('/empresa/') ||
+            path == '/completar-cadastro' ||
+            path == '/recuperar-senha' || 
+            path == '/nova-senha';
+
+        if (!isPublic) {
+          print('❌ [BLOQUEIO] Rota privada sem login. Forçando: /login');
+          return '/login';
+        }
+        return null;
+      }
+
+      // --- Redirecionamento para usuários LOGADOS ---
+        if (isLoggedIn) {
+          // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA):
+          // Se já tem empresa, não pode acessar os formulários de cadastro.
+          // MAS a tela '/empresa/bemvinda' está liberada para o fluxo de finalização
+          // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA E CADASTRO):
+        // Adiciono '/empresa/cadastro' nas exceções. Assim o roteador não
+        // se desespera e não te chuta pra projetos no exato milissegundo em que o banco salva os dados!
+        final bool jaTemEmpresa = usuario.empresaId != null;
+        if (jaTemEmpresa && 
+            path.startsWith('/empresa/') && 
+            path != '/empresa/bemvinda' && 
+            path != '/empresa/cadastro') {
+          print('➡️ [DESVIO] Usuário já tem empresa. Indo para /projetos');
+          return '/projetos';
         }
 
-        // --- Redirecionamento para usuários LOGADOS (Com perfil carregado) ---
-        if (isLoggedIn) {
-          // Se NÃO está ativo e não está na tela de completar cadastro, joga ele pra lá!
+          // Se estiver no ecossistema da empresa (e não foi barrado acima), deixa passar!
+          if (path.startsWith('/empresa/')) {
+            print('✅ [PERMISSÃO] Fluxo de Empresa detectado. Acesso liberado.');
+            return null; 
+          }
+
+          // Se NÃO está ativo e não está na tela de completar cadastro, joga pra lá
           if (!isAtivo && path != '/completar-cadastro') {
+            print('➡️ [DESVIO] Usuário inativo fora do fluxo. Indo para: /completar-cadastro');
             return '/completar-cadastro';
           }
 
-          // Se ESTÁ ativo e tentar acessar telas iniciais ou a de completar cadastro, joga pra Projetos
+          // Se ESTÁ ativo e tentar acessar telas iniciais, joga pra Projetos
           if (isAtivo && (path == '/completar-cadastro' || path == '/' || path == '/login' || path.startsWith('/register'))) {
+            print('➡️ [DESVIO] Usuário ativo em tela de entrada. Indo para: /projetos');
             return '/projetos';
           }
-
-          // Se ele estiver no fluxo de empresa, não interrompe
-          if (path.startsWith('/empresa/')) {
-            return null; 
-          }
         }
+      return null;
+    },
 
-        return null;
-      },
+    routes: [
+      // --- ROTAS PÚBLICAS / AUTH ---
+      GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
+      GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
 
-      routes: [
-        // --- ROTAS PÚBLICAS / AUTH ---
-        GoRoute(path: '/', builder: (context, state) => const WelcomeScreen()),
-        GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-
-        // --- FLUXO DE CADASTRO ACADÊMICO ---
-        GoRoute(
-          path: '/register',
-          builder: (context, state) => const CadastroR0Screen(),
-          routes: [
-            GoRoute(
-              path: 'dados',
-              builder: (context, state) {
-                final extra = state.extra as Map<String, dynamic>? ?? {};
-                return CadastroR1Screen(dadosCadastro: extra);
-              },
-            ),
-            GoRoute(
-              path: 'perfil',
-              builder: (context, state) {
-                final extra = state.extra as Map<String, dynamic>? ?? {};
-                return CadastroR2Screen(dadosCadastro: extra);
-              },
-            ),
-            GoRoute(
-              path: 'academico',
-              builder: (context, state) {
-                final extra = state.extra as Map<String, dynamic>? ?? {};
-                return CadastroAcademicoScreen(dadosCadastro: extra);
-              },
-            ),
-            GoRoute(path: 'cliente/gate',
-              builder: (context, state) => Cadastro0Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
-            GoRoute(path: 'cliente/checkboxes',
-              builder: (context, state) => Cadastro1Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
-            GoRoute(path: 'cliente/planos',
-              builder: (context, state) => Cadastro2Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
-            GoRoute(path: 'cliente/welcome',
-              builder: (context, state) => Cadastro3Cliente(dadosUsuario: state.extra as Map<String, dynamic>? ?? {}),),
-          ],
-        ),
-
-        // --- FLUXO DE ONBOARDING EMPRESA (FORA DO SHELL) ---
-        GoRoute(
-          path: '/empresa/gate',
-          builder: (context, state) => Cadastro0Empresa(
-            dadosCadastro: state.extra as Map<String, dynamic>? ?? {},
+      // --- FLUXO DE CADASTRO ACADÊMICO E CLIENTE ---
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const CadastroR0Screen(),
+        routes: [
+          GoRoute(
+            path: 'dados',
+            builder: (context, state) => CadastroR1Screen(dadosCadastro: _routeExtra(state.extra)),
           ),
-        ),
-        GoRoute(
-          path: '/empresa/onboarding',
-          builder: (context, state) => Cadastro1Empresa(
-            dadosCadastro: state.extra as Map<String, dynamic>? ?? {},
+          GoRoute(
+            path: 'perfil',
+            builder: (context, state) => CadastroR2Screen(dadosCadastro: _routeExtra(state.extra)),
           ),
-        ),
-        GoRoute(
-          path: '/empresa/servicos',
-          builder: (context, state) => Cadastro2Empresa(
-            dadosUsuario: state.extra as Map<String, dynamic>? ?? {},
+          GoRoute(
+            path: 'academico',
+            builder: (context, state) => CadastroAcademicoScreen(dadosCadastro: _routeExtra(state.extra)),
           ),
-        ),
-        GoRoute(
-          path: '/empresa/planos',
-          builder: (context, state) => Cadastro3Empresa(
-            dadosUsuario: state.extra as Map<String, dynamic>? ?? {},
+          GoRoute(
+            path: 'cliente/gate',
+            builder: (context, state) => Cadastro0Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
-        ),
-        GoRoute(
-          path: '/empresa/cadastro',
-          builder: (context, state) => EmpresaCadastroScreen(
-            dadosUsuario: state.extra as Map<String, dynamic>? ?? {},
+          GoRoute(
+            path: 'cliente/checkboxes',
+            builder: (context, state) => Cadastro1Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
-        ),
-        GoRoute(
-          path: '/empresa/bemvinda',
-          builder: (context, state) => EmpresaBemVindaScreen(
-            dadosUsuario: state.extra as Map<String, dynamic>? ?? {},
+          GoRoute(
+            path: 'cliente/planos',
+            builder: (context, state) => Cadastro2Cliente(dadosUsuario: _routeExtra(state.extra)),
           ),
-        ),
+          // Mantido caso precise de fallback, mas o fluxo normal agora pula pro /empresa/cadastro
+          GoRoute(
+            path: 'cliente/welcome',
+            builder: (context, state) => Cadastro3Cliente(dadosUsuario: _routeExtra(state.extra)),
+          ),
+        ],
+      ),
 
-        //completar cadastro
-        GoRoute(
-          path: '/completar-cadastro',
-          builder: (context, state) => const CompletarCadastroScreen(),
-        ),
+      // --- FLUXO DE ONBOARDING EMPRESA (FORA DO SHELL) ---
+      GoRoute(
+        path: '/empresa/gate',
+        builder: (context, state) => Cadastro0Empresa(dadosCadastro: _routeExtra(state.extra)),
+      ),
+      GoRoute(
+        path: '/empresa/onboarding',
+        builder: (context, state) => Cadastro1Empresa(dadosCadastro: _routeExtra(state.extra)),
+      ),
+      GoRoute(
+        path: '/recuperar-senha',
+        builder: (context, state) => const RecuperaSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/nova-senha',
+        builder: (context, state) => const NovaSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/empresa/servicos',
+        builder: (context, state) => Cadastro2Empresa(dadosUsuario: _routeExtra(state.extra)),
+      ),
+      GoRoute(
+        path: '/empresa/planos',
+        builder: (context, state) => Cadastro3Empresa(dadosUsuario: _routeExtra(state.extra)),
+      ),
+      GoRoute(
+        path: '/empresa/cadastro',
+        builder: (context, state) {
+          // 🔥 LÊ OS DADOS DA MEMÓRIA DO RIVERPOD (Seguro contra refresh)
+          final dadosSalvos = ref.read(rascunhoCadastroProvider);
+          return EmpresaCadastroScreen(dadosUsuario: dadosSalvos);
+        },
+      ),
+      GoRoute(
+        path: '/empresa/bemvinda',
+        builder: (context, state) => EmpresaBemVindaScreen(dadosUsuario: _routeExtra(state.extra)),
+      ),
+      GoRoute(
+        path: '/completar-cadastro',
+        builder: (context, state) => const CompletarCadastroScreen(),
+      ),
 
-
-        // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
-        GoRoute(
-          path: '/estruturas/:estruturaId/elementos/:elementoId',
-          builder: (context, state) {
-            final extra = _routeExtra(state.extra);
-            return ElementoScreen(
-              estruturaId: state.pathParameters['estruturaId'],
-              elementoId: state.pathParameters['elementoId'],
-              projetoId: _stringExtra(extra, 'projetoId'),
-              titulo: _stringExtra(extra, 'titulo'),
-              tipo: _stringExtra(extra, 'tipo'),
-              local: _stringExtra(extra, 'local'),
-              imageUrl: _stringExtra(extra, 'imageUrl'),
-            );
-          },
-          routes: [
-            GoRoute(
-              path: 'informacoes',
-              builder: (context, state) {
-                final extra = _routeExtra(state.extra);
-                final basePath =
-                    '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
-
-                return ElementoInfoScreen(
-                  initialNome: _stringExtra(extra, 'titulo') ?? 'ABC Corp.',
-                  initialTipoElemento: _elementoTipo(extra),
-                  initialTipologiaEstrutural: _elementoTipologia(extra),
-                  initialLocalElemento: _stringExtra(extra, 'local'),
-                  onOpenRelatorios: () => context.push(
-                    '$basePath/relatorios',
-                    extra: extra,
-                  ),
-                );
-              },
-            ),
-            GoRoute(
-              path: 'relatorios',
-              builder: (context, state) {
-                final extra = _routeExtra(state.extra);
-                final basePath =
-                    '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
-
-                return RelatoriosScreen(
-                  onOpenInformacoes: () => context.push(
-                    '$basePath/informacoes',
-                    extra: extra,
-                  ),
-                );
-              },
-            ),
-          ],
-        ),
+      // --- ÁREA LOGADA (SHELL ROUTE COM RODAPÉ) ---
+      GoRoute(
+        path: '/estruturas/:estruturaId/elementos/:elementoId',
+        builder: (context, state) {
+          final extra = _routeExtra(state.extra);
+          return ElementoScreen(
+            estruturaId: state.pathParameters['estruturaId'],
+            elementoId: state.pathParameters['elementoId'],
+            projetoId: _stringExtra(extra, 'projetoId'),
+            titulo: _stringExtra(extra, 'titulo'),
+            tipo: _stringExtra(extra, 'tipo'),
+            local: _stringExtra(extra, 'local'),
+            imageUrl: _stringExtra(extra, 'imageUrl'),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: 'informacoes',
+            builder: (context, state) {
+              final extra = _routeExtra(state.extra);
+              final basePath = '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+              return ElementoInfoScreen(
+                initialNome: _stringExtra(extra, 'titulo') ?? 'ABC Corp.',
+                initialTipoElemento: _elementoTipo(extra),
+                initialTipologiaEstrutural: _elementoTipologia(extra),
+                initialLocalElemento: _stringExtra(extra, 'local'),
+                onOpenRelatorios: () => context.push('$basePath/relatorios', extra: extra),
+              );
+            },
+          ),
+          GoRoute(
+            path: 'relatorios',
+            builder: (context, state) {
+              final extra = _routeExtra(state.extra);
+              final basePath = '/estruturas/${state.pathParameters['estruturaId']}/elementos/${state.pathParameters['elementoId']}';
+              return RelatoriosScreen(
+                onOpenInformacoes: () => context.push('$basePath/informacoes', extra: extra),
+              );
+            },
+          ),
+        ],
+      ),
 
       ShellRoute(
         navigatorKey: shellNavigatorKey,
         builder: (context, state, child) => MainScreen(child: child),
         routes: [
-          // Projetos e suas sub-rotas (detalhes)
+          // Projetos e suas sub-rotas
           GoRoute(
             path: '/projetos',
             builder: (context, state) => const ProjetosScreen(),
@@ -290,22 +313,18 @@ import 'package:diavicon/features/estrutura/screens/estruturas_tab_screen.dart';
           ),
           GoRoute(
             path: '/minha-empresa',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
           ),
           GoRoute(
             path: '/educacao',
-            builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Educação'))),
+            builder: (context, state) => const Scaffold(body: Center(child: Text('Educação'))),
           ),
-
-            // NOTIFICACOES
-            GoRoute(
-              path: '/notificacoes',
-              builder: (context, state) => const NotificacoesScreen(),
-            ),
-          ],
-        ),
-      ],
-    );
-  });
+          GoRoute(
+            path: '/notificacoes',
+            builder: (context, state) => const NotificacoesScreen(),
+          ),
+        ],
+      ),
+    ],
+  );
+});

@@ -21,13 +21,23 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   int _planoPagina = 0;
   bool _planoInicializado = false;
 
-  int _indicePlanoPadrao(List<PlanosModel> planos) {
-    final indiceAdvanced = planos.indexWhere(
-      (plano) => plano.nome.toLowerCase() == 'advanced',
-    );
+  int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) {
 
-    if (indiceAdvanced != -1) {
-      return indiceAdvanced;
+    int indicePlanoPadrao = 0;
+
+    if (pontos <= 19){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'starter');
+    }
+    else if (pontos >=20 && pontos < 30){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'basic');
+    }
+    else if (pontos >=30){
+      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'professional');
+    }
+
+
+    if (indicePlanoPadrao != -1) {
+      return indicePlanoPadrao;
     }
 
     var melhorIndex = 0;
@@ -40,20 +50,20 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
     return melhorIndex;
   }
 
-  PlanosModel _planoAtivo(List<PlanosModel> planos) {
+  PlanosModel _planoAtivo(List<PlanosModel> planos, int pontos) {
     final index = _planoInicializado
         ? _planoPagina.clamp(0, planos.length - 1).toInt()
-        : _indicePlanoPadrao(planos);
+        : _indicePlanoPadrao(planos, pontos);
     return planos[index];
   }
 
-  void _garantirPlanoInicial(List<PlanosModel> planos) {
+  void _garantirPlanoInicial(List<PlanosModel> planos, int pontos) {
     if (_planoInicializado || planos.isEmpty) {
       return;
     }
 
     _planoInicializado = true;
-    final indicePadrao = _indicePlanoPadrao(planos);
+    final indicePadrao = _indicePlanoPadrao(planos, pontos);
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) {
@@ -87,6 +97,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   }
 
   void _finalizarCadastroEmpresa(PlanosModel plano) {
+    // 1. Monta o pacote de dados
     final Map<String, dynamic> dadosComPlano = {
       ...widget.dadosUsuario,
       'perfil': 'Empresa',
@@ -99,7 +110,11 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': plano.features,
     };
 
-    context.push('/empresa/cadastro', extra: dadosComPlano);
+    // 2. 🔥 Salva no Riverpod de forma persistente durante a navegação
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
+
+    // 3. Navega limpo, sem passar 'extra'
+    context.go('/empresa/cadastro');
   }
 
   void _finalizarTrial() {
@@ -112,7 +127,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': null,
     };
 
-    context.push('/empresa/cadastro', extra: dadosComPlano);
+    context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
   String _formatarValor(double valor) {
@@ -120,33 +135,29 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   }
 
   String _formatarVigencia(PlanosModel plano) {
-    if (plano.vigenciaDias == 30) {
-      return '/mês';
-    }
-
-    return '/${plano.vigenciaDias} dias';
+    return '/mês';
   }
 
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authControllerProvider);
     final planosAsync = ref.watch(planosListProvider);
+    int pontuacaoTotal = widget.dadosUsuario['pontos'] ?? 0;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       resizeToAvoidBottomInset: true,
       body: SafeArea(
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
           child: Column(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Image.asset(
                 'assets/images/logo_diavicon.png',
-                height: 120,
+                height: 150,
                 fit: BoxFit.contain,
               ),
-              const SizedBox(height: 10),
-              const SizedBox(height: 8),
               Expanded(
                 child: planosAsync.when(
                   loading: _buildLoadingState,
@@ -162,13 +173,13 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                           nome == 'advanced');
                       return isPlanoEmpresa;
                     }).toList();
-                    print(planos);
+                    print(pontuacaoTotal);
                     if (planos.isEmpty) {
                       return _buildEmptyState();
                     }
 
-                    _garantirPlanoInicial(planos);
-                    final planoAtivo = _planoAtivo(planos);
+                    _garantirPlanoInicial(planos, pontuacaoTotal);
+                    final planoAtivo = _planoAtivo(planos, pontuacaoTotal);
 
                     return Row(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -190,7 +201,6 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 2),
                         _buildArrowButton(
                           icon: Icons.chevron_right_rounded,
                           onPressed: planos.length > 1
@@ -202,7 +212,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
                   },
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 20),
               _buildTrialButton(isLoading),
             ],
           ),
@@ -344,8 +354,9 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
               ),
             ),
           ),
+          SizedBox(height: 25),
           RichText(
-            textAlign: TextAlign.end,
+            textAlign: TextAlign.center,
             text: TextSpan(
               text: _formatarValor(plano.valor),
               style: const TextStyle(
@@ -365,11 +376,11 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
               ],
             ),
           ),
+          SizedBox(height: 40),
           Padding(
             padding: const EdgeInsets.fromLTRB(18, 0, 18, 16),
             child: _buildPrimaryButton(isLoading, plano),
           ),
-          CustomTextbutton(text: '<   Voltar', onPressed: () => context.pop()),
         ],
       ),
     );
@@ -381,15 +392,15 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       padding: const EdgeInsets.symmetric(vertical: 5),
       decoration: const BoxDecoration(
         color: AppColors.primary,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(5)),
       ),
       child: const Text(
         'MELHOR OFERTA!',
         textAlign: TextAlign.center,
         style: TextStyle(
           color: Colors.white,
-          fontSize: 24,
-          fontWeight: FontWeight.w900,
+          fontSize: 28,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
@@ -463,7 +474,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
         style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         child: const Text(
           'Experimente por 1 Mês',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
         ),
       ),
     );

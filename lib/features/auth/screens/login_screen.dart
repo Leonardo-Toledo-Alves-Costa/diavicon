@@ -104,7 +104,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       onChanged: (val) => setState(() => _lembrarMe = val!),
                     ),
                     TextButton(
-                      onPressed: () {},
+                      onPressed: () {
+                        context.push('/recuperar-senha');
+                      },
                       child: const Text(
                         'Resgatar Senha',
                         style: TextStyle(

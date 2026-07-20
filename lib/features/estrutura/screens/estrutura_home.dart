@@ -81,7 +81,7 @@ class EstruturaHomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // O NOVO WIDGET DE CABEÇALHO AQUI
+            //widget cabeçalho
             EstruturaHomeHeader(
               imageUrl: estrutura.imageUrl,
               status: estrutura.status ?? 'Em Andamento',
@@ -97,7 +97,7 @@ class EstruturaHomeScreen extends StatelessWidget {
                   Text('${estrutura.tipologiaNome ?? 'Sem tipologia'} - ${estrutura.tipoNome ?? 'Sem tipo'}\n${estrutura.idadeCalculada} Anos  CAA ${estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
                   const SizedBox(height: 24),
 
-                  // O NOVO WIDGET DE PROGRESSO AQUI
+                  // WIDGET DE PROGRESSO 
                   const ProgressoProjetoCard(progresso: 0.90), 
                   const SizedBox(height: 32),
 

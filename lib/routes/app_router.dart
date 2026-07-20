@@ -10,6 +10,7 @@
   import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
   import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
   import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
+import 'package:diavicon/features/estrutura/screens/estruturas_tab_screen.dart';
   import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
   import 'package:flutter/material.dart';
   import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -285,19 +286,7 @@
           // Outras abas da Bottom Bar
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) => EstruturaHomeScreen(
-              projetoId: 'demo-projeto',
-              estrutura: EstruturaModel(
-                id: 'demo-estrutura',
-                nome: 'Estrutura BCDE',
-                tipoId: 'Concreto armado',
-                status: 'Em andamento',
-                caa: 'II',
-                anoConcepcao: 26,
-                conjuntoEstruturalId: 'Conjunto Estrutural A',
-                tipologiaId: 'Viga',
-              ),
-            ),
+            builder: (context, state) => const EstruturasTabScreen(),
           ),
           GoRoute(
             path: '/minha-empresa',

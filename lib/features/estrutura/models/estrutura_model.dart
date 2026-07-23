@@ -24,13 +24,11 @@ class EstruturaModel {
   final String? tipoNome;
   final String? tipologiaNome;
 
-  // NOVOS CAMPOS (Substituíram os antigos de texto livre)
   final String? conjuntoEstruturalId;
   final String? utilizacaoId;
   final String? tipoId;
   final String? tipologiaId;
 
-  // DONO DA ESTRUTURA
   final String? proprietariaId;
 
   // calculo idade

@@ -4,9 +4,10 @@ import '../../auth/providers/auth_provider.dart';
 
 final _supabase = Supabase.instance.client;
 
-// ==========================================
-// 1. PROVIDERS DE LEITURA EM TEMPO REAL (Streams)
-// ==========================================
+
+
+// PROVIDERS DE LEITURA EM TEMPO REAL (Streams)
+
 
 // Provider para Tipos de Estrutura
 final tiposEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
@@ -44,10 +45,8 @@ final conjuntosEstruturaisProvider = StreamProvider<List<Map<String, dynamic>>>(
       .map((lista) => List<Map<String, dynamic>>.from(lista));
 });
 
-// ==========================================
-// 2. CONTROLLER DE ESCRITA (Pode manter exatamente como estava)
-// ==========================================
 
+// 2. CONTROLLER DE ESCRITA 
 
 class EstruturaDropdownsController {
   final Ref ref;

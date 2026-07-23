@@ -26,6 +26,7 @@ import 'estrutura_home.dart';
 import '../providers/estruturas_dropdown_provider.dart';
 import '../widgets/novo_item_dropdown_modal.dart';
 
+
 //importações de outra features
 import '../../auth/providers/auth_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
@@ -127,7 +128,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     try {
       final endereco = await LocationService.buscarEnderecoPorCep(cepFormatado);
       
-      // 👇 A MÁGICA ESTÁ AQUI: Se a tela foi fechada enquanto buscava, pare por aqui!
+      // Se a tela foi fechada enquanto buscava, para aqui
       if (!mounted) return; 
 
       if (endereco != null) {
@@ -144,7 +145,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
         final coords = await LocationService.buscarCoordenadasPorEndereco(textoBusca);
         
-        if (!mounted) return; // 👇 Mais uma trava de segurança
+        if (!mounted) return; // Mais uma trava de segurança
 
         if (coords != null) {
           setState(() {
@@ -158,7 +159,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
         );
       }
     } finally {
-      if (mounted) setState(() => _isFetchingCep = false); // Adicionado o if(mounted) aqui também
+      if (mounted) setState(() => _isFetchingCep = false); 
     }
   }
 
@@ -172,7 +173,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
       String textoBusca = '$rua, $numero, $city, $state, Brasil';
       final coords = await LocationService.buscarCoordenadasPorEndereco(textoBusca);
 
-      if (!mounted) return; // 👇 Adicionando a trava de segurança
+      if (!mounted) return; 
 
       if (coords != null) {
         setState(() {
@@ -186,7 +187,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   Future<void> _abrirMapaESelecionar() async {
     final resultado = await MapSelectionHelper.selecionarNoMapa(context);
 
-    if (!mounted) return; // 👇 Adicionando a trava de segurança
+    if (!mounted) return; 
 
     if (resultado != null) {
       setState(() {
@@ -279,9 +280,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
       final estruturaCriada = await ref.read(estruturaRepositoryProvider).criarEstrutura(novaEstrutura, widget.projetoId);
       
-      // ATUALIZAÇÃO DA INTERFACE: Avisamos os 2 lugares para recarregar a lista!
+      // Avisam os 2 lugares para recarregar a lista!
       ref.invalidate(projetoEstruturasProvider(widget.projetoId)); // Tela de detalhes
-      ref.invalidate(minhasEstruturasProvider(widget.projetoId)); // O Modal de Seleção
+      ref.invalidate(minhasEstruturasProvider(widget.projetoId)); // Modal de Seleção
 
       if (context.mounted) {
         Navigator.pushReplacement(
@@ -394,9 +395,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      flex: 3, // 👈 Mais fatias para o Ano de Concepção
+                      flex: 3, 
                       child: CustomTextField(
-                        label: 'Ano de concepção*', 
+                        label: 'Ano de construção*', 
                         hint: '2015',
                         keyboardType: TextInputType.number,
                         controller: _anoConcepcaoController,
@@ -622,7 +623,6 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                         label: 'Número', 
                         hint: '123', 
                         controller: _numeroController,
-                        // 👇 Abre o teclado puramente numérico
                         keyboardType: TextInputType.number,
                       ),
                     ),

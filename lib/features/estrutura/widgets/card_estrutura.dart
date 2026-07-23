@@ -45,7 +45,7 @@ class CardEstrutura extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 👇 3. ENVOLVEMOS O CONTAINER NUM GESTURE DETECTOR 👇
+
     return GestureDetector(
       onTap: onTap,
       child: Container(

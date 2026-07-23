@@ -10,7 +10,7 @@ import '../../../core/widgets/custom_appbar.dart';
 class PontosEnsaioScreen extends StatefulWidget {
   final String elementoNome; 
   final String tipoEnsaioNome; 
-  final String iconeEnsaio; // Caminho do PNG (ex: assets/images/ensaios/carbonatacao.png)
+  final String iconeEnsaio; 
   final String projetoNome; 
   final String localElemento; 
 

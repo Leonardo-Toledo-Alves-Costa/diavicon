@@ -1,3 +1,4 @@
+import 'package:diavicon/features/ensaios/screens/ensaio_carbonatacao_form_screen.dart';
 import 'package:diavicon/features/ensaios/screens/pontos_ensaio_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart'; // 🔥 Importação do SVG
@@ -135,23 +136,20 @@ class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
                       ),
                       const SizedBox(height: 18),
 
-                      // Substitua a chamada dos cards por isto:
                       _EnsaioCard(
                         iconAsset: 'assets/images/ensaios/carbonatacao.png',
                         title: 'Frente de carbonatação',
                         subtitle: 'Ponto 01',
                         detail: 'Prof. 42 mm',
                         onTap: () {
-                          // 🔥 NAVEGAÇÃO PRONTA COM PNG
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const PontosEnsaioScreen(
-                                elementoNome: 'V102',
-                                tipoEnsaioNome: 'Frente de carbonatação',
-                                iconeEnsaio: 'assets/images/ensaios/carbonatacao.png',
-                                projetoNome: '0233_Proj. Ensaios Estruturais', 
-                                localElemento: '2ª Subsolo',
+                              builder: (context) => EnsaioCarbonatacaoFormScreen(
+                                pontoNome: 'Ponto 01',
+                                elementoNome: widget.titulo ?? 'V102',
+                                tipoElemento: widget.tipo ?? 'Viga - Concreto Armado',
+                                local: widget.local ?? '2ª Subsolo',
                               ),
                             ),
                           );

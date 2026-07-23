@@ -218,7 +218,11 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                         isSelected: [_tipoMarcacao == 'Círculo', _tipoMarcacao == 'Retângulo'],
                         onPressed: (idx) => setState(() {
                           _tipoMarcacao = idx == 0 ? 'Círculo' : 'Retângulo';
-                          if (_tipoMarcacao == 'Círculo') _altura = _largura;
+                          if (_tipoMarcacao == 'Círculo') {
+                            // 🔥 TRAVA ATUALIZADA PARA O DOBRO (0.80)
+                            if (_largura > 0.80) _largura = 0.80;
+                            _altura = _largura;
+                          }
                         }),
                         borderRadius: BorderRadius.circular(8),
                         constraints: const BoxConstraints(minHeight: 36, minWidth: 40),
@@ -233,9 +237,10 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                       children: [
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Tamanho da Marcação', style: GoogleFonts.lato(fontSize: 12)),
-                          Slider(value: _largura, min: 0.02, max: 0.15, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() { _largura = v; _altura = v; })),
+                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
+                          Slider(value: _largura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() { _largura = v; _altura = v; })),
                         ])),
-                        CompactButton(text: 'Próximo', width: 100, backgroundColor: _pontoSelecionado == null ? AppColors.greyLight : AppColors.primary, onPressed: () { if (_pontoSelecionado != null) Navigator.pop(context, LocalRegiaoResult(x: _pontoSelecionado!.dx, y: _pontoSelecionado!.dy, largura: _largura, altura: _largura, rotacao: 0.0, cor: _corSelecionada, tipo: _tipoMarcacao)); }), // 🔥 Corrigido aqui
+                        CompactButton(text: 'Próximo', width: 100, backgroundColor: _pontoSelecionado == null ? AppColors.greyLight : AppColors.primary, onPressed: () { if (_pontoSelecionado != null) Navigator.pop(context, LocalRegiaoResult(x: _pontoSelecionado!.dx, y: _pontoSelecionado!.dy, largura: _largura, altura: _largura, rotacao: 0.0, cor: _corSelecionada, tipo: _tipoMarcacao)); }),
                       ],
                     ),
                   ] else ...[
@@ -243,11 +248,13 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                       children: [
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Largura', style: GoogleFonts.lato(fontSize: 12)),
-                          Slider(value: _largura, min: 0.02, max: 0.30, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _largura = v)),
+                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
+                          Slider(value: _largura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _largura = v)),
                         ])),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Altura', style: GoogleFonts.lato(fontSize: 12)),
-                          Slider(value: _altura, min: 0.02, max: 0.30, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _altura = v)),
+                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
+                          Slider(value: _altura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _altura = v)),
                         ])),
                       ],
                     ),
@@ -257,7 +264,7 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                           Text('Rotação', style: GoogleFonts.lato(fontSize: 12)),
                           Slider(value: _rotacao, min: 0.0, max: 360.0, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _rotacao = v)),
                         ])),
-                        CompactButton(text: 'Próximo', width: 100, backgroundColor: _pontoSelecionado == null ? AppColors.greyLight : AppColors.primary, onPressed: () { if (_pontoSelecionado != null) Navigator.pop(context, LocalRegiaoResult(x: _pontoSelecionado!.dx, y: _pontoSelecionado!.dy, largura: _largura, altura: _altura, rotacao: _rotacao, cor: _corSelecionada, tipo: _tipoMarcacao)); }), // 🔥 E aqui
+                        CompactButton(text: 'Próximo', width: 100, backgroundColor: _pontoSelecionado == null ? AppColors.greyLight : AppColors.primary, onPressed: () { if (_pontoSelecionado != null) Navigator.pop(context, LocalRegiaoResult(x: _pontoSelecionado!.dx, y: _pontoSelecionado!.dy, largura: _largura, altura: _altura, rotacao: _rotacao, cor: _corSelecionada, tipo: _tipoMarcacao)); }),
                       ],
                     ),
                   ]

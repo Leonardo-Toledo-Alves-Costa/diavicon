@@ -22,6 +22,15 @@ final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, St
       .asyncMap((event) => repo.buscarEstruturasPorProjeto(projetoId));
 });
 
+final estruturaResumoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, id) async {
+  final resp = await Supabase.instance.client
+      .from('estruturas')
+      .select('nome, image_url, conjuntos_estruturais(nome)')
+      .eq('id', id)
+      .maybeSingle();
+  return resp;
+});
+
 // --- PROVIDER: TODAS AS ESTRUTURAS DA PLATAFORMA ---
 final todasEstruturasProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
   final supabase = Supabase.instance.client;

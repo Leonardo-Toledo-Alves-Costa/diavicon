@@ -1,3 +1,4 @@
+import 'package:diavicon/features/ensaios/screens/pontos_ensaio_screen.dart'; // 🔥 Import adicionado!
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,7 +21,6 @@ class EstruturaEnsaiosScreen extends ConsumerStatefulWidget {
 }
 
 class _EstruturaEnsaiosScreenState extends ConsumerState<EstruturaEnsaiosScreen> {
-  // 🔥 MOCK COM OS CAMINHOS DOS PNGs RESTAURADOS
   final List<Map<String, dynamic>> _tiposEnsaio = [
     {'nome': 'Frente de carbonatação', 'contratadas': 2, 'realizadas': 2, 'imagem': 'assets/images/ensaios/carbonatacao.png'},
     {'nome': 'Potencial de corrosão', 'contratadas': 2, 'realizadas': 1, 'imagem': 'assets/images/ensaios/potencial_corrosao.png'},
@@ -39,7 +39,7 @@ class _EstruturaEnsaiosScreenState extends ConsumerState<EstruturaEnsaiosScreen>
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: const CustomAppBar(
-        title: 'Realizar Ensaio',
+        title: 'Ensaios',
         showBackButton: true,
       ),
       body: ListView.separated(
@@ -69,7 +69,18 @@ class _EstruturaEnsaiosScreenState extends ConsumerState<EstruturaEnsaiosScreen>
 
           return GestureDetector(
             onTap: () {
-              print('Clicou no ensaio: ${ensaio['nome']}');
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => PontosEnsaioScreen(
+                    elementoNome: 'Visão Geral', 
+                    tipoEnsaioNome: ensaio['nome'],
+                    iconeEnsaio: ensaio['imagem'], 
+                    projetoNome: '0233_Proj. Ensaios Estruturais', 
+                    localElemento: 'Estrutura Completa', 
+                  ),
+                ),
+              );
             },
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -82,7 +93,6 @@ class _EstruturaEnsaiosScreenState extends ConsumerState<EstruturaEnsaiosScreen>
               ),
               child: Row(
                 children: [
-                  // 🔥 VOLTOU PARA IMAGE.ASSET COM ERROR BUILDER
                   SizedBox(
                     width: 32,
                     height: 32,

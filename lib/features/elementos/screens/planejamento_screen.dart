@@ -90,7 +90,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
     final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: true,
+      useSafeArea: false, // 🔥 MUDAR AQUI PARA FALSE
       backgroundColor: Colors.transparent,
       builder: (context) =>
           MarcarElementoPlanejamentoModal(estruturaId: widget.estruturaId),
@@ -700,6 +700,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                             empresaIdSelecionada: empSelecionada['id'],
                             empresaNome: empSelecionada['nome'],
                             empresaFotoUrl: empSelecionada['foto_url'],
+                            plantaLocal: widget.plantaLocal,
                           );
                         },
                         child: Container(

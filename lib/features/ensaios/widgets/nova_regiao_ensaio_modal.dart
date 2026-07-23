@@ -1,6 +1,9 @@
 import 'dart:io';
+import 'package:diavicon/core/widgets/confirmar_exclusao_dialog.dart';
 import 'package:diavicon/features/elementos/providers/info_planejamento_provider.dart';
 import 'package:diavicon/features/ensaios/models/regiao_ensaio_model.dart';
+import 'package:diavicon/features/ensaios/widgets/configurar_qtd_ensaio_modal.dart';
+import 'package:diavicon/features/ensaios/widgets/selecionar_tipo_ensaio_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,6 +23,7 @@ import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
   final String estruturaId, plantaId, plantaUrl, empresaId, empresaNome;
   final String? empresaFotoUrl;
+  final String plantaLocal; // 🔥 NOVA VARIÁVEL RECEBIDA AQUI
   final double posicaoX, posicaoY, larguraMarcacao, alturaMarcacao, rotacaoMarcacao;
   final String tipoMarcacao;
   final int numeroMarcacao;
@@ -29,6 +33,7 @@ class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
 
   const NovaRegiaoEnsaioModal({
     super.key, required this.estruturaId, required this.plantaId, required this.plantaUrl, required this.empresaId, required this.empresaNome, this.empresaFotoUrl,
+    required this.plantaLocal, // 🔥 OBRIGATÓRIO NO CONSTRUTOR
     required this.posicaoX, required this.posicaoY, required this.larguraMarcacao, required this.alturaMarcacao, required this.rotacaoMarcacao, required this.tipoMarcacao, required this.numeroMarcacao, required this.corMarcacao,
     this.regiao, this.inicialDescricao, this.inicialElementoId,
   });
@@ -44,6 +49,8 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
   bool _isLoadingSalvar = false, _isPdf = false, _isLoadingMidia = false;
   Uint8List? _imageBytes;
 
+  final List<Map<String, dynamic>> _ensaiosAdicionados = [];
+
   @override
   void initState() {
     super.initState(); _carregarMidia();
@@ -54,7 +61,6 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
   @override
   void dispose() { _descricaoController.dispose(); super.dispose(); }
 
-  // 🔥 IGUALADO À TELA PRINCIPAL (maxDim = 2500) PARA O TAMANHO NÃO MUDAR!
   Future<void> _carregarMidia() async {
     if (widget.plantaUrl.isEmpty) return;
     if (widget.plantaUrl.toLowerCase().contains('.pdf')) {
@@ -99,7 +105,20 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
   }
 
   void _apagarRegiao() async {
-    if (widget.regiao == null) { Navigator.pop(context, {'acao': 'cancelar'}); return; }
+    if (widget.regiao == null) { 
+      Navigator.pop(context, {'acao': 'cancelar'}); 
+      return; 
+    }
+
+    // 🔥 CHAMA O NOSSO NOVO MODAL PADRÃO AQUI
+    final confirmar = await showConfirmarExclusaoDialog(
+      context: context,
+      mensagem: 'Tem certeza que deseja excluir esta região de ensaio? Esta ação não poderá ser desfeita.',
+    );
+
+    // Se o usuário clicar em "Cancelar" ou fechar o modal, a gente para por aqui
+    if (confirmar != true) return;
+
     setState(() => _isLoadingSalvar = true);
     try {
       final supabase = Supabase.instance.client;
@@ -108,7 +127,11 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
       ref.invalidate(regioesEnsaioProvider(RegioesFiltro(plantaId: widget.plantaId, empresaId: widget.empresaId)));
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Região removida!'), backgroundColor: AppColors.error, behavior: SnackBarBehavior.floating));
       Navigator.pop(context, {'acao': 'deletado'});
-    } catch (e) { if (mounted) DiaviconAlerts.show(context, 'Erro', 'Falha ao apagar: $e', isErro: true); } finally { if (mounted) setState(() => _isLoadingSalvar = false); }
+    } catch (e) { 
+      if (mounted) DiaviconAlerts.show(context, 'Erro', 'Falha ao apagar: $e', isErro: true); 
+    } finally { 
+      if (mounted) setState(() => _isLoadingSalvar = false); 
+    }
   }
 
   @override
@@ -153,7 +176,9 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
               child: Container(decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(24)), child: Row(children: [Expanded(child: _buildTabButton('Informações', 0)), Expanded(child: _buildTabButton('Ensaios', 1))])),
             ),
             const SizedBox(height: 24),
-            Expanded(child: _abaSelecionada == 0 ? _buildAbaInformacoes(elementosAsync, regioesAsync, corPino) : const Center(child: Text('Aba de Ensaios em construção...'))),
+            
+            Expanded(child: _abaSelecionada == 0 ? _buildAbaInformacoes(elementosAsync, regioesAsync, corPino) : _buildAbaEnsaios()),
+            
             SafeArea(
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
@@ -186,8 +211,22 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
           elementosAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()), error: (err, _) => Text('Erro: $err', style: const TextStyle(color: Colors.red)),
             data: (elementos) {
-              final items = elementos.map((el) => DropdownMenuItem<String>(value: el.id, child: Text('${el.tipo ?? 'Elemento'} - ${el.nome ?? ''}'))).toList();
-              return CustomDropdownWithAdd<String>(label: 'Elemento Estrutural *', hint: 'Selecione', value: _elementoSelecionadoId, items: items, onChanged: (val) => setState(() => _elementoSelecionadoId = val), onAddPressed: () => DiaviconAlerts.show(context, 'Adicionar', 'Crie na aba Elementos.', isAviso: true), isRequired: true);
+              // 🔥 O FILTRO MÁGICO ACONTECE AQUI USANDO O PLANTA_LOCAL!
+              final elementosFiltrados = elementos.where((el) => el.local == widget.plantaLocal).toList();
+
+              final items = elementosFiltrados.map((el) => DropdownMenuItem<String>(value: el.id, child: Text('${el.tipo ?? 'Elemento'} - ${el.nome ?? ''}'))).toList();
+              
+              // Se não tiver elemento nesse local, a gente pode usar a lista original como fallback, ou deixar vazio para forçar o cara a criar. 
+              // Mas como já filtrou, vamos mostrar só os certos!
+              return CustomDropdownWithAdd<String>(
+                label: 'Elemento Estrutural *', 
+                hint: elementosFiltrados.isEmpty ? 'Nenhum elemento neste local' : 'Selecione', 
+                value: _elementoSelecionadoId, 
+                items: items, 
+                onChanged: (val) => setState(() => _elementoSelecionadoId = val), 
+                onAddPressed: () => DiaviconAlerts.show(context, 'Adicionar', 'Crie na aba Elementos.', isAviso: true), 
+                isRequired: true
+              );
             },
           ),
           const SizedBox(height: 24),
@@ -243,6 +282,151 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
           Align(alignment: Alignment.center, child: CompactButton(text: 'Editar Local', height: 40, width: 160, backgroundColor: AppColors.primary, onPressed: () => Navigator.pop(context, {'acao': 'editar', 'descricao': _descricaoController.text, 'elementoId': _elementoSelecionadoId}))),
           const SizedBox(height: 32),
           CustomTextField(label: 'Descrição da região de ensaio', hint: 'Descrição...', controller: _descricaoController, maxLines: 4),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAbaEnsaios() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), 
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(
+            width: double.infinity,
+            child: CompactButton(
+              text: '+ Adicionar Ensaio',
+              backgroundColor: _ensaiosAdicionados.isEmpty ? AppColors.primary : Colors.white,
+              foregroundColor: _ensaiosAdicionados.isEmpty ? Colors.white : AppColors.primary,
+              borderColor: AppColors.primary,
+              onPressed: () async {
+                final ensaioEscolhido = await showModalBottomSheet<Map<String, dynamic>>(
+                  context: context,
+                  isScrollControlled: true,
+                  backgroundColor: Colors.transparent,
+                  builder: (context) => const SelecionarTipoEnsaioModal(),
+                );
+
+                if (ensaioEscolhido != null && context.mounted) {
+                  final resultado = await showDialog<Map<String, dynamic>>(
+                    context: context,
+                    builder: (context) => ConfigurarQtdEnsaioModal(
+                      nomeEnsaio: ensaioEscolhido['nome'],
+                      iconeEnsaio: ensaioEscolhido['icone'],
+                    ),
+                  );
+
+                  if (resultado != null && resultado['acao'] == 'salvar') {
+                    setState(() {
+                      _ensaiosAdicionados.add({
+                        'id': DateTime.now().millisecondsSinceEpoch.toString(),
+                        'nome': ensaioEscolhido['nome'],
+                        'icone': ensaioEscolhido['icone'],
+                        'qtd': resultado['qtd'],
+                      });
+                    });
+                  }
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          if (_ensaiosAdicionados.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 32),
+              child: Column(
+                children: [
+                  const Icon(Icons.science_outlined, size: 48, color: AppColors.greyLight),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Nenhum ensaio adicionado',
+                    style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Clique no botão acima para adicionar os\nensaios vinculados a esta região.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.lato(fontSize: 14, color: AppColors.greyMedium),
+                  ),
+                ],
+              ),
+            )
+          else
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFAFAFA),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade200),
+              ),
+              child: Column(
+                children: _ensaiosAdicionados.map((ensaio) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () async {
+                          final resultado = await showDialog<Map<String, dynamic>>(
+                            context: context,
+                            builder: (context) => ConfigurarQtdEnsaioModal(
+                              nomeEnsaio: ensaio['nome'],
+                              iconeEnsaio: ensaio['icone'],
+                              qtdInicial: ensaio['qtd'], 
+                            ),
+                          );
+
+                          if (resultado != null) {
+                            setState(() {
+                              if (resultado['acao'] == 'apagar') {
+                                _ensaiosAdicionados.removeWhere((e) => e['id'] == ensaio['id']);
+                              } else if (resultado['acao'] == 'salvar') {
+                                ensaio['qtd'] = resultado['qtd'];
+                              }
+                            });
+                          }
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Row(
+                            children: [
+                              SizedBox(
+                                width: 32,
+                                height: 32,
+                                child: Image.asset(
+                                  ensaio['icone'],
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(ensaio['nome'], style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
+                                    Text('${ensaio['qtd'].toString().padLeft(2, '0')} Unidades', style: GoogleFonts.lato(fontSize: 12, color: AppColors.greyMedium)),
+                                  ],
+                                ),
+                              ),
+                              const Icon(Icons.edit_outlined, size: 18, color: AppColors.greyMedium),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
         ],
       ),
     );

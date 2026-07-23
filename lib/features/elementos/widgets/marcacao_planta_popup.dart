@@ -1,471 +1,781 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart'; 
-import 'package:flutter_riverpod/flutter_riverpod.dart'; 
-import 'package:pdfx/pdfx.dart';
-import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/elementos/models/elemento_model.dart'; 
-import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; 
+import 'dart:math' as math;
+import 'package:diavicon/core/widgets/compact_button.dart';
+import 'package:diavicon/core/widgets/custom_appbar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pdfx/pdfx.dart';
+import 'package:flutter_colorpicker/flutter_colorpicker.dart';
 
-/// Marcação de um elemento sobre a planta.
+import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/core/constants/app_text_styles.dart';
+import 'package:diavicon/features/elementos/models/elemento_model.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
+
+
 class MarcacaoPlanta {
   const MarcacaoPlanta({
     required this.x,
     required this.y,
     required this.plantaId,
-    this.tipoMarcacao = 'Retângulo', 
+    this.tipoMarcacao = 'Retângulo',
     this.numero = 1,
     this.thumbnailBytes,
     this.nomeElemento,
+    this.largura = 0.08,
+    this.altura = 0.06,
+    this.rotacao = 0.0,
+    this.cor = '#FF9800',
+    this.nomeX = 0.0,
+    this.nomeY = 0.0,
   });
 
-  final double x; 
-  final double y; 
-  final String plantaId;
-  final String tipoMarcacao;
+  final double x, y, largura, altura, rotacao, nomeX, nomeY;
+  final String plantaId, tipoMarcacao, cor;
   final int numero;
   final Uint8List? thumbnailBytes;
   final String? nomeElemento;
 
-  MarcacaoPlanta copyWith({double? x, double? y, String? plantaId, String? tipoMarcacao, int? numero, Uint8List? thumbnailBytes}) {
+  MarcacaoPlanta copyWith({
+    double? x, double? y, String? plantaId, String? tipoMarcacao, 
+    int? numero, Uint8List? thumbnailBytes, double? largura, double? altura, 
+    double? rotacao, String? cor, double? nomeX, double? nomeY,
+  }) {
     return MarcacaoPlanta(
-      x: x ?? this.x,
-      y: y ?? this.y,
-      plantaId: plantaId ?? this.plantaId,
-      tipoMarcacao: tipoMarcacao ?? this.tipoMarcacao,
-      numero: numero ?? this.numero,
+      x: x ?? this.x, y: y ?? this.y, plantaId: plantaId ?? this.plantaId,
+      tipoMarcacao: tipoMarcacao ?? this.tipoMarcacao, numero: numero ?? this.numero,
       thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
+      largura: largura ?? this.largura, altura: altura ?? this.altura,
+      rotacao: rotacao ?? this.rotacao, cor: cor ?? this.cor,
+      nomeX: nomeX ?? this.nomeX, nomeY: nomeY ?? this.nomeY,
     );
   }
 
   Map<String, dynamic> toPosicaoMap() => <String, dynamic>{
-        'posicao_x': x,
-        'posicao_y': y,
-        'planta_id': plantaId,
-        'tipo_marcacao': tipoMarcacao, 
+        'posicao_x': x, 'posicao_y': y, 'planta_id': plantaId,
+        'tipo_marcacao': tipoMarcacao, 'marcacao_largura': largura, 'marcacao_altura': altura,
+        'marcacao_rotacao': rotacao, 'marcacao_cor': cor,
+        'marcacao_nome_x': nomeX, 'marcacao_nome_y': nomeY,
       };
 }
 
-/// Pino Inteligente que muda de formato e mostra o nome
-class PinoDinamico extends StatelessWidget {
-  const PinoDinamico({super.key, required this.tipoMarcacao, this.nomeElemento, this.numero = 1});
+enum ModoFerramenta { navegar, mover, redimensionar }
 
-  final String tipoMarcacao;
-  final String? nomeElemento;
-  final int numero;
-
-  @override
-  Widget build(BuildContext context) {
-    final tipo = tipoMarcacao.toLowerCase();
-    final isCirculo = tipo == 'círculo';
-    final isLinha = tipo == 'linha';
-    final isPonto = tipo == 'ponto';
-
-    double largura = 26;
-    double altura = 26;
-    if (isLinha) { largura = 50; altura = 12; } 
-    if (isPonto) { largura = 16; altura = 16; } 
-
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: largura,
-          height: altura,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            color: Colors.orange.withValues(alpha: 0.85),
-            shape: (isCirculo || isPonto) ? BoxShape.circle : BoxShape.rectangle,
-            borderRadius: (!isCirculo && !isPonto) ? BorderRadius.circular(4) : null,
-            border: Border.all(color: Colors.white, width: 1.5),
-            boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 2, offset: Offset(0, 2))],
-          ),
-          child: (nomeElemento == null && !isPonto && !isLinha) 
-              ? Text('$numero', style: GoogleFonts.lato(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold))
-              : null,
-        ),
-        
-        if (nomeElemento != null) ...[
-          const SizedBox(width: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(4)),
-            child: Text(nomeElemento!, style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
-          ),
-        ]
-      ],
-    );
-  }
-}
-
-/// Abre o popup de marcação em planta.
 Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
   BuildContext context, {
   required String arquivoUrl,
   required String plantaId,
-  String? estruturaId, 
+  String? estruturaId,
   MarcacaoPlanta? inicial,
   int numero = 1,
-  String? nomeElemento, 
+  String? nomeElemento,
 }) {
   return showDialog<MarcacaoPlanta>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.42),
-    builder: (_) => MarcacaoPlantaPopup(
+    barrierDismissible: false,
+    useSafeArea: false,
+    builder: (context) => MarcacaoPlantaPopup(
       arquivoUrl: arquivoUrl,
       plantaId: plantaId,
       estruturaId: estruturaId,
       marcacaoInicial: inicial,
       numero: numero,
-      nomeElemento: nomeElemento, 
+      nomeElemento: nomeElemento,
     ),
   );
 }
+
+// WIDGET PRINCIPAL DO POPUP
 
 class MarcacaoPlantaPopup extends StatefulWidget {
   const MarcacaoPlantaPopup({
     super.key,
     required this.arquivoUrl,
     required this.plantaId,
-    this.estruturaId, 
+    this.estruturaId,
     this.marcacaoInicial,
     this.numero = 1,
-    this.nomeElemento, 
+    this.nomeElemento,
   });
 
   final String arquivoUrl;
   final String plantaId;
-  final String? estruturaId; 
+  final String? estruturaId;
   final MarcacaoPlanta? marcacaoInicial;
   final int numero;
-  final String? nomeElemento; 
+  final String? nomeElemento;
 
   @override
   State<MarcacaoPlantaPopup> createState() => _MarcacaoPlantaPopupState();
 }
 
 class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
-  Offset? _ponto;
-  String _tipoMarcacaoSelecionado = 'Retângulo'; 
-  Uint8List? _imagemRenderizada; 
+  final TransformationController _transformationController = TransformationController();
 
-  int get _numero => widget.marcacaoInicial?.numero ?? widget.numero;
+  Offset? _ponto;
+  String _tipoMarcacaoSelecionado = 'Retângulo';
+  double _largura = 0.08;
+  double _altura = 0.08;
+  double _rotacao = 0.0;
+  ModoFerramenta _modoAtivo = ModoFerramenta.navegar;
+  
+  String _corSelecionada = '#FF9800'; 
+  double _nomeX = 0.0;
+  double _nomeY = 0.0;
+
+  static final List<String> _coresSalvas = ['#FF9800', '#F44336', '#2196F3']; 
 
   @override
   void initState() {
     super.initState();
-    final inicial = widget.marcacaoInicial;
-    if (inicial != null && inicial.plantaId == widget.plantaId) {
-      _ponto = Offset(inicial.x, inicial.y);
-      _tipoMarcacaoSelecionado = inicial.tipoMarcacao;
-      _imagemRenderizada = inicial.thumbnailBytes;
+    if (widget.marcacaoInicial != null) {
+      _ponto = Offset(widget.marcacaoInicial!.x, widget.marcacaoInicial!.y);
+      final tipoSalvo = widget.marcacaoInicial!.tipoMarcacao;
+      if (tipoSalvo.isNotEmpty && ['Retângulo', 'Círculo'].contains(tipoSalvo)) {
+        _tipoMarcacaoSelecionado = tipoSalvo;
+      }
+      _largura = widget.marcacaoInicial!.largura;
+      _altura = widget.marcacaoInicial!.altura;
+      _rotacao = widget.marcacaoInicial!.rotacao;
+      _corSelecionada = widget.marcacaoInicial!.cor;
+      _nomeX = widget.marcacaoInicial!.nomeX;
+      _nomeY = widget.marcacaoInicial!.nomeY;
+      
+      if (_nomeY < -1.0 || _nomeY > 2.0) {
+        _nomeX = _ponto!.dx;
+        _nomeY = _ponto!.dy - 0.06;
+      }
+
+      if (!_coresSalvas.contains(_corSelecionada)) {
+        _coresSalvas.add(_corSelecionada);
+      }
+
+      _modoAtivo = ModoFerramenta.mover;
     }
   }
 
-  bool get _podeSalvar => _ponto != null;
+  @override
+  void dispose() {
+    _transformationController.dispose();
+    super.dispose();
+  }
+
+  Color _hexToColor(String hex) {
+    return Color(int.parse(hex.replaceFirst('#', '0xff')));
+  }
 
   void _salvar() {
-    final ponto = _ponto;
-    if (ponto == null) return;
-    Navigator.of(context).pop(
-      MarcacaoPlanta(
-        x: ponto.dx, 
-        y: ponto.dy, 
-        plantaId: widget.plantaId, 
-        tipoMarcacao: _tipoMarcacaoSelecionado, 
-        numero: _numero,
-        thumbnailBytes: _imagemRenderizada, 
+    if (_ponto != null) {
+      Navigator.of(context).pop(MarcacaoPlanta(
+        x: _ponto!.dx,
+        y: _ponto!.dy,
+        plantaId: widget.plantaId,
+        tipoMarcacao: _tipoMarcacaoSelecionado,
+        numero: widget.numero,
+        largura: _largura,
+        altura: _altura,
+        rotacao: _rotacao,
+        cor: _corSelecionada,
+        nomeX: _nomeX,
+        nomeY: _nomeY,
+        nomeElemento: widget.nomeElemento,
+      ));
+    }
+  }
+
+  void _abrirColorPicker() {
+    Color corTemporaria = _hexToColor(_corSelecionada);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Escolha a cor', style: AppTextStyles.tituloPrincipal),
+        content: SingleChildScrollView(
+          child: ColorPicker(
+            pickerColor: corTemporaria,
+            onColorChanged: (Color color) => corTemporaria = color,
+            enableAlpha: false,
+            labelTypes: const [], 
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
+            onPressed: () {
+              setState(() {
+                _corSelecionada = '#${corTemporaria.value.toRadixString(16).substring(2).toUpperCase()}';
+                if (!_coresSalvas.contains(_corSelecionada)) {
+                  _coresSalvas.add(_corSelecionada);
+                }
+              });
+              Navigator.of(context).pop();
+            },
+            child: const Text('Salvar', style: AppTextStyles.corpoDestaqueBranco),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPaletaCores() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('Cor da Marcação', style: AppTextStyles.labelCampo), 
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: [
+                ..._coresSalvas.map((cor) {
+                  final isSelected = _corSelecionada == cor;
+                  return GestureDetector(
+                    onTap: () => setState(() => _corSelecionada = cor),
+                    child: Container(
+                      margin: const EdgeInsets.only(right: 14),
+                      width: 34, height: 34,
+                      decoration: BoxDecoration(
+                        color: _hexToColor(cor),
+                        shape: BoxShape.circle,
+                        border: isSelected ? Border.all(color: AppColors.greyDarkest, width: 2.5) : Border.all(color: Colors.black12),
+                        boxShadow: [if (isSelected) const BoxShadow(color: Colors.black26, blurRadius: 4)],
+                      ),
+                    ),
+                  );
+                }),
+                GestureDetector(
+                  onTap: _abrirColorPicker,
+                  child: Container(
+                    margin: const EdgeInsets.only(right: 14),
+                    width: 34, height: 34,
+                    decoration: BoxDecoration(
+                      color: AppColors.white,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                    ),
+                    child: const Icon(Icons.colorize, size: 18, color: AppColors.greyMedium),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBotaoModo(ModoFerramenta modo, IconData icon, String label) {
+    final isActive = _modoAtivo == modo;
+    return GestureDetector(
+      onTap: () => setState(() => _modoAtivo = modo),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: isActive ? AppColors.primary.withValues(alpha: 0.1) : AppColors.white,
+              shape: BoxShape.circle,
+              border: Border.all(color: isActive ? AppColors.primary : AppColors.greyVeryLight, width: 2),
+              boxShadow: isActive ? [] : [const BoxShadow(color: Colors.black12, blurRadius: 4)],
+            ),
+            child: Icon(icon, color: isActive ? AppColors.primary : AppColors.greyMedium, size: 28),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            label, 
+            style: TextStyle(
+              color: isActive ? AppColors.primary : AppColors.greyMedium, 
+              fontSize: 13, 
+              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
+              fontFamily: 'Lato', 
+            )
+          ),
+        ],
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final mediaQuery = MediaQuery.of(context);
-    final largura = (mediaQuery.size.width - 32).clamp(280.0, 350.0).toDouble();
-    final alturaMaximaPlanta = mediaQuery.size.height * 0.50;
+    final isCirculo = _tipoMarcacaoSelecionado.toLowerCase() == 'círculo';
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      insetPadding: const EdgeInsets.all(16),
-      child: SizedBox(
-        width: largura,
-        child: Material(
-          color: Colors.white,
-          elevation: 4,
-          shadowColor: Colors.black.withValues(alpha: 0.25),
-          borderRadius: BorderRadius.circular(20),
-          clipBehavior: Clip.antiAlias,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: _CloseButton(onPressed: () => Navigator.of(context).maybePop()),
+    return Scaffold(
+      backgroundColor: AppColors.background, 
+      appBar: const CustomAppBar( 
+        title: 'Marcar na Planta',
+        showBackButton: true,
+        showMenuButton: false,
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // PLANTA INTERATIVA
+            Flexible(
+              child: Container(
+                color: AppColors.greyVeryLight,
+                child: _PlantaInterativa(
+                  transformationController: _transformationController,
+                  arquivoUrl: widget.arquivoUrl, 
+                  plantaId: widget.plantaId, 
+                  estruturaId: widget.estruturaId, 
+                  numero: widget.numero, 
+                  ponto: _ponto, 
+                  largura: _largura, 
+                  altura: _altura,
+                  tipoMarcacao: _tipoMarcacaoSelecionado, 
+                  nomeElemento: widget.nomeElemento,   
+                  modo: _modoAtivo,   
+                  rotacao: _rotacao,
+                  corSelecionada: _corSelecionada, 
+                  nomeX: _nomeX,                   
+                  nomeY: _nomeY,                   
+                  onNomeDrag: (deltaFraction) {       
+                    setState(() {
+                      _nomeX = (_nomeX + deltaFraction.dx).clamp(0.0, 1.0);
+                      _nomeY = (_nomeY + deltaFraction.dy).clamp(0.0, 1.0);
+                    });
+                  }, 
+                  onInitialTap: (pontoInicial) {
+                    setState(() {
+                      _ponto = pontoInicial;
+                      _nomeX = pontoInicial.dx;
+                      _nomeY = (pontoInicial.dy - 0.06).clamp(0.0, 1.0); 
+                      _modoAtivo = ModoFerramenta.redimensionar; 
+                    });
+                  },
+                  onChanged: (novoPonto) {
+                    setState(() => _ponto = novoPonto);
+                  },
                 ),
-                Text(
-                  'Selecione o local na planta',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.lato(color: const Color(0xFF3E3E3D), fontSize: 24, fontWeight: FontWeight.w800, height: 1.2),
-                ),
-                const SizedBox(height: 8),
-                
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      value: _tipoMarcacaoSelecionado,
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF3E3E3D)),
-                      style: GoogleFonts.lato(color: const Color(0xFF3E3E3D), fontSize: 18, fontWeight: FontWeight.w500),
-                      items: ['Retângulo', 'Círculo', 'Linha', 'Ponto']
-                          .map((tipo) => DropdownMenuItem(value: tipo, child: Text(tipo)))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _tipoMarcacaoSelecionado = val);
-                      },
+              ),
+            ),
+
+            // PAINEL DE CONTROLE INFERIOR
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+              decoration: const BoxDecoration(
+                color: AppColors.white, 
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, -4))],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _buildBotaoModo(ModoFerramenta.navegar, Icons.pan_tool, 'Navegar'),
+                      _buildBotaoModo(ModoFerramenta.mover, Icons.open_with, 'Mover'),
+                      _buildBotaoModo(ModoFerramenta.redimensionar, Icons.aspect_ratio, 'Tamanho'),
+                    ],
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 16),
+                    child: Divider(height: 1, color: AppColors.greyVeryLight),
+                  ),
+                  
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.30),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          if (_modoAtivo != ModoFerramenta.redimensionar) ...[
+                            const Text('Tipo de Marcação', style: AppTextStyles.labelCampo), 
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 48,
+                              child: DropdownButtonFormField<String>(
+                                value: _tipoMarcacaoSelecionado,
+                                decoration: InputDecoration(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
+                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
+                                ),
+                                style: AppTextStyles.corpoTextoEscuro,
+                                items: ['Retângulo', 'Círculo']
+                                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                                    .toList(),
+                                onChanged: (val) => setState(() => _tipoMarcacaoSelecionado = val!),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildPaletaCores(),
+                          ],
+
+                          if (_modoAtivo == ModoFerramenta.redimensionar) ...[
+                            const Text('Ajuste de Dimensões e Rotação', style: AppTextStyles.labelCampo), 
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                const Icon(Icons.straighten, size: 20, color: AppColors.primary),
+                                Expanded(
+                                  child: SliderTheme(
+                                    data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                    child: Slider(
+                                      value: _largura, min: 0.01, max: 0.40,
+                                      activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
+                                      onChanged: (val) => setState(() => _largura = val),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (!isCirculo) ...[
+                              Row(
+                                children: [
+                                  const Icon(Icons.swap_vert, size: 20, color: AppColors.primary),
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                      child: Slider(
+                                        value: _altura, min: 0.01, max: 0.40,
+                                        activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
+                                        onChanged: (val) => setState(() => _altura = val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              Row(
+                                children: [
+                                  const Icon(Icons.rotate_right, size: 20, color: AppColors.primary),
+                                  Expanded(
+                                    child: SliderTheme(
+                                      data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                      child: Slider(
+                                        value: _rotacao, min: 0, max: 360,
+                                        activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
+                                        onChanged: (val) => setState(() => _rotacao = val),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ],
+                        ],
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                
-                Container(
-                  color: const Color(0xFFD9D9D9),
-                  height: alturaMaximaPlanta,
-                  child: _PlantaInterativa(
-                    arquivoUrl: widget.arquivoUrl,
-                    plantaId: widget.plantaId,
-                    estruturaId: widget.estruturaId, // 🔥 NOVO
-                    numero: _numero,
-                    ponto: _ponto,
-                    tipoMarcacao: _tipoMarcacaoSelecionado, 
-                    nomeElemento: widget.nomeElemento,      
-                    onTap: (relativo) => setState(() => _ponto = relativo),
-                    onImageReady: (bytes) {
-                      if (mounted) setState(() => _imagemRenderizada = bytes);
-                    },
+                  const SizedBox(height: 24),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: CompactButton(
+                          text: 'Cancelar',
+                          backgroundColor: AppColors.white,
+                          foregroundColor: AppColors.greyMedium,
+                          borderColor: AppColors.greyMedium,
+                          elevation: 0,
+                          onPressed: () => Navigator.of(context).pop(),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: CompactButton(
+                          text: 'Salvar',
+                          backgroundColor: _ponto == null ? AppColors.greyLight : AppColors.primary,
+                          foregroundColor: AppColors.white,
+                          onPressed: () {
+                            if (_ponto != null) _salvar();
+                          },
+                        ),
+                      ),
+                    ],
                   ),
-                ),
-                
-                const SizedBox(height: 18),
-                Center(
-                  child: _SalvarButton(onPressed: _podeSalvar ? _salvar : null),
-                ),
-              ],
-            ),
-          ),
+                ],
+              ),
+            )
+          ],
         ),
       ),
     );
   }
 }
 
-// 🔥 ALTERADO: Mudou para ConsumerStatefulWidget para escutar o banco
-class _PlantaInterativa extends ConsumerStatefulWidget {
-  const _PlantaInterativa({
-    required this.arquivoUrl,
-    required this.plantaId,
-    this.estruturaId,
-    required this.numero,
-    required this.ponto,
-    required this.tipoMarcacao,
-    this.nomeElemento,
-    required this.onTap,
-    this.onImageReady,
+// WIDGET DO PINO DINÂMICO
+
+class PinoDinamico extends StatelessWidget {
+  const PinoDinamico({
+    super.key, 
+    required this.tipoMarcacao, 
+    this.numero = 1, 
+    this.largura, 
+    this.altura, 
+    this.ocultarTexto = false, 
+    this.rotacao = 0.0,
+    this.corBase = Colors.orange,
+    this.mostrarNumero = false, 
   });
 
-  final String arquivoUrl;
-  final String plantaId;
-  final String? estruturaId;
+  final String tipoMarcacao;
+  final int numero;
+  final double? largura, altura;
+  final bool ocultarTexto;
+  final double rotacao;
+  final Color corBase;
+  final bool mostrarNumero; 
+
+  @override
+  Widget build(BuildContext context) {
+    final isCirculo = tipoMarcacao.toLowerCase() == 'círculo';
+
+    double larguraPino = largura ?? 26.0;
+    double alturaPino = altura ?? 26.0;
+    
+    return Stack(
+      clipBehavior: Clip.none, 
+      alignment: Alignment.center,
+      children: [
+        Transform.rotate(
+          angle: rotacao * (math.pi / 180),
+          child: Container(
+            width: larguraPino, 
+            height: alturaPino, 
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: corBase.withValues(alpha: 0.45), 
+              shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
+              //  Bordas quinas vivas),  1 de raio pra não ficar serrilhado feio
+              borderRadius: isCirculo ? null : BorderRadius.circular(1.0),
+              border: Border.all(color: corBase, width: 1.5), 
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+            ),
+            child: (mostrarNumero && !ocultarTexto) 
+                ? Transform.rotate(
+                    angle: -rotacao * (math.pi / 180), 
+                    child: Text(
+                      '$numero', 
+                      style: GoogleFonts.lato(color: corBase, fontSize: larguraPino > 24 ? 13 : 9, fontWeight: FontWeight.w900)
+                    ),
+                  )
+                : null,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// WIDGET DO VISUALIZADOR DA PLANTA
+
+class _PlantaInterativa extends ConsumerStatefulWidget {
+  const _PlantaInterativa({
+    required this.transformationController,
+    required this.arquivoUrl, required this.plantaId, this.estruturaId,
+    required this.numero, required this.ponto, required this.largura, required this.altura,
+    required this.tipoMarcacao, this.nomeElemento, required this.onChanged,
+    required this.modo, required this.onInitialTap, required this.rotacao,
+    required this.corSelecionada, required this.nomeX, required this.nomeY,
+    required this.onNomeDrag,
+  });
+
+  final TransformationController transformationController;
+  final String arquivoUrl, plantaId, tipoMarcacao;
+  final String? estruturaId, nomeElemento;
   final int numero;
   final Offset? ponto;
-  final String tipoMarcacao; 
-  final String? nomeElemento; 
-  final ValueChanged<Offset> onTap;
-  final ValueChanged<Uint8List>? onImageReady;
+  final double largura, altura, rotacao, nomeX, nomeY;
+  final String corSelecionada;
+  final ValueChanged<Offset> onChanged, onInitialTap, onNomeDrag;
+  final ModoFerramenta modo;
 
   @override
   ConsumerState<_PlantaInterativa> createState() => _PlantaInterativaState();
 }
 
 class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
-  bool _isPdf = false;
-  bool _isLoadingPdf = false;
+  bool _isPdf = false, _isLoadingPdf = false;
   Uint8List? _pdfImageBytes;
-  String? _errorMessage; 
 
   @override
   void initState() {
     super.initState();
-    _verificarECarregarPdf();
+    _carregarPdf();
   }
 
-  Future<void> _verificarECarregarPdf() async {
-    final urlLower = widget.arquivoUrl.toLowerCase();
-    if (urlLower.contains('.pdf')) {
-      setState(() { _isPdf = true; _isLoadingPdf = true; _errorMessage = null; });
-      try {
-        final request = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
-        final response = await request.close();
-        if (response.statusCode != 200) throw Exception('Erro no download: ${response.statusCode}');
-        final pdfBytes = await consolidateHttpClientResponseBytes(response);
-        final document = await PdfDocument.openData(pdfBytes);
-        final page = await document.getPage(1);
-        
-        double renderWidth = page.width; double renderHeight = page.height;
-        if (renderWidth < 1000) { renderWidth *= 2.0; renderHeight *= 2.0; }
-        const maxDim = 2500.0;
-        if (renderWidth > maxDim || renderHeight > maxDim) {
-          final proporcao = renderWidth / renderHeight;
-          if (renderWidth > renderHeight) { renderWidth = maxDim; renderHeight = maxDim / proporcao; } 
-          else { renderHeight = maxDim; renderWidth = maxDim * proporcao; }
-        }
-
-        final pageImage = await page.render(width: renderWidth, height: renderHeight, format: PdfPageImageFormat.jpeg, backgroundColor: '#FFFFFF');
-        if (pageImage != null && mounted) {
-          setState(() => _pdfImageBytes = pageImage.bytes);
-          widget.onImageReady?.call(pageImage.bytes); 
-        } else { throw Exception('A renderização retornou nulo'); }
-        await page.close(); await document.close();
-      } catch (e) {
-        debugPrint('Erro ao carregar PDF: $e');
-        if (mounted) setState(() => _errorMessage = e.toString()); 
-      } finally {
-        if (mounted) setState(() => _isLoadingPdf = false);
-      }
+  Future<void> _carregarPdf() async {
+    if (!widget.arquivoUrl.toLowerCase().contains('.pdf')) return;
+    setState(() { _isPdf = true; _isLoadingPdf = true; });
+    try {
+      final req = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
+      final res = await req.close();
+      final bytes = await consolidateHttpClientResponseBytes(res);
+      final doc = await PdfDocument.openData(bytes);
+      final page = await doc.getPage(1);
+      double w = page.width, h = page.height;
+      if (w < 1000) { w *= 2; h *= 2; }
+      final pageImg = await page.render(width: w, height: h, format: PdfPageImageFormat.jpeg, backgroundColor: '#FFFFFF');
+      if (pageImg != null && mounted) setState(() => _pdfImageBytes = pageImg.bytes);
+      await page.close(); await doc.close();
+    } catch (_) {
+    } finally {
+      if (mounted) setState(() => _isLoadingPdf = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    //  Pega os pinos que já existem nesta planta
     List<ElementoModel> pinosVizinhos = [];
     if (widget.estruturaId != null) {
-      final elementosAsync = ref.watch(elementosPorEstruturaProvider(widget.estruturaId!));
-      pinosVizinhos = elementosAsync.value?.where((el) => 
-        el.plantaId == widget.plantaId && 
-        el.posicaoX != null && 
-        el.posicaoY != null
-      ).toList() ?? [];
+      final els = ref.watch(elementosPorEstruturaProvider(widget.estruturaId!)).value;
+      pinosVizinhos = els?.where((el) => el.plantaId == widget.plantaId && el.posicaoX != null).toList() ?? [];
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return InteractiveViewer(
-          minScale: 1.0,
-          maxScale: 5.0,
-          boundaryMargin: const EdgeInsets.all(double.infinity),
-          constrained: true,
-          child: GestureDetector(
-            behavior: HitTestBehavior.opaque,
-            onTapDown: (details) {
-              final local = details.localPosition;
-              widget.onTap(Offset(
-                (local.dx / constraints.maxWidth).clamp(0.0, 1.0),
-                (local.dy / constraints.maxHeight).clamp(0.0, 1.0),
-              ));
-            },
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                if (_isPdf) ...[
-                  if (_isLoadingPdf) const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                  else if (_pdfImageBytes != null) Image.memory(_pdfImageBytes!, fit: BoxFit.contain)
-                  else if (_errorMessage != null) Center(child: Text('Falha ao carregar planta:\n$_errorMessage', style: const TextStyle(color: Colors.red, fontSize: 12), textAlign: TextAlign.center))
-                  else const Center(child: Icon(Icons.picture_as_pdf, size: 50, color: Colors.grey))
-                ] else ...[
-                  Image.network(widget.arquivoUrl, fit: BoxFit.contain),
-                ],
+    final bool permitirMoverPlanta = widget.ponto == null || widget.modo == ModoFerramenta.navegar;
 
-                //  Desenha os pinos que já existem (com opacidade reduzida)
-                ...pinosVizinhos.map((el) {
-                  final xAbs = el.posicaoX! * constraints.maxWidth;
-                  final yAbs = el.posicaoY! * constraints.maxHeight;
+    return InteractiveViewer(
+      transformationController: widget.transformationController,
+      minScale: 1.0, maxScale: 5.0,
+      panEnabled: permitirMoverPlanta, 
+      scaleEnabled: permitirMoverPlanta,
+      child: Center(
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            if (_isPdf) ...[
+              if (_isLoadingPdf) const Center(child: CircularProgressIndicator(color: AppColors.primary))
+              else if (_pdfImageBytes != null) Image.memory(_pdfImageBytes!)
+              else const Icon(Icons.broken_image, size: 50, color: AppColors.greyMedium)
+            ] else Image.network(widget.arquivoUrl),
 
-                  final tipo = (el.tipoMarcacao ?? 'Retângulo').toLowerCase();
-                  final isLinha = tipo == 'linha';
-                  final isPonto = tipo == 'ponto';
-                  final wPino = isLinha ? 50.0 : (isPonto ? 16.0 : 26.0);
-                  final hPino = isLinha ? 12.0 : (isPonto ? 16.0 : 26.0);
+            Positioned.fill(
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  final double w = constraints.maxWidth;
+                  final double h = constraints.maxHeight;
 
-                  return Positioned(
-                    left: xAbs - (wPino / 2),
-                    top: yAbs - (hPino / 2),
-                    child: Opacity(
-                      opacity: 0.45, //  Transparente para indicar que é do "fundo"
-                      child: PinoDinamico(
-                        tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
-                        nomeElemento: el.nome,
-                      ),
+                  return GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTapDown: widget.ponto != null ? null : (details) {
+                      final local = details.localPosition;
+                      widget.onInitialTap(Offset(
+                        (local.dx / w).clamp(0.0, 1.0),
+                        (local.dy / h).clamp(0.0, 1.0),
+                      ));
+                    },
+                    onPanUpdate: (widget.ponto != null && widget.modo == ModoFerramenta.mover)
+                        ? (details) {
+                            final novoX = (widget.ponto!.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
+                            final novoY = (widget.ponto!.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
+                            widget.onChanged(Offset(novoX, novoY));
+                          }
+                        : null,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        ...pinosVizinhos.expand((el) {
+                          final cx = el.posicaoX! * w;
+                          final cy = el.posicaoY! * h;
+                          final wPino = (el.marcacaoLargura ?? 0.12) * w;
+                          final hPino = (el.marcacaoAltura ?? 0.08) * h;
+                          final corVizinho = el.marcacaoCor != null 
+                              ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) 
+                              : AppColors.primary;
+
+                          final pino = Positioned(
+                            left: cx - (wPino / 2), top: cy - (hPino / 2),
+                            child: Opacity(
+                              opacity: 0.35, 
+                              child: PinoDinamico(
+                                tipoMarcacao: el.tipoMarcacao ?? 'Retângulo', 
+                                largura: wPino, altura: hPino,
+                                rotacao: el.marcacaoRotacao ?? 0.0,
+                                corBase: corVizinho,
+                                mostrarNumero: false, 
+                              )
+                            ),
+                          );
+
+                          Widget? nomeVizinho;
+                          if (el.nome != null && el.nome!.isNotEmpty) {
+                             double nx = el.marcacaoNomeX ?? el.posicaoX!;
+                             double ny = el.marcacaoNomeY ?? el.posicaoY!;
+                             if (ny < -1.0 || ny > 2.0) { nx = el.posicaoX!; ny = el.posicaoY! - 0.06; }
+                             
+                             nomeVizinho = Positioned(
+                               left: nx * w, top: ny * h,
+                               child: FractionalTranslation(
+                                 translation: const Offset(-0.5, -0.5),
+                                 child: Text(
+                                   el.nome!, 
+                                   style: TextStyle(
+                                     color: corVizinho.withValues(alpha: 0.5), 
+                                     fontSize: 12, fontWeight: FontWeight.bold,
+                                     shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
+                                   )
+                                 ),
+                               ),
+                             );
+                          }
+                          return [pino, if (nomeVizinho != null) nomeVizinho];
+                        }),
+
+                        if (widget.ponto != null) ...[
+                          () {
+                            final wPixels = widget.largura * w;
+                            final hPixels = widget.altura * h;
+                            final cxPixels = widget.ponto!.dx * w;
+                            final cyPixels = widget.ponto!.dy * h;
+
+                            return Positioned(
+                              left: cxPixels - (wPixels / 2), top: cyPixels - (hPixels / 2),
+                              child: PinoDinamico(
+                                tipoMarcacao: widget.tipoMarcacao, 
+                                largura: wPixels, altura: hPixels,
+                                numero: widget.numero, 
+                                ocultarTexto: widget.modo == ModoFerramenta.redimensionar, 
+                                rotacao: widget.rotacao,
+                                corBase: Color(int.parse(widget.corSelecionada.replaceFirst('#', '0xff'))),
+                                mostrarNumero: false, 
+                              ),
+                            );
+                          }(),
+                          
+                          if (widget.nomeElemento != null)
+                            Positioned(
+                              left: widget.nomeX * w, top: widget.nomeY * h,
+                              child: FractionalTranslation(
+                                translation: const Offset(-0.5, -0.5),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onPanUpdate: (details) {
+                                    widget.onNomeDrag(Offset(details.delta.dx / w, details.delta.dy / h));
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0), 
+                                    child: Text(
+                                      widget.nomeElemento!,
+                                      style: TextStyle(
+                                        color: Color(int.parse(widget.corSelecionada.replaceFirst('#', '0xff'))),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: const [Shadow(color: Colors.white, blurRadius: 4)] 
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ]
+                      ],
                     ),
                   );
-                }),
-
-                // O Pino Atual ativo (100% visível)
-                if (widget.ponto != null) ...[
-                  () {
-                    final tipo = widget.tipoMarcacao.toLowerCase();
-                    final isLinha = tipo == 'linha';
-                    final isPonto = tipo == 'ponto';
-                    final wPino = isLinha ? 50.0 : (isPonto ? 16.0 : 26.0);
-                    final hPino = isLinha ? 12.0 : (isPonto ? 16.0 : 26.0);
-
-                    return Positioned(
-                      left: (widget.ponto!.dx * constraints.maxWidth) - (wPino / 2),
-                      top: (widget.ponto!.dy * constraints.maxHeight) - (hPino / 2),
-                      child: PinoDinamico(
-                        tipoMarcacao: widget.tipoMarcacao, 
-                        nomeElemento: widget.nomeElemento,
-                        numero: widget.numero
-                      ),
-                    );
-                  }(),
-                ],
-              ],
+                },
+              ),
             ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _SalvarButton extends StatelessWidget {
-  const _SalvarButton({this.onPressed});
-  final VoidCallback? onPressed;
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: onPressed == null ? const [] : [BoxShadow(color: AppColors.primary.withValues(alpha: 0.30), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      child: ElevatedButton(
-        onPressed: onPressed,
-        style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5), foregroundColor: Colors.white, disabledForegroundColor: Colors.white, elevation: 0, padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8), minimumSize: Size.zero, tapTargetSize: MaterialTapTargetSize.shrinkWrap, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
-        child: Text('Salvar', style: GoogleFonts.lato(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, height: 1)),
-      ),
-    );
-  }
-}
-
-class _CloseButton extends StatelessWidget {
-  const _CloseButton({this.onPressed});
-  final VoidCallback? onPressed;
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: 34,
-      height: 34,
-      child: IconButton(
-        onPressed: onPressed,
-        padding: EdgeInsets.zero,
-        splashRadius: 18,
-        icon: Icon(Icons.close, color: const Color(0xFF626365).withValues(alpha: 0.40), size: 24),
+          ],
+        ),
       ),
     );
   }

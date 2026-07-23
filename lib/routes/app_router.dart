@@ -231,7 +231,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/empresa/cadastro',
         builder: (context, state) {
-          // 🔥 LÊ OS DADOS DA MEMÓRIA DO RIVERPOD (Seguro contra refresh)
+          // LÊ OS DADOS DA MEMÓRIA DO RIVERPOD 
           final dadosSalvos = ref.read(rascunhoCadastroProvider);
           return EmpresaCadastroScreen(dadosUsuario: dadosSalvos);
         },
@@ -250,7 +250,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/estruturas/:estruturaId/elementos/:elementoId',
         builder: (context, state) {
           final extra = _routeExtra(state.extra);
-          return ElementoScreen(
+          return ElementosHomeScreen(
             estruturaId: state.pathParameters['estruturaId'],
             elementoId: state.pathParameters['elementoId'],
             projetoId: _stringExtra(extra, 'projetoId'),

@@ -10,7 +10,7 @@ final estruturaRepositoryProvider = Provider<EstruturaRepository>((ref) {
   return EstruturaRepository(Supabase.instance.client);
 });
 
-// --- PROVIDER: ESTRUTURAS DO PROJETO (VINCULADAS) ---
+//  ESTRUTURAS DO PROJETO (VINCULADAS) 
 final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, String>((ref, projetoId) {
   final supabase = Supabase.instance.client;
   final repo = ref.watch(estruturaRepositoryProvider);
@@ -22,6 +22,15 @@ final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, St
       .stream(primaryKey: ['projeto_id', 'estrutura_id'])
       .eq('projeto_id', projetoId)
       .asyncMap((event) => repo.buscarEstruturasPorProjeto(projetoId));
+});
+
+final estruturaResumoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, id) async {
+  final resp = await Supabase.instance.client
+      .from('estruturas')
+      .select('nome, image_url, conjuntos_estruturais(nome)')
+      .eq('id', id)
+      .maybeSingle();
+  return resp;
 });
 
 // --- PROVIDER: TODAS AS ESTRUTURAS DA PLATAFORMA ---

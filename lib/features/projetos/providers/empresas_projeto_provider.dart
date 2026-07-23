@@ -56,6 +56,21 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
       });
 });
 
+final minhaEmpresaProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  if (userId == null) return null;
+
+  // Acha qual é a empresa do usuário
+  final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+  final empresaId = userResp?['empresa_id'];
+  if (empresaId == null) return null;
+
+  //  Busca os dados da empresa e o endereço dela
+  final empResp = await supabase.from('empresas').select('*, enderecos(*)').eq('id', empresaId).maybeSingle();
+  return empResp;
+});
+
 // Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
 final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;

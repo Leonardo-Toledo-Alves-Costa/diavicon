@@ -25,6 +25,13 @@ class ElementoModel {
   final String? observacoes;
   final bool? ativo;
   final DateTime? criadoEm;
+  
+  final double? marcacaoLargura;
+  final double? marcacaoAltura;
+  final double? marcacaoRotacao;
+  final String? marcacaoCor;
+  final double? marcacaoNomeX;
+  final double? marcacaoNomeY;
 
   ElementoModel({
     required this.id,
@@ -49,17 +56,17 @@ class ElementoModel {
     this.observacoes,
     this.ativo,
     this.criadoEm,
+    this.marcacaoLargura,
+    this.marcacaoAltura,
+    this.marcacaoRotacao, this.marcacaoCor, this.marcacaoNomeX, this.marcacaoNomeY, 
   });
 
   factory ElementoModel.fromMap(Map<String, dynamic> map) {
-    
     List<String>? fotosParseadas;
     if (map['fotos'] != null) {
       if (map['fotos'] is List) {
-        // Se vier certinho como Lista, ótimo.
         fotosParseadas = (map['fotos'] as List).map((e) => e.toString()).toList();
       } else if (map['fotos'] is String) {
-        // Se vier como Texto (como está no seu JSON), tentamos decodificar!
         try {
           final decoded = jsonDecode(map['fotos']);
           if (decoded is List) {
@@ -68,7 +75,7 @@ class ElementoModel {
             fotosParseadas = [map['fotos']];
           }
         } catch (_) {
-          fotosParseadas = [map['fotos']]; // Se não for JSON, trata como URL única
+          fotosParseadas = [map['fotos']]; 
         }
       }
     }
@@ -87,7 +94,7 @@ class ElementoModel {
       posicaoY: map['posicao_y'] != null ? double.tryParse(map['posicao_y'].toString()) : null,
       posicaoZ: map['posicao_z'] != null ? double.tryParse(map['posicao_z'].toString()) : null,
       plantaId: map['planta_id'],
-      tipoMarcacao: map['tipo_marcacao'],
+      tipoMarcacao: map['tipo_markup'] ?? map['tipo_marcacao'],
       dimensoes: map['dimensoes'],
       secao: map['secao'],
       microclima: map['microclima'],
@@ -96,6 +103,12 @@ class ElementoModel {
       observacoes: map['observacoes'],
       ativo: map['ativo'], 
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em'].toString()) : null,
+      marcacaoLargura: map['marcacao_largura'] != null ? double.tryParse(map['marcacao_largura'].toString()) : null,
+      marcacaoAltura: map['marcacao_altura'] != null ? double.tryParse(map['marcacao_altura'].toString()) : null,
+      marcacaoRotacao: map['marcacao_rotacao'] != null ? double.tryParse(map['marcacao_rotacao'].toString()) : null,
+      marcacaoCor: map['marcacao_cor']?.toString(),
+      marcacaoNomeX: map['marcacao_nome_x'] != null ? double.tryParse(map['marcacao_nome_x'].toString()) : null,
+      marcacaoNomeY: map['marcacao_nome_y'] != null ? double.tryParse(map['marcacao_nome_y'].toString()) : null,
     );
   }
 
@@ -122,6 +135,12 @@ class ElementoModel {
       if (fotos != null) 'fotos': fotos,
       if (observacoes != null) 'observacoes': observacoes,
       if (ativo != null) 'ativo': ativo,
+      if (marcacaoLargura != null) 'marcacao_largura': marcacaoLargura,
+      if (marcacaoAltura != null) 'marcacao_altura': marcacaoAltura,
+      if (marcacaoRotacao != null) 'marcacao_rotacao': marcacaoRotacao, 
+      if (marcacaoCor != null) 'marcacao_cor': marcacaoCor,
+      if (marcacaoNomeX != null) 'marcacao_nome_x': marcacaoNomeX,
+      if (marcacaoNomeY != null) 'marcacao_nome_y': marcacaoNomeY,
     };
   }
 }

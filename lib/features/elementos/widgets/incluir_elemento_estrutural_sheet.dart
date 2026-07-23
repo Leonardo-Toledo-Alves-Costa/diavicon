@@ -4,6 +4,7 @@ import 'package:diavicon/core/widgets/compact_search_bar.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
+import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -139,7 +140,7 @@ class _IncluirElementoEstruturalSheetState
           : 'Elemento sem nome',
       subtitle: subtitlePartes.join(' - '),
       detail: elemento.local ?? '',
-      imageUrl: imageUrl, // 🔥 NOVO: Passa a URL para o card
+      imageUrl: imageUrl, 
       incluido: elemento.ativo != false,
     );
   }
@@ -260,7 +261,11 @@ class _IncluirElementoEstruturalSheetState
                   children: [
                     _SheetHeader(onClose: () => Navigator.of(context).pop()),
                     const SizedBox(height: 16),
-                    const _EstruturaSummary(),
+                    // 🔥 ERRO 1 RESOLVIDO: Passando o estruturaId aqui!
+                    if (estruturaId != null) 
+                      _EstruturaSummary(estruturaId: estruturaId)
+                    else 
+                      const SizedBox(),
                     const SizedBox(height: 28),
                     const _FilterRow(),
                     const SizedBox(height: 20),
@@ -300,16 +305,18 @@ class _SheetHeader extends StatelessWidget {
         const SizedBox(width: 21),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 23),
-            child: Text(
-              'Incluir Elemento Estrutural',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: GoogleFonts.lato(
-                color: const Color(0xFF3E3E3D),
-                fontSize: 24,
-                fontWeight: FontWeight.w800,
-                height: 1.05,
+            padding: const EdgeInsets.only(top: 23, right: 8), 
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Incluir Elemento Estrutural',
+                style: GoogleFonts.lato(
+                  color: const Color(0xFF3E3E3D),
+                  fontSize: 24, // Tamanho base, ele só diminui se precisar
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
+                ),
               ),
             ),
           ),
@@ -325,48 +332,81 @@ class _SheetHeader extends StatelessWidget {
   }
 }
 
-class _EstruturaSummary extends StatelessWidget {
-  const _EstruturaSummary();
+class _EstruturaSummary extends ConsumerWidget {
+  const _EstruturaSummary({required this.estruturaId});
+  
+  final String estruturaId;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final asyncData = ref.watch(estruturaResumoProvider(estruturaId));
+
     return Padding(
       padding: const EdgeInsets.only(left: 22),
-      child: Row(
-        children: [
-          const _StructureAvatar(),
-          const SizedBox(width: 14),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+      child: asyncData.when(
+        loading: () => const SizedBox(height: 38, width: 38, child: CircularProgressIndicator(strokeWidth: 2)),
+        error: (err, _) => Text('Erro: $err', style: const TextStyle(color: Colors.red, fontSize: 12)),
+        data: (data) {
+          if (data == null) return const SizedBox();
+
+          final nomeEstrutura = data['nome'] ?? 'Estrutura sem nome';
+          
+          final conjuntoMap = data['conjuntos_estruturais'];
+          String nomeConjunto = 'Sem conjunto estrutural';
+          if (conjuntoMap is Map) {
+            nomeConjunto = conjuntoMap['nome'] ?? nomeConjunto;
+          } else if (conjuntoMap is List && conjuntoMap.isNotEmpty) {
+             nomeConjunto = conjuntoMap.first['nome'] ?? nomeConjunto;
+          }
+
+          final imageUrl = data['image_url'];
+
+          return Row(
             children: [
-              Text(
-                'Estrutura BCDE',
-                style: GoogleFonts.lato(
-                  color: const Color(0xFF3E3E3D),
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  height: 1.1,
-                ),
-              ),
-              Text(
-                'Conjunto Estrutural A',
-                style: GoogleFonts.lato(
-                  color: const Color(0xFF686868),
-                  fontSize: 14,
-                  fontWeight: FontWeight.w300,
-                  height: 1.1,
+              _StructureAvatar(imageUrl: imageUrl),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      nomeEstrutura,
+                      // 🔥 MÁGICA 2: Aumentei pra 2 linhas pra não cortar nomes longos
+                      maxLines: 2, 
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF3E3E3D),
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600, 
+                        height: 1.1,
+                      ),
+                    ),
+                    const SizedBox(height: 2), 
+                    Text(
+                      nomeConjunto,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.lato(
+                        color: const Color(0xFF686868),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w300,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
 }
-
 class _StructureAvatar extends StatelessWidget {
-  const _StructureAvatar();
+  const _StructureAvatar({this.imageUrl});
+  
+  final String? imageUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -378,15 +418,25 @@ class _StructureAvatar extends StatelessWidget {
         shape: BoxShape.circle,
       ),
       clipBehavior: Clip.antiAlias,
-      child: Image.asset(
-        'assets/images/obra.png',
-        fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => const Icon(
-          Icons.apartment_outlined,
-          color: AppColors.greyDarkest,
-          size: 24,
-        ),
-      ),
+      child: imageUrl != null && imageUrl!.isNotEmpty
+          ? Image.network(
+              imageUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.apartment_outlined,
+                color: AppColors.greyDarkest,
+                size: 24,
+              ),
+            )
+          : Image.asset(
+              'assets/images/obra.png',
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => const Icon(
+                Icons.apartment_outlined,
+                color: AppColors.greyDarkest,
+                size: 24,
+              ),
+            ),
     );
   }
 }
@@ -470,7 +520,6 @@ class _ElementoSelectionCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 15, 12),
             child: Row(
               children: [
-                // Repassa a URL para o avatar
                 _ElementoAvatar(imageUrl: elemento.imageUrl), 
                 const SizedBox(width: 15),
                 Expanded(
@@ -528,7 +577,7 @@ class _ElementoSelectionCard extends StatelessWidget {
 }
 
 class _ElementoAvatar extends StatelessWidget {
-  const _ElementoAvatar({this.imageUrl});
+  const _ElementoAvatar({this.imageUrl}); // 
 
   final String? imageUrl;
 
@@ -538,7 +587,7 @@ class _ElementoAvatar extends StatelessWidget {
       width: 54,
       height: 54,
       decoration: const BoxDecoration(
-        color: Color(0xFFE6E7E8), // Fundo cinza para quem não tem foto
+        color: Color(0xFFE6E7E8), 
         shape: BoxShape.circle,
       ),
       clipBehavior: Clip.antiAlias,
@@ -552,7 +601,7 @@ class _ElementoAvatar extends StatelessWidget {
                 size: 28,
               ),
             )
-          : const Icon( // Ícone padrão caso o elemento ainda não tenha foto
+          : const Icon( 
               Icons.business_outlined,
               color: AppColors.greyDarkest,
               size: 28,

@@ -19,7 +19,6 @@ class NovoArquivoResult {
   final PlatformFile arquivo;
 }
 
-/// Abre o popup "Novo Arquivo" passando obrigatoriamente o [estruturaId]
 Future<NovoArquivoResult?> showNovoArquivoPopup(BuildContext context, String estruturaId) {
   return showDialog<NovoArquivoResult>(
     context: context,
@@ -80,36 +79,25 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
     }
   }
 
-  // Abre o modal de criar local e atualiza a lista do dropdown na hora
+  
   Future<void> _criarNovoLocal() async {
-    final novoLocalNome = await showDialog<String>(
+    final novoLocalId = await showDialog<String>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => const NovoLocalModal(), 
+      builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId), 
     );
 
-    if (novoLocalNome != null && novoLocalNome.trim().isNotEmpty && mounted) {
-      try {
-        final repo = ref.read(localRepositoryProvider);
-        final localSalvo = await repo.criarLocal(widget.estruturaId, novoLocalNome.trim());
-        
-        // Invalida o provider para recarregar do banco de dados
-        ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
-        
-        setState(() {
-          _localSelecionadoId = localSalvo.id; // Já deixa o novo local selecionado
-        });
-      } catch (e) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao salvar local: $e'), backgroundColor: AppColors.error),
-        );
-      }
+    if (novoLocalId != null && mounted) {
+      ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
+      
+      setState(() {
+        _localSelecionadoId = novoLocalId; 
+      });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escutando a lista de locais reais vindas do Supabase
     final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId));
 
     final mediaQuery = MediaQuery.of(context);
@@ -162,11 +150,22 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                       child: locaisAsync.when(
                         loading: () => const Center(child: LinearProgressIndicator(color: AppColors.primary)),
                         error: (err, _) => Text('Erro ao carregar locais', style: TextStyle(color: AppColors.error, fontSize: 12)),
-                        data: (locais) => _LocalDropdown(
-                          valor: _localSelecionadoId,
-                          locais: locais,
-                          onChanged: (valor) => setState(() => _localSelecionadoId = valor),
-                        ),
+                        data: (locais) {
+                          if (locais.isEmpty) {
+                            return _EmptyLocalButton(onPressed: _criarNovoLocal);
+                          }
+                          
+                          // Garante que o valor selecionado seja válido
+                          if (_localSelecionadoId != null && !locais.any((l) => l.id == _localSelecionadoId)) {
+                             _localSelecionadoId = null;
+                          }
+
+                          return _LocalDropdown(
+                            valor: _localSelecionadoId,
+                            locais: locais,
+                            onChanged: (valor) => setState(() => _localSelecionadoId = valor),
+                          );
+                        },
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -395,6 +394,32 @@ class _CloseButton extends StatelessWidget {
         padding: EdgeInsets.zero,
         splashRadius: 18,
         icon: Icon(Icons.close, color: const Color(0xFF626365).withOpacity(0.40), size: 24),
+      ),
+    );
+  }
+}
+
+class _EmptyLocalButton extends StatelessWidget {
+  const _EmptyLocalButton({required this.onPressed});
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onPressed,
+      child: Container(
+        height: 40,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: BoxDecoration(
+          color: AppColors.greyVeryLight,
+          border: Border.all(color: AppColors.error.withOpacity(0.5)),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          'Nenhum local cadastrado. Toque no +',
+          style: GoogleFonts.lato(color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w600),
+        ),
       ),
     );
   }

@@ -53,7 +53,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _carregarPreferenciasPlanta() async {
     try {
       final resp = await Supabase.instance.client
-          .from('plantas') // Ajuste se a tabela tiver outro nome
+          .from('plantas') 
           .select('mostrar_nomes, tamanho_fonte_nomes')
           .eq('id', widget.plantaId)
           .maybeSingle();
@@ -75,7 +75,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _salvarPreferenciasPlanta() async {
     try {
       await Supabase.instance.client
-          .from('plantas') // Ajuste se a tabela tiver outro nome
+          .from('plantas') 
           .update({
             'mostrar_nomes': _visualizarNomeElementos,
             'tamanho_fonte_nomes': _tamanhoFonteNome,
@@ -90,7 +90,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
     final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: false, // 🔥 MUDAR AQUI PARA FALSE
+      useSafeArea: false, 
       backgroundColor: Colors.transparent,
       builder: (context) =>
           MarcarElementoPlanejamentoModal(estruturaId: widget.estruturaId),
@@ -620,7 +620,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 padding: const EdgeInsets.all(24.0),
                 child: Row(
                   children: [
-                    // 🔥 BOTÃO 1: Quantitativos Contratados (Idêntico ao Protótipo)
+                    // Quantitativos Contratados 
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -688,7 +688,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                     ),
                     const SizedBox(width: 12),
 
-                    // 🔥 BOTÃO 2: Regiões de Ensaio (Idêntico ao Protótipo)
+                    // Regiões de Ensaio 
                     Expanded(
                       child: GestureDetector(
                         onTap: () {

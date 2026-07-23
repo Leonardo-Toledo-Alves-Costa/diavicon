@@ -182,7 +182,7 @@ class _EnsaioCarbonatacaoFormScreenState extends State<EnsaioCarbonatacaoFormScr
     );
   }
 
-  // WIDGET REUTILIZÁVEL: CARD DE FOTO
+  // CARD DE FOTO
   Widget _buildPhotoCard({required String title, required String imageUrl}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -228,7 +228,7 @@ class _EnsaioCarbonatacaoFormScreenState extends State<EnsaioCarbonatacaoFormScr
     );
   }
 
-  // WIDGET REUTILIZÁVEL: CAMPO DE TEXTO
+  // CAMPO DE TEXTO
   Widget _buildInputField({required String label, required TextEditingController controller}) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,

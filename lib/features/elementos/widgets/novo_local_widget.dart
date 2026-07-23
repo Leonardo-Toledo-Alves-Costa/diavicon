@@ -72,7 +72,6 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
     }
   }
 
-  // 🔥 CRIAMOS UM COMPONENTE FALSO COM O MESMO VISUAL PARA DISPARAR O ALERTA!
   Widget _buildFakeDropdownRow({
     required String label,
     required String hint,
@@ -201,7 +200,6 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // 🔥 RESTAURAMOS A LÓGICA DO ALERTA AQUI!
                   if (_tipologiaOptions.isEmpty)
                     _buildFakeDropdownRow(
                       label: 'Tipologia do Local',

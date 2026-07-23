@@ -61,12 +61,12 @@ final minhaEmpresaProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
   final userId = supabase.auth.currentUser?.id;
   if (userId == null) return null;
 
-  // 1. Acha qual é a empresa do usuário
+  // Acha qual é a empresa do usuário
   final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
   final empresaId = userResp?['empresa_id'];
   if (empresaId == null) return null;
 
-  // 2. Busca os dados da empresa e o endereço dela
+  //  Busca os dados da empresa e o endereço dela
   final empResp = await supabase.from('empresas').select('*, enderecos(*)').eq('id', empresaId).maybeSingle();
   return empResp;
 });

@@ -305,8 +305,7 @@ class _SheetHeader extends StatelessWidget {
         const SizedBox(width: 21),
         Expanded(
           child: Padding(
-            padding: const EdgeInsets.only(top: 23, right: 8), // Dei um respiro na direita
-            // 🔥 MÁGICA 1: FittedBox faz a fonte diminuir sozinha se não couber!
+            padding: const EdgeInsets.only(top: 23, right: 8), 
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
@@ -378,11 +377,11 @@ class _EstruturaSummary extends ConsumerWidget {
                       style: GoogleFonts.lato(
                         color: const Color(0xFF3E3E3D),
                         fontSize: 16,
-                        fontWeight: FontWeight.w600, // Deixei um tiquinho mais grosso pra ler melhor
+                        fontWeight: FontWeight.w600, 
                         height: 1.1,
                       ),
                     ),
-                    const SizedBox(height: 2), // Respiro entre os dois textos
+                    const SizedBox(height: 2), 
                     Text(
                       nomeConjunto,
                       maxLines: 1,
@@ -578,7 +577,7 @@ class _ElementoSelectionCard extends StatelessWidget {
 }
 
 class _ElementoAvatar extends StatelessWidget {
-  const _ElementoAvatar({this.imageUrl}); // 🔥 ERRO 2 RESOLVIDO: Argumento agora é aceito!
+  const _ElementoAvatar({this.imageUrl}); // 
 
   final String? imageUrl;
 

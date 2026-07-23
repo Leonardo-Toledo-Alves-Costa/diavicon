@@ -19,7 +19,6 @@ class NovoArquivoResult {
   final PlatformFile arquivo;
 }
 
-/// Abre o popup "Novo Arquivo" passando obrigatoriamente o [estruturaId]
 Future<NovoArquivoResult?> showNovoArquivoPopup(BuildContext context, String estruturaId) {
   return showDialog<NovoArquivoResult>(
     context: context,
@@ -80,29 +79,25 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
     }
   }
 
-  // Abre o modal de criar local e atualiza a lista do dropdown na hora
-  // Abre o modal de criar local, o próprio modal salva no banco, e devolve o ID!
+  
   Future<void> _criarNovoLocal() async {
     final novoLocalId = await showDialog<String>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.42),
-      // 🔥 AQUI: Agora passamos o estruturaId pro Modal fazer o trabalho duro!
       builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId), 
     );
 
     if (novoLocalId != null && mounted) {
-      // Como o Modal já salvou no Supabase, nós só atualizamos a lista da tela
       ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
       
       setState(() {
-        _localSelecionadoId = novoLocalId; // Já seleciona o dropdown magicamente
+        _localSelecionadoId = novoLocalId; 
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Escutando a lista de locais reais vindas do Supabase
     final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId));
 
     final mediaQuery = MediaQuery.of(context);
@@ -156,7 +151,6 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                         loading: () => const Center(child: LinearProgressIndicator(color: AppColors.primary)),
                         error: (err, _) => Text('Erro ao carregar locais', style: TextStyle(color: AppColors.error, fontSize: 12)),
                         data: (locais) {
-                          // 🔥 TRATAMENTO DE LISTA VAZIA
                           if (locais.isEmpty) {
                             return _EmptyLocalButton(onPressed: _criarNovoLocal);
                           }
@@ -405,7 +399,6 @@ class _CloseButton extends StatelessWidget {
   }
 }
 
-// arquivo: novo_arquivo_popup.dart
 class _EmptyLocalButton extends StatelessWidget {
   const _EmptyLocalButton({required this.onPressed});
   final VoidCallback onPressed;

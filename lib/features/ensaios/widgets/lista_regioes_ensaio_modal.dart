@@ -17,7 +17,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
       empresaIdSelecionada,
       empresaNome;
   final String? empresaFotoUrl;
-  final String plantaLocal; // 🔥 NOVA VARIÁVEL RECEBIDA
+  final String plantaLocal; 
 
   const ListaRegioesEnsaioModal({
     super.key,
@@ -27,7 +27,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
     required this.empresaIdSelecionada,
     required this.empresaNome,
     this.empresaFotoUrl,
-    required this.plantaLocal, // 🔥 RECEBE AQUI NO CONSTRUTOR
+    required this.plantaLocal,
   });
 
   @override
@@ -163,7 +163,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                   empresaId: empresaIdSelecionada,
                                   empresaNome: empresaNome,
                                   empresaFotoUrl: empresaFotoUrl,
-                                  plantaLocal: plantaLocal, // 🔥 PASSADO NO FLUXO DE EDIÇÃO
+                                  plantaLocal: plantaLocal,
                                   posicaoX: mapX,
                                   posicaoY: mapY,
                                   larguraMarcacao: mapLargura,
@@ -397,7 +397,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                 empresaId: empresaIdSelecionada,
                                 empresaNome: empresaNome,
                                 empresaFotoUrl: empresaFotoUrl,
-                                plantaLocal: plantaLocal, // 🔥 PASSADO NO FLUXO DE CRIAÇÃO
+                                plantaLocal: plantaLocal, 
                                 posicaoX: mapX!,
                                 posicaoY: mapY!,
                                 larguraMarcacao: mapLargura!,
@@ -440,7 +440,7 @@ Future<void> showListaRegioesModal(
   required String empresaIdSelecionada,
   required String empresaNome,
   String? empresaFotoUrl,
-  required String plantaLocal, // 🔥 VARIÁVEL ADICIONADA AQUI NO HELPER METHOD
+  required String plantaLocal, 
 }) {
   return showModalBottomSheet(
     context: context,
@@ -453,7 +453,7 @@ Future<void> showListaRegioesModal(
       empresaIdSelecionada: empresaIdSelecionada,
       empresaNome: empresaNome,
       empresaFotoUrl: empresaFotoUrl,
-      plantaLocal: plantaLocal, // 🔥 REPASSANDO PRO WIDGET
+      plantaLocal: plantaLocal,
     ),
   );
 }

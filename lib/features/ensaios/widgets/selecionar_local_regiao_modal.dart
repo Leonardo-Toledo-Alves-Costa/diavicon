@@ -14,7 +14,7 @@ import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 
 
 class LocalRegiaoResult {
-  final double x, y, largura, altura, rotacao; // 🔥 Corrigido para rotacao
+  final double x, y, largura, altura, rotacao;
   final String cor, tipo; 
   LocalRegiaoResult({required this.x, required this.y, required this.largura, required this.altura, required this.rotacao, required this.cor, required this.tipo});
 }
@@ -219,7 +219,6 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                         onPressed: (idx) => setState(() {
                           _tipoMarcacao = idx == 0 ? 'Círculo' : 'Retângulo';
                           if (_tipoMarcacao == 'Círculo') {
-                            // 🔥 TRAVA ATUALIZADA PARA O DOBRO (0.80)
                             if (_largura > 0.80) _largura = 0.80;
                             _altura = _largura;
                           }
@@ -237,7 +236,6 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                       children: [
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Tamanho da Marcação', style: GoogleFonts.lato(fontSize: 12)),
-                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
                           Slider(value: _largura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() { _largura = v; _altura = v; })),
                         ])),
                         CompactButton(text: 'Próximo', width: 100, backgroundColor: _pontoSelecionado == null ? AppColors.greyLight : AppColors.primary, onPressed: () { if (_pontoSelecionado != null) Navigator.pop(context, LocalRegiaoResult(x: _pontoSelecionado!.dx, y: _pontoSelecionado!.dy, largura: _largura, altura: _largura, rotacao: 0.0, cor: _corSelecionada, tipo: _tipoMarcacao)); }),
@@ -248,12 +246,10 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                       children: [
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Largura', style: GoogleFonts.lato(fontSize: 12)),
-                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
                           Slider(value: _largura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _largura = v)),
                         ])),
                         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                           Text('Altura', style: GoogleFonts.lato(fontSize: 12)),
-                          // 🔥 NOVO LIMITE DE TAMANHO (MAX: 0.80)
                           Slider(value: _altura, min: 0.02, max: 0.80, activeColor: _hexToColor(_corSelecionada), onChanged: (v) => setState(() => _altura = v)),
                         ])),
                       ],

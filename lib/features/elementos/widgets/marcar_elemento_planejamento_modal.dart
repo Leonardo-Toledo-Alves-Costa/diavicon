@@ -18,10 +18,10 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final screenHeight = MediaQuery.of(context).size.height;
     
-    // 🔥 1. Pegamos a altura da barra de navegação do celular
+    // Pega a altura da barra de navegação do celular
     final bottomPadding = MediaQuery.of(context).padding.bottom; 
     
-    // 🔥 2. Somamos ela na altura do sheet para não espremer a lista
+    //  Soma ela na altura do sheet para não espremer a lista
     final sheetHeight = (screenHeight * 0.78).clamp(620.0, 680.0).toDouble() + bottomPadding;
 
     final elementosAsync = ref.watch(todosElementosPorEstruturaProvider(estruturaId));
@@ -41,7 +41,7 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
               borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
               clipBehavior: Clip.antiAlias,
               child: Padding(
-                // 🔥 3. Somamos o padding bottom aqui no EdgeInsets
+                // Soma o padding bottom aqui no EdgeInsets
                 padding: EdgeInsets.fromLTRB(14, 16, 14, 27 + bottomPadding),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -125,7 +125,6 @@ class _SheetHeader extends StatelessWidget {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(top: 23, right: 8),
-            // 🔥 TÍTULO COM FITTEDBOX PRA NÃO CORTAR
             child: FittedBox(
               fit: BoxFit.scaleDown,
               alignment: Alignment.centerLeft,
@@ -147,7 +146,6 @@ class _SheetHeader extends StatelessWidget {
   }
 }
 
-// 🔥 NOVO _EstruturaSummary CONSUMINDO DADOS DO BANCO
 class _EstruturaSummary extends ConsumerWidget {
   const _EstruturaSummary({required this.estruturaId});
   
@@ -219,7 +217,6 @@ class _EstruturaSummary extends ConsumerWidget {
   }
 }
 
-// 🔥 NOVO _StructureAvatar ACEITANDO IMAGEM DO BANCO
 class _StructureAvatar extends StatelessWidget {
   const _StructureAvatar({this.imageUrl});
   

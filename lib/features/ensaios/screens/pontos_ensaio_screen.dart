@@ -88,7 +88,6 @@ class _PontosEnsaioScreenState extends State<PontosEnsaioScreen> {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
             child: Row(
               children: [
-                // 🔥 VOLTOU PARA IMAGE.ASSET
                 SizedBox(
                   width: 56,
                   height: 56,
@@ -226,7 +225,6 @@ class _PontosEnsaioScreenState extends State<PontosEnsaioScreen> {
                 final ponto = pontosFiltrados[index];
                 return GestureDetector(
                   onTap: () {
-                    // 🔥 NAVEGAÇÃO PARA O FORMULÁRIO
                     Navigator.push(
                       context,
                       MaterialPageRoute(

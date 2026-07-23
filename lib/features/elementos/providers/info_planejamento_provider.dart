@@ -2,26 +2,26 @@ import 'package:diavicon/features/ensaios/models/regiao_ensaio_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// 🔥 PROVIDER PARA BUSCAR AS EMPRESAS DO PROJETO E AS PERMISSÕES
+//PROVIDER PARA BUSCAR AS EMPRESAS DO PROJETO E AS PERMISSÕES
 final infoPlanejamentoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>, String>((ref, estruturaId) async {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
 
   if (userId == null) throw Exception('Sessão expirada');
 
-  // 1. Descobre a empresa do usuário logado
+  //  Descobre a empresa do usuário logado
   final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
   final minhaEmpresaId = userResp?['empresa_id'];
 
-  // 2. Busca a empresa gestora da Estrutura
+  // Busca a empresa gestora da Estrutura
   final estResp = await supabase.from('estruturas').select('empresa_gestora_id').eq('id', estruturaId).maybeSingle();
   final gestoraId = estResp?['empresa_gestora_id'];
 
-  // 🔥 A CORREÇÃO ESTÁ AQUI: Busca o projeto_id na tabela de ligação correta!
+  //  Busca o projeto_id 
   final projEstResp = await supabase.from('projeto_estruturas').select('projeto_id').eq('estrutura_id', estruturaId).maybeSingle();
   final projetoId = projEstResp?['projeto_id'];
 
-  // 3. Monta a lista de empresas (Gestora + Colaboradoras Aceitas)
+  // Monta a lista de empresas (Gestora + Colaboradoras Aceitas)
   List<Map<String, dynamic>> empresas = [];
 
   // Adiciona a Gestora
@@ -71,7 +71,6 @@ class RegioesFiltro {
   int get hashCode => plantaId.hashCode ^ empresaId.hashCode;
 }
 
-// 🔥 2. O PROVIDER ATUALIZADO
 final regioesEnsaioProvider = StreamProvider.autoDispose.family<List<RegiaoEnsaioModel>, RegioesFiltro>((ref, filtro) {
   final supabase = Supabase.instance.client;
 

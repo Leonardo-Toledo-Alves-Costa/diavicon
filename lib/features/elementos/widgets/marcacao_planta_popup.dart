@@ -14,9 +14,6 @@ import 'package:diavicon/core/constants/app_text_styles.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 
-// ----------------------------------------------------------------------
-// CLASSES DE DADOS E ENUMS
-// ----------------------------------------------------------------------
 
 class MarcacaoPlanta {
   const MarcacaoPlanta({
@@ -90,9 +87,7 @@ Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
   );
 }
 
-// ----------------------------------------------------------------------
 // WIDGET PRINCIPAL DO POPUP
-// ----------------------------------------------------------------------
 
 class MarcacaoPlantaPopup extends StatefulWidget {
   const MarcacaoPlantaPopup({
@@ -508,9 +503,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
   }
 }
 
-// ----------------------------------------------------------------------
 // WIDGET DO PINO DINÂMICO
-// ----------------------------------------------------------------------
 
 class PinoDinamico extends StatelessWidget {
   const PinoDinamico({
@@ -553,7 +546,7 @@ class PinoDinamico extends StatelessWidget {
             decoration: BoxDecoration(
               color: corBase.withValues(alpha: 0.45), 
               shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
-              // 🔥 AQUI ESTÁ: Bordas quase perfeitas (quinas vivas), apenas 1 de raio pra não ficar serrilhado feio
+              //  Bordas quinas vivas),  1 de raio pra não ficar serrilhado feio
               borderRadius: isCirculo ? null : BorderRadius.circular(1.0),
               border: Border.all(color: corBase, width: 1.5), 
               boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
@@ -574,9 +567,7 @@ class PinoDinamico extends StatelessWidget {
   }
 }
 
-// ----------------------------------------------------------------------
 // WIDGET DO VISUALIZADOR DA PLANTA
-// ----------------------------------------------------------------------
 
 class _PlantaInterativa extends ConsumerStatefulWidget {
   const _PlantaInterativa({
@@ -761,7 +752,6 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                                   onPanUpdate: (details) {
                                     widget.onNomeDrag(Offset(details.delta.dx / w, details.delta.dy / h));
                                   },
-                                  // 🔥 AQUI ESTÁ A CORREÇÃO DO CLICKBOX! Um Container justinho só pro dedo não escorregar, sem invadir a área de baixo.
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0), 
                                     child: Text(

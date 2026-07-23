@@ -28,7 +28,6 @@ class _ConfigurarQtdEnsaioModalState extends State<ConfigurarQtdEnsaioModal> {
   @override
   void initState() {
     super.initState();
-    // 🔥 Agora sim, inicializando o controller e usando a variável certa (qtdInicial)
     _qtdController = TextEditingController(
       text: widget.qtdInicial?.toString() ?? '1',
     );
@@ -101,10 +100,9 @@ class _ConfigurarQtdEnsaioModalState extends State<ConfigurarQtdEnsaioModal> {
                   controller: _qtdController,
                   keyboardType: TextInputType.number,
                   textAlign: TextAlign.center,
-                  autofocus: true, // Já abre com o teclado na tela pra agilizar!
+                  autofocus: true, 
                   style: GoogleFonts.lato(fontSize: 24, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)),
                   decoration: InputDecoration(
-                    // 🔥 Adeus hintText '00'! Fica tudo limpo agora.
                     contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5)),
                     enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder, width: 1.5)),

@@ -19,7 +19,6 @@ class ItensContratadosModal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 MOCK COM CAMINHOS EM PNG
     final List<Map<String, dynamic>> itensContratados = [
       {
         'nome': 'Frente de carbonatação',
@@ -132,7 +131,6 @@ class ItensContratadosModal extends StatelessWidget {
                   child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 🔥 VOLTOU PARA IMAGE.ASSET
                       SizedBox(
                         width: 40,
                         height: 40,

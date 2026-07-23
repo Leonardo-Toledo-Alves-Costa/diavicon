@@ -231,7 +231,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/empresa/cadastro',
         builder: (context, state) {
-          // 🔥 LÊ OS DADOS DA MEMÓRIA DO RIVERPOD (Seguro contra refresh)
+          // LÊ OS DADOS DA MEMÓRIA DO RIVERPOD 
           final dadosSalvos = ref.read(rascunhoCadastroProvider);
           return EmpresaCadastroScreen(dadosUsuario: dadosSalvos);
         },

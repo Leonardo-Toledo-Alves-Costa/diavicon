@@ -1,5 +1,4 @@
 import 'dart:io'; 
-import 'dart:typed_data'; 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
@@ -237,7 +236,6 @@ class _NovoElemEstruturalScreenState
       novaOpcao = await showDialog<String>(
         context: context,
         barrierColor: Colors.black.withOpacity(0.42),
-        // ✅ AQUI: Passando o estruturaId para o NovoLocalModal
         builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
     } else if (field == EstruturalDropdownField.tipoElemento) {
@@ -327,7 +325,6 @@ class _NovoElemEstruturalScreenState
   }
 
   Future<void> _handleSubmit() async {
-    // ✅ TRAVA PARA EVITAR O DOUBLE TAP E A CRIAÇÃO DUPLICADA
     if (_isSubmitting) return;
 
     if (!_canSubmit) return;
@@ -560,7 +557,7 @@ class _NovoElemEstruturalScreenState
                             field: EstruturalDropdownField.tipologiaEstrutural,
                           ),
                           
-                          // ✅ AQUI: Lógica do Local com Fake Dropdown e Provider
+                          //  Lógica do Local com Fake Dropdown e Provider
                           const SizedBox(height: 10),
                           Builder(
                             builder: (context) {
@@ -903,7 +900,7 @@ class _PlanImageCardState extends State<_PlanImageCard> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  // --- 1. A IMAGEM DE FUNDO ---
+                  //  A IMAGEM DE FUNDO 
                   if (_isLoadingPdf)
                     const CircularProgressIndicator(color: AppColors.primary)
                   else if (bytesThumbnail != null)
@@ -915,7 +912,7 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                   else
                     const Icon(Icons.image_not_supported, color: Colors.grey),
 
-                  // --- 2. O PINO E O NOME (SEPARADOS) ---
+                  // O PINO E O NOME (Separados)
                   if (marcacao != null && temFundoReal)
                     Positioned.fill(
                       child: LayoutBuilder(
@@ -1043,7 +1040,6 @@ class NovoElemEstruturalDraft {
   }
 }
 
-// ✅ WIDGET NOVO ADICIONADO PARA O FAKE DROPDOWN
 class _FakeEmptyLocalField extends StatelessWidget {
   final VoidCallback onDropdownTap;
   final VoidCallback onAddTap;

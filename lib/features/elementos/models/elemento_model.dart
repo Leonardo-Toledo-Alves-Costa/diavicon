@@ -58,7 +58,7 @@ class ElementoModel {
     this.criadoEm,
     this.marcacaoLargura,
     this.marcacaoAltura,
-    this.marcacaoRotacao, this.marcacaoCor, this.marcacaoNomeX, this.marcacaoNomeY, // 🔥 Adicionado no construtor
+    this.marcacaoRotacao, this.marcacaoCor, this.marcacaoNomeX, this.marcacaoNomeY, 
   });
 
   factory ElementoModel.fromMap(Map<String, dynamic> map) {

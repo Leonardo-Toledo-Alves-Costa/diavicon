@@ -23,7 +23,7 @@ import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
   final String estruturaId, plantaId, plantaUrl, empresaId, empresaNome;
   final String? empresaFotoUrl;
-  final String plantaLocal; // 🔥 NOVA VARIÁVEL RECEBIDA AQUI
+  final String plantaLocal; 
   final double posicaoX, posicaoY, larguraMarcacao, alturaMarcacao, rotacaoMarcacao;
   final String tipoMarcacao;
   final int numeroMarcacao;
@@ -33,7 +33,7 @@ class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
 
   const NovaRegiaoEnsaioModal({
     super.key, required this.estruturaId, required this.plantaId, required this.plantaUrl, required this.empresaId, required this.empresaNome, this.empresaFotoUrl,
-    required this.plantaLocal, // 🔥 OBRIGATÓRIO NO CONSTRUTOR
+    required this.plantaLocal, 
     required this.posicaoX, required this.posicaoY, required this.larguraMarcacao, required this.alturaMarcacao, required this.rotacaoMarcacao, required this.tipoMarcacao, required this.numeroMarcacao, required this.corMarcacao,
     this.regiao, this.inicialDescricao, this.inicialElementoId,
   });
@@ -110,7 +110,6 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
       return; 
     }
 
-    // 🔥 CHAMA O NOSSO NOVO MODAL PADRÃO AQUI
     final confirmar = await showConfirmarExclusaoDialog(
       context: context,
       mensagem: 'Tem certeza que deseja excluir esta região de ensaio? Esta ação não poderá ser desfeita.',
@@ -211,13 +210,12 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
           elementosAsync.when(
             loading: () => const Center(child: CircularProgressIndicator()), error: (err, _) => Text('Erro: $err', style: const TextStyle(color: Colors.red)),
             data: (elementos) {
-              // 🔥 O FILTRO MÁGICO ACONTECE AQUI USANDO O PLANTA_LOCAL!
               final elementosFiltrados = elementos.where((el) => el.local == widget.plantaLocal).toList();
 
               final items = elementosFiltrados.map((el) => DropdownMenuItem<String>(value: el.id, child: Text('${el.tipo ?? 'Elemento'} - ${el.nome ?? ''}'))).toList();
               
               // Se não tiver elemento nesse local, a gente pode usar a lista original como fallback, ou deixar vazio para forçar o cara a criar. 
-              // Mas como já filtrou, vamos mostrar só os certos!
+              // Mas como já filtrou, vamos mostrar só os certos
               return CustomDropdownWithAdd<String>(
                 label: 'Elemento Estrutural *', 
                 hint: elementosFiltrados.isEmpty ? 'Nenhum elemento neste local' : 'Selecione', 

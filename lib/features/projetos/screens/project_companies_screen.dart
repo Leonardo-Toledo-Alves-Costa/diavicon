@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/custom_appbar.dart'; // 🔥 CustomAppBar adicionado
+import '../../../core/widgets/custom_appbar.dart'; 
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../providers/empresas_projeto_provider.dart';
 import '../widgets/modal_incluir_empresa.dart';
@@ -23,8 +23,8 @@ class ProjectCompaniesScreen extends ConsumerWidget {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
-      backgroundColor: Colors.white, // 🔥 Fundo branco 100%
-      appBar: const CustomAppBar( // 🔥 O AppBar padronizado
+      backgroundColor: Colors.white,
+      appBar: const CustomAppBar( 
         title: 'Empresas',
         showBackButton: true,
         titleWidget: Column(
@@ -70,15 +70,15 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                 });
               }
 
-              // 2. Adiciona as Convidadas
+              //  Adiciona as Convidadas
               listaFinalExibicao.addAll(listaConvidadas);
 
-              // 3. Identifica e Insere "Minha Empresa"
+              // Identifica e Insere "Minha Empresa"
               final minhaEmpresa = minhaEmpresaAsync.value;
               if (minhaEmpresa != null) {
                 bool jaExiste = false;
                 
-                // Se ela já estiver na lista (como gestora ou convidada), marcamos a flag nela!
+                // Se ela já estiver na lista (como gestora ou convidada), marca a flag nela
                 for (var emp in listaFinalExibicao) {
                   if (emp['id'] == minhaEmpresa['id']) {
                     emp['is_minha_empresa'] = true;
@@ -86,7 +86,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                   }
                 }
                 
-                // Se não estava no projeto, a gente insere
+                // Se não estava no projeto, insere
                 if (!jaExiste) {
                   final endereco = minhaEmpresa['enderecos'];
                   listaFinalExibicao.add({
@@ -103,7 +103,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                 }
               }
 
-              // 🔥 MÁGICA: Ordena para a sua empresa ficar SEMPRE em primeiro lugar
+              // Ordena para a sua empresa ficar SEMPRE em primeiro lugar
               listaFinalExibicao.sort((a, b) {
                 if (a['is_minha_empresa'] == true && b['is_minha_empresa'] != true) return -1;
                 if (b['is_minha_empresa'] == true && a['is_minha_empresa'] != true) return 1;
@@ -165,7 +165,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                       
                       Widget card = _buildEmpresaCard(context, ref, emp);
 
-                      // 🔥 DIVISOR: Se for a sua empresa e existirem outras na lista, coloca a linha de separação
+                      //  Se for a sua empresa e existirem outras na lista, coloca a linha de separação
                       if (isMinhaEmpresa && listaFinalExibicao.length > 1) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -218,7 +218,6 @@ class ProjectCompaniesScreen extends ConsumerWidget {
       corTextoBadge = AppColors.primary;
     } else if (emp['status_vinculo'] == 'pendente') {
       labelStatus = 'Convidada';
-      // 🔥 AQUI ESTÁ A MUDANÇA: Mesma cor do "Sua Empresa"
       corFundoBadge = AppColors.primary.withOpacity(0.15); 
       corTextoBadge = AppColors.primary; 
     } else if (emp['status_vinculo'] == 'recusado' || emp['status_vinculo'] == 'removida') {
@@ -246,7 +245,6 @@ class ProjectCompaniesScreen extends ConsumerWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            // 🔥 Borda colorida sutil se for a sua empresa
             border: emp['is_minha_empresa'] == true ? Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5) : null, 
             boxShadow: [
               BoxShadow(

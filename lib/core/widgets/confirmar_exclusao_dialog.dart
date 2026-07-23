@@ -23,7 +23,7 @@ Future<bool?> showConfirmarExclusaoDialog({
           child: Column(
             mainAxisSize: MainAxisSize.min, // Ocupa apenas o espaço necessário
             children: [
-              // 🔥 Ícone de destaque no topo
+              //Ícone de destaque no topo
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -38,7 +38,7 @@ Future<bool?> showConfirmarExclusaoDialog({
               ),
               const SizedBox(height: 20),
               
-              // 🔥 Título com mais peso
+              // Título com mais peso
               Text(
                 titulo,
                 textAlign: TextAlign.center,
@@ -50,7 +50,7 @@ Future<bool?> showConfirmarExclusaoDialog({
               ),
               const SizedBox(height: 12),
               
-              // 🔥 Mensagem com altura de linha (height) para respirar melhor
+              // Mensagem com altura de linha (height) para respirar melhor
               Text(
                 mensagem,
                 textAlign: TextAlign.center,
@@ -63,7 +63,7 @@ Future<bool?> showConfirmarExclusaoDialog({
               ),
               const SizedBox(height: 32),
               
-              // 🔥 Botões
+              // Botões
               Row(
                 children: [
                   Expanded(

@@ -7,13 +7,12 @@ class RegiaoEnsaioModel {
   final double posicaoX;
   final double posicaoY;
   
-  // 🔥 NOVOS CAMPOS DE FORMA E DIMENSÃO
   final String tipoMarcacao;
   final double marcacaoLargura;
   final double marcacaoAltura;
   final double marcacaoRotacao;
   
-  final double tamanhoMarcacao; // Mantido por retrocompatibilidade
+  final double tamanhoMarcacao;
   final String corMarcacao;
   final String? descricao;
   
@@ -37,7 +36,6 @@ class RegiaoEnsaioModel {
       posicaoX: (map['posicao_x'] as num?)?.toDouble() ?? 0.0,
       posicaoY: (map['posicao_y'] as num?)?.toDouble() ?? 0.0,
       
-      // 🔥 LÊ OS NOVOS VALORES
       tipoMarcacao: map['tipo_marcacao'] ?? 'Círculo',
       marcacaoLargura: (map['marcacao_largura'] as num?)?.toDouble() ?? 0.05,
       marcacaoAltura: (map['marcacao_altura'] as num?)?.toDouble() ?? 0.05,
@@ -49,4 +47,3 @@ class RegiaoEnsaioModel {
     );
   }
 }
-// O resto do ficheiro (RegioesFiltro e regioesEnsaioProvider) continua igual!

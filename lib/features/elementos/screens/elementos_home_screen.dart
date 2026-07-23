@@ -1,7 +1,5 @@
 import 'package:diavicon/features/ensaios/screens/ensaio_carbonatacao_form_screen.dart';
-import 'package:diavicon/features/ensaios/screens/pontos_ensaio_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_svg/flutter_svg.dart'; // 🔥 Importação do SVG
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -405,7 +403,7 @@ class _EnsaioCard extends StatelessWidget {
       shadowColor: Colors.black.withOpacity(0.25),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
-        onTap: onTap, // 🔥 CLICÁVEL AQUI
+        onTap: onTap, 
         borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(16, 16, 20, 14),
@@ -414,7 +412,6 @@ class _EnsaioCard extends StatelessWidget {
               SizedBox(
                 width: 42,
                 height: 42,
-                // 🔥 VOLTOU PARA IMAGE.ASSET
                 child: Image.asset(
                   iconAsset,
                   fit: BoxFit.contain,

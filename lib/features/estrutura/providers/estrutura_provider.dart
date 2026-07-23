@@ -10,7 +10,7 @@ final estruturaRepositoryProvider = Provider<EstruturaRepository>((ref) {
   return EstruturaRepository(Supabase.instance.client);
 });
 
-// --- PROVIDER: ESTRUTURAS DO PROJETO (VINCULADAS) ---
+//  ESTRUTURAS DO PROJETO (VINCULADAS) 
 final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, String>((ref, projetoId) {
   final supabase = Supabase.instance.client;
   final repo = ref.watch(estruturaRepositoryProvider);

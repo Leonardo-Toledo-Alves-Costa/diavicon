@@ -83,4 +83,10 @@ class EmpresaController extends StateNotifier<bool> {
       _ref.read(bloqueioDeRotaProvider.notifier).state = false;
     }
   }
+
+  Future<void> carregarEmpresaAtual(String empresaId) async {
+    final repo = _ref.read(empresaRepositoryProvider);
+    final empresa = await repo.getEmpresa(empresaId);
+    _ref.read(empresaAtualProvider.notifier).state = empresa;
+  }
 }

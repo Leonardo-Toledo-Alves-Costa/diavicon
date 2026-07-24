@@ -3,10 +3,15 @@ import 'dart:io';
 
 import 'package:diavicon/core/constants/app_text_styles.dart';
 import 'package:diavicon/core/utils/formatters/cep_formatter.dart';
+import 'package:diavicon/features/auth/models/endereco_model.dart';
+import 'package:diavicon/features/auth/models/usuario_model.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
+import 'package:diavicon/features/auth/providers/endereco_provider.dart';
 import 'package:diavicon/features/home/screens/perfil_drawer.dart';
 import 'package:diavicon/features/home/screens/perfil_header.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
@@ -28,16 +33,16 @@ const _escolaridades = <String>[
   'Doutorado',
 ];
 
-class PerfilScreen extends StatefulWidget {
+class PerfilScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosCadastro;
 
   const PerfilScreen({super.key, required this.dadosCadastro});
 
   @override
-  State<PerfilScreen> createState() => _PerfilScreenState();
+  ConsumerState<PerfilScreen> createState() => _PerfilScreenState();
 }
 
-class _PerfilScreenState extends State<PerfilScreen> {
+class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   final _formKey = GlobalKey<FormState>();
   XFile? _foto;
 
@@ -59,19 +64,49 @@ class _PerfilScreenState extends State<PerfilScreen> {
 
   String? _escolaridade;
 
+  
+
   // 🔥 Controlos de estado para a API de CEP (Agora independentes)
   bool _cepBuscado = false;
   bool _cidadeBloqueada = false;
-  bool _ruaBloqueada = false;
+  bool _ruaBloqueada = false; 
   bool _bairroBloqueado = false;
   bool _estadoBloqueado = false;
   bool _carregandoCep = false;
 
   @override
-  void initState() {
+  void initState(){
     super.initState();
     _cepCtrl.addListener(_ouvinteCep);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+    final usuario = ref.read(currentUserProvider);
+    final endereco = await ref.read(enderecoControllerProvider.notifier).buscarEndereco(usuario?.enderecoId ?? '');
+    if (usuario != null) {
+      _preencherCampos(usuario, endereco);
+    }
+  });
   }
+
+  void _preencherCampos(UsuarioModel usuario, EnderecoModel? endereco) {
+  _nomeCtrl.text = usuario.nome ?? '';
+  _sobrenomeCtrl.text = usuario.sobrenome ?? '';
+  _telefoneCtrl.text = usuario.celular ?? '';
+  _linkedinCtrl.text = usuario.linkedin ?? '';
+  _instagramCtrl.text = usuario.instagram ?? '';
+  _formacaoCtrl.text = usuario.tituloPrincipal ?? '';
+  _escolaridade = usuario.escolaridade;
+  if (endereco != null) {
+    _cepCtrl.text = endereco.cep;
+    _cidadeCtrl.text = endereco.cidade;
+    _ruaCtrl.text = endereco.endereco;
+    _bairroCtrl.text = endereco.bairro;
+    _numeroCtrl.text = endereco.numero;
+    _complementoCtrl.text = endereco.complemento ?? '';
+    _estadoCtrl.text = endereco.estado;
+    _paisCtrl.text = endereco.pais;
+  }
+  setState(() {});
+}
 
   @override
   void dispose() {
@@ -225,12 +260,74 @@ class _PerfilScreenState extends State<PerfilScreen> {
         });
       }
     }
+  } 
+
+  void _salvar() async {
+  if (!_formKey.currentState!.validate()) return;
+
+  final usuarioAtual = ref.read(currentUserProvider);
+  final enderecoAtual = ref.read(enderecoControllerProvider);
+  if (usuarioAtual == null) return;
+
+  String? enderecoId = usuarioAtual.enderecoId;
+
+  if (enderecoId != null && enderecoId.isNotEmpty) {
+    await ref.read(enderecoControllerProvider.notifier).atualizarEndereco(
+      enderecoId,
+      EnderecoModel(
+        id: enderecoAtual?.id ?? enderecoId,
+        cep: _cepCtrl.text.trim(),
+        cidade: _cidadeCtrl.text.trim(),
+        endereco: _ruaCtrl.text.trim(),
+        bairro: _bairroCtrl.text.trim(),
+        numero: _numeroCtrl.text.trim(),
+        complemento: _complementoCtrl.text.trim(),
+        estado: _estadoCtrl.text.trim(),
+        pais: _paisCtrl.text.trim(),
+      ),
+    );
+  } else {
+    final novoEndereco = await ref.read(enderecoControllerProvider.notifier).salvarEndereco({
+      'cep': _cepCtrl.text.trim(),
+      'cidade': _cidadeCtrl.text.trim(),
+      'rua': _ruaCtrl.text.trim(),
+      'bairro': _bairroCtrl.text.trim(),
+      'numero': _numeroCtrl.text.trim(),
+      'complemento': _complementoCtrl.text.trim(),
+      'estado': _estadoCtrl.text.trim(),
+      'pais': _paisCtrl.text.trim(),
+    });
+
+    enderecoId = novoEndereco?.id;
   }
 
-  void _comecar() {
-    if (!_formKey.currentState!.validate()) return;
-    context.pop();
+  final usuarioAtualizado = UsuarioModel(
+    id: usuarioAtual.id,
+    nome: _nomeCtrl.text.trim(),
+    sobrenome: _sobrenomeCtrl.text.trim(),
+    email: usuarioAtual.email,
+    celular: _telefoneCtrl.text.trim(),
+    cargo: usuarioAtual.cargo,
+    empresaId: usuarioAtual.empresaId,
+    setorId: usuarioAtual.setorId,
+    ativo: usuarioAtual.ativo,
+    tituloPrincipal: _formacaoCtrl.text.trim(),
+    escolaridade: _escolaridade,
+    fotoUrl: usuarioAtual.fotoUrl,
+    linkedin: _linkedinCtrl.text.trim(),
+    instagram: _instagramCtrl.text.trim(),
+    criadoEm: usuarioAtual.criadoEm,
+    isAdminEmpresa: usuarioAtual.isAdminEmpresa,
+    enderecoId: enderecoId,
+  );
+
+  await ref.read(authRepositoryProvider).salvarPerfil(usuarioAtualizado);
+  ref.read(currentUserProvider.notifier).setUser(usuarioAtualizado);
+
+  if (mounted) {
+    context.go('/projetos');
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -480,7 +577,7 @@ class _PerfilScreenState extends State<PerfilScreen> {
                               text: 'Salvar',
                               width: 150,
                               fontSize: 15,
-                              onPressed: _comecar,
+                              onPressed: _salvar,
                             ),
                           ],
                         ),

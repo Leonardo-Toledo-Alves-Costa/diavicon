@@ -14,7 +14,8 @@ class UsuarioModel {
   final String? linkedin;
   final String? instagram;
   final DateTime? criadoEm;
-  final bool? isAdminEmpresa; 
+  final bool? isAdminEmpresa;
+  final String? enderecoId; // Adicionei o campo enderecoId 
 
   UsuarioModel({
     required this.id,
@@ -32,7 +33,8 @@ class UsuarioModel {
     this.linkedin,
     this.instagram,
     this.criadoEm,
-    this.isAdminEmpresa, 
+    this.isAdminEmpresa,
+    this.enderecoId, // Inicializei o campo enderecoId 
   });
 
   factory UsuarioModel.fromMap(Map<String, dynamic> map) {
@@ -53,6 +55,7 @@ class UsuarioModel {
       instagram: map['instagram'],
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
       isAdminEmpresa: map['is_admin_empresa'], 
+      enderecoId: map['endereco_id'],
     );
   }
 
@@ -73,6 +76,7 @@ class UsuarioModel {
       'linkedin': linkedin,
       'instagram': instagram,
       'is_admin_empresa': isAdminEmpresa ?? false, 
+      'endereco_id': enderecoId, // Adicionei o campo enderecoId
     };
   }
 }

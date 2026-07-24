@@ -8,12 +8,9 @@ import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
 import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
 import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
-import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
-import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
 import 'package:diavicon/features/home/screens/perfil_Minha_Conta.dart';
 import 'package:diavicon/features/home/screens/perfil_Screen.dart';
 import 'package:diavicon/features/home/screens/perfil_central_ajuda.dart';
-import 'package:diavicon/features/home/screens/perfil_drawer.dart';
 import 'package:diavicon/features/home/screens/perfil_minha_privacidade.dart';
 import 'package:diavicon/features/home/screens/perfil_notificacoes.dart';
 import 'package:diavicon/features/projetos/screens/notificacoes_screen.dart';
@@ -21,7 +18,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import 'package:diavicon/features/estrutura/screens/estruturas_tab_screen.dart';
 import '../../features/auth/screens/welcome_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/cadastro_r0_screen.dart';
@@ -285,7 +282,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/empresa/cadastro',
         builder: (context, state) {
-          // 🔥 LÊ OS DADOS DA MEMÓRIA DO RIVERPOD (Seguro contra refresh)
+          // LÊ OS DADOS DA MEMÓRIA DO RIVERPOD 
           final dadosSalvos = ref.read(rascunhoCadastroProvider);
           return EmpresaCadastroScreen(dadosUsuario: dadosSalvos);
         },
@@ -305,7 +302,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/estruturas/:estruturaId/elementos/:elementoId',
         builder: (context, state) {
           final extra = _routeExtra(state.extra);
-          return ElementoScreen(
+          return ElementosHomeScreen(
             estruturaId: state.pathParameters['estruturaId'],
             elementoId: state.pathParameters['elementoId'],
             projetoId: _stringExtra(extra, 'projetoId'),
@@ -368,19 +365,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           // Outras abas da Bottom Bar
           GoRoute(
             path: '/estruturas',
-            builder: (context, state) => EstruturaHomeScreen(
-              projetoId: 'demo-projeto',
-              estrutura: EstruturaModel(
-                id: 'demo-estrutura',
-                nome: 'Estrutura BCDE',
-                tipoId: 'Concreto armado',
-                status: 'Em andamento',
-                caa: 'II',
-                anoConcepcao: 26,
-                conjuntoEstruturalId: 'Conjunto Estrutural A',
-                tipologiaId: 'Viga',
-              ),
-            ),
+            builder: (context, state) => const EstruturasTabScreen(),
           ),
           GoRoute(
             path: '/minha-empresa',

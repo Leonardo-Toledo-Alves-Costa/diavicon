@@ -15,7 +15,7 @@ class _NovoTipoElementoModalState extends State<NovoTipoElementoModal> {
   String _formatoSelecionado = 'Retângulo';
   bool _isLoading = false;
 
-  final List<String> _formatos = ['Retângulo', 'Círculo', 'Linha', 'Ponto'];
+  final List<String> _formatos = ['Retângulo', 'Círculo'];
 
   Future<void> _salvar() async {
     final nome = _nomeController.text.trim();

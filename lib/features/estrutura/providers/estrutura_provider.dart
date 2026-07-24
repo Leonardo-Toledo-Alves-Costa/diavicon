@@ -3,12 +3,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repositories/estrutura_repository.dart';
 import '../models/estrutura_model.dart';
 
+
+
 // --- REPOSITORY PROVIDER ---
 final estruturaRepositoryProvider = Provider<EstruturaRepository>((ref) {
   return EstruturaRepository(Supabase.instance.client);
 });
 
-// --- PROVIDER: ESTRUTURAS DO PROJETO (VINCULADAS) ---
+//  ESTRUTURAS DO PROJETO (VINCULADAS) 
 final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, String>((ref, projetoId) {
   final supabase = Supabase.instance.client;
   final repo = ref.watch(estruturaRepositoryProvider);
@@ -22,6 +24,15 @@ final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, St
       .asyncMap((event) => repo.buscarEstruturasPorProjeto(projetoId));
 });
 
+final estruturaResumoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, id) async {
+  final resp = await Supabase.instance.client
+      .from('estruturas')
+      .select('nome, image_url, conjuntos_estruturais(nome)')
+      .eq('id', id)
+      .maybeSingle();
+  return resp;
+});
+
 // --- PROVIDER: TODAS AS ESTRUTURAS DA PLATAFORMA ---
 final todasEstruturasProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
   final supabase = Supabase.instance.client;
@@ -30,7 +41,6 @@ final todasEstruturasProvider = StreamProvider.autoDispose<List<EstruturaModel>>
       .from('estruturas')
       .stream(primaryKey: ['id'])
       .asyncMap((_) async {
-        // 👇 O .select() COM OS JOINS ENTRA AQUI 👇
         final response = await supabase
             .from('estruturas')
             .select('''
@@ -94,6 +104,44 @@ final minhasEstruturasProvider = StreamProvider.autoDispose.family<List<Estrutur
             .eq('proprietaria_id', donoProjetoId)
             // REGRA B: A sua empresa deve ser a gestora OU a proprietária dela para ter acesso
             .or('empresa_gestora_id.eq.$minhaEmpresaId,proprietaria_id.eq.$minhaEmpresaId')
+            .order('criado_em', ascending: false);
+
+        return response.map((item) => EstruturaModel.fromJson(item)).toList();
+      });
+});
+
+// --- PROVIDER: ESTRUTURAS DA ABA PRINCIPAL (Onde a empresa logada é a Proprietária) ---
+final estruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  
+  if (userId == null) return Stream.value([]);
+
+  return supabase
+      .from('estruturas')
+      .stream(primaryKey: ['id'])
+      .asyncMap((_) async {
+        // 1. Descobre a empresa do usuário logado
+        final usuarioData = await supabase
+            .from('usuarios')
+            .select('empresa_id')
+            .eq('id', userId)
+            .maybeSingle();
+        final minhaEmpresaId = usuarioData?['empresa_id'];
+        
+        if (minhaEmpresaId == null) return [];
+
+        // 2. Busca APENAS as estruturas onde minha empresa é a proprietária
+        final response = await supabase
+            .from('estruturas')
+            .select('''
+              *,
+              conjuntos_estruturais(nome),
+              utilizacoes_estrutura(nome),
+              tipos_estrutura(nome),
+              tipologias_estrutura(nome)
+            ''')
+            .eq('proprietaria_id', minhaEmpresaId) 
             .order('criado_em', ascending: false);
 
         return response.map((item) => EstruturaModel.fromJson(item)).toList();

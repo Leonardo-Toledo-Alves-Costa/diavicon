@@ -1,8 +1,8 @@
 import 'dart:io'; 
-import 'dart:typed_data'; 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
@@ -11,13 +11,17 @@ import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dar
 import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
+import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart'; 
-import 'package:image_cropper/image_cropper.dart'; 
+import 'package:image_cropper/image_cropper.dart';
+import 'package:pdfx/pdfx.dart'; 
+
 
 const List<String> _defaultTipoElementoOptions = <String>[
   'Pilar',
@@ -31,11 +35,7 @@ const List<String> _defaultTipologiaOptions = <String>[
   'Mista',
 ];
 
-const List<String> _defaultLocalOptions = <String>[
-  'Interno',
-  'Externo',
-  'Cobertura',
-];
+const List<String> _defaultLocalOptions = <String>[];
 
 const List<String> _defaultRevestimentoOptions = <String>[
   'Pintura',
@@ -236,7 +236,7 @@ class _NovoElemEstruturalScreenState
       novaOpcao = await showDialog<String>(
         context: context,
         barrierColor: Colors.black.withOpacity(0.42),
-        builder: (_) => const NovoLocalModal(),
+        builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
     } else if (field == EstruturalDropdownField.tipoElemento) {
       novaOpcao = await showDialog<String>(
@@ -325,6 +325,8 @@ class _NovoElemEstruturalScreenState
   }
 
   Future<void> _handleSubmit() async {
+    if (_isSubmitting) return;
+
     if (!_canSubmit) return;
 
     final draft = NovoElemEstruturalDraft(
@@ -386,13 +388,17 @@ class _NovoElemEstruturalScreenState
         posicaoX: draft.marcacao?.x, 
         posicaoY: draft.marcacao?.y,
         plantaId: draft.marcacao?.plantaId, 
-        tipoMarcacao: draft.marcacao?.tipoMarcacao, 
+        tipoMarcacao: draft.marcacao?.tipoMarcacao,
+        marcacaoLargura: draft.marcacao?.largura,
+        marcacaoAltura: draft.marcacao?.altura,
+        marcacaoRotacao: draft.marcacao?.rotacao,
+        marcacaoCor: draft.marcacao?.cor,
+        marcacaoNomeX: draft.marcacao?.nomeX,
+        marcacaoNomeY: draft.marcacao?.nomeY,
         ativo: true,
       ),
       estruturaId,
     );
-
-    ref.invalidate(elementosPorEstruturaProvider(estruturaId));
   }
 
   List<String> _getOptionsList(EstruturalDropdownField field) {
@@ -535,7 +541,6 @@ class _NovoElemEstruturalScreenState
                             label: 'Nome do Elemento',
                             hint: 'Digite o nome',
                             controller: _nomeController,
-                            // Atualiza a tela se digitar o nome para o Card da Planta pegar!
                           ),
                           const SizedBox(height: 10),
                           _buildDropdownField(
@@ -551,13 +556,57 @@ class _NovoElemEstruturalScreenState
                             options: _tipologiaOptions,
                             field: EstruturalDropdownField.tipologiaEstrutural,
                           ),
+                          
+                          //  Lógica do Local com Fake Dropdown e Provider
                           const SizedBox(height: 10),
-                          _buildDropdownField(
-                            label: 'Local do Elemento',
-                            value: _localElemento,
-                            options: _localOptions,
-                            field: EstruturalDropdownField.localElemento,
+                          Builder(
+                            builder: (context) {
+                              if (widget.estruturaId == null) {
+                                return _buildDropdownField(
+                                  label: 'Local do Elemento',
+                                  value: _localElemento,
+                                  options: _localOptions,
+                                  field: EstruturalDropdownField.localElemento,
+                                );
+                              }
+
+                              final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId!));
+
+                              return locaisAsync.when(
+                                loading: () => const Padding(
+                                  padding: EdgeInsets.all(8.0),
+                                  child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                                ),
+                                error: (e, _) => Text('Erro ao carregar locais: $e', style: const TextStyle(color: Colors.red)),
+                                data: (locais) {
+                                  final nomesLocais = locais.map((l) => l.nome).toList();
+
+                                  if (nomesLocais.isEmpty) {
+                                    return _FakeEmptyLocalField(
+                                      onDropdownTap: () {
+                                        DiaviconAlerts.show(
+                                          context,
+                                          'Nenhum local cadastrado',
+                                          'Você precisa cadastrar um local clicando no botão "+" ao lado.',
+                                          isAviso: true,
+                                        );
+                                      },
+                                      onAddTap: () => _handleAddOption(EstruturalDropdownField.localElemento),
+                                      isAdding: _fieldBeingAdded == EstruturalDropdownField.localElemento,
+                                    );
+                                  }
+
+                                  return _buildDropdownField(
+                                    label: 'Local do Elemento',
+                                    value: _localElemento,
+                                    options: nomesLocais,
+                                    field: EstruturalDropdownField.localElemento,
+                                  );
+                                },
+                              );
+                            },
                           ),
+
                           const SizedBox(height: 18),
                           
                           _PlanImageCard(
@@ -581,7 +630,7 @@ class _NovoElemEstruturalScreenState
                             value: _revestimento,
                             options: _revestimentoOptions,
                             field: EstruturalDropdownField.revestimento,
-          ),
+                          ),
                           const SizedBox(height: 24),
                           BiggerCustomButton(
                             text: _isSubmitting ? 'Salvando...' : 'Criar',
@@ -756,23 +805,86 @@ class _ElementoAvatar extends StatelessWidget {
   }
 }
 
-class _PlanImageCard extends StatelessWidget {
-  const _PlanImageCard({this.onPressed, this.marcacao, this.arquivoUrl, this.nomeElemento});
+class _PlanImageCard extends StatefulWidget {
+  const _PlanImageCard({super.key, this.onPressed, this.marcacao, this.arquivoUrl, this.nomeElemento});
 
   final VoidCallback? onPressed;
   final MarcacaoPlanta? marcacao;
   final String? arquivoUrl;
-  final String? nomeElemento; 
+  final String? nomeElemento;
+
+  @override
+  State<_PlanImageCard> createState() => _PlanImageCardState();
+}
+
+class _PlanImageCardState extends State<_PlanImageCard> {
+  bool _isLoadingPdf = false;
+  Uint8List? _pdfBytes;
+  String? _currentUrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _carregarPreviewPdf();
+  }
+
+  @override
+  void didUpdateWidget(covariant _PlanImageCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.arquivoUrl != oldWidget.arquivoUrl) {
+      _carregarPreviewPdf();
+    }
+  }
+
+  Future<void> _carregarPreviewPdf() async {
+    final url = widget.arquivoUrl;
+    if (url == null || !url.toLowerCase().contains('.pdf')) {
+      if (mounted) setState(() { _pdfBytes = null; _currentUrl = url; });
+      return;
+    }
+    
+    // Evita baixar o mesmo PDF de novo se a tela der rebuild
+    if (url == _currentUrl && _pdfBytes != null) return;
+
+    setState(() { _isLoadingPdf = true; _currentUrl = url; });
+    
+    try {
+      final request = await HttpClient().getUrl(Uri.parse(url));
+      final response = await request.close();
+      final bytes = await consolidateHttpClientResponseBytes(response);
+      final doc = await PdfDocument.openData(bytes);
+      final page = await doc.getPage(1);
+      
+      final pageImg = await page.render(
+        width: page.width, 
+        height: page.height, 
+        format: PdfPageImageFormat.jpeg, 
+        backgroundColor: '#FFFFFF'
+      );
+      
+      if (mounted && pageImg != null) {
+        setState(() => _pdfBytes = pageImg.bytes);
+      }
+      await page.close(); 
+      await doc.close();
+    } catch (e) {
+      debugPrint('Erro ao carregar preview do PDF: $e');
+    } finally {
+      if (mounted) setState(() => _isLoadingPdf = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final marcacao = this.marcacao;
-    final url = arquivoUrl;
+    final marcacao = widget.marcacao;
+    final url = widget.arquivoUrl;
     final isPdf = url != null && url.toLowerCase().contains('.pdf');
-    final bytesThumbnail = marcacao?.thumbnailBytes; 
+    
+    final bytesThumbnail = marcacao?.thumbnailBytes ?? _pdfBytes; 
+    final temFundoReal = (bytesThumbnail != null) || (url != null && !isPdf);
 
     return GestureDetector(
-      onTap: onPressed,
+      onTap: widget.onPressed,
       child: Container(
         width: 279,
         height: 150,
@@ -783,38 +895,84 @@ class _PlanImageCard extends StatelessWidget {
         padding: const EdgeInsets.all(5),
         child: DecoratedBox(
           decoration: BoxDecoration(border: Border.all(color: Colors.black)),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final w = constraints.maxWidth;
-              final h = constraints.maxHeight;
-              
-              final temFundoReal = (bytesThumbnail != null) || (url != null && !isPdf);
-
-              return Stack(
-                fit: StackFit.expand,
+          child: ClipRect( 
+            child: Center( 
+              child: Stack(
+                clipBehavior: Clip.none,
                 children: [
-                  if (bytesThumbnail != null)
-                    Image.memory(bytesThumbnail, fit: BoxFit.cover)
+                  //  A IMAGEM DE FUNDO 
+                  if (_isLoadingPdf)
+                    const CircularProgressIndicator(color: AppColors.primary)
+                  else if (bytesThumbnail != null)
+                    Image.memory(bytesThumbnail) 
                   else if (url != null && !isPdf)
-                    Image.network(url, fit: BoxFit.cover)
+                    Image.network(url) 
                   else if (isPdf)
-                    const Center(child: Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D)))
+                    const Icon(Icons.picture_as_pdf_outlined, size: 48, color: Color(0xFF3E3E3D))
                   else
-                    const Center(child: Icon(Icons.image_not_supported, color: Colors.grey)),
-                    
+                    const Icon(Icons.image_not_supported, color: Colors.grey),
+
+                  // O PINO E O NOME (Separados)
                   if (marcacao != null && temFundoReal)
-                    Positioned(
-                      left: (marcacao.x * w) - 13, // Ajustado de 11 para 13 (metade de 26)
-                      top: (marcacao.y * h) - 13,
-                      child: PinoDinamico(
-                        tipoMarcacao: marcacao.tipoMarcacao, 
-                        nomeElemento: nomeElemento, 
-                        numero: marcacao.numero
+                    Positioned.fill(
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final w = constraints.maxWidth;
+                          final h = constraints.maxHeight;
+
+                          final wPino = marcacao.largura * w;
+                          final hPino = marcacao.altura * h;
+                          
+                          // Resgata a cor salva
+                          final corSalva = Color(int.parse(marcacao.cor.replaceFirst('#', '0xff')));
+                          
+                          // Resgata a posição do nome (com proteção contra valores antigos)
+                          double nx = marcacao.nomeX;
+                          double ny = marcacao.nomeY;
+                          if (ny < -1.0 || ny > 2.0) { nx = marcacao.x; ny = marcacao.y - 0.06; }
+
+                          return Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              // DESENHA SÓ O PINO
+                              Positioned(
+                                left: (marcacao.x * w) - (wPino / 2),
+                                top: (marcacao.y * h) - (hPino / 2),
+                                child: PinoDinamico(
+                                  tipoMarcacao: marcacao.tipoMarcacao,
+                                  numero: marcacao.numero,
+                                  largura: wPino,
+                                  altura: hPino,
+                                  rotacao: marcacao.rotacao,
+                                  corBase: corSalva,
+                                ),
+                              ),
+                              // DESENHA SÓ O NOME (Se existir)
+                              if (widget.nomeElemento != null && widget.nomeElemento!.isNotEmpty)
+                                Positioned(
+                                  left: nx * w, 
+                                  top: ny * h,
+                                  child: FractionalTranslation(
+                                    translation: const Offset(-0.5, -0.5),
+                                    child: Text(
+                                      widget.nomeElemento!,
+                                      style: TextStyle(
+                                        color: corSalva,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
+                                      )
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
                       ),
                     ),
                 ],
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),
@@ -879,5 +1037,89 @@ class NovoElemEstruturalDraft {
       'revestimento': revestimento,
       if (marcacao != null) ...marcacao!.toPosicaoMap(),
     };
+  }
+}
+
+class _FakeEmptyLocalField extends StatelessWidget {
+  final VoidCallback onDropdownTap;
+  final VoidCallback onAddTap;
+  final bool isAdding;
+
+  const _FakeEmptyLocalField({
+    required this.onDropdownTap,
+    required this.onAddTap,
+    required this.isAdding,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 4.0),
+          child: Text(
+            'Local do Elemento',
+            style: GoogleFonts.lato(
+              color: const Color(0xFF626365),
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+        ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onTap: onDropdownTap,
+                child: Container(
+                  height: 48,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppColors.inputBorder),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('Nenhum local', style: GoogleFonts.lato(color: AppColors.hintText, fontSize: 16)),
+                      const Icon(Icons.keyboard_arrow_down, color: AppColors.blackDark),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            InkWell(
+              onTap: onAddTap,
+              borderRadius: BorderRadius.circular(24),
+              child: Container(
+                width: 48,
+                height: 48,
+                decoration: const BoxDecoration(
+                  color: AppColors.primary,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Color(0x4D3A57E8),
+                      blurRadius: 4,
+                      offset: Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: isAdding
+                    ? const Padding(
+                        padding: EdgeInsets.all(14.0),
+                        child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                      )
+                    : const Icon(Icons.add, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
   }
 }

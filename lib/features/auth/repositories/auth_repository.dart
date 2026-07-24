@@ -29,22 +29,49 @@ class AuthRepository {
 
     if (response.user != null) {
       String? fotoUrlPublica;
-      final String? fotoPathLocal = dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
+      final String? fotoPathLocal =
+          dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
 
       if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
         try {
           final arquivoFoto = File(fotoPathLocal);
           final extensao = fotoPathLocal.split('.').last;
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final caminhoStorage = 'usuarios/${response.user!.id}_$timestamp.$extensao';
+          final caminhoStorage =
+              'usuarios/${response.user!.id}_$timestamp.$extensao';
 
-          await _supabase.storage.from('avatars').upload(caminhoStorage, arquivoFoto);
-          fotoUrlPublica = _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
+          await _supabase.storage
+              .from('avatars')
+              .upload(caminhoStorage, arquivoFoto);
+          fotoUrlPublica = _supabase.storage
+              .from('avatars')
+              .getPublicUrl(caminhoStorage);
         } catch (e) {
           debugPrint('🚨 [ERRO STORAGE AVATAR]: $e');
-          throw Exception('Falha ao processar upload da foto de perfil contratada: $e');
+          throw Exception(
+            'Falha ao processar upload da foto de perfil contratada: $e',
+          );
         }
       }
+      print(dadosCompletos);
+      final enderecoData = await _supabase
+          .from('enderecos')
+          .insert({
+            // Certifique-se que as chaves ('rua', 'cidade', etc) batem com o que vem do front
+            'endereco': dadosCompletos['rua'],
+            'cidade': dadosCompletos['cidade'],
+            'estado': dadosCompletos['estado'],
+            'cep': dadosCompletos['cep'],
+            'bairro': dadosCompletos['bairro'],
+            'numero': dadosCompletos['numero'],
+            'complemento':
+                dadosCompletos['complemento'], // Adicionei complemento que faltava
+            'pais': 'Brasil',
+          })
+          .select('id')
+          .single();
+
+      final String idEndereco = enderecoData['id'];
 
       // Persiste a estrutura de dados de segurança na tabela pública de usuários
       await _supabase.from('usuarios').insert({
@@ -53,9 +80,10 @@ class AuthRepository {
         'sobrenome': dadosCompletos['sobrenome'],
         'email': email,
         'celular': dadosCompletos['telefone'],
-        'perfil': dadosCompletos['perfil'], 
-        'foto_url': fotoUrlPublica, 
+        'perfil': dadosCompletos['perfil'],
+        'foto_url': fotoUrlPublica,
         'ativo': true,
+        'endereco_id': idEndereco,
       });
     }
   }
@@ -88,8 +116,6 @@ class AuthRepository {
   }
 
   Future<void> updatePassword(String newPassword) async {
-    await _supabase.auth.updateUser(
-      UserAttributes(password: newPassword),
-    );
+    await _supabase.auth.updateUser(UserAttributes(password: newPassword));
   }
 }

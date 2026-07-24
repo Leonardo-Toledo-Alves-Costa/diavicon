@@ -11,8 +11,10 @@ import '../widgets/projetos_header.dart';
 import '../widgets/projetos_filter_row.dart';
 // 🔥 Importe a gaveta que acabou de criar
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 class ProjetosScreen extends ConsumerWidget {
   const ProjetosScreen({super.key});
+  
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -20,27 +22,36 @@ class ProjetosScreen extends ConsumerWidget {
     final projetosAsync = ref.watch(filteredProjectsProvider);
 
     return Scaffold(
+      key: _scaffoldKey,
+
       backgroundColor: const Color(0xFFF5F5F5),
       resizeToAvoidBottomInset: false,
       // 🔥 AQUI: Conecta a gaveta do lado direito!
-      endDrawer: const PerfilDrawer(), 
+      drawer: const PerfilDrawer(),
       body: Column(
         children: [
-          ProjetosHeader(topPadding: topPadding),
+          ProjetosHeader(
+            topPadding: topPadding,
+            onOpenDrawer: () {
+              _scaffoldKey.currentState?.openDrawer();
+            },
+          ),
 
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 40), 
+                  const SizedBox(height: 40),
                   const ProjetosFilterRow(),
                   const SizedBox(height: 16),
 
                   Expanded(
                     child: projetosAsync.when(
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       ),
                       error: (err, stack) =>
                           Center(child: Text('Erro ao carregar: $err')),
@@ -49,15 +60,17 @@ class ProjetosScreen extends ConsumerWidget {
                           return const Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CustomEmptyState(text: 'Nenhum projeto encontrado'),
-                              SizedBox(height: 80), 
+                              CustomEmptyState(
+                                text: 'Nenhum projeto encontrado',
+                              ),
+                              SizedBox(height: 80),
                             ],
                           );
                         }
 
                         return ListView.builder(
                           itemCount: lista.length,
-                          padding: const EdgeInsets.only(top: 8, bottom: 100), 
+                          padding: const EdgeInsets.only(top: 8, bottom: 100),
                           itemBuilder: (context, index) {
                             final projeto = lista[index];
                             return InkWell(

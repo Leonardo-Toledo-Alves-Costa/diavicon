@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../widgets/rdo_modals.dart';
 
 enum PeriodoRdo { manha, tarde, noite }
 
@@ -91,7 +92,7 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
                   const SizedBox(height: 6),
                   _buildDropdown(
                     valor: _condicoesTrabalho,
-                    opcoes: const ['Praticável', 'Impraticável'],
+                    opcoes: const ['Praticável', 'Impraticável', 'Parcial'],
                     onChanged: (v) => setState(() => _condicoesTrabalho = v),
                   ),
                   const SizedBox(height: 16),
@@ -99,7 +100,7 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
                   const SizedBox(height: 6),
                   _buildDropdown(
                     valor: _condicoesClimatica,
-                    opcoes: const ['Ensolarado', 'Nublado', 'Chuvoso'],
+                    opcoes: const ['Ensolarado', 'Nublado', 'Chuvoso', 'Tempestade', 'N.A.'],
                     onChanged: (v) => setState(() => _condicoesClimatica = v),
                   ),
                   const SizedBox(height: 20),
@@ -424,7 +425,12 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
   Widget _buildBotaoSalvar(BuildContext context) {
     return Center(
       child: ElevatedButton(
-        onPressed: () => Navigator.of(context).pop(),
+        onPressed: () async {
+          await RdoConfirmDialogs.mostrarSalvo(context);
+          if (context.mounted) {
+            Navigator.of(context).pop();
+          }
+        },
         style: ElevatedButton.styleFrom(
           backgroundColor: corLaranja,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),

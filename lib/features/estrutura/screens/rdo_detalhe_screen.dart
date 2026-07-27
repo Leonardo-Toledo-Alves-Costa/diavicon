@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'rdo_lista_screen.dart';
+import '../widgets/rdo_modals.dart';
 
 class RdoDetalheScreen extends StatelessWidget {
   final RdoItem rdo;
@@ -373,26 +374,13 @@ class RdoDetalheScreen extends StatelessWidget {
     );
   }
 
-  void _confirmarExclusao(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Apagar RDO'),
-        content: const Text('Tem certeza que deseja apagar este RDO?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              Navigator.of(context).pop();
-            },
-            child: const Text('Apagar', style: TextStyle(color: Colors.red)),
-          ),
-        ],
-      ),
-    );
+  Future<void> _confirmarExclusao(BuildContext context) async {
+    final confirmou = await RdoConfirmDialogs.mostrarConfirmarExclusao(context);
+    if (!confirmou || !context.mounted) return;
+
+    await RdoConfirmDialogs.mostrarApagado(context);
+    if (context.mounted) {
+      Navigator.of(context).pop();
+    }
   }
 }

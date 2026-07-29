@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
-import '../../auth/providers/auth_provider.dart';
+import '../../auth/providers/auth_provider.dart'; 
 import '../providers/projetos_provider.dart';
 
 class ProjetosHeader extends ConsumerWidget {
@@ -20,6 +19,8 @@ class ProjetosHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final fotoUrlAsync = ref.watch(fotoUsuarioProvider);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -37,7 +38,30 @@ class ProjetosHeader extends ConsumerWidget {
                 children: [
                   Builder(
                     builder: (context) => IconButton(
-                      icon:  Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                      padding: EdgeInsets.zero,
+                      icon: ClipRRect(
+                        borderRadius: BorderRadius.circular(21), // Deixa redondinho
+                        child: fotoUrlAsync.when(
+                          loading: () => const SizedBox(
+                            width: 42, 
+                            height: 42, 
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          ),
+                          error: (_, __) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                          data: (fotoUrl) {
+                            if (fotoUrl != null && fotoUrl.isNotEmpty) {
+                              return Image.network(
+                                fotoUrl, 
+                                width: 42, 
+                                height: 42, 
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                              );
+                            }
+                            return Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover);
+                          },
+                        ),
+                      ),
                       onPressed: onOpenDrawer,
                     ),
                   ),
@@ -57,18 +81,7 @@ class ProjetosHeader extends ConsumerWidget {
                     ),
                     onPressed: () => context.push('/notificacoes'),
                   ),
-                  // BOTÃO DE LOGOUT PROVISÓRIO
-                  IconButton(
-                    icon: const Icon(Icons.logout, color: Colors.red),
-                    tooltip: 'Sair (Teste)',
-                    onPressed: () async {
-                      await Supabase.instance.client.auth.signOut();
-                      ref.invalidate(currentUserProvider);
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
-                    },
-                  ),
+                  
                 ],
               ),
               const SizedBox(height: 4),
@@ -101,7 +114,6 @@ class ProjetosHeader extends ConsumerWidget {
             child: CustomSearchBar(
               hintText: 'Buscar projetos ou clientes...',
               onChanged: (val) {
-                // Atualiza o estado da busca no Riverpod
                 ref.read(searchQueryProvider.notifier).state = val;
               },
             ),

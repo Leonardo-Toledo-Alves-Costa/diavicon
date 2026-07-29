@@ -9,7 +9,6 @@ import '../widgets/project_card.dart';
 import '../providers/projetos_provider.dart';
 import '../widgets/projetos_header.dart';
 import '../widgets/projetos_filter_row.dart';
-// 🔥 Importe a gaveta que acabou de criar
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 class ProjetosScreen extends ConsumerWidget {
@@ -26,7 +25,6 @@ class ProjetosScreen extends ConsumerWidget {
 
       backgroundColor: const Color(0xFFF5F5F5),
       resizeToAvoidBottomInset: false,
-      // 🔥 AQUI: Conecta a gaveta do lado direito!
       drawer: const PerfilDrawer(),
       body: Column(
         children: [

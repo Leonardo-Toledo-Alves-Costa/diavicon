@@ -20,6 +20,16 @@ final authControllerProvider = StateNotifierProvider<AuthController, bool>((ref)
   return AuthController(ref);
 });
 
+final fotoUsuarioProvider = FutureProvider.autoDispose<String?>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  if (userId == null) return null;
+
+  // Busca a URL da foto na tabela de usuarios
+  final resp = await supabase.from('usuarios').select('foto_url').eq('id', userId).maybeSingle();
+  return resp?['foto_url'] as String?;
+});
+
 // Provider que controla o estado de Loading e ações de Recuperação de Senha
 final recuperaSenhaControllerProvider = StateNotifierProvider<RecuperaSenhaController, bool>((ref) {
   return RecuperaSenhaController(ref);

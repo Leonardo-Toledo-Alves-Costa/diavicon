@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/local_search_dropdown.dart';
 import 'package:diavicon/features/ensaios/screens/estrutura_ensaios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,7 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/compact_search_bar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
 
@@ -20,11 +20,19 @@ import '../widgets/estrutura_home_header.dart';
 import '../widgets/progresso_projeto_card.dart';
 import 'estrutura_informacao_screen.dart';
 
-class EstruturaHomeScreen extends ConsumerWidget {
+class EstruturaHomeScreen extends ConsumerStatefulWidget {
   final EstruturaModel estrutura;
   final String projetoId;
 
   const EstruturaHomeScreen({super.key, required this.estrutura, required this.projetoId});
+
+  @override
+  ConsumerState<EstruturaHomeScreen> createState() => _EstruturaHomeScreenState();
+}
+
+class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
+  // ESTADO PARA GUARDAR O LOCAL SELECIONADO NO DROPDOWN
+  String? _localFiltro;
 
   void _openElemento(
     BuildContext context, {
@@ -35,10 +43,10 @@ class EstruturaHomeScreen extends ConsumerWidget {
     required String imageUrl,
   }) {
     context.push(
-      '/estruturas/${estrutura.id}/elementos/$elementoId',
+      '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
       extra: <String, dynamic>{
-        'projetoId': projetoId,
-        'estruturaId': estrutura.id,
+        'projetoId': widget.projetoId,
+        'estruturaId': widget.estrutura.id,
         'elementoId': elementoId,
         'titulo': titulo,
         'tipo': tipo,
@@ -48,16 +56,16 @@ class EstruturaHomeScreen extends ConsumerWidget {
     );
   }
 
-  /// Abre a folha de inclusão de elementos da estrutura atual.
+  /// Abre a folha de inclusão de elementos da estrutura atual
   Future<void> _incluirElemento(BuildContext context, WidgetRef ref) async {
     await showIncluirElementoEstruturalSheet<void>(
       context: context,
-      estruturaId: estrutura.id,
+      estruturaId: widget.estrutura.id,
     );
-    ref.invalidate(elementosPorEstruturaProvider(estrutura.id));
+    ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
   }
 
-  /// Menu de ações (editar/excluir) ao manter o card pressionado.
+  /// Menu de ações (editar/excluir) ao manter o card pressionado
   void _abrirAcoesElemento(
     BuildContext context,
     WidgetRef ref,
@@ -77,12 +85,12 @@ class EstruturaHomeScreen extends ConsumerWidget {
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => ElementoFormScreen(
-                      estruturaId: estrutura.id,
+                      estruturaId: widget.estrutura.id,
                       elemento: elemento,
                     ),
                   ),
                 );
-                ref.invalidate(elementosPorEstruturaProvider(estrutura.id));
+                ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
               },
             ),
             ListTile(
@@ -126,7 +134,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
     if (confirmar != true) return;
     try {
       await ref.read(elementoRepositoryProvider).desativarElemento(elemento.id);
-      ref.invalidate(elementosPorEstruturaProvider(estrutura.id));
+      ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Elemento excluído com sucesso.')),
@@ -141,10 +149,10 @@ class EstruturaHomeScreen extends ConsumerWidget {
     }
   }
 
-  /// Lista de elementos reais da estrutura, com estados de carregamento.
+  /// Lista de elementos reais da estrutura, filtrada se houver um local selecionado
   Widget _buildElementosList(BuildContext context, WidgetRef ref) {
     final elementosAsync =
-        ref.watch(elementosPorEstruturaProvider(estrutura.id));
+        ref.watch(elementosPorEstruturaProvider(widget.estrutura.id));
 
     return elementosAsync.when(
       loading: () => const Padding(
@@ -157,18 +165,24 @@ class EstruturaHomeScreen extends ConsumerWidget {
             style: const TextStyle(color: AppColors.hintText)),
       ),
       data: (elementos) {
-        if (elementos.isEmpty) {
+        
+        // APLICANDO O FILTRO NA LISTA
+        final elementosFiltrados = _localFiltro == null 
+            ? elementos 
+            : elementos.where((el) => el.local == _localFiltro).toList();
+
+        if (elementosFiltrados.isEmpty) {
           return const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
             child: Text(
-              'Nenhum elemento cadastrado ainda.\nToque em "Incluir" para adicionar.',
+              'Nenhum elemento encontrado.',
               style: TextStyle(color: AppColors.hintText, height: 1.4),
             ),
           );
         }
 
         return Column(
-          children: elementos.map((el) {
+          children: elementosFiltrados.map((el) {
             final tipo = [el.tipo, el.revestimento]
                 .where((p) => p != null && p.trim().isNotEmpty)
                 .join(' - ');
@@ -197,7 +211,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true, 
@@ -209,7 +223,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
               label: 'Informações',
               onTap: () {
                 Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (_) => EstruturaInformacaoScreen(estrutura: estrutura, projetoId: projetoId)));
+                Navigator.push(context, MaterialPageRoute(builder: (_) => EstruturaInformacaoScreen(estrutura: widget.estrutura, projetoId: widget.projetoId)));
               },
             ),
           DiaviconMenuItem(
@@ -219,7 +233,7 @@ class EstruturaHomeScreen extends ConsumerWidget {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) =>  PlanejamentoPlantasScreen(estruturaId: estrutura.id)),
+                MaterialPageRoute(builder: (_) =>  PlanejamentoPlantasScreen(estruturaId: widget.estrutura.id)),
               );
             },
           ),
@@ -232,8 +246,8 @@ class EstruturaHomeScreen extends ConsumerWidget {
                 context,
                 MaterialPageRoute(
                   builder: (_) => EstruturaEnsaiosScreen(
-                    estruturaId: estrutura.id,
-                    projetoId: projetoId,
+                    estruturaId: widget.estrutura.id,
+                    projetoId: widget.projetoId,
                   ),
                 ),
               );
@@ -263,8 +277,8 @@ class EstruturaHomeScreen extends ConsumerWidget {
           children: [
             //widget cabeçalho
             EstruturaHomeHeader(
-              imageUrl: estrutura.imageUrl,
-              status: estrutura.status ?? 'Em Andamento',
+              imageUrl: widget.estrutura.imageUrl,
+              status: widget.estrutura.status ?? 'Em Andamento',
             ),
 
             Padding(
@@ -272,9 +286,9 @@ class EstruturaHomeScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(estrutura.nome ?? 'Sem nome', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textDark)),
+                  Text(widget.estrutura.nome ?? 'Sem nome', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textDark)),
                   const SizedBox(height: 4),
-                  Text('${estrutura.tipologiaNome ?? 'Sem tipologia'} - ${estrutura.tipoNome ?? 'Sem tipo'}\n${estrutura.idadeCalculada} Anos  CAA ${estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
+                  Text('${widget.estrutura.tipologiaNome ?? 'Sem tipologia'} - ${widget.estrutura.tipoNome ?? 'Sem tipo'}\n${widget.estrutura.idadeCalculada} Anos  CAA ${widget.estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
                   const SizedBox(height: 24),
 
                   // WIDGET DE PROGRESSO 
@@ -290,14 +304,42 @@ class EstruturaHomeScreen extends ConsumerWidget {
                   ),
                   const SizedBox(height: 16),
 
+                  // AQUI ENTRA O NOSSO DROPDOWN GLOBAL!
                   Row(
                     children: [
-                      const Expanded(flex: 5, child: CompactSearchBar(hintText: 'Local')),
-                      const SizedBox(width: 16),
+                      Expanded(
+                        flex: 6, 
+                        child: SizedBox(
+                          height: 36, // Altura pra encaixar bonitinho
+                          child: LocalSearchDropdown(
+                            estruturaId: widget.estrutura.id,
+                            value: _localFiltro,
+                            onChanged: (localSelecionado) {
+                              setState(() {
+                                _localFiltro = localSelecionado;
+                              });
+                            },
+                          ),
+                        )
+                      ),
+                      
+                      // Botão "X" para limpar o filtro se houver um local selecionado
+                      if (_localFiltro != null) ...[
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.clear, color: AppColors.error, size: 20),
+                          onPressed: () => setState(() => _localFiltro = null),
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                      
+                      const Spacer(flex: 1), // Empurra o "Todos" pra direita
+                      
                       Expanded(
                         flex: 3,
                         child: GestureDetector(
-                          onTap: () {},
+                          onTap: () {}, // Futuro filtro de status ("Todos", "Ativos", etc)
                           child: const Row(
                             mainAxisAlignment: MainAxisAlignment.end,
                             children: [

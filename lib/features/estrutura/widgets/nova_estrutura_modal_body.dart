@@ -1,39 +1,101 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../services/image_picker_service.dart'; 
+import '../screens/nova_estrutura_body.dart'; 
 
-class NovaEstruturaModalBody extends StatelessWidget {
+class NovaEstruturaModalBody extends ConsumerStatefulWidget {
   const NovaEstruturaModalBody({super.key});
 
   @override
+  ConsumerState<NovaEstruturaModalBody> createState() => _NovaEstruturaModalBodyState();
+}
+
+class _NovaEstruturaModalBodyState extends ConsumerState<NovaEstruturaModalBody> {
+  final _nomeController = TextEditingController();
+  File? _imagemSelecionada;
+  final ImagePickerService _imagePickerService = ImagePickerService();
+  bool _estaSalvando = false;
+
+  @override
+  void dispose() {
+    _nomeController.dispose();
+    super.dispose();
+  }
+
+  
+  Future<void> _escolherImagem() async {
+    final File? image = await _imagePickerService.pickAndCropImage(
+      title: 'Enquadrar Capa da Estrutura',
+    );
+    
+    if (image != null) {
+      setState(() {
+        _imagemSelecionada = image;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Como o showDiaviconModal já tem scroll interno, retornamos apenas uma Column limpa
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       mainAxisSize: MainAxisSize.min,
       children: [
-        // 1. FOTO DA ESTRUTURA
+        // 1. FOTO DA ESTRUTURA (Com visualização dinâmica e edição 
         GestureDetector(
-          onTap: () {}, 
-          child: Container(
-            height: 140, 
-            width: double.infinity,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF0F0F0), 
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: const Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.black54),
-                SizedBox(height: 8),
-                Text(
-                  'Adicionar capa',
-                  style: TextStyle(color: Colors.black54, fontSize: 14),
+          onTap: _estaSalvando ? null : _escolherImagem,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                height: 140,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0F0F0),
+                  borderRadius: BorderRadius.circular(16),
+                  image: _imagemSelecionada != null
+                      ? DecorationImage(
+                          image: FileImage(_imagemSelecionada!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
                 ),
-              ],
-            ),
+                child: _imagemSelecionada == null
+                    ? const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo_outlined, size: 32, color: Colors.black54),
+                          SizedBox(height: 8),
+                          Text(
+                            'Adicionar capa',
+                            style: TextStyle(color: Colors.black54, fontSize: 14),
+                          ),
+                        ],
+                      )
+                    : null,
+              ),
+              // Botãozinho de lápis visível se a imagem já tiver sido selecionada
+              if (_imagemSelecionada != null)
+                Positioned(
+                  bottom: -15,
+                  right: 15,
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),
+                  ),
+                ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
@@ -42,7 +104,8 @@ class NovaEstruturaModalBody extends StatelessWidget {
         CustomTextField(
           label: 'Nome da estrutura*',
           hint: 'Ex: Galpão de Distribuição Norte',
-          controller: TextEditingController(), 
+          controller: _nomeController,
+          enabled: !_estaSalvando,
           isRequired: true,
         ),
         const SizedBox(height: 16),
@@ -129,7 +192,26 @@ class NovaEstruturaModalBody extends StatelessWidget {
         CustomButton(
           text: 'Criar',
           showArrow: false,
-          onPressed: () {}, 
+          onPressed: () {
+            // 1. Captura o texto digitado e a imagem do estado atual do modal
+            final nomeInformado = _nomeController.text.trim();
+            final imagemInformada = _imagemSelecionada;
+
+            // 2. Fecha o modal de forma limpa
+            Navigator.pop(context);
+
+            // 3. Navega para a tela completa passando os dados capturados
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => NovaEstruturaScreen(
+                  projetoId: '', // Insira o projetoId real se a chamada vier de dentro de um projeto
+                  initialNome: nomeInformado,
+                  initialImagem: imagemInformada,
+                ),
+              ),
+            );
+          }, 
         ),
       ],
     );

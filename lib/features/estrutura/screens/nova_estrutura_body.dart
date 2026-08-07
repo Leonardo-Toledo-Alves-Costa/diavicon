@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
+
 
 // Importações do Core (Componentes Globais, Serviços e Utils)
 import '../../../core/constants/app_colors.dart';
@@ -11,7 +11,6 @@ import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/mapa_selecao_screen.dart';
 import '../../../core/utils/formatters/cep_formatter.dart';
 import '../../../core/utils/validators/cep_validator.dart';
 import '../../../core/services/location_service.dart';
@@ -25,6 +24,7 @@ import '../widgets/mapa_preview_widget.dart';
 import 'estrutura_home.dart';
 import '../providers/estruturas_dropdown_provider.dart';
 import '../widgets/novo_item_dropdown_modal.dart';
+import '../services/image_picker_service.dart';
 
 
 //importações de outra features
@@ -33,7 +33,16 @@ import '../../projetos/providers/projetos_provider.dart';
 
 class NovaEstruturaScreen extends ConsumerStatefulWidget {
   final String projetoId;
-  const NovaEstruturaScreen({super.key, required this.projetoId});
+  // 👇 Novos parâmetros opcionais para receber os dados do modal
+  final String? initialNome;
+  final File? initialImagem;
+
+  const NovaEstruturaScreen({
+    super.key, 
+    required this.projetoId,
+    this.initialNome,
+    this.initialImagem,
+  });
 
   @override
   ConsumerState<NovaEstruturaScreen> createState() => _NovaEstruturaScreenState();
@@ -60,6 +69,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   final _numeroController = TextEditingController();
   final _paisController = TextEditingController();
   final _ufController = TextEditingController();
+  final ImagePickerService _imagePickerService = ImagePickerService();
 
   // Estados dos Dropdowns
   String? _caaSelecionado;
@@ -71,6 +81,15 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   @override
   void initState() {
     super.initState();
+    
+    // 👇 Inicializa os campos com os dados vindos do modal, se existirem
+    if (widget.initialNome != null) {
+      _nomeController.text = widget.initialNome!;
+    }
+    if (widget.initialImagem != null) {
+      _imagemSelecionada = widget.initialImagem;
+    }
+
     _cepController.addListener(_onCepChanged);
     _numeroController.addListener(_onNumeroChanged);
   }
@@ -94,15 +113,18 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     super.dispose();
   }
 
+  
+
   // --- MÉTODOS DE AÇÃO E LÓGICA DE NEGÓCIO ---
 
   Future<void> _escolherImagem() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
+    final File? image = await _imagePickerService.pickAndCropImage(
+      title: 'Enquadrar Capa da Estrutura',
+    );
 
-    if (pickedFile != null) {
+    if (image != null) {
       setState(() {
-        _imagemSelecionada = File(pickedFile.path);
+        _imagemSelecionada = image;
       });
     }
   }
@@ -145,7 +167,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
         final coords = await LocationService.buscarCoordenadasPorEndereco(textoBusca);
         
-        if (!mounted) return; // Mais uma trava de segurança
+        if (!mounted) return; 
 
         if (coords != null) {
           setState(() {

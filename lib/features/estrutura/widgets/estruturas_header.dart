@@ -30,7 +30,7 @@ class EstruturasHeader extends ConsumerWidget {
                 children: [
                   const CircleAvatar(
                     radius: 20,
-                    backgroundImage: AssetImage('assets/images/user_avatar.png'),
+                    backgroundImage: AssetImage('assets/images/user.png'),
                   ),
                   const Text(
                     'Estruturas',

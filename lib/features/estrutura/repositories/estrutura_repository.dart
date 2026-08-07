@@ -98,4 +98,29 @@ class EstruturaRepository {
       throw Exception('Falha ao fazer upload da imagem: $e');
     }
   }
+
+  // 🔥 MÉTODO ATUALIZADO
+  Future<void> atualizarEstrutura(EstruturaModel estrutura) async {
+    try {
+      final dados = estrutura.toJson();
+      
+      // 1. Removemos chaves sensíveis que o banco não permite/deve alterar
+      dados.remove('id');
+      dados.remove('criado_em');
+      
+      // 2. Fazemos o update adicionando o .select() no final
+      final response = await _client
+          .from('estruturas')
+          .update(dados)
+          .eq('id', estrutura.id)
+          .select(); // 🔥 Isso força o Supabase a devolver a linha alterada!
+          
+      // 3. Se a resposta for vazia, o RLS (Segurança) do Supabase bloqueou a edição
+      if (response.isEmpty) {
+        throw Exception('Bloqueado pelo banco. Verifique as políticas (RLS) da tabela estruturas.');
+      }
+    } catch (e) {
+      throw Exception('Falha ao atualizar estrutura: $e');
+    }
+  }
 }

@@ -1,10 +1,7 @@
-// lib/core/widgets/menu_drawer_app_bar.dart
-
 import 'package:flutter/material.dart';
 
 class MenuDrawerAppBar extends StatelessWidget {
   final String title;
-  // MUDANÇA AQUI: De List<DiaviconMenuItem> para List<Widget>
   final List<Widget> items; 
 
   const MenuDrawerAppBar({
@@ -15,35 +12,57 @@ class MenuDrawerAppBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final maxMenuHeight = MediaQuery.of(context).size.height - 160;
+    
+    final minMenuHeight = 540.0 < maxMenuHeight ? 540.0 : maxMenuHeight;
+
     return Drawer(
-      width: 110,
-      backgroundColor: const Color(0xFFF5F5F5),
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.horizontal(left: Radius.circular(40)),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 24),
-              child: Text(
-                title,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: Color(0xFF333333),
+      width: 130, 
+      backgroundColor: Colors.transparent, 
+      elevation: 0, 
+      child: Align(
+        alignment: Alignment.topRight, 
+        child: Container(
+          margin: const EdgeInsets.only(top: 110, bottom: 40), 
+          constraints: BoxConstraints(
+            minHeight: minMenuHeight, 
+            maxHeight: maxMenuHeight, 
+          ),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEBEBEB), 
+            borderRadius: const BorderRadius.horizontal(left: Radius.circular(40)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.2), 
+                blurRadius: 15,
+                offset: const Offset(-2, 4),
+              ),
+            ],
+          ),
+          child: SingleChildScrollView( 
+            child: Column(
+              mainAxisSize: MainAxisSize.min, 
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(8, 28, 8, 16),
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 14,
+                      color: Color(0xFF4A4A4A), 
+                      height: 1.2,
+                    ),
+                  ),
                 ),
-              ),
+                
+                ...items,
+                
+                const SizedBox(height: 16), 
+              ],
             ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                // Agora o Dart aceita sem reclamar!
-                children: items, 
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

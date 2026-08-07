@@ -1,4 +1,5 @@
 import 'package:diavicon/core/widgets/local_search_dropdown.dart';
+import 'package:diavicon/features/elementos/screens/elemento_form_screen.dart';
 import 'package:diavicon/features/ensaios/screens/estrutura_ensaios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,15 +25,30 @@ class EstruturaHomeScreen extends ConsumerStatefulWidget {
   final EstruturaModel estrutura;
   final String projetoId;
 
-  const EstruturaHomeScreen({super.key, required this.estrutura, required this.projetoId});
+  const EstruturaHomeScreen({
+    super.key,
+    required this.estrutura,
+    required this.projetoId,
+  });
 
   @override
-  ConsumerState<EstruturaHomeScreen> createState() => _EstruturaHomeScreenState();
+  ConsumerState<EstruturaHomeScreen> createState() =>
+      _EstruturaHomeScreenState();
 }
 
 class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   // ESTADO PARA GUARDAR O LOCAL SELECIONADO NO DROPDOWN
   String? _localFiltro;
+
+  // 🔥 1. Variável para guardar os dados atuais e reagir a edições
+  late EstruturaModel _estruturaAtual;
+
+  @override
+  void initState() {
+    super.initState();
+    // Inicia com os dados que vieram da rota anterior
+    _estruturaAtual = widget.estrutura;
+  }
 
   void _openElemento(
     BuildContext context, {
@@ -43,10 +59,10 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     required String imageUrl,
   }) {
     context.push(
-      '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
+      '/estruturas/${_estruturaAtual.id}/elementos/$elementoId',
       extra: <String, dynamic>{
         'projetoId': widget.projetoId,
-        'estruturaId': widget.estrutura.id,
+        'estruturaId': _estruturaAtual.id,
         'elementoId': elementoId,
         'titulo': titulo,
         'tipo': tipo,
@@ -60,9 +76,9 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   Future<void> _incluirElemento(BuildContext context, WidgetRef ref) async {
     await showIncluirElementoEstruturalSheet<void>(
       context: context,
-      estruturaId: widget.estrutura.id,
+      estruturaId: _estruturaAtual.id,
     );
-    ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
+    ref.invalidate(elementosPorEstruturaProvider(_estruturaAtual.id));
   }
 
   /// Menu de ações (editar/excluir) ao manter o card pressionado
@@ -78,25 +94,33 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              leading: const Icon(Icons.edit_outlined, color: AppColors.textDark),
+              leading: const Icon(
+                Icons.edit_outlined,
+                color: AppColors.textDark,
+              ),
               title: const Text('Editar elemento'),
               onTap: () async {
                 Navigator.pop(sheetContext);
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => ElementoFormScreen(
-                      estruturaId: widget.estrutura.id,
+                      estruturaId: _estruturaAtual.id,
+                      projetoId: widget.projetoId, 
                       elemento: elemento,
                     ),
                   ),
                 );
-                ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
+                ref.invalidate(
+                  elementosPorEstruturaProvider(_estruturaAtual.id),
+                );
               },
             ),
             ListTile(
               leading: const Icon(Icons.delete_outline, color: AppColors.error),
-              title: const Text('Excluir elemento',
-                  style: TextStyle(color: AppColors.error)),
+              title: const Text(
+                'Excluir elemento',
+                style: TextStyle(color: AppColors.error),
+              ),
               onTap: () {
                 Navigator.pop(sheetContext);
                 _confirmarExclusao(context, ref, elemento);
@@ -121,11 +145,17 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppColors.greyMedium),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Excluir', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Excluir',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -134,7 +164,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     if (confirmar != true) return;
     try {
       await ref.read(elementoRepositoryProvider).desativarElemento(elemento.id);
-      ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
+      ref.invalidate(elementosPorEstruturaProvider(_estruturaAtual.id));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Elemento excluído com sucesso.')),
@@ -142,33 +172,37 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro ao excluir: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Erro ao excluir: $e')));
       }
     }
   }
 
   /// Lista de elementos reais da estrutura, filtrada se houver um local selecionado
   Widget _buildElementosList(BuildContext context, WidgetRef ref) {
-    final elementosAsync =
-        ref.watch(elementosPorEstruturaProvider(widget.estrutura.id));
+    final elementosAsync = ref.watch(
+      elementosPorEstruturaProvider(_estruturaAtual.id),
+    );
 
     return elementosAsync.when(
       loading: () => const Padding(
         padding: EdgeInsets.symmetric(vertical: 32),
-        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        child: Center(
+          child: CircularProgressIndicator(color: AppColors.primary),
+        ),
       ),
       error: (e, _) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 24),
-        child: Text('Erro ao carregar elementos:\n$e',
-            style: const TextStyle(color: AppColors.hintText)),
+        child: Text(
+          'Erro ao carregar elementos:\n$e',
+          style: const TextStyle(color: AppColors.hintText),
+        ),
       ),
       data: (elementos) {
-        
         // APLICANDO O FILTRO NA LISTA
-        final elementosFiltrados = _localFiltro == null 
-            ? elementos 
+        final elementosFiltrados = _localFiltro == null
+            ? elementos
             : elementos.where((el) => el.local == _localFiltro).toList();
 
         if (elementosFiltrados.isEmpty) {
@@ -183,9 +217,10 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
 
         return Column(
           children: elementosFiltrados.map((el) {
-            final tipo = [el.tipo, el.revestimento]
-                .where((p) => p != null && p.trim().isNotEmpty)
-                .join(' - ');
+            final tipo = [
+              el.tipo,
+              el.revestimento,
+            ].where((p) => p != null && p.trim().isNotEmpty).join(' - ');
             final imageUrl = (el.fotos != null && el.fotos!.isNotEmpty)
                 ? el.fotos!.first
                 : 'assets/images/empresa.png';
@@ -212,20 +247,39 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // 🔥 Pega a altura exata da barra de navegação do aparelho do usuário
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+
     return Scaffold(
       backgroundColor: Colors.white,
-      extendBodyBehindAppBar: true, 
+      extendBodyBehindAppBar: true,
       endDrawer: MenuDrawerAppBar(
         title: 'Menu da\nEstrutura',
         items: [
           DiaviconMenuItem(
-              icon: Icons.info_outline,
-              label: 'Informações',
-              onTap: () {
-                Navigator.pop(context); 
-                Navigator.push(context, MaterialPageRoute(builder: (_) => EstruturaInformacaoScreen(estrutura: widget.estrutura, projetoId: widget.projetoId)));
-              },
-            ),
+            icon: Icons.info_outline,
+            label: 'Informações',
+            onTap: () async {
+              Navigator.pop(context); // Fecha o drawer
+              final estruturaAtualizada = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => EstruturaInformacaoScreen(
+                    estrutura: _estruturaAtual,
+                    projetoId: widget.projetoId,
+                  ),
+                ),
+              );
+
+              // Atualiza o estado da home se houve alterações
+              if (estruturaAtualizada != null &&
+                  estruturaAtualizada is EstruturaModel) {
+                setState(() {
+                  _estruturaAtual = estruturaAtualizada;
+                });
+              }
+            },
+          ),
           DiaviconMenuItem(
             icon: Icons.layers_outlined,
             label: 'Planejamento',
@@ -233,132 +287,204 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
               Navigator.pop(context);
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) =>  PlanejamentoPlantasScreen(estruturaId: widget.estrutura.id)),
+                MaterialPageRoute(
+                  builder: (_) => PlanejamentoPlantasScreen(
+                    estruturaId: _estruturaAtual.id,
+                  ),
+                ),
               );
             },
           ),
           DiaviconMenuItem(
-            icon: Icons.science_outlined, 
-            label: 'Ensaios', 
+            icon: Icons.science_outlined,
+            label: 'Ensaios',
             onTap: () {
-              Navigator.pop(context); // Fecha o drawer
+              Navigator.pop(context); 
               Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => EstruturaEnsaiosScreen(
-                    estruturaId: widget.estrutura.id,
+                    estruturaId: _estruturaAtual.id,
                     projetoId: widget.projetoId,
                   ),
                 ),
               );
-            }
+            },
           ),
-          DiaviconMenuItem(icon: Icons.description_outlined, label: 'Relatórios', onTap: () {}),
-          DiaviconMenuItem(icon: Icons.pie_chart_outline, label: 'Dashboard', onTap: () {}),
+          DiaviconMenuItem(
+            icon: Icons.description_outlined,
+            label: 'Relatórios',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {},
+          ),
         ],
       ),
       appBar: CustomAppBar(
-        title: 'Estrutura', 
-        showBackButton: true, 
+        title: 'Estrutura',
+        showBackButton: true,
         titleWidget: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Projeto', style: TextStyle(fontSize: 11, color: Colors.white.withOpacity(0.8), fontWeight: FontWeight.w500, letterSpacing: 0.5)),
-            const SizedBox(height: 2),
-            const Text('Estrutura', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-          ],
-        ),
-      ),
-      
-      body: SingleChildScrollView(
-        padding: EdgeInsets.zero,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            //widget cabeçalho
-            EstruturaHomeHeader(
-              imageUrl: widget.estrutura.imageUrl,
-              status: widget.estrutura.status ?? 'Em Andamento',
+            Text(
+              'Projeto',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
             ),
-
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(widget.estrutura.nome ?? 'Sem nome', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textDark)),
-                  const SizedBox(height: 4),
-                  Text('${widget.estrutura.tipologiaNome ?? 'Sem tipologia'} - ${widget.estrutura.tipoNome ?? 'Sem tipo'}\n${widget.estrutura.idadeCalculada} Anos  CAA ${widget.estrutura.caa ?? '-'}', style: const TextStyle(fontSize: 14, color: AppColors.hintText, height: 1.4)),
-                  const SizedBox(height: 24),
-
-                  // WIDGET DE PROGRESSO 
-                  const ProgressoProjetoCard(progresso: 0.90), 
-                  const SizedBox(height: 32),
-
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Elementos Estruturais', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark)),
-                      CompactButton(text: 'Incluir', onPressed: () => _incluirElemento(context, ref)),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-
-                  // AQUI ENTRA O NOSSO DROPDOWN GLOBAL!
-                  Row(
-                    children: [
-                      Expanded(
-                        flex: 6, 
-                        child: SizedBox(
-                          height: 36, // Altura pra encaixar bonitinho
-                          child: LocalSearchDropdown(
-                            estruturaId: widget.estrutura.id,
-                            value: _localFiltro,
-                            onChanged: (localSelecionado) {
-                              setState(() {
-                                _localFiltro = localSelecionado;
-                              });
-                            },
-                          ),
-                        )
-                      ),
-                      
-                      // Botão "X" para limpar o filtro se houver um local selecionado
-                      if (_localFiltro != null) ...[
-                        const SizedBox(width: 4),
-                        IconButton(
-                          icon: const Icon(Icons.clear, color: AppColors.error, size: 20),
-                          onPressed: () => setState(() => _localFiltro = null),
-                          padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(),
-                        ),
-                      ],
-                      
-                      const Spacer(flex: 1), // Empurra o "Todos" pra direita
-                      
-                      Expanded(
-                        flex: 3,
-                        child: GestureDetector(
-                          onTap: () {}, // Futuro filtro de status ("Todos", "Ativos", etc)
-                          child: const Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text('Todos', style: TextStyle(fontSize: 14, color: AppColors.textDark, fontWeight: FontWeight.w500)),
-                              SizedBox(width: 4),
-                              Icon(Icons.keyboard_arrow_down, color: AppColors.textDark),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  _buildElementosList(context, ref),
-                ],
+            const SizedBox(height: 2),
+            const Text(
+              'Estrutura',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
+        ),
+      ),
+
+      // 🔥 A SOLUÇÃO DEFINITIVA: SafeArea gerenciando a parte de baixo
+      body: SafeArea(
+        top: false, // Deixa a imagem do cabeçalho esticar até o topo (atrás da AppBar)
+        bottom: true, // Força o Flutter a respeitar a área dos botões de navegação
+        child: SingleChildScrollView(
+          padding: EdgeInsets.zero,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // widget cabeçalho
+              EstruturaHomeHeader(
+                imageUrl: _estruturaAtual.imageUrl,
+                status: _estruturaAtual.status ?? 'Em Andamento',
+              ),
+
+              Padding(
+                // 🔥 Respiro fixo de 48px, o SafeArea já cuida do resto!
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _estruturaAtual.nome ?? 'Sem nome',
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w900,
+                        color: AppColors.textDark,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${_estruturaAtual.tipologiaNome ?? 'Sem tipologia'} - ${_estruturaAtual.tipoNome ?? 'Sem tipo'}\n${_estruturaAtual.idadeCalculada} Anos  CAA ${_estruturaAtual.caa ?? '-'}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        color: AppColors.hintText,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    // WIDGET DE PROGRESSO
+                    const ProgressoProjetoCard(progresso: 0.90),
+                    const SizedBox(height: 32),
+
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Elementos Estruturais',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textDark,
+                          ),
+                        ),
+                        CompactButton(
+                          text: 'Incluir',
+                          onPressed: () => _incluirElemento(context, ref),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // AQUI ENTRA O NOSSO DROPDOWN GLOBAL!
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 6,
+                          child: SizedBox(
+                            height: 36, // Altura pra encaixar bonitinho
+                            child: LocalSearchDropdown(
+                              estruturaId: _estruturaAtual.id,
+                              value: _localFiltro,
+                              onChanged: (localSelecionado) {
+                                setState(() {
+                                  _localFiltro = localSelecionado;
+                                });
+                              },
+                            ),
+                          ),
+                        ),
+
+                        // Botão "X" para limpar o filtro se houver um local selecionado
+                        if (_localFiltro != null) ...[
+                          const SizedBox(width: 4),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.clear,
+                              color: AppColors.error,
+                              size: 20,
+                            ),
+                            onPressed: () => setState(() => _localFiltro = null),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                          ),
+                        ],
+
+                        const Spacer(flex: 1), // Empurra o "Todos" pra direita
+
+                        Expanded(
+                          flex: 3,
+                          child: GestureDetector(
+                            onTap:
+                                () {}, // Futuro filtro de status ("Todos", "Ativos", etc)
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Todos',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: AppColors.textDark,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                SizedBox(width: 4),
+                                Icon(
+                                  Icons.keyboard_arrow_down,
+                                  color: AppColors.textDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildElementosList(context, ref),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

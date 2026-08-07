@@ -6,8 +6,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool showBackButton;
   final List<Widget>? extraActions;
   final Widget? titleWidget;
-
   final bool showMenuButton;
+  
+  // 🔥 Flag adicionada para controlar o sininho
+  final bool showNotificationButton; 
+  
+  final VoidCallback? onBackPressed;
 
   const CustomAppBar({
     super.key,
@@ -16,6 +20,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.extraActions,
     this.titleWidget,
     this.showMenuButton = true,
+    this.showNotificationButton = true, // 🔥 Por padrão ele aparece
+    this.onBackPressed, 
   });
 
   @override
@@ -35,7 +41,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       leading: showBackButton
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-              onPressed: () => Navigator.of(context).pop(), 
+              onPressed: onBackPressed ?? () => Navigator.of(context).pop(), 
             )
           : null,
           
@@ -49,18 +55,18 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       
       actions: [
-        // 1. Ações Extras (se você quiser colocar algo antes do sino)
+        // 1º: Ícone de Notificações
+        if (showNotificationButton)
+          IconButton(
+            icon: const Icon(Icons.notifications_none, color: Colors.white),
+            onPressed: () {
+            },
+          ),
+
+        // 2º: Ações Extras (injetadas por cada tela)
         if (extraActions != null) ...extraActions!,
 
-        // 2. Ícone de Notificações (Sininho)
-        IconButton(
-          icon: const Icon(Icons.notifications_none, color: Colors.white),
-          onPressed: () {
-            // Lógica de notificações aqui
-          },
-        ),
-
-        // 3. Ícone de Menu (Hambúrguer) com o Builder Salvador
+        // 3º: Ícone de Menu Padrão (abre o endDrawer)
         if (showMenuButton)
           Builder(
             builder: (context) {
@@ -73,7 +79,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
             },
           ),
         
-        const SizedBox(width: 8), // Pequeno respiro na borda direita
+        const SizedBox(width: 8), 
       ],
     );
   }

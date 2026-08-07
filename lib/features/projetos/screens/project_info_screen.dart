@@ -12,9 +12,11 @@ import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_button.dart'; 
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../../../core/widgets/status_badge.dart'; 
+
+import '../../../core/widgets/custom_appbar.dart';
+
 import '../models/projeto_model.dart'; 
 import '../providers/projetos_provider.dart';
-// 🔥 Novos imports para a lógica de transferência de gestão
 import '../providers/empresas_projeto_provider.dart';
 import '../widgets/trocar_gestora_modal.dart'; 
 
@@ -107,6 +109,37 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     return 'Não Vinculado';
   }
 
+  Future<void> _verificarSaida() async {
+    if (!_hasChanges) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    final sair = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Alterações não salvas', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
+        content: const Text('Você fez alterações que ainda não foram salvas. Se sair agora, perderá todas as mudanças. Deseja realmente sair?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Ficar na Tela', style: TextStyle(color: AppColors.primary)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Sair sem salvar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+
+    if (sair == true && mounted) {
+      Navigator.of(context).pop();
+    }
+  }
+
   Future<void> _pickImage() async {
     try {
       FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
@@ -194,7 +227,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         projetoId: projeto.id,
         empresaGestoraAtualId: projeto.empresaGestoraId ?? '',
         onSelecionada: (novaEmpresaId, nomeEmpresa) {
-          Navigator.pop(context); // Fecha o modal de seleção
+          Navigator.pop(context); 
           
           showDialog(
             context: context,
@@ -212,21 +245,15 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                   onPressed: () async {
                     Navigator.pop(ctxConfirma); 
                     
-                    // Exibe um loading ou bloqueia a tela se quiser, pois agora vamos aguardar a rede!
                     try {
-                      // 1. Executa a query de atualização no Supabase
                       await ref.read(empresasProjetoControllerProvider).alterarEmpresaGestora(
                         projetoId: projeto.id,
                         novaEmpresaGestoraId: novaEmpresaId,
                       );
                       
                       if (mounted) {
-                        // 🔥 A BALA DE PRATA: 
-                        // Forçamos o Riverpod a buscar os dados novos e ESPERAMOS o retorno do banco
                         await ref.refresh(projectDetailProvider(projeto.id).future);
 
-                        // AGORA SIM! Com o cache 100% atualizado, mandamos a tela ler os dados.
-                        // O nome da nova empresa vai aparecer e os campos vão ser bloqueados na hora.
                         setState(() {
                           _isInitialized = false; 
                         });
@@ -261,173 +288,181 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
-    return Scaffold(
-      backgroundColor: AppColors.white,
-      appBar: AppBar(
-        title: const Column(
-          children: [
-            Text(
-              'Projeto',
-              style: TextStyle(color: AppColors.white, fontWeight: FontWeight.bold, fontSize: 20),
-            ),
-            Text(
-              'Informações',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
-            ),
-          ],
-        ),
-        centerTitle: true,
-        backgroundColor: AppColors.primary,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      
-      bottomNavigationBar: _hasChanges
-          ? SafeArea(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 48,
-                        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-                      )
-                    : CustomButton(
-                        text: 'Salvar Alterações',
-                        onPressed: _salvarAlteracoes,
-                      ),
+    return PopScope(
+      canPop: !_hasChanges,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        await _verificarSaida();
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.white,
+        
+        // 🔥 endDrawer foi removido completamente!
+
+        appBar: CustomAppBar(
+          title: 'Projeto',
+          showBackButton: true,
+          onBackPressed: _verificarSaida,
+          showMenuButton: false, // 🔥 Menu desativado
+          showNotificationButton: false, // 🔥 Sininho desativado
+          titleWidget: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Projeto',
+                style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
               ),
-            )
-          : null, 
-
-      body: projetoAsync.when(
-        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (err, stack) => Center(child: Text('Erro ao carregar dados: $err')),
-        data: (projeto) {
-          _preencherControladores(projeto);
-
-          final nomeGestora = projeto.empresaNome;
-          final nomeCliente = projeto.clienteNome ?? 'Cliente não definido'; 
-          final statusVinculoCliente = _formatarStatusCliente(projeto.statusVinculoCliente); 
-
-          bool canEdit = usuarioEmpresaIdAsync.maybeWhen(
-            data: (empresaIdLogada) => projeto.empresaGestoraId == empresaIdLogada,
-            orElse: () => false,
-          );
-
-          return SingleChildScrollView(
-            padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
-            physics: const BouncingScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _buildCoverImage(projeto.imageUrl, canEdit),
-                
-                const SizedBox(height: 24),
-
-                CustomTextField(
-                  label: 'Nome',
-                  hint: 'Nome do Projeto',
-                  controller: _nomeController,
-                  enabled: canEdit,
+              Text(
+                'Informações',
+                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ),
+        
+        bottomNavigationBar: _hasChanges
+            ? SafeArea(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                  child: _isSaving
+                      ? const SizedBox(
+                          height: 48,
+                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                        )
+                      : CustomButton(
+                          text: 'Salvar Alterações',
+                          onPressed: _salvarAlteracoes,
+                        ),
                 ),
-                const SizedBox(height: 16),
-                
-                Row(
-                  children: [
-                    Expanded(
-                      child: IgnorePointer(
-                        ignoring: !canEdit,
-                        child: Opacity(
-                          opacity: canEdit ? 1.0 : 0.6,
-                          child: CustomDropdown<String>(
-                            label: 'Status',
-                            value: _statusSelecionado,
-                            items: ['Em Andamento', 'Concluído', 'Cancelado'].map((String valor) {
-                              return DropdownMenuItem<String>(
-                                value: valor,
-                                child: Text(
-                                  valor, 
-                                  style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
-                                  overflow: TextOverflow.ellipsis, 
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (novoValor) {
-                              if (novoValor != null) setState(() => _statusSelecionado = novoValor);
-                            }, 
+              )
+            : null, 
+
+        body: projetoAsync.when(
+          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+          error: (err, stack) => Center(child: Text('Erro ao carregar dados: $err')),
+          data: (projeto) {
+            _preencherControladores(projeto);
+
+            final nomeGestora = projeto.empresaNome;
+            final nomeCliente = projeto.clienteNome ?? 'Cliente não definido'; 
+            final statusVinculoCliente = _formatarStatusCliente(projeto.statusVinculoCliente); 
+
+            bool canEdit = usuarioEmpresaIdAsync.maybeWhen(
+              data: (empresaIdLogada) => projeto.empresaGestoraId == empresaIdLogada,
+              orElse: () => false,
+            );
+
+            return SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
+              physics: const BouncingScrollPhysics(),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildCoverImage(projeto.imageUrl, canEdit),
+                  
+                  const SizedBox(height: 24),
+
+                  CustomTextField(
+                    label: 'Nome',
+                    hint: 'Nome do Projeto',
+                    controller: _nomeController,
+                    enabled: canEdit,
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  Row(
+                    children: [
+                      Expanded(
+                        child: IgnorePointer(
+                          ignoring: !canEdit,
+                          child: Opacity(
+                            opacity: canEdit ? 1.0 : 0.6,
+                            child: CustomDropdown<String>(
+                              label: 'Status',
+                              value: _statusSelecionado,
+                              items: ['Em Andamento', 'Concluído', 'Cancelado'].map((String valor) {
+                                return DropdownMenuItem<String>(
+                                  value: valor,
+                                  child: Text(
+                                    valor, 
+                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
+                                    overflow: TextOverflow.ellipsis, 
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (novoValor) {
+                                if (novoValor != null) setState(() => _statusSelecionado = novoValor);
+                              }, 
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: IgnorePointer(
-                        ignoring: !canEdit,
-                        child: Opacity(
-                          opacity: canEdit ? 1.0 : 0.6,
-                          child: CustomDropdown<String>(
-                            label: 'Prioridade',
-                            value: _prioridadeSelecionada,
-                            items: ['Baixa', 'Média', 'Alta'].map((String valor) {
-                              return DropdownMenuItem<String>(
-                                value: valor,
-                                child: Text(
-                                  valor, 
-                                  style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
-                                  overflow: TextOverflow.ellipsis, 
-                                ),
-                              );
-                            }).toList(),
-                            onChanged: (novoValor) {
-                              if (novoValor != null) setState(() => _prioridadeSelecionada = novoValor);
-                            }, 
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: IgnorePointer(
+                          ignoring: !canEdit,
+                          child: Opacity(
+                            opacity: canEdit ? 1.0 : 0.6,
+                            child: CustomDropdown<String>(
+                              label: 'Prioridade',
+                              value: _prioridadeSelecionada,
+                              items: ['Baixa', 'Média', 'Alta'].map((String valor) {
+                                return DropdownMenuItem<String>(
+                                  value: valor,
+                                  child: Text(
+                                    valor, 
+                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
+                                    overflow: TextOverflow.ellipsis, 
+                                  ),
+                                );
+                              }).toList(),
+                              onChanged: (novoValor) {
+                                if (novoValor != null) setState(() => _prioridadeSelecionada = novoValor);
+                              }, 
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                
-                CustomTextField(
-                  label: 'Descrição',
-                  hint: 'Escreva detalhes sobre este projeto...',
-                  controller: _descController,
-                  maxLines: 4,
-                  enabled: canEdit,
-                ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  
+                  CustomTextField(
+                    label: 'Descrição',
+                    hint: 'Escreva detalhes sobre este projeto...',
+                    controller: _descController,
+                    maxLines: 4,
+                    enabled: canEdit,
+                  ),
 
-                const SizedBox(height: 32),
-                const Divider(color: AppColors.inputBorder),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 32),
+                  const Divider(color: AppColors.inputBorder),
+                  const SizedBox(height: 24),
 
-                _buildSectionHeader(
-                  title: 'Cliente proprietário',
-                  subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este point focal do projeto.',
-                ),
-                const SizedBox(height: 16),
-                _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit),
+                  _buildSectionHeader(
+                    title: 'Cliente proprietário',
+                    subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este point focal do projeto.',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit),
 
-                const SizedBox(height: 24),
-                const Divider(color: AppColors.inputBorder),
-                const SizedBox(height: 24),
+                  const SizedBox(height: 24),
+                  const Divider(color: AppColors.inputBorder),
+                  const SizedBox(height: 24),
 
-                _buildSectionHeader(
-                  title: 'Gestora do projeto',
-                  subtitle: 'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
-                ),
-                const SizedBox(height: 16),
-                // 🔥 Injetada a função de callback para abrir o fluxo ao clicar no lápis
-                _buildGestoraCard(nomeGestora, canEdit, () => _abrirModalTrocaGestora(projeto)),
-                
-                const SizedBox(height: 40), 
-              ],
-            ),
-          );
-        },
+                  _buildSectionHeader(
+                    title: 'Gestora do projeto',
+                    subtitle: 'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildGestoraCard(nomeGestora, canEdit, () => _abrirModalTrocaGestora(projeto)),
+                  
+                  const SizedBox(height: 40), 
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -553,7 +588,6 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     );
   }
 
-  // 🔥 Modificada a assinatura para receber a ação do clique do lápis
   Widget _buildGestoraCard(String nome, bool canEdit, VoidCallback onTapEdit) {
     return Row(
       children: [
@@ -571,7 +605,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         ),
         if (canEdit)
           GestureDetector(
-            onTap: onTapEdit, // 🔥 Agora aciona dinamicamente a troca de gestora
+            onTap: onTapEdit,
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: const BoxDecoration(

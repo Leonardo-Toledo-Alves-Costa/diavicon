@@ -6,9 +6,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart'; 
 import '../../../core/widgets/diavicon_alerts.dart';
+
+// 🔥 Importando os widgets padrão do menu
+import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../../core/widgets/diavicon_menu_item.dart';
+import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
+
 import '../providers/empresas_projeto_provider.dart';
 import '../widgets/modal_incluir_empresa.dart';
 
+// Voltou a ser ConsumerWidget, pois o Scaffold gerencia o Drawer nativamente
 class ProjectCompaniesScreen extends ConsumerWidget {
   final String projetoId;
 
@@ -24,9 +31,59 @@ class ProjectCompaniesScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
+      
+      // 🔥 O Menu Padronizado entra aqui no endDrawer
+      endDrawer: MenuDrawerAppBar(
+        title: 'Menu do\nProjeto',
+        items: [
+          DiaviconMenuItem(
+            icon: Icons.info_outline,
+            label: 'Informações',
+            onTap: () {
+              Navigator.pop(context); 
+              Navigator.pushReplacement( 
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProjectInfoScreen(projetoId: projetoId),
+                ),
+              );
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.assignment_outlined,
+            label: 'RDO',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.business_outlined,
+            label: 'Empresas',
+            onTap: () {
+              // Já estamos na tela de Empresas, então só fecha o menu
+              Navigator.pop(context);
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.description_outlined,
+            label: 'Relatórios',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.payments_outlined,
+            label: 'Gastos',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {},
+          ),
+        ],
+      ),
+
       appBar: const CustomAppBar( 
         title: 'Empresas',
         showBackButton: true,
+        // O showMenuButton já é true por padrão na CustomAppBar, então ele vai abrir o endDrawer automaticamente!
         titleWidget: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -111,7 +168,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
               });
 
               return ListView(
-                padding: EdgeInsets.fromLTRB(24, 24, 24, 16 + bottomPadding), // Padding ajustado
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 16 + bottomPadding), 
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

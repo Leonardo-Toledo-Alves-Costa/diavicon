@@ -43,9 +43,6 @@ class RightMenuBarState extends State<RightMenuBar> {
 
     switch (destination) {
       case _RightMenuDestination.informacoes:
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const ElementoInfoScreen()),
-        );
         return;
       case _RightMenuDestination.relatorios:
         Navigator.of(context).push(

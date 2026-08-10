@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:diavicon/core/services/location_service.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,20 +10,19 @@ import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
-import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
 
 import '../models/estrutura_model.dart';
 import '../widgets/proprietario_vinculo_section.dart';
-import '../widgets/header_imagem_editavel.dart';
 import '../widgets/mapa_preview_widget.dart';
 import '../widgets/estrutura_home_header.dart';
 
-// 🔥 IMPORT DOS PROVIDERS PARA VALIDAR SE A EMPRESA É A GESTORA 
+// 🔥 IMPORTS DE PROVIDERS E REPOSITÓRIOS
 import '../../projetos/providers/projetos_provider.dart'; 
 import '../../auth/providers/auth_provider.dart'; 
-// 🔥 IMPORT DO REPOSITÓRIO PARA SALVAR E PROVIDER DE ESTRUTURAS
 import '../providers/estrutura_provider.dart'; 
+import '../providers/estruturas_dropdown_provider.dart'; // 🔥 Import dos Dropdowns
+
 
 class EstruturaInformacaoScreen extends ConsumerStatefulWidget {
   final EstruturaModel estrutura;
@@ -56,20 +56,22 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
   final _ufController = TextEditingController();
   final _caaController = TextEditingController();
   
-  final _conjuntoController = TextEditingController();
-  final _utilizacaoController = TextEditingController();
-  final _tipoController = TextEditingController();
-  final _tipologiaController = TextEditingController();
+  // Estados para os Dropdowns (Guardam o NOME selecionado)
+  String? _conjuntoSelecionado;
+  String? _utilizacaoSelecionada;
+  String? _tipoSelecionado;
+  String? _tipologiaSelecionada;
 
   File? _novaImagemCapa;
   bool _isSaving = false;
   bool _isInitialized = false;
 
-  // Variáveis para otimização de renderização
   bool _isDirty = false; 
   EstruturaModel? _estruturaSalva;
 
-  // Variáveis para guardar o estado inicial e comparar alterações
+  bool _buscandoCep = false;
+  bool _buscandoCoords = false;
+
   late String _initialNome;
   late String _initialDesc;
   late String _initialIdade;
@@ -82,6 +84,11 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
   late String _initialPais;
   late String _initialUf;
   late String _initialCaa;
+  
+  String? _initialConjunto;
+  String? _initialUtilizacao;
+  String? _initialTipo;
+  String? _initialTipologia;
 
   String? _clean(String? val) => (val != null && val.trim().isNotEmpty) ? val : null;
 
@@ -106,6 +113,11 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     _initialUf = e.uf ?? '';
     _initialCaa = e.caa ?? '';
 
+    _initialConjunto = e.conjuntoNome;
+    _initialUtilizacao = e.utilizacaoNome;
+    _initialTipo = e.tipoNome;
+    _initialTipologia = e.tipologiaNome;
+
     _nomeController.text = _initialNome;
     _descricaoController.text = _initialDesc;
     _idadeController.text = _initialIdade;
@@ -119,11 +131,10 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     _ufController.text = _initialUf;
     _caaController.text = _initialCaa;
     
-    // Campos que eram fixos no form
-    _conjuntoController.text = e.conjuntoNome ?? 'Não Informado';
-    _utilizacaoController.text = e.utilizacaoNome ?? 'Não Informado';
-    _tipoController.text = e.tipoNome ?? 'Não Informado';
-    _tipologiaController.text = e.tipologiaNome ?? 'Não Informado';
+    _conjuntoSelecionado = _initialConjunto;
+    _utilizacaoSelecionada = _initialUtilizacao;
+    _tipoSelecionado = _initialTipo;
+    _tipologiaSelecionada = _initialTipologia;
 
     _isInitialized = true;
   }
@@ -162,16 +173,16 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     _paisController.dispose();
     _ufController.dispose();
     _caaController.dispose();
-    _conjuntoController.dispose();
-    _utilizacaoController.dispose();
-    _tipoController.dispose();
-    _tipologiaController.dispose();
     super.dispose();
   }
 
   bool get _hasChanges {
     if (!_isInitialized) return false;
     if (_novaImagemCapa != null) return true;
+    if (_conjuntoSelecionado != _initialConjunto) return true;
+    if (_utilizacaoSelecionada != _initialUtilizacao) return true;
+    if (_tipoSelecionado != _initialTipo) return true;
+    if (_tipologiaSelecionada != _initialTipologia) return true;
     if (_nomeController.text != _initialNome) return true;
     if (_descricaoController.text != _initialDesc) return true;
     if (_idadeController.text != _initialIdade) return true;
@@ -185,6 +196,53 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     if (_ufController.text != _initialUf) return true;
     if (_caaController.text != _initialCaa) return true;
     return false;
+  }
+
+  Future<void> _buscarEnderecopeloCep() async {
+    if (_cepController.text.trim().length < 8) return;
+    
+    setState(() => _buscandoCep = true);
+    try {
+      final enderecoEncontrado = await LocationService.buscarEnderecoPorCep(_cepController.text);
+      if (enderecoEncontrado != null) {
+        setState(() {
+          _enderecoController.text = enderecoEncontrado['rua'] ?? '';
+          _cidadeController.text = enderecoEncontrado['cidade'] ?? '';
+          _ufController.text = enderecoEncontrado['uf'] ?? '';
+          _paisController.text = enderecoEncontrado['pais'] ?? 'Brasil';
+          _checarSeSujou();
+        });
+      } else {
+        if (mounted) DiaviconAlerts.show(context, 'CEP não encontrado', 'Verifique o número e tente novamente.', isAviso: true);
+      }
+    } finally {
+      if (mounted) setState(() => _buscandoCep = false);
+    }
+  }
+
+  Future<void> _buscarCoordenadasPeloEndereco() async {
+    if (_enderecoController.text.isEmpty || _cidadeController.text.isEmpty) {
+      DiaviconAlerts.show(context, 'Faltam Dados', 'Preencha ao menos a rua e a cidade para buscar no mapa.', isAviso: true);
+      return;
+    }
+    
+    setState(() => _buscandoCoords = true);
+    try {
+      final enderecoCompleto = '${_enderecoController.text}, ${_numeroController.text} - ${_cidadeController.text}, ${_ufController.text}';
+      final coords = await LocationService.buscarCoordenadasPorEndereco(enderecoCompleto);
+      
+      if (coords != null) {
+        setState(() {
+          _latController.text = coords['lat'].toString();
+          _longController.text = coords['lng'].toString();
+          _checarSeSujou();
+        });
+      } else {
+        if (mounted) DiaviconAlerts.show(context, 'Local não encontrado', 'Não conseguimos achar essas coordenadas.', isAviso: true);
+      }
+    } finally {
+      if (mounted) setState(() => _buscandoCoords = false);
+    }
   }
 
   Future<void> _verificarSaida() async {
@@ -259,6 +317,16 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     }
   }
 
+  // 🔥 Helper para encontrar o ID baseado no Nome selecionado no Dropdown
+  String? _getIdPorNome(List<Map<String, dynamic>>? lista, String? nomeSelecionado) {
+    if (lista == null || nomeSelecionado == null) return null;
+    try {
+      return lista.firstWhere((item) => item['nome'] == nomeSelecionado)['id']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
   Future<void> _salvarAlteracoes() async {
     setState(() => _isSaving = true);
     
@@ -269,6 +337,11 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
       if (_novaImagemCapa != null) {
         novaUrlFoto = await repo.uploadImagemEstrutura(_novaImagemCapa!);
       }
+
+      final conjuntoId = _getIdPorNome(ref.read(conjuntosEstruturaisProvider).value, _conjuntoSelecionado);
+      final utilizacaoId = _getIdPorNome(ref.read(utilizacoesEstruturaProvider).value, _utilizacaoSelecionada);
+      final tipoId = _getIdPorNome(ref.read(tiposEstruturaProvider).value, _tipoSelecionado);
+      final tipologiaId = _getIdPorNome(ref.read(tipologiasEstruturaProvider).value, _tipologiaSelecionada);
 
       final estruturaAtualizada = widget.estrutura.copyWith(
         nome: _clean(_nomeController.text),
@@ -284,10 +357,24 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         uf: _clean(_ufController.text),
         caa: _clean(_caaController.text),
         imageUrl: novaUrlFoto,
+        
+        conjuntoEstruturalId: conjuntoId ?? widget.estrutura.conjuntoEstruturalId,
+        utilizacaoId: utilizacaoId ?? widget.estrutura.utilizacaoId,
+        tipoId: tipoId ?? widget.estrutura.tipoId,
+        tipologiaId: tipologiaId ?? widget.estrutura.tipologiaId,
+
+        // 🔥 CORREÇÃO 1: Atualizando também os Nomes para a tela de Home da Estrutura reagir na hora!
+        conjuntoNome: _conjuntoSelecionado ?? widget.estrutura.conjuntoNome,
+        utilizacaoNome: _utilizacaoSelecionada ?? widget.estrutura.utilizacaoNome,
+        tipoNome: _tipoSelecionado ?? widget.estrutura.tipoNome,
+        tipologiaNome: _tipologiaSelecionada ?? widget.estrutura.tipologiaNome,
       );
 
       await repo.atualizarEstrutura(estruturaAtualizada);
+      
       ref.invalidate(estruturasDoProjetoProvider(widget.projetoId));
+      // 🔥 CORREÇÃO 2: Avisa o StructuresSection (Lista de estruturas no projeto) para se atualizar!
+      ref.invalidate(projetoEstruturasProvider(widget.projetoId)); 
 
       if (mounted) {
         DiaviconAlerts.show(context, 'Sucesso!', 'Informações da estrutura atualizadas.');
@@ -309,18 +396,44 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     }
   }
 
+  // Helper para criar Itens do Dropdown e garantir que o valor selecionado sempre exista na lista
+  List<DropdownMenuItem<String>> _buildDropdownItems(List<String> options, String? selectedValue) {
+    final List<String> safeOptions = List.from(options);
+    
+    // Se a opção que veio do banco não existir na lista atual (ex: foi deletada), adicionamos ela temporariamente
+    if (selectedValue != null && selectedValue.isNotEmpty && !safeOptions.contains(selectedValue)) {
+      safeOptions.add(selectedValue);
+    }
+
+    return safeOptions.map((String valor) {
+      return DropdownMenuItem<String>(
+        value: valor,
+        child: Text(valor, style: const TextStyle(color: AppColors.textDark, fontSize: 13)),
+      );
+    }).toList();
+  }
+
   @override
   Widget build(BuildContext context) {
     double? latAtual = double.tryParse(_latController.text.trim());
     double? longAtual = double.tryParse(_longController.text.trim());
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-
-    // 🔥 Descobre se o teclado está aberto
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
 
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
     
+    // 🔥 CONSUMINDO OS DADOS REAIS DO BANCO PARA OS DROPDOWNS
+    final conjuntosAsync = ref.watch(conjuntosEstruturaisProvider);
+    final utilizacoesAsync = ref.watch(utilizacoesEstruturaProvider);
+    final tiposAsync = ref.watch(tiposEstruturaProvider);
+    final tipologiasAsync = ref.watch(tipologiasEstruturaProvider);
+
+    final listaConjuntos = conjuntosAsync.value?.map((e) => e['nome'].toString()).toList() ?? [];
+    final listaUtilizacoes = utilizacoesAsync.value?.map((e) => e['nome'].toString()).toList() ?? [];
+    final listaTipos = tiposAsync.value?.map((e) => e['nome'].toString()).toList() ?? [];
+    final listaTipologias = tipologiasAsync.value?.map((e) => e['nome'].toString()).toList() ?? [];
+
     bool canEdit = false;
     projetoAsync.whenData((projeto) {
       usuarioEmpresaIdAsync.whenData((empresaId) {
@@ -338,13 +451,34 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         backgroundColor: Colors.white,
         extendBodyBehindAppBar: true,
         appBar: CustomAppBar(
-          title: 'Estrutura\nInformações',
-          showBackButton: true,
-          showMenuButton: false,
-          showNotificationButton: false,
-          onBackPressed: () => _verificarSaida(),
-
-        ),
+            title: '',
+            showBackButton: true,
+            showMenuButton: false, 
+            showNotificationButton: false, 
+            titleWidget: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Estrutura',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Informações',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
         
         bottomNavigationBar: _isDirty
             ? SafeArea(
@@ -376,7 +510,6 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                       height: 250,
                       width: double.infinity,
                       decoration: BoxDecoration(
-                        // 🔥 ResizeImage salva a memória aqui!
                         image: DecorationImage(
                           image: ResizeImage(FileImage(_novaImagemCapa!), width: 800),
                           fit: BoxFit.cover,
@@ -498,33 +631,56 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                         ),
                         SizedBox(height: _fieldSpacing),
 
-                        CustomTextField(
-                          label: 'Conjunto Estrutural',
-                          hint: '-',
-                          controller: _conjuntoController,
-                          enabled: false,
+                        IgnorePointer(
+                          ignoring: !canEdit,
+                          child: Opacity(
+                            opacity: canEdit ? 1.0 : 0.6,
+                            child: Column(
+                              children: [
+                                CustomDropdown<String>(
+                                  label: 'Conjunto Estrutural',
+                                  value: _conjuntoSelecionado,
+                                  items: _buildDropdownItems(listaConjuntos, _conjuntoSelecionado),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _conjuntoSelecionado = val);
+                                    _checarSeSujou();
+                                  },
+                                ),
+                                SizedBox(height: _fieldSpacing),
+                                CustomDropdown<String>(
+                                  label: 'Utilização da estrutura',
+                                  value: _utilizacaoSelecionada,
+                                  items: _buildDropdownItems(listaUtilizacoes, _utilizacaoSelecionada),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _utilizacaoSelecionada = val);
+                                    _checarSeSujou();
+                                  },
+                                ),
+                                SizedBox(height: _fieldSpacing),
+                                CustomDropdown<String>(
+                                  label: 'Tipo de estrutura',
+                                  value: _tipoSelecionado,
+                                  items: _buildDropdownItems(listaTipos, _tipoSelecionado),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _tipoSelecionado = val);
+                                    _checarSeSujou();
+                                  },
+                                ),
+                                SizedBox(height: _fieldSpacing),
+                                CustomDropdown<String>(
+                                  label: 'Tipologia estrutural',
+                                  value: _tipologiaSelecionada,
+                                  items: _buildDropdownItems(listaTipologias, _tipologiaSelecionada),
+                                  onChanged: (val) {
+                                    if (val != null) setState(() => _tipologiaSelecionada = val);
+                                    _checarSeSujou();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
                         ),
-                        SizedBox(height: _fieldSpacing),
-                        CustomTextField(
-                          label: 'Utilização da estrutura',
-                          hint: '-',
-                          controller: _utilizacaoController,
-                          enabled: false,
-                        ),
-                        SizedBox(height: _fieldSpacing),
-                        CustomTextField(
-                          label: 'Tipo de estrutura',
-                          hint: '-',
-                          controller: _tipoController,
-                          enabled: false,
-                        ),
-                        SizedBox(height: _fieldSpacing),
-                        CustomTextField(
-                          label: 'Tipologia estrutural',
-                          hint: '-',
-                          controller: _tipologiaController,
-                          enabled: false,
-                        ),
+
                         SizedBox(height: _fieldSpacing),
 
                         Row(
@@ -532,32 +688,26 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                           children: [
                             Expanded(
                               child: CustomTextField(
-                                label: 'Latitude',
+                                label: 'CEP',
                                 hint: '-',
-                                controller: _latController,
+                                controller: _cepController,
                                 enabled: canEdit,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Expanded(
-                              child: CustomTextField(
-                                label: 'Longitude',
-                                hint: '-',
-                                controller: _longController,
-                                enabled: canEdit,
-                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            if (canEdit)
+                              Container(
+                                padding: const EdgeInsets.only(bottom: 2),
+                                child: IconButton(
+                                  icon: _buscandoCep 
+                                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) 
+                                      : const Icon(Icons.search, color: AppColors.primary),
+                                  onPressed: _buscandoCep ? null : _buscarEnderecopeloCep,
+                                ),
                               ),
-                            ),
                           ],
                         ),
-                        SizedBox(height: _fieldSpacing),
-                        CustomTextField(
-                          label: 'CEP',
-                          hint: '-',
-                          controller: _cepController,
-                          enabled: canEdit,
-                        ),
+                        
                         SizedBox(height: _fieldSpacing),
                         CustomTextField(
                           label: 'Endereço',
@@ -611,7 +761,48 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                         ),
                         const SizedBox(height: 24),
 
-                        // 🔥 TRUQUE DE MESTRE: Tira o mapa da tela enquanto o teclado anima!
+                        if (canEdit)
+                          OutlinedButton.icon(
+                            icon: _buscandoCoords 
+                                ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)) 
+                                : const Icon(Icons.location_on, color: AppColors.primary),
+                            label: const Text('Buscar Lat/Long pelo Endereço', style: TextStyle(color: AppColors.primary)),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: AppColors.primary),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: _buscandoCoords ? null : _buscarCoordenadasPeloEndereco,
+                          ),
+
+                        SizedBox(height: _fieldSpacing),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Expanded(
+                              child: CustomTextField(
+                                label: 'Latitude',
+                                hint: '-',
+                                controller: _latController,
+                                enabled: canEdit,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: CustomTextField(
+                                label: 'Longitude',
+                                hint: '-',
+                                controller: _longController,
+                                enabled: canEdit,
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 24),
+
                         isKeyboardOpen
                             ? Container(
                                 height: 150, 

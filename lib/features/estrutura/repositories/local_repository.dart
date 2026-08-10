@@ -24,7 +24,7 @@ class LocalRepository {
     String? descricao,
   }) async {
     try {
-      final resposta = await Supabase.instance.client
+      final resposta = await _client
           .from('estruturas_locais')
           .insert({
             'estrutura_id': estruturaId,
@@ -36,11 +36,25 @@ class LocalRepository {
           .select()
           .single();
 
-      // Transforma a resposta do banco de dados no LocalModel atualizado
       return LocalModel.fromMap(resposta); 
       
     } catch (e) {
       throw Exception('Erro ao criar local no banco de dados: $e');
     }
+  }
+
+  // 🔥 MÉTODOS NOVOS PARA OS DROPDOWNS DO LOCAL
+  Future<void> criarTipologiaLocal(String nome, String empresaId) async {
+    await _client.from('tipologias_local').insert({
+      'nome': nome,
+      'empresa_id': empresaId,
+    });
+  }
+
+  Future<void> criarCondicaoLocal(String nome, String empresaId) async {
+    await _client.from('condicoes_local').insert({
+      'nome': nome,
+      'empresa_id': empresaId,
+    });
   }
 }

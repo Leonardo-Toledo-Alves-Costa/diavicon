@@ -9,7 +9,6 @@ import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/compact_search_bar.dart';
 import '../../../core/widgets/custom_appbar.dart'; 
 
-// 🔥 Importando os widgets do novo menu padronizado
 import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 
@@ -51,7 +50,6 @@ class ElementosHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
-  // 🔥 GlobalKey do RightMenuBar foi removida! O Scaffold resolve isso agora.
 
   String? _tituloAtual;
   String? _tipoAtual;
@@ -98,11 +96,15 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
   Future<void> _openInformacoes() async {
     if (widget.estruturaId == null || widget.projetoId == null || widget.elementoId == null) return;
 
-    final elementos = ref.read(elementosPorEstruturaProvider(widget.estruturaId!)).value;
+
     ElementoModel? elementoCompleto;
     try {
-      elementoCompleto = elementos?.firstWhere((e) => e.id == widget.elementoId);
-    } catch (_) {}
+      final repo = ref.read(elementoRepositoryProvider);
+      final lista = await repo.buscarElementosPorEstrutura(widget.estruturaId!);
+      elementoCompleto = lista.firstWhere((e) => e.id == widget.elementoId);
+    } catch (e) {
+      debugPrint('Erro ao buscar elemento: $e');
+    }
 
     final elementoSalvo = await Navigator.push(
       context,
@@ -110,7 +112,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
         builder: (_) => ElementoFormScreen(
           estruturaId: widget.estruturaId!,
           projetoId: widget.projetoId!,
-          elemento: elementoCompleto,
+          elemento: elementoCompleto, 
         )
       )
     );
@@ -144,12 +146,10 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 O RightMenuBar foi removido e o Scaffold virou o pai principal de novo!
     return Scaffold(
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
       
-      // 🔥 O Menu Padronizado entra aqui no endDrawer
       endDrawer: MenuDrawerAppBar(
         title: 'Menu do\nElemento',
         items: [
@@ -157,7 +157,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
             icon: Icons.info_outline,
             label: 'Informações',
             onTap: () {
-              Navigator.pop(context); // Fecha o drawer primeiro
+              Navigator.pop(context); 
               if (widget.onOpenInformacoes != null) {
                 widget.onOpenInformacoes!();
               } else {
@@ -182,19 +182,40 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
             label: 'Dashboard',
             onTap: () {
               Navigator.pop(context);
-              // TODO: Ação de dashboard
             },
           ),
         ],
       ),
 
-      // 🔥 CustomAppBar totalmente limpa e automática!
       appBar: CustomAppBar(
-        title: 'Projeto\nElemento',
-        showBackButton: true,
-        onBackPressed: () => context.pop(), 
-        // O showMenuButton já é true e cuida do endDrawer para nós
-      ),
+            title: '',
+            showBackButton: true,
+            showMenuButton: true, 
+            showNotificationButton: true, 
+            titleWidget: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Projeto',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Elemento',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
 
       body: SafeArea(
         top: false,

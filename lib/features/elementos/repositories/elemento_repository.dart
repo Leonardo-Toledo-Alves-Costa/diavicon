@@ -15,13 +15,20 @@ class ElementoRepository {
       final map = elemento.toMap();
       map['estrutura_id'] = estruturaId;
 
+      // 🔥 PREVENÇÃO: Se os IDs de UUID estiverem vazios, removemos para o banco não dar erro
+      if (map['planta_id'] == null || map['planta_id'] == '') map.remove('planta_id');
+      if (map['local_id'] == null || map['local_id'] == '') map.remove('local_id');
+
       final response = await _client
           .from('elementos_estruturais')
           .insert(map)
-          .select()
-          .single();
+          .select();
 
-      return ElementoModel.fromMap(response);
+      if (response.isEmpty) {
+        throw Exception('Permissão negada ao tentar criar o elemento.');
+      }
+
+      return ElementoModel.fromMap(response.first);
     } catch (e) {
       throw Exception('Falha ao criar elemento: $e');
     }
@@ -47,14 +54,27 @@ class ElementoRepository {
 
   Future<ElementoModel> atualizarElemento(ElementoModel elemento) async {
     try {
+      final map = elemento.toMap();
+      
+      // 🔥 LIMPAMOS OS DADOS SENSÍVEIS ANTES DO UPDATE PARA O RLS NÃO BLOQUEAR!
+      map.remove('id');
+      map.remove('criado_em');
+      map.remove('estrutura_id');
+      
+      if (map['planta_id'] == null || map['planta_id'] == '') map.remove('planta_id');
+      if (map['local_id'] == null || map['local_id'] == '') map.remove('local_id');
+
       final response = await _client
           .from('elementos_estruturais')
-          .update(elemento.toMap())
+          .update(map)
           .eq('id', elemento.id)
-          .select()
-          .single();
+          .select(); // 🔥 Removi o .single() para podermos capturar falhas silenciosas do banco
 
-      return ElementoModel.fromMap(response);
+      if (response.isEmpty) {
+        throw Exception('Permissão negada (RLS) ou elemento não encontrado no banco de dados.');
+      }
+
+      return ElementoModel.fromMap(response.first);
     } catch (e) {
       throw Exception('Falha ao atualizar elemento: $e');
     }

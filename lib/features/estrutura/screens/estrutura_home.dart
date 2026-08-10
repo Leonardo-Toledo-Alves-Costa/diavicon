@@ -16,6 +16,7 @@ import '../../elementos/screens/elementos_screen.dart' show ElementoFormScreen;
 import '../../elementos/screens/planejamento_plantas_screen.dart';
 import '../../elementos/widgets/incluir_elemento_estrutural_sheet.dart';
 import '../models/estrutura_model.dart';
+import '../providers/estrutura_provider.dart'; // 🔥 Import adicionado!
 import '../widgets/elemento_estrutural_card.dart';
 import '../widgets/estrutura_home_header.dart';
 import '../widgets/progresso_projeto_card.dart';
@@ -37,18 +38,9 @@ class EstruturaHomeScreen extends ConsumerStatefulWidget {
 }
 
 class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
-  // ESTADO PARA GUARDAR O LOCAL SELECIONADO NO DROPDOWN
   String? _localFiltro;
-
-  // Variável para guardar os dados atuais e reagir a edições
-  late EstruturaModel _estruturaAtual;
-
-  @override
-  void initState() {
-    super.initState();
-    // Inicia com os dados que vieram da rota anterior
-    _estruturaAtual = widget.estrutura;
-  }
+  
+  // 🔥 Removi o 'late EstruturaModel _estruturaAtual' daqui, não precisamos mais guardar estado local!
 
   void _openElemento(
     BuildContext context, {
@@ -59,10 +51,10 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     required String imageUrl,
   }) {
     context.push(
-      '/estruturas/${_estruturaAtual.id}/elementos/$elementoId',
+      '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
       extra: <String, dynamic>{
         'projetoId': widget.projetoId,
-        'estruturaId': _estruturaAtual.id,
+        'estruturaId': widget.estrutura.id, // Usa o ID fixo do widget
         'elementoId': elementoId,
         'titulo': titulo,
         'tipo': tipo,
@@ -72,16 +64,14 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     );
   }
 
-  /// Abre a folha de inclusão de elementos da estrutura atual
   Future<void> _incluirElemento(BuildContext context, WidgetRef ref) async {
     await showIncluirElementoEstruturalSheet<void>(
       context: context,
-      estruturaId: _estruturaAtual.id,
+      estruturaId: widget.estrutura.id,
     );
-    ref.invalidate(elementosPorEstruturaProvider(_estruturaAtual.id));
+    ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
   }
 
-  /// Menu de ações (editar/excluir) ao manter o card pressionado
   void _abrirAcoesElemento(
     BuildContext context,
     WidgetRef ref,
@@ -104,14 +94,14 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 await Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) => ElementoFormScreen(
-                      estruturaId: _estruturaAtual.id,
+                      estruturaId: widget.estrutura.id,
                       projetoId: widget.projetoId, 
                       elemento: elemento,
                     ),
                   ),
                 );
                 ref.invalidate(
-                  elementosPorEstruturaProvider(_estruturaAtual.id),
+                  elementosPorEstruturaProvider(widget.estrutura.id),
                 );
               },
             ),
@@ -164,7 +154,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     if (confirmar != true) return;
     try {
       await ref.read(elementoRepositoryProvider).desativarElemento(elemento.id);
-      ref.invalidate(elementosPorEstruturaProvider(_estruturaAtual.id));
+      ref.invalidate(elementosPorEstruturaProvider(widget.estrutura.id));
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Elemento excluído com sucesso.')),
@@ -179,10 +169,9 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     }
   }
 
-  /// Lista de elementos reais da estrutura, filtrada se houver um local selecionado
   Widget _buildElementosList(BuildContext context, WidgetRef ref) {
     final elementosAsync = ref.watch(
-      elementosPorEstruturaProvider(_estruturaAtual.id),
+      elementosPorEstruturaProvider(widget.estrutura.id),
     );
 
     return elementosAsync.when(
@@ -200,7 +189,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         ),
       ),
       data: (elementos) {
-        // APLICANDO O FILTRO NA LISTA
         final elementosFiltrados = _localFiltro == null
             ? elementos
             : elementos.where((el) => el.local == _localFiltro).toList();
@@ -250,6 +238,17 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
+    // 🔥 A MÁGICA DA REATIVIDADE DO RIVERPOD ESTÁ AQUI
+    // Assiste a mesma lista que a tela anterior de Projetos assiste. 
+    // Como você invalida na tela de edição, aqui é re-buscado no mesmo milésimo de segundo!
+    final estruturasAsync = ref.watch(estruturasDoProjetoProvider(widget.projetoId));
+    
+    // Procura a estrutura recém-baixada do provedor. Se der B.O e não achar, usa a inicial como fallback.
+    final EstruturaModel estruturaExibida = estruturasAsync.value?.firstWhere(
+      (e) => e.id == widget.estrutura.id, 
+      orElse: () => widget.estrutura,
+    ) ?? widget.estrutura;
+
     return Scaffold(
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
@@ -260,24 +259,18 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
             icon: Icons.info_outline,
             label: 'Informações',
             onTap: () async {
-              Navigator.pop(context); // Fecha o drawer
-              final estruturaAtualizada = await Navigator.push(
+              Navigator.pop(context);
+              // Não precisa mais do `setState` ou de esperar um retorno! 
+              // O Riverpod já cuida da atualização em background.
+              await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => EstruturaInformacaoScreen(
-                    estrutura: _estruturaAtual,
+                    estrutura: estruturaExibida, // Envia sempre os dados mais recentes pra edição
                     projetoId: widget.projetoId,
                   ),
                 ),
               );
-
-              // Atualiza o estado da home se houve alterações
-              if (estruturaAtualizada != null &&
-                  estruturaAtualizada is EstruturaModel) {
-                setState(() {
-                  _estruturaAtual = estruturaAtualizada;
-                });
-              }
             },
           ),
           DiaviconMenuItem(
@@ -289,7 +282,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => PlanejamentoPlantasScreen(
-                    estruturaId: _estruturaAtual.id,
+                    estruturaId: widget.estrutura.id,
                   ),
                 ),
               );
@@ -304,7 +297,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 context,
                 MaterialPageRoute(
                   builder: (_) => EstruturaEnsaiosScreen(
-                    estruturaId: _estruturaAtual.id,
+                    estruturaId: widget.estrutura.id,
                     projetoId: widget.projetoId,
                   ),
                 ),
@@ -360,8 +353,8 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               EstruturaHomeHeader(
-                imageUrl: _estruturaAtual.imageUrl,
-                status: _estruturaAtual.status ?? 'Em Andamento',
+                imageUrl: estruturaExibida.imageUrl,
+                status: estruturaExibida.status ?? 'Em Andamento',
               ),
 
               Padding(
@@ -370,7 +363,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _estruturaAtual.nome ?? 'Sem nome',
+                      estruturaExibida.nome ?? 'Sem nome',
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.w900,
@@ -379,7 +372,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${_estruturaAtual.tipologiaNome ?? 'Sem tipologia'} - ${_estruturaAtual.tipoNome ?? 'Sem tipo'}\n${_estruturaAtual.idadeCalculada} Anos  CAA ${_estruturaAtual.caa ?? '-'}',
+                      '${estruturaExibida.tipologiaNome ?? 'Sem tipologia'} - ${estruturaExibida.tipoNome ?? 'Sem tipo'}\n${estruturaExibida.idadeCalculada} Anos  CAA ${estruturaExibida.caa ?? '-'}',
                       style: const TextStyle(
                         fontSize: 14,
                         color: AppColors.hintText,
@@ -417,7 +410,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                           child: SizedBox(
                             height: 36, 
                             child: LocalSearchDropdown(
-                              estruturaId: _estruturaAtual.id,
+                              estruturaId: widget.estrutura.id,
                               value: _localFiltro,
                               onChanged: (localSelecionado) {
                                 setState(() {
@@ -459,7 +452,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                SizedBox(width: 4),
+                                const SizedBox(width: 4),
                                 Icon(
                                   Icons.keyboard_arrow_down,
                                   color: AppColors.textDark,

@@ -73,6 +73,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
         title: 'Estrutura',
         showBackButton: true,
         showMenuButton: false,
+        showNotificationButton: false,
         titleWidget: Column(
           mainAxisSize: MainAxisSize.min,
           children: [

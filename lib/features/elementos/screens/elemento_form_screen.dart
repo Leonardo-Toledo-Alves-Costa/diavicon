@@ -1,9 +1,13 @@
 import 'dart:io';
+import 'package:diavicon/core/widgets/custom_appbar.dart';
+import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
+import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
@@ -16,10 +20,13 @@ import '../widgets/novo_local_widget.dart';
 import '../widgets/right_menu_bar.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
-// 🔥 1. AQUI ESTÁ O IMPORT DO SEU PROVIDER!
 import '../providers/opcoes_elemento_provider.dart'; 
 import '../../projetos/providers/projetos_provider.dart';
 import '../../auth/providers/auth_provider.dart';
+
+import '../../estrutura/providers/local_provider.dart';
+
+import 'planejamento_plantas_screen.dart';
 
 class ElementoFormScreen extends ConsumerStatefulWidget {
   final String estruturaId;
@@ -40,7 +47,6 @@ class ElementoFormScreen extends ConsumerStatefulWidget {
 }
 
 class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
-  final GlobalKey<RightMenuBarState> _rightMenuKey = GlobalKey<RightMenuBarState>();
   final _nomeController = TextEditingController();
 
   String? _tipoElemento;
@@ -168,17 +174,29 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         }
       }
 
-      final elementoAtualizado = ElementoModel(
-        id: widget.elemento?.id ?? '',
-        estruturaId: widget.estruturaId,
-        nome: _nomeController.text.trim(),
-        tipo: _tipoElemento,
-        tipologiaEstrutural: _tipologiaEstrutural,
-        local: _localElemento,
-        revestimento: _revestimento,
-        fotos: fotosFinais.isNotEmpty ? fotosFinais : null,
-        ativo: true,
-      );
+      ElementoModel elementoAtualizado;
+      if (_isEditing) {
+        elementoAtualizado = widget.elemento!.copyWith(
+          nome: _nomeController.text.trim(),
+          tipo: _tipoElemento,
+          tipologiaEstrutural: _tipologiaEstrutural,
+          local: _localElemento,
+          revestimento: _revestimento,
+          fotos: fotosFinais.isNotEmpty ? fotosFinais : null,
+        );
+      } else {
+        elementoAtualizado = ElementoModel(
+          id: '',
+          estruturaId: widget.estruturaId,
+          nome: _nomeController.text.trim(),
+          tipo: _tipoElemento,
+          tipologiaEstrutural: _tipologiaEstrutural,
+          local: _localElemento,
+          revestimento: _revestimento,
+          fotos: fotosFinais.isNotEmpty ? fotosFinais : null,
+          ativo: true,
+        );
+      }
 
       ElementoModel elementoSalvo;
       if (_isEditing) {
@@ -191,8 +209,9 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       widget.onSalvo?.call();
 
       if (mounted) {
-        DiaviconAlerts.show(context, 'Sucesso!', _isEditing ? 'Elemento atualizado.' : 'Elemento criado.');
+        // 🔥 CORREÇÃO: Fecha a tela PRIMEIRO devolvendo os dados para a Home, depois exibe o alerta
         Navigator.pop(context, elementoSalvo);
+        DiaviconAlerts.show(context, 'Sucesso!', _isEditing ? 'Elemento atualizado.' : 'Elemento criado.');
       }
     } catch (e) {
       if (mounted) {
@@ -203,9 +222,56 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     }
   }
 
-  void _handleAddOption(ElementoInfoDropdownField field, String newOption) {
+  Future<void> _handleAddOption(ElementoInfoDropdownField field) async {
+    String? newOption;
+
+    if (field == ElementoInfoDropdownField.localElemento) {
+      final novoLocalId = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.transparent,
+        builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
+      );
+      
+      if (novoLocalId != null) {
+        try {
+          final response = await Supabase.instance.client
+              .from('estruturas_locais')
+              .select('nome')
+              .eq('id', novoLocalId)
+              .single();
+              
+          setState(() {
+            _isDirty = true;
+            _localElemento = response['nome'] as String;
+          });
+        } catch (e) {
+          debugPrint('Erro ao buscar nome do local: $e');
+        }
+      }
+      return;
+    } else if (field == ElementoInfoDropdownField.tipoElemento) {
+      newOption = await showDialog<String>(
+        context: context,
+        barrierColor: Colors.black.withOpacity(0.42),
+        builder: (_) => const NovoTipoElementoModal(),
+      );
+    } else if (field == ElementoInfoDropdownField.tipologiaEstrutural) {
+      newOption = await showNovaOpcaoModal(
+        context,
+        titulo: 'Nova Tipologia',
+        campoBanco: 'tipologia',
+      );
+    } else if (field == ElementoInfoDropdownField.revestimento) {
+      newOption = await showNovaOpcaoModal(
+        context,
+        titulo: 'Novo Revestimento',
+        campoBanco: 'revestimento',
+      );
+    }
+
+    if (newOption == null || newOption.trim().isEmpty) return;
+
     final normalized = newOption.trim();
-    if (normalized.isEmpty) return;
 
     setState(() {
       _isDirty = true;
@@ -218,16 +284,15 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
           if (!_tipologiaOptions.contains(normalized)) _tipologiaOptions.add(normalized);
           _tipologiaEstrutural = normalized;
           break;
-        case ElementoInfoDropdownField.localElemento:
-          if (!_localOptions.contains(normalized)) _localOptions.add(normalized);
-          _localElemento = normalized;
-          break;
         case ElementoInfoDropdownField.revestimento:
           if (!_revestimentoOptions.contains(normalized)) _revestimentoOptions.add(normalized);
           _revestimento = normalized;
           break;
+        default: break;
       }
     });
+
+    ref.invalidate(opcoesFormularioElementoProvider);
   }
 
   Widget _buildDropdownField({
@@ -237,13 +302,18 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     required ElementoInfoDropdownField field,
     required bool canEdit,
   }) {
+    final safeOptions = List<String>.from(options);
+    if (value != null && value.isNotEmpty && !safeOptions.contains(value)) {
+      safeOptions.add(value);
+    }
+
     return IgnorePointer(
       ignoring: !canEdit,
       child: CustomDropdownWithAdd<String>(
         label: label,
         hint: 'Selecione',
         value: value,
-        items: options.map((item) => DropdownMenuItem<String>(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
+        items: safeOptions.map((item) => DropdownMenuItem<String>(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
         onChanged: (newValue) {
           if (!canEdit) return;
           setState(() {
@@ -257,7 +327,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
           });
         },
         onAddPressed: () async {
-          _handleAddOption(field, 'Nova Opção (Mock)'); 
+          _handleAddOption(field); 
         },
         isAddEnabled: canEdit,
       ),
@@ -270,19 +340,22 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
     
-    // 🔥 2. CHAMA O GARÇOM AQUI
     final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
+    final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId)); 
 
-    // 🔥 3. MESCLA AS OPÇÕES FIXAS COM AS QUE VIERAM DO BANCO
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
+    List<String> locaisFinais = List.from(_localOptions); 
 
     opcoesFormulario.whenData((opcoes) {
-      // Usa um Set para não ficar com nomes duplicados
       tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
       tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
       revestimentosFinais = {...revestimentosFinais, ...opcoes.revestimentos}.toList();
+    });
+
+    locaisAsync.whenData((locais) {
+      locaisFinais = {...locaisFinais, ...locais.map((l) => l.nome)}.toList();
     });
 
     bool canEdit = false;
@@ -305,106 +378,136 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         if (didPop) return;
         await _verificarSaida();
       },
-      child: RightMenuBar(
-        key: _rightMenuKey,
-        onInformacoesPressed: () {},
-        onRelatoriosPressed: () {},
-        child: AnnotatedRegion<SystemUiOverlayStyle>(
-          value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: AppColors.primary),
-          child: Scaffold(
-            backgroundColor: Colors.white,
-            extendBodyBehindAppBar: true,
-            appBar: MenuAppBar(
-              title: 'Elemento',
-              topTitle: 'Projeto',
-              bottomTitle: 'Informações',
-              onMenuPressed: () => _rightMenuKey.currentState?.toggle(),
-            ),
-            body: SafeArea(
-              top: false,
-              bottom: false,
-              child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(28, topContentPadding, 28, 40),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _ElementoBanner(
-                      onEditPressed: canEdit ? _alterarBanner : null,
-                      imageFile: _novaImagemBanner,
-                      networkUrl: (_novaImagemBanner == null && imageUrl != null) ? imageUrl : null,
-                    ),
-                    const SizedBox(height: 22),
-                    
-                    CustomTextField(
-                      label: 'Nome do Elemento',
-                      hint: 'ABC Corp.',
-                      controller: _nomeController,
-                      enabled: canEdit, 
-                    ),
-                    const SizedBox(height: 18),
-                    
-                    // 🔥 4. PASSANDO AS LISTAS MESCLADAS PARA OS DROPDOWNS:
-                    _buildDropdownField(
-                      label: 'Tipo do Elemento',
-                      value: _tipoElemento,
-                      options: tiposFinais, // ATUALIZADO AQUI
-                      field: ElementoInfoDropdownField.tipoElemento,
-                      canEdit: canEdit,
-                    ),
-                    const SizedBox(height: 18),
-                    
-                    _buildDropdownField(
-                      label: 'Tipologia Estrutural',
-                      value: _tipologiaEstrutural,
-                      options: tipologiasFinais, // ATUALIZADO AQUI
-                      field: ElementoInfoDropdownField.tipologiaEstrutural,
-                      canEdit: canEdit,
-                    ),
-                    const SizedBox(height: 18),
-                    
-                    _buildDropdownField(
-                      label: 'Local do Elemento',
-                      value: _localElemento,
-                      options: _localOptions, // O Local continua igual
-                      field: ElementoInfoDropdownField.localElemento,
-                      canEdit: canEdit,
-                    ),
-                    const SizedBox(height: 20),
-                    
-                    Center(child: _PlantaCard(onPressed: canEdit ? () {} : null)),
-                    const SizedBox(height: 14),
-                    
-                    if (canEdit)
-                      Center(
-                        child: BiggerCustomButton(
-                          width: 292,
-                          height: 40,
-                          text: 'Adicionar marcação em Planta',
-                          onPressed: () {},
-                        ),
-                      ),
-                    const SizedBox(height: 18),
-                    
-                    _buildDropdownField(
-                      label: 'Revestimento',
-                      value: _revestimento,
-                      options: revestimentosFinais, // ATUALIZADO AQUI
-                      field: ElementoInfoDropdownField.revestimento,
-                      canEdit: canEdit,
-                    ),
-                    const SizedBox(height: 44),
-                    
-                    if (_isDirty && canEdit)
-                      Center(
-                        child: BiggerCustomButton(
-                          width: 139,
-                          height: 52,
-                          text: _isSubmitting ? 'Salvando...' : (_isEditing ? 'Salvar' : 'Criar'),
-                          onPressed: _isSubmitting ? () {} : _salvar,
-                        ),
-                      ),
-                  ],
+      // 🔥 Removemos o RightMenuBar daqui!
+      child: AnnotatedRegion<SystemUiOverlayStyle>(
+        value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: AppColors.primary),
+        child: Scaffold(
+          backgroundColor: Colors.white,
+          extendBodyBehindAppBar: true,
+          
+          // 🔥 Entra o seu CustomAppBar com a formatação original e ícones desligados!
+          appBar: CustomAppBar(
+            title: "",
+            showBackButton: true,
+            showMenuButton: false, 
+            showNotificationButton: false, 
+            titleWidget: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Elemento',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
                 ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Informações',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          body: SafeArea(
+            top: false,
+            bottom: false,
+            child: SingleChildScrollView(
+              padding: EdgeInsets.fromLTRB(28, topContentPadding, 28, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _ElementoBanner(
+                    onEditPressed: canEdit ? _alterarBanner : null,
+                    imageFile: _novaImagemBanner,
+                    networkUrl: (_novaImagemBanner == null && imageUrl != null) ? imageUrl : null,
+                  ),
+                  const SizedBox(height: 22),
+                  
+                  CustomTextField(
+                    label: 'Nome do Elemento',
+                    hint: 'ABC Corp.',
+                    controller: _nomeController,
+                    enabled: canEdit, 
+                  ),
+                  const SizedBox(height: 18),
+                  
+                  _buildDropdownField(
+                    label: 'Tipo do Elemento',
+                    value: _tipoElemento,
+                    options: tiposFinais, 
+                    field: ElementoInfoDropdownField.tipoElemento,
+                    canEdit: canEdit,
+                  ),
+                  const SizedBox(height: 18),
+                  
+                  _buildDropdownField(
+                    label: 'Tipologia Estrutural',
+                    value: _tipologiaEstrutural,
+                    options: tipologiasFinais, 
+                    field: ElementoInfoDropdownField.tipologiaEstrutural,
+                    canEdit: canEdit,
+                  ),
+                  const SizedBox(height: 18),
+                  
+                  _buildDropdownField(
+                    label: 'Local do Elemento',
+                    value: _localElemento,
+                    options: locaisFinais, 
+                    field: ElementoInfoDropdownField.localElemento,
+                    canEdit: canEdit,
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  Center(child: _PlantaCard(onPressed: canEdit ? () {} : null)),
+                  const SizedBox(height: 14),
+                  
+                  if (canEdit)
+                    Center(
+                      child: BiggerCustomButton(
+                        width: 292,
+                        height: 40,
+                        text: 'Adicionar marcação em Planta',
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => PlanejamentoPlantasScreen(
+                                estruturaId: widget.estruturaId,
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  const SizedBox(height: 18),
+                  
+                  _buildDropdownField(
+                    label: 'Revestimento',
+                    value: _revestimento,
+                    options: revestimentosFinais, 
+                    field: ElementoInfoDropdownField.revestimento,
+                    canEdit: canEdit,
+                  ),
+                  const SizedBox(height: 44),
+                  
+                  if (_isDirty && canEdit)
+                    Center(
+                      child: BiggerCustomButton(
+                        width: 139,
+                        height: 52,
+                        text: _isSubmitting ? 'Salvando...' : (_isEditing ? 'Salvar' : 'Criar'),
+                        onPressed: _isSubmitting ? () {} : _salvar,
+                      ),
+                    ),
+                ],
               ),
             ),
           ),

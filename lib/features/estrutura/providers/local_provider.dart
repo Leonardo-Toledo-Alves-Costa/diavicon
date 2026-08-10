@@ -3,7 +3,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repositories/local_repository.dart';
 import '../models/local_model.dart';
 
-// 🔥 Import necessário para pegar o ID da empresa logada
 import '../../auth/providers/auth_provider.dart'; 
 
 final localRepositoryProvider = Provider<LocalRepository>((ref) {
@@ -14,7 +13,7 @@ final locaisPorEstruturaProvider = FutureProvider.family<List<LocalModel>, Strin
   return ref.read(localRepositoryProvider).buscarLocais(estruturaId);
 });
 
-// 🔥 PROVIDERS PARA OS DROPDOWNS EM TEMPO REAL
+// PROVIDERS PARA OS DROPDOWNS EM TEMPO REAL
 final tipologiasLocalProvider = StreamProvider.autoDispose<List<String>>((ref) {
   final supabase = Supabase.instance.client;
   final user = ref.watch(currentUserProvider);

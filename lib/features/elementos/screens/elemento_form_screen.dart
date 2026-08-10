@@ -12,17 +12,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/custom_text_field.dart';
-import '../../../core/widgets/menu_app_bar.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
 
 import '../widgets/bigger_custom_button.dart';
 import '../widgets/novo_local_widget.dart';
-import '../widgets/right_menu_bar.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
 import '../providers/opcoes_elemento_provider.dart'; 
 import '../../projetos/providers/projetos_provider.dart';
-import '../../auth/providers/auth_provider.dart';
 
 import '../../estrutura/providers/local_provider.dart';
 
@@ -209,7 +206,6 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       widget.onSalvo?.call();
 
       if (mounted) {
-        // 🔥 CORREÇÃO: Fecha a tela PRIMEIRO devolvendo os dados para a Home, depois exibe o alerta
         Navigator.pop(context, elementoSalvo);
         DiaviconAlerts.show(context, 'Sucesso!', _isEditing ? 'Elemento atualizado.' : 'Elemento criado.');
       }
@@ -378,14 +374,12 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         if (didPop) return;
         await _verificarSaida();
       },
-      // 🔥 Removemos o RightMenuBar daqui!
       child: AnnotatedRegion<SystemUiOverlayStyle>(
         value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: AppColors.primary),
         child: Scaffold(
           backgroundColor: Colors.white,
           extendBodyBehindAppBar: true,
           
-          // 🔥 Entra o seu CustomAppBar com a formatação original e ícones desligados!
           appBar: CustomAppBar(
             title: "",
             showBackButton: true,

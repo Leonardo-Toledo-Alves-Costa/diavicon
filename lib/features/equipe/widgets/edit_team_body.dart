@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../providers/equipe_provider.dart'; // 🔥 Agora puxamos tudo do nosso provider unificado
+import '../providers/equipe_provider.dart'; 
 import 'team_edit_item.dart';
 import '../screens/convidar_funcionario_screen.dart';
 
@@ -182,7 +182,6 @@ class EditTeamBody extends ConsumerWidget {
               ativo: false,
             );
         if (context.mounted) {
-          // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
           ref.invalidate(colaboradoresProjetoProvider(projetoId));
           _mostrarAvisoFlutuante(
             context,
@@ -205,7 +204,6 @@ class EditTeamBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 🔥 AGORA O MODAL ESCUTA O NOVO PROVIDER DE PERMISSÃO
     final permissaoAsync = ref.watch(permissaoEdicaoEquipeProvider(projetoId));
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
@@ -271,7 +269,7 @@ class EditTeamBody extends ConsumerWidget {
                                 final bool isAtivo = item['ativo'] ?? false;
                                 final bool isUserGestor = item['is_gestor'] ?? false;
                                 final bool isMe = usuario['id'] == currentUserId;
-                                // 🔥 Trava a edição se o usuário da lista for o Admin da empresa
+                                // Trava a edição se o usuário da lista for o Admin da empresa
                                 final bool isAdmin = item['is_admin_empresa'] == true;
                                 final bool podeEditar = isViewerGestor && !isMe && !isAdmin;
 

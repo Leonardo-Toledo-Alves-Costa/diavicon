@@ -43,7 +43,6 @@ class LocalRepository {
     }
   }
 
-  // 🔥 MÉTODOS NOVOS PARA OS DROPDOWNS DO LOCAL
   Future<void> criarTipologiaLocal(String nome, String empresaId) async {
     await _client.from('tipologias_local').insert({
       'nome': nome,

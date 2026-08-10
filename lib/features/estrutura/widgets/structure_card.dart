@@ -47,7 +47,7 @@ class StructureCard extends StatelessWidget {
       child: Container(
         width: 170,
         margin: const EdgeInsets.only(right: 16),
-        // 1. A MÁGICA ESTÁ AQUI: Obriga o Container a "aparar" as pontas de tudo o que estiver lá dentro
+        // Obriga o Container a "aparar" as pontas de tudo o que estiver lá dentro
         clipBehavior: Clip.antiAlias, 
         decoration: BoxDecoration(
           color: Colors.white,
@@ -59,7 +59,7 @@ class StructureCard extends StatelessWidget {
           children: [
             Stack(
               children: [
-                // 2. APAGÁMOS O ClipRRect. A imagem agora preenche 100% da largura.
+                //  A imagem agora preenche 100% da largura.
                 _buildImage(),
                 
                 Positioned(

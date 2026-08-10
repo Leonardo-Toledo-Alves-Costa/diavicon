@@ -6,16 +6,13 @@ import '../../../core/constants/app_colors.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
 
-// 🔥 Imports novos para permissões e para a nova tela de formulário separada
 import '../../projetos/providers/projetos_provider.dart';
 import 'elemento_form_screen.dart';
 
-/// Tela de listagem dos elementos estruturais de uma estrutura.
-/// Rota: /estruturas/:estruturaId/elementos
 class ElementosScreen extends ConsumerWidget {
   final String estruturaId;
   final String estruturaNome;
-  final String projetoId; // 🔥 Adicionado para validar permissões
+  final String projetoId; 
 
   const ElementosScreen({
     super.key,
@@ -28,7 +25,7 @@ class ElementosScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final elementosAsync = ref.watch(elementosPorEstruturaProvider(estruturaId));
 
-    // 🔥 Lógica de Permissão: Verifica se a empresa logada é a gestora do projeto
+    // Lógica de Permissão: Verifica se a empresa logada é a gestora do projeto
     final projetoAsync = ref.watch(projectDetailProvider(projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
     
@@ -99,7 +96,7 @@ class ElementosScreen extends ConsumerWidget {
       ),
 
       // ── FAB: Novo elemento ─────────────────────────────────────────────────
-      // 🔥 O botão de Novo Elemento só aparece se o usuário tiver permissão
+      //  O botão de Novo Elemento só aparece se o usuário tiver permissão
       floatingActionButton: canEdit 
           ? FloatingActionButton.extended(
               backgroundColor: AppColors.primary,
@@ -157,7 +154,7 @@ class ElementosScreen extends ConsumerWidget {
         final el = elementos[index];
         return _ElementoCard(
           elemento: el,
-          canEdit: canEdit, // 🔥 Passa a permissão para o card
+          canEdit: canEdit, 
           onEditar: () => _abrirForm(context, ref, el),
           onDeletar: () => _confirmarDelete(context, ref, el),
         );
@@ -171,7 +168,7 @@ class ElementosScreen extends ConsumerWidget {
       MaterialPageRoute(
         builder: (_) => ElementoFormScreen(
           estruturaId: estruturaId,
-          projetoId: projetoId, // 🔥 Passa o projetoId para a tela de form
+          projetoId: projetoId, 
           elemento: elemento,
           onSalvo: () => ref.invalidate(elementosPorEstruturaProvider(estruturaId)),
         ),
@@ -225,7 +222,7 @@ class ElementosScreen extends ConsumerWidget {
 // ─── Card do elemento ─────────────────────────────────────────────────────────
 class _ElementoCard extends StatelessWidget {
   final ElementoModel elemento;
-  final bool canEdit; // 🔥 Adicionado controle no card
+  final bool canEdit; 
   final VoidCallback onEditar;
   final VoidCallback onDeletar;
 
@@ -245,7 +242,7 @@ class _ElementoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05), // Ajustado .withValues(alpha) para withOpacity
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -279,7 +276,7 @@ class _ElementoCard extends StatelessWidget {
               ),
           ],
         ),
-        // 🔥 Esconde o botão de opções se não puder editar
+        // Esconde o botão de opções se não puder editar
         trailing: canEdit
             ? PopupMenuButton<String>(
                 icon: const Icon(Icons.more_vert, color: AppColors.greyMedium),

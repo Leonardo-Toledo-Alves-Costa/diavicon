@@ -114,11 +114,10 @@ class AuthController extends StateNotifier<bool> {
       );
 
       final googleUser = await googleSignIn.authenticate();
-      if (googleUser == null) return; // Usuário fechou o pop-up do Google
+      if (googleUser == null) return; 
 
       final emailDoGoogle = googleUser.email;
 
-      // 🔥 A MÁGICA AQUI: Checamos na SUA tabela ANTES de bater no Supabase Auth
       final checagemUsuario = await _supabase
           .from('usuarios')
           .select('id')
@@ -126,8 +125,6 @@ class AuthController extends StateNotifier<bool> {
           .maybeSingle();
 
       if (checagemUsuario == null) {
-        // O usuário não existe na sua tabela! 
-        // Desloga do Google e corta a operação para não criar o "fantasma" no Supabase.
         await googleSignIn.signOut();
         
         if (context.mounted) {
@@ -138,10 +135,9 @@ class AuthController extends StateNotifier<bool> {
             ),
           );
         }
-        return; // 🛑 INTERROMPE AQUI! O signInWithIdToken nunca é chamado.
+        return; 
       }
 
-      // Se passou pela barreira, a conta existe! Agora sim fazemos o login no Supabase.
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 

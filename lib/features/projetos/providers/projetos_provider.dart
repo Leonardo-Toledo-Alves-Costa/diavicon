@@ -37,7 +37,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
   List<ProjetoModel> todosProjetos = [];
 
   // =========================================================
-  // ROTA 1: VISÃO DO CHEFE (Vê todos os projetos da Empresa)
+  // VISÃO DO CHEFE (Vê todos os projetos da Empresa)
   // =========================================================
   if (isAdminGlobal) {
     // Busca todos os projetos onde a MINHA empresa é colaboradora com status 'aceito'
@@ -64,7 +64,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
             usuarios(foto_url)
           )
         ''')
-        // 🔥 A MÁGICA AQUI: Filtra direto no banco quem é ativo e da empresa
+        //  Filtra direto no banco quem é ativo e da empresa
         .eq('projeto_equipe_interna.empresa_id', minhaEmpresaId)
         .eq('projeto_equipe_interna.ativo', true);
 
@@ -86,7 +86,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
     todosProjetos = (response as List).map((json) => ProjetoModel.fromMap(json, minhaEmpresaId: minhaEmpresaId)).toList();
   } 
   // =========================================================
-  // ROTA 2: VISÃO DO FUNCIONÁRIO (Vê apenas os próprios projetos)
+  //  VISÃO DO FUNCIONÁRIO (Vê apenas os próprios projetos)
   // =========================================================
   else {
     // Busca na equipe interna apenas onde ele está ativo
@@ -115,7 +115,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
             usuarios(foto_url)
           )
         ''')
-        // 🔥 A MÁGICA AQUI: Filtra direto no banco quem é ativo e da empresa
+        //  Filtra direto no banco quem é ativo e da empresa
         .eq('projeto_equipe_interna.empresa_id', minhaEmpresaId)
         .eq('projeto_equipe_interna.ativo', true)
         .inFilter('id', meusIdsDeProjeto);
@@ -194,7 +194,7 @@ final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, St
             usuarios(foto_url)
           )
         ''') 
-      // 🔥 A MÁGICA AQUI: Filtra direto no banco quem é ativo e da empresa
+      //  Filtra direto no banco quem é ativo e da empresa
       .eq('projeto_equipe_interna.empresa_id', minhaEmpresaId)
       .eq('projeto_equipe_interna.ativo', true)
       .eq('id', id)

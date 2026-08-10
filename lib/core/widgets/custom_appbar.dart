@@ -1,5 +1,8 @@
+import 'package:diavicon/features/projetos/providers/notificacoes_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import '../constants/app_colors.dart';
+
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -8,7 +11,6 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final Widget? titleWidget;
   final bool showMenuButton;
   
-  // 🔥 Flag adicionada para controlar o sininho
   final bool showNotificationButton; 
   
   final VoidCallback? onBackPressed;
@@ -20,7 +22,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.extraActions,
     this.titleWidget,
     this.showMenuButton = true,
-    this.showNotificationButton = true, // 🔥 Por padrão ele aparece
+    this.showNotificationButton = true,
     this.onBackPressed, 
   });
 
@@ -30,14 +32,12 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       backgroundColor: AppColors.primary,
       elevation: 4,
       centerTitle: true,
-      // Design: Bordas arredondadas de 32px no fundo
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(
           bottom: Radius.circular(32),
         ),
       ),
       
-      // Botão de Voltar (Seta branca)
       leading: showBackButton
           ? IconButton(
               icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
@@ -55,18 +55,43 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       ),
       
       actions: [
-        // 1º: Ícone de Notificações
+
         if (showNotificationButton)
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.white),
-            onPressed: () {
+          Consumer(
+            builder: (context, ref, child) {
+              final asyncCount = ref.watch(contadorNaoLidasProvider);
+              
+              // Trata corretamente os estados do Stream para a interface não quebrar
+              final qtdeNaoLidas = asyncCount.when(
+                data: (valor) => valor,
+                loading: () => 0,
+                error: (err, stack) {
+                  debugPrint('Erro no contador do badge: $err');
+                  return 0;
+                },
+              );
+              
+              return IconButton(
+                icon: Badge(
+                  isLabelVisible: qtdeNaoLidas > 0, 
+                  backgroundColor: Colors.orange,
+                  label: Text(
+                    qtdeNaoLidas > 99 ? '99+' : qtdeNaoLidas.toString(),
+                    style: const TextStyle(color: Colors.white, fontSize: 10),
+                  ),
+                  child: const Icon(Icons.notifications_none, color: Colors.white),
+                ),
+                onPressed: () {
+                  // Navegação
+                },
+              );
             },
           ),
 
-        // 2º: Ações Extras (injetadas por cada tela)
+        // Ações Extras (injetadas por cada tela)
         if (extraActions != null) ...extraActions!,
 
-        // 3º: Ícone de Menu Padrão (abre o endDrawer)
+        // Ícone de Menu Padrão (abre o endDrawer)
         if (showMenuButton)
           Builder(
             builder: (context) {

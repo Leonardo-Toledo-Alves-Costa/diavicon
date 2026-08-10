@@ -22,7 +22,7 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
 
-  // 🔥 RESTAURADO: Opções padrão como ponto de partida
+  // Opções padrão como ponto de partida
   final List<String> _defaultTipologias = ['Área Comum', 'Fachada', 'Cobertura', 'Subsolo'];
   final List<String> _defaultCondicoes = ['Externo coberto', 'Externo descoberto', 'Interno'];
 
@@ -98,11 +98,11 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
     final tipologiasAsync = ref.watch(tipologiasLocalProvider);
     final condicoesAsync = ref.watch(condicoesLocalProvider);
 
-    // 🔥 MÁGICA 1: Mescla os valores padrão com os valores que vieram do banco
+    //  Mescla os valores padrão com os valores que vieram do banco
     List<String> tipologiaOptions = {..._defaultTipologias, ...(tipologiasAsync.value ?? [])}.toList();
     List<String> condicoesOptions = {..._defaultCondicoes, ...(condicoesAsync.value ?? [])}.toList();
 
-    // 🔥 MÁGICA 2: Garante que a opção que você acabou de criar esteja na lista para o Dropdown não quebrar
+    // Garante que a opção que você acabou de criar esteja na lista para o Dropdown não quebrar
     if (_tipologiaSelecionada != null && !tipologiaOptions.contains(_tipologiaSelecionada!)) {
       tipologiaOptions.add(_tipologiaSelecionada!);
     }
@@ -155,7 +155,6 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
                   ),
                   const SizedBox(height: 16),
                   
-                  // 🔥 Como agora sempre tem os padrões, o botão fake não é mais necessário!
                   CustomDropdownWithAdd<String>(
                     label: 'Tipologia do Local',
                     hint: 'Selecione',

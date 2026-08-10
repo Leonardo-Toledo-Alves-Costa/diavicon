@@ -297,14 +297,13 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       child: Scaffold(
         backgroundColor: AppColors.white,
         
-        // 🔥 endDrawer foi removido completamente!
 
         appBar: CustomAppBar(
           title: 'Projeto',
           showBackButton: true,
           onBackPressed: _verificarSaida,
-          showMenuButton: false, // 🔥 Menu desativado
-          showNotificationButton: false, // 🔥 Sininho desativado
+          showMenuButton: false, 
+          showNotificationButton: false, 
           titleWidget: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [

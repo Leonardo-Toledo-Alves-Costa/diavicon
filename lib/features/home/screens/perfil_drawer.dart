@@ -12,16 +12,15 @@ class PerfilDrawer extends ConsumerWidget {
 
   Future<void> _fazerLogout(BuildContext context, WidgetRef ref) async {
     try {
-      // 1. Fecha o Drawer primeiro para liberar a navegação
       Navigator.of(context).pop();
 
-      // 2. Limpa o "crachá" do usuário da memória do app
+      // Limpa o "crachá" do usuário da memória do app
       ref.read(currentUserProvider.notifier).clearUser();
 
-      // 3. Desloga do banco de dados
+      // Desloga do banco de dados
       await Supabase.instance.client.auth.signOut();
 
-      // 4. Manda para a tela de login
+      //  Manda para a tela de login
       if (context.mounted) {
         context.go('/login');
       }
@@ -50,7 +49,7 @@ class PerfilDrawer extends ConsumerWidget {
     final titulo = usuario?.tituloPrincipal ?? '';
     final empresaNome = empresa?.nome ?? '';
     return Drawer(
-      backgroundColor: const Color(0xFFEFEFEF), // Cor de fundo do protótipo
+      backgroundColor: const Color(0xFFEFEFEF), 
       child: SafeArea(
         child: Column(
           children: [
@@ -59,7 +58,6 @@ class PerfilDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
               child: Row(
                 children: [
-                  // Foto redonda com borda laranja
                   Container(
                     width: 70,
                     height: 70,

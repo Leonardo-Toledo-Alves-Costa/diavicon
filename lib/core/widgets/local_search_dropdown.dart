@@ -11,7 +11,6 @@ class LocalSearchDropdown extends ConsumerWidget {
   final String? value;
   final ValueChanged<String?> onChanged;
   
-  // 🔥 NOVO: Adicionado o FocusNode
   final FocusNode? focusNode; 
 
   const LocalSearchDropdown({
@@ -19,7 +18,7 @@ class LocalSearchDropdown extends ConsumerWidget {
     required this.estruturaId,
     this.value,
     required this.onChanged,
-    this.focusNode, // 🔥 NOVO
+    this.focusNode, 
   });
 
   @override
@@ -33,7 +32,7 @@ class LocalSearchDropdown extends ConsumerWidget {
         return LayoutBuilder(
           builder: (context, constraints) {
             return DropdownMenu<String>(
-              focusNode: focusNode, // 🔥 NOVO: Conectando o FocusNode ao campo
+              focusNode: focusNode, 
               width: constraints.maxWidth,
               initialSelection: value,
               enableFilter: true, 

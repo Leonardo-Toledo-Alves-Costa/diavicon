@@ -14,7 +14,6 @@ import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
 
-// 🔥 O IMPORT DO SEU PROVIDER AQUI:
 import 'package:diavicon/features/elementos/providers/opcoes_elemento_provider.dart';
 
 import 'package:flutter/foundation.dart';
@@ -501,10 +500,8 @@ class _NovoElemEstruturalScreenState
   Widget build(BuildContext context) {
     final nomeAtual = _nomeController.text.trim();
 
-    // 🔥 1. CHAMA O GARÇOM AQUI:
     final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
 
-    // 🔥 2. MESCLA AS OPÇÕES FIXAS COM AS QUE VIERAM DO BANCO:
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
@@ -561,7 +558,7 @@ class _NovoElemEstruturalScreenState
                           ),
                           const SizedBox(height: 10),
                           
-                          // 🔥 3. PASSANDO AS OPÇÕES FINAIS PROS DROPDOWNS:
+                          //  PASSANDO AS OPÇÕES FINAIS PROS DROPDOWNS
                           _buildDropdownField(
                             label: 'Tipo do Elemento',
                             value: _tipoElemento,
@@ -646,7 +643,7 @@ class _NovoElemEstruturalScreenState
                           _buildDropdownField(
                             label: 'Revestimento',
                             value: _revestimento,
-                            options: revestimentosFinais, // 🔥 AQUI TAMBÉM
+                            options: revestimentosFinais, 
                             field: EstruturalDropdownField.revestimento,
                           ),
                           const SizedBox(height: 24),

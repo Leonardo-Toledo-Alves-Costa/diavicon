@@ -20,11 +20,9 @@ class ProjetosScreen extends ConsumerWidget {
     final topPadding = MediaQuery.of(context).padding.top;
     final projetosAsync = ref.watch(filteredProjectsProvider);
 
-    // 🔥 1. Envolvemos a tela num GestureDetector para matar o foco ao tocar fora do campo
     return GestureDetector(
       onTap: () => FocusManager.instance.primaryFocus?.unfocus(),
       child: PopScope(
-        // 🔥 2. Garante que se tentar voltar pela navegação, o cursor perde o foco
         canPop: true,
         onPopInvokedWithResult: (didPop, result) {
           FocusManager.instance.primaryFocus?.unfocus();
@@ -78,7 +76,6 @@ class ProjetosScreen extends ConsumerWidget {
                             return ListView.builder(
                               itemCount: lista.length,
                               padding: const EdgeInsets.only(top: 8, bottom: 100),
-                              // 🔥 3. Esconde o teclado automaticamente se o usuário começar a rolar a lista
                               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
                               itemBuilder: (context, index) {
                                 final projeto = lista[index];

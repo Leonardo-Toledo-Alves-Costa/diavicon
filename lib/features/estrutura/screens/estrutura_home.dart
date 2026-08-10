@@ -12,11 +12,10 @@ import '../../../core/widgets/menu_drawer_app_bar.dart';
 
 import '../../elementos/models/elemento_model.dart';
 import '../../elementos/providers/elemento_provider.dart';
-import '../../elementos/screens/elementos_screen.dart' show ElementoFormScreen;
 import '../../elementos/screens/planejamento_plantas_screen.dart';
 import '../../elementos/widgets/incluir_elemento_estrutural_sheet.dart';
 import '../models/estrutura_model.dart';
-import '../providers/estrutura_provider.dart'; // 🔥 Import adicionado!
+import '../providers/estrutura_provider.dart'; 
 import '../widgets/elemento_estrutural_card.dart';
 import '../widgets/estrutura_home_header.dart';
 import '../widgets/progresso_projeto_card.dart';
@@ -40,7 +39,6 @@ class EstruturaHomeScreen extends ConsumerStatefulWidget {
 class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   String? _localFiltro;
   
-  // 🔥 Removi o 'late EstruturaModel _estruturaAtual' daqui, não precisamos mais guardar estado local!
 
   void _openElemento(
     BuildContext context, {
@@ -54,7 +52,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
       '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
       extra: <String, dynamic>{
         'projetoId': widget.projetoId,
-        'estruturaId': widget.estrutura.id, // Usa o ID fixo do widget
+        'estruturaId': widget.estrutura.id, 
         'elementoId': elementoId,
         'titulo': titulo,
         'tipo': tipo,
@@ -238,7 +236,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-    // 🔥 A MÁGICA DA REATIVIDADE DO RIVERPOD ESTÁ AQUI
     // Assiste a mesma lista que a tela anterior de Projetos assiste. 
     // Como você invalida na tela de edição, aqui é re-buscado no mesmo milésimo de segundo!
     final estruturasAsync = ref.watch(estruturasDoProjetoProvider(widget.projetoId));

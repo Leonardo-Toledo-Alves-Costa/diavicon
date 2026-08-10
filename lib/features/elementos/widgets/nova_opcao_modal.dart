@@ -1,9 +1,9 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
-import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; // 🔥 Import do provider
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; 
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 
 Future<String?> showNovaOpcaoModal(
@@ -71,7 +71,7 @@ class _NovaOpcaoModalState extends ConsumerState<NovaOpcaoModal> {
       if (widget.campoBanco != null) {
         final repo = ref.read(elementoRepositoryProvider); 
         
-        // 🔥 Pega a empresa de quem clicou em salvar
+        //Pega a empresa de quem clicou em salvar
         final user = ref.read(currentUserProvider);
         final minhaEmpresaId = user?.empresaId;
 
@@ -86,14 +86,12 @@ class _NovaOpcaoModalState extends ConsumerState<NovaOpcaoModal> {
       
       if (mounted) Navigator.of(context).pop(nome);
     } catch (e) {
-      // 🔥 O catch captura os erros
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Erro ao salvar opção ou ela já existe!'))
         );
       }
     } finally {
-      // 🔥 O finally garante que o loading suma da tela
       if (mounted) setState(() => _isLoading = false);
     }
   }

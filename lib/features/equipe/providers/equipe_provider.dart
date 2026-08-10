@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// 🔥 Importe o provider de projetos para que possamos avisar a Home para se atualizar
 import '../../projetos/providers/projetos_provider.dart'; 
 
 final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, cnpj) async {
@@ -30,24 +29,24 @@ final contagemGeralColaboradoresProvider = FutureProvider.autoDispose.family<Lis
   return List<Map<String, dynamic>>.from(response);
 });
 
-// BLINDADO: Busca a equipe interna SÓ da empresa do usuário logado
+//  Busca a equipe interna SÓ da empresa do usuário logado
 final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
   if (userId == null) return [];
 
-  // 1. Descobre qual é a empresa do usuário logado
+  // Descobre qual é a empresa do usuário logado
   final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).single();
   final minhaEmpresaId = userResp['empresa_id'];
 
-  // 2. Busca TODOS os funcionários cadastrados na SUA empresa
+  // Busca TODOS os funcionários cadastrados na SUA empresa
   final funcionarios = await supabase
       .from('usuarios')
       .select('id, nome, sobrenome, cargo, foto_url, is_admin_empresa')
       .eq('empresa_id', minhaEmpresaId)
       .eq('ativo', true);
 
-  // 3. Busca quem tem registro na equipe interna DESTE projeto (Só da sua empresa)
+  // Busca quem tem registro na equipe interna DESTE projeto (Só da sua empresa)
   final equipeProjeto = await supabase
       .from('projeto_equipe_interna')
       .select('usuario_id, ativo, is_gestor')
@@ -58,14 +57,14 @@ final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<
     for (var e in equipeProjeto) e['usuario_id']: e
   };
 
-  // 4. Cruza as informações e aplica a "Regra do Admin"
+  // Cruza as informações e aplica a "Regra do Admin"
   return funcionarios.map((func) {
     final fId = func['id'];
     final inEquipe = mapaEquipe[fId];
     
     final bool isAdmin = func['is_admin_empresa'] == true;
     
-    // Regra de Ouro: Admin sempre faz parte da equipe da SUA empresa. Senão, puxa do banco (ou falso)
+    //  Admin sempre faz parte da equipe da SUA empresa. Senão, puxa do banco (ou falso)
     final bool isAtivo = isAdmin ? true : (inEquipe?['ativo'] ?? false);
     final bool isGestor = isAdmin ? true : (inEquipe?['is_gestor'] ?? false);
 
@@ -110,7 +109,7 @@ final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dyna
   };
 });
 
-// 🔥 O SEGURANÇA: Verifica se o usuário logado tem permissão para editar a equipe
+//  Verifica se o usuário logado tem permissão para editar a equipe
 final permissaoEdicaoEquipeProvider = FutureProvider.autoDispose.family<bool, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
@@ -177,7 +176,7 @@ class EquipeController {
     required String usuarioId, 
     required bool ativo,
   }) async {
-    // Proteção: Checa se o usuário é Admin antes de tentar desligar ele
+    // Checa se o usuário é Admin antes de tentar desligar ele
     final userData = await _supabase.from('usuarios').select('empresa_id, is_admin_empresa').eq('id', usuarioId).single();
     if (userData['is_admin_empresa'] == true && !ativo) {
       throw Exception('Administradores da empresa não podem ser removidos do projeto.');
@@ -210,7 +209,6 @@ class EquipeController {
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId)); 
     _ref.invalidate(contagemGeralColaboradoresProvider(projetoId)); 
     
-    // 🔥 AVISA AS TELAS DE PROJETOS PARA ATUALIZAREM OS CARDS
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(projectDetailProvider(projetoId));
   }
@@ -231,7 +229,6 @@ class EquipeController {
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
     _ref.invalidate(gestaoProjetoProvider(projetoId)); 
     
-    // 🔥 AVISA AS TELAS DE PROJETOS PARA ATUALIZAREM OS CARDS
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(projectDetailProvider(projetoId));
   }

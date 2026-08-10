@@ -11,7 +11,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 
-/// Tela "Planejamento" da estrutura: lista as plantas/formatos cadastrados.
 class PlanejamentoPlantasScreen extends ConsumerWidget { 
   const PlanejamentoPlantasScreen({
     super.key,
@@ -200,7 +199,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                                     MaterialPageRoute(
                                       builder: (_) => PlanejamentoScreen(
                                         // Passando o ID da estrutura
-                                        estruturaId: estruturaId, // ou 'estrutura.id', dependendo de como está o nome da sua variável nessa tela
+                                        estruturaId: estruturaId, 
                                         plantaId: planta.id,
                                         plantaUrl: planta.arquivoUrl,
                                         plantaTitulo: planta.titulo,

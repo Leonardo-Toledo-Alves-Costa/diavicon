@@ -21,7 +21,6 @@ class ProjetosFilterRow extends ConsumerWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          // 🔥 Fecha o teclado antes de abrir o menu ou mudar o status
           onOpened: () => FocusManager.instance.primaryFocus?.unfocus(),
           onSelected: (val) {
             FocusManager.instance.primaryFocus?.unfocus();
@@ -85,7 +84,6 @@ class ProjetosFilterRow extends ConsumerWidget {
 
         InkWell(
           onTap: () {
-            // 🔥 Fecha o teclado antes de alternar entre Recentes e Antigos
             FocusManager.instance.primaryFocus?.unfocus();
             ref.read(filtroRecentesProvider.notifier).state = !isRecente;
           },

@@ -3,37 +3,45 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'projetos_provider.dart'; 
 import '../../projetos/providers/empresas_projeto_provider.dart'; 
-// 🔥 CORREÇÃO: Import do provider da equipe para invalidar a tela quando aceitar
 import '../../equipe/providers/equipe_provider.dart';
 
-final notificacoesProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+// PROVIDER PARA O BADGE DO SININHO (Em tempo real)
+final contadorNaoLidasProvider = StreamProvider.autoDispose<int>((ref) {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
   
-  if (userId == null) return [];
+  if (userId == null) return Stream.value(0);
 
-  final usuarioData = await supabase
-      .from('usuarios')
-      .select('empresa_id')
-      .eq('id', userId)
-      .maybeSingle();
+  return supabase
+      .from('notificacoes')
+      .stream(primaryKey: ['id'])
+      .map((lista) {
+        // Garante que campos nulos também sejam contados como "não lidos"
+        return lista.where((n) => n['lida'] != true).length;
+      });
+});
 
-  final empresaId = usuarioData?['empresa_id'];
-  if (empresaId == null) return [];
+// PROVIDER DA TELA DE NOTIFICAÇÕES (Em tempo real)
+final notificacoesProvider = StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  
+  if (userId == null) return Stream.value([]);
 
-  final response = await supabase
-      .from('projeto_empresas_colaboradoras')
-      .select('''
-        id,
-        projeto_id,
-        status,
-        projeto:projetos(nome, image_url),
-        remetente:usuarios!projeto_empresas_colaboradoras_criado_por_fkey(nome, sobrenome)
-      ''')
-      .eq('empresa_id', empresaId)
-      .eq('status', 'pendente');
-
-  return List<Map<String, dynamic>>.from(response);
+  return supabase
+      .from('notificacoes')
+      .stream(primaryKey: ['id'])
+      .map((lista) {
+        final listaOrdenada = List<Map<String, dynamic>>.from(lista);
+        
+        listaOrdenada.sort((a, b) {
+          final dataA = DateTime.tryParse(a['criado_em']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+          final dataB = DateTime.tryParse(b['criado_em']?.toString() ?? '') ?? DateTime.fromMillisecondsSinceEpoch(0);
+          return dataB.compareTo(dataA); 
+        });
+        
+        return listaOrdenada;
+      });
 });
 
 final notificacoesControllerProvider = Provider((ref) => NotificacoesController(ref));
@@ -44,23 +52,29 @@ class NotificacoesController {
 
   NotificacoesController(this._ref);
 
+  // MARCAR COMO LIDA
+  Future<void> marcarComoLida(String idNotificacao) async {
+    await _supabase
+        .from('notificacoes')
+        .update({'lida': true})
+        .eq('id', idNotificacao);
+  }
+
   Future<void> aceitarConvite({
     required String conviteId,
     required String projetoId,
+    required String notificacaoId,
   }) async {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Sessão expirada.');
 
-    final atualizacao = await _supabase
+    // Aceita o convite na tabela original
+    await _supabase
         .from('projeto_empresas_colaboradoras')
         .update({'status': 'aceito'})
-        .eq('id', conviteId)
-        .select();
+        .eq('id', conviteId);
 
-    if (atualizacao.isEmpty) {
-      throw Exception('O banco de dados bloqueou a atualização do convite.');
-    }
-
+    // Coloca o usuário na equipe
     final jaNaEquipe = await _supabase
         .from('projeto_equipe_interna')
         .select('usuario_id')
@@ -81,29 +95,24 @@ class NotificacoesController {
         'empresa_id': usuarioData?['empresa_id'],
         'usuario_id': userId,
         'ativo': true,
-        // 🔥 CORREÇÃO: Faltava definir is_gestor = false para parceiros
         'is_gestor': false, 
       });
     }
 
-    _ref.invalidate(notificacoesProvider); 
+    //Marca a notificação como lida
+    await marcarComoLida(notificacaoId);
+
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(empresasVinculadasProjetoProvider(projetoId)); 
-    // 🔥 CORREÇÃO: Invalida a equipe do projeto para atualizar a UI
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
   }
 
-  Future<void> recusarConvite(String conviteId) async {
-    final atualizacao = await _supabase
+  Future<void> recusarConvite(String conviteId, String notificacaoId) async {
+    await _supabase
         .from('projeto_empresas_colaboradoras')
         .update({'status': 'recusado'})
-        .eq('id', conviteId)
-        .select();
-
-    if (atualizacao.isEmpty) {
-      throw Exception('O banco de dados bloqueou a recusa do convite.');
-    }
-
-    _ref.invalidate(notificacoesProvider);
+        .eq('id', conviteId);
+        
+    await marcarComoLida(notificacaoId);
   }
 }

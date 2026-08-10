@@ -1,5 +1,5 @@
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
-import 'package:diavicon/features/auth/providers/auth_provider.dart'; // 🔥 Import do seu auth
+import 'package:diavicon/features/auth/providers/auth_provider.dart'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class OpcoesFormularioElemento {
@@ -14,11 +14,10 @@ class OpcoesFormularioElemento {
   });
 }
 
-// 🔥 Tiramos o .family. Ele se resolve sozinho agora!
 final opcoesFormularioElementoProvider = FutureProvider.autoDispose<OpcoesFormularioElemento>((ref) async {
   final repo = ref.watch(elementoRepositoryProvider);
   
-  // 🔥 Pega a empresa do usuário logado direto do seu provider de auth!
+  //  Pega a empresa do usuário logado direto do seu provider de auth!
   final user = ref.watch(currentUserProvider); 
   final minhaEmpresaId = user?.empresaId;
 

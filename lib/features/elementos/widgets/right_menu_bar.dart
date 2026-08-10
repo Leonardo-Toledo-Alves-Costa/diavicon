@@ -1,5 +1,4 @@
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';

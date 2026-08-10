@@ -1,7 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-// 🔥 Ajuste este caminho de acordo com a estrutura real das suas pastas!
 import '../providers/equipe_provider.dart';
 
 // Provider que expõe o Controller para a UI
@@ -21,7 +20,7 @@ class EquipeController {
     required bool ativo,
   }) async {
     await _supabase
-        .from('projeto_equipe_interna') // 🔥 CORREÇÃO: Atualizando a tabela certa
+        .from('projeto_equipe_interna') 
         .update({'ativo': ativo})
         .eq('projeto_id', projetoId)
         .eq('usuario_id', usuarioId);
@@ -41,7 +40,6 @@ class EquipeController {
         .eq('projeto_id', projetoId)
         .eq('usuario_id', usuarioId);
 
-    // 🔥 Invalidando a árvore toda para refletir o novo nível de permissão
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
     _ref.invalidate(gestaoProjetoProvider(projetoId)); 

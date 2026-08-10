@@ -84,13 +84,13 @@ class EstruturaRepository {
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final filePath = 'estruturas/$fileName';
 
-      // 1. CHAMA O SUPABASE DIRETAMENTE AQUI
+      // CHAMA O SUPABASE DIRETAMENTE AQUI
       final supabase = Supabase.instance.client;
 
-      // 2. Faz o upload da imagem
+      // Faz o upload da imagem
       await supabase.storage.from('projetos').upload(filePath, imageFile);
 
-      // 3. Pega o link público
+      // Pega o link público
       final publicUrl = supabase.storage.from('projetos').getPublicUrl(filePath);
       return publicUrl;
       
@@ -99,23 +99,22 @@ class EstruturaRepository {
     }
   }
 
-  // 🔥 MÉTODO ATUALIZADO
   Future<void> atualizarEstrutura(EstruturaModel estrutura) async {
     try {
       final dados = estrutura.toJson();
       
-      // 1. Removemos chaves sensíveis que o banco não permite/deve alterar
+      // Removemos chaves sensíveis que o banco não permite/deve alterar
       dados.remove('id');
       dados.remove('criado_em');
       
-      // 2. Fazemos o update adicionando o .select() no final
+      // Fazemos o update adicionando o .select() no final
       final response = await _client
           .from('estruturas')
           .update(dados)
           .eq('id', estrutura.id)
-          .select(); // 🔥 Isso força o Supabase a devolver a linha alterada!
+          .select(); 
           
-      // 3. Se a resposta for vazia, o RLS (Segurança) do Supabase bloqueou a edição
+      // Se a resposta for vazia, o RLS (Segurança) do Supabase bloqueou a edição
       if (response.isEmpty) {
         throw Exception('Bloqueado pelo banco. Verifique as políticas (RLS) da tabela estruturas.');
       }

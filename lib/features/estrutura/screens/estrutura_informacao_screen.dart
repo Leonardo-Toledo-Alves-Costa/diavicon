@@ -17,11 +17,9 @@ import '../widgets/proprietario_vinculo_section.dart';
 import '../widgets/mapa_preview_widget.dart';
 import '../widgets/estrutura_home_header.dart';
 
-// 🔥 IMPORTS DE PROVIDERS E REPOSITÓRIOS
 import '../../projetos/providers/projetos_provider.dart'; 
-import '../../auth/providers/auth_provider.dart'; 
 import '../providers/estrutura_provider.dart'; 
-import '../providers/estruturas_dropdown_provider.dart'; // 🔥 Import dos Dropdowns
+import '../providers/estruturas_dropdown_provider.dart'; 
 
 
 class EstruturaInformacaoScreen extends ConsumerStatefulWidget {
@@ -317,7 +315,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     }
   }
 
-  // 🔥 Helper para encontrar o ID baseado no Nome selecionado no Dropdown
+  //  Helper para encontrar o ID baseado no Nome selecionado no Dropdown
   String? _getIdPorNome(List<Map<String, dynamic>>? lista, String? nomeSelecionado) {
     if (lista == null || nomeSelecionado == null) return null;
     try {
@@ -363,7 +361,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         tipoId: tipoId ?? widget.estrutura.tipoId,
         tipologiaId: tipologiaId ?? widget.estrutura.tipologiaId,
 
-        // 🔥 CORREÇÃO 1: Atualizando também os Nomes para a tela de Home da Estrutura reagir na hora!
+        //  Atualizando também os Nomes para a tela de Home da Estrutura reagir na hora!
         conjuntoNome: _conjuntoSelecionado ?? widget.estrutura.conjuntoNome,
         utilizacaoNome: _utilizacaoSelecionada ?? widget.estrutura.utilizacaoNome,
         tipoNome: _tipoSelecionado ?? widget.estrutura.tipoNome,
@@ -373,7 +371,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
       await repo.atualizarEstrutura(estruturaAtualizada);
       
       ref.invalidate(estruturasDoProjetoProvider(widget.projetoId));
-      // 🔥 CORREÇÃO 2: Avisa o StructuresSection (Lista de estruturas no projeto) para se atualizar!
+      //  Avisa o StructuresSection (Lista de estruturas no projeto) para se atualizar!
       ref.invalidate(projetoEstruturasProvider(widget.projetoId)); 
 
       if (mounted) {
@@ -423,7 +421,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
     
-    // 🔥 CONSUMINDO OS DADOS REAIS DO BANCO PARA OS DROPDOWNS
+    // CONSUMINDO OS DADOS REAIS DO BANCO PARA OS DROPDOWNS
     final conjuntosAsync = ref.watch(conjuntosEstruturaisProvider);
     final utilizacoesAsync = ref.watch(utilizacoesEstruturaProvider);
     final tiposAsync = ref.watch(tiposEstruturaProvider);

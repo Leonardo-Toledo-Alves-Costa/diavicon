@@ -25,7 +25,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
     final empresasConvidadasAsync = ref.watch(empresasVinculadasProjetoProvider(projetoId));
     final minhaEmpresaAsync = ref.watch(minhaEmpresaProvider);
     
-    // 🔥 1. CHAMANDO A CONTAGEM GERAL DE COLABORADORES DO PROJETO
+    //CHAMANDO A CONTAGEM GERAL DE COLABORADORES DO PROJETO
     final colaboradoresAsync = ref.watch(contagemGeralColaboradoresProvider(projetoId));
     
     final bottomPadding = MediaQuery.of(context).padding.bottom;
@@ -108,7 +108,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
             error: (err, _) => Center(child: Text('Erro ao carregar convidadas: $err', style: const TextStyle(color: AppColors.error))),
             data: (listaConvidadas) {
               
-              // 🔥 2. CALCULANDO QUANTOS COLABORADORES TEM EM CADA EMPRESA (Contagem Geral)
+              // CALCULANDO QUANTOS COLABORADORES TEM EM CADA EMPRESA (Contagem Geral)
               final mapColaboradores = <String, int>{};
               final colaboradores = colaboradoresAsync.value ?? []; 
               
@@ -119,7 +119,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                 }
               }
 
-              // 🔥 3. DECLARAMOS A LISTA VAZIA AQUI ANTES DE COMEÇAR A PREENCHER
+              // DECLARA A LISTA VAZIA AQUI ANTES DE COMEÇAR A PREENCHER
               List<Map<String, dynamic>> listaFinalExibicao = [];
 
               // Adiciona a Gestora
@@ -140,7 +140,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
               // Adiciona as Convidadas clonando o mapa para poder alterar
               for (var emp in listaConvidadas) {
                 final empModificavel = Map<String, dynamic>.from(emp);
-                // 🔥 PROTEÇÃO: Pega do mapa local. Se o mapa não tiver o ID, usa o que veio do banco!
+                // Pega do mapa local. Se o mapa não tiver o ID, usa o que veio do banco
                 empModificavel['total_colaboradores'] = mapColaboradores[emp['id']] ?? emp['total_colaboradores'] ?? 0;
                 listaFinalExibicao.add(empModificavel);
               }

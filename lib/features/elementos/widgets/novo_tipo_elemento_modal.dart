@@ -1,7 +1,7 @@
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
-import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; // 🔥 Import do provider
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Riverpod
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 

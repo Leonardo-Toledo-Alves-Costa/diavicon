@@ -22,7 +22,6 @@ class TeamSection extends ConsumerWidget {
       colaboradoresAtivosProjetoProvider(projetoId),
     );
     
-    // 🔥 ESCUTANDO O "SEGURANÇA": Esse cara dita se o botão de '+' aparece ou não!
     final canEditAsync = ref.watch(permissaoEdicaoEquipeProvider(projetoId));
     final bool canEdit = canEditAsync.value ?? false;
 
@@ -49,7 +48,7 @@ class TeamSection extends ConsumerWidget {
               ),
               const SizedBox(height: 12),
               
-              // 🔥 PROTEÇÃO AQUI: Só mostra o botão se tiver permissão
+              //  Só mostra o botão se tiver permissão
               if (canEdit)
                 GestureDetector(
                   onTap: () {
@@ -87,7 +86,7 @@ class TeamSection extends ConsumerWidget {
                 );
               }),
 
-              // 🔥 PROTEÇÃO AQUI: O botão redondo de "+" só aparece para Admin/Gestor
+              //  O botão redondo de "+" só aparece para Admin/Gestor
               if (canEdit)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16, left: 0, right: 0),

@@ -12,7 +12,7 @@ class ProjectCard extends StatelessWidget {
   final String priority;
   final String imageUrl;
   final List<String> teamAvatars;
-  final String? empresaFotoUrl; // 🔥 ADICIONADO: URL da logo da empresa
+  final String? empresaFotoUrl; 
 
   const ProjectCard({
     super.key,
@@ -22,7 +22,7 @@ class ProjectCard extends StatelessWidget {
     required this.priority,
     required this.imageUrl,
     required this.teamAvatars,
-    this.empresaFotoUrl, // 🔥 ADICIONADO NO CONSTRUTOR
+    this.empresaFotoUrl, 
   });
 
   @override
@@ -74,7 +74,7 @@ class ProjectCard extends StatelessWidget {
                       BoxShadow(color: Colors.black12, blurRadius: 4),
                     ],
                   ),
-                  // 🔥 AQUI ENTRA A LOGO DA EMPRESA GESTORA
+                  // AQUI ENTRA A LOGO DA EMPRESA GESTORA
                   child: ClipOval(
                     child: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty
                         ? Image.network(

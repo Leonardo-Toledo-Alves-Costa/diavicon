@@ -7,7 +7,7 @@ class StructureCard extends StatelessWidget {
   final EstruturaModel estrutura;
   final String projetoId;
 
-  const StructureCard({super.key, required this.estrutura, required this.projetoId});
+  const StructureCard({super.key, required this.estrutura, required this.projetoId,});
 
   Widget _buildImage() {
     const String defaultAsset = 'assets/images/sem_estrutura.png'; 

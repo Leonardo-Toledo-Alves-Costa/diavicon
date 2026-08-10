@@ -1,16 +1,20 @@
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; // 🔥 Import do provider
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Riverpod
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class NovoTipoElementoModal extends StatefulWidget {
-  const NovoTipoElementoModal({super.key});
+class NovoTipoElementoModal extends ConsumerStatefulWidget {
+  final String? empresaId; 
+
+  const NovoTipoElementoModal({super.key, this.empresaId});
 
   @override
-  State<NovoTipoElementoModal> createState() => _NovoTipoElementoModalState();
+  ConsumerState<NovoTipoElementoModal> createState() => _NovoTipoElementoModalState();
 }
 
-class _NovoTipoElementoModalState extends State<NovoTipoElementoModal> {
+class _NovoTipoElementoModalState extends ConsumerState<NovoTipoElementoModal> {
   final _nomeController = TextEditingController();
   String _formatoSelecionado = 'Retângulo';
   bool _isLoading = false;
@@ -22,17 +26,23 @@ class _NovoTipoElementoModalState extends State<NovoTipoElementoModal> {
     if (nome.isEmpty) return;
 
     setState(() => _isLoading = true);
+    
     try {
-      // Salva o tipo e a marcação escolhida no banco para sempre!
-      await Supabase.instance.client.from('tipos_elemento').insert({
-        'nome': nome,
-        'formato_marcacao': _formatoSelecionado,
-      });
+      final user = ref.read(currentUserProvider);
+      final minhaEmpresaId = user?.empresaId;
+
+      await ref.read(elementoRepositoryProvider).criarTipoElemento(
+        nome, 
+        _formatoSelecionado, 
+        minhaEmpresaId,
+      );
       
-      if (mounted) Navigator.of(context).pop(nome); // Devolve o nome digitado
+      if (mounted) Navigator.of(context).pop(nome); 
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro ou tipo já existe!')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ou tipo já existe!'))
+        );
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -49,22 +59,34 @@ class _NovoTipoElementoModalState extends State<NovoTipoElementoModal> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Novo Tipo de Elemento', style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+            Text(
+              'Novo Tipo de Elemento', 
+              style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold), 
+              textAlign: TextAlign.center
+            ),
             const SizedBox(height: 20),
             
             TextField(
               controller: _nomeController,
-              decoration: const InputDecoration(labelText: 'Nome (ex: Parede)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'Nome (ex: Parede)', 
+                border: OutlineInputBorder()
+              ),
             ),
             const SizedBox(height: 16),
             
-            Text('Formato na Planta:', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey[700])),
+            Text(
+              'Formato na Planta:', 
+              style: GoogleFonts.lato(fontSize: 14, color: Colors.grey[700])
+            ),
             const SizedBox(height: 8),
             
-            // Dropdown para escolher a forma visual
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(4)),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.grey), 
+                borderRadius: BorderRadius.circular(4)
+              ),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   value: _formatoSelecionado,
@@ -80,9 +102,16 @@ class _NovoTipoElementoModalState extends State<NovoTipoElementoModal> {
             
             ElevatedButton(
               onPressed: _isLoading ? null : _salvar,
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary, padding: const EdgeInsets.symmetric(vertical: 14)),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary, 
+                padding: const EdgeInsets.symmetric(vertical: 14)
+              ),
               child: _isLoading 
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                ? const SizedBox(
+                    width: 20, 
+                    height: 20, 
+                    child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)
+                  )
                 : Text('Salvar', style: GoogleFonts.lato(color: Colors.white, fontSize: 16)),
             )
           ],

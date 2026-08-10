@@ -10,18 +10,26 @@ import 'package:go_router/go_router.dart';
 class PerfilDrawer extends ConsumerWidget {
   const PerfilDrawer({super.key});
 
-  Future<void> _fazerLogout(BuildContext context) async {
+  Future<void> _fazerLogout(BuildContext context, WidgetRef ref) async {
     try {
+      // 1. Fecha o Drawer primeiro para liberar a navegação
+      Navigator.of(context).pop();
+
+      // 2. Limpa o "crachá" do usuário da memória do app
+      ref.read(currentUserProvider.notifier).clearUser();
+
+      // 3. Desloga do banco de dados
       await Supabase.instance.client.auth.signOut();
-      // Envia o usuário de volta para a tela de login
+
+      // 4. Manda para a tela de login
       if (context.mounted) {
         context.go('/login');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Erro ao sair da conta')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao sair da conta')),
+        );
       }
     }
   }
@@ -219,7 +227,7 @@ class PerfilDrawer extends ConsumerWidget {
                     icon: Icons.logout,
                     label: 'Sair',
                     isLogout: true,
-                    onTap: () => _fazerLogout(context), // 🔥 Chama o Supabase
+                    onTap: () => _fazerLogout(context, ref),
                   ),
                 ],
               ),

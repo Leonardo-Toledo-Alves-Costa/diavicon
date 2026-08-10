@@ -40,7 +40,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   // ESTADO PARA GUARDAR O LOCAL SELECIONADO NO DROPDOWN
   String? _localFiltro;
 
-  // 🔥 1. Variável para guardar os dados atuais e reagir a edições
+  // Variável para guardar os dados atuais e reagir a edições
   late EstruturaModel _estruturaAtual;
 
   @override
@@ -247,8 +247,8 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // 🔥 Pega a altura exata da barra de navegação do aparelho do usuário
     final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -351,24 +351,21 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         ),
       ),
 
-      // 🔥 A SOLUÇÃO DEFINITIVA: SafeArea gerenciando a parte de baixo
       body: SafeArea(
-        top: false, // Deixa a imagem do cabeçalho esticar até o topo (atrás da AppBar)
-        bottom: true, // Força o Flutter a respeitar a área dos botões de navegação
+        top: false, 
+        bottom: true, 
         child: SingleChildScrollView(
           padding: EdgeInsets.zero,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // widget cabeçalho
               EstruturaHomeHeader(
                 imageUrl: _estruturaAtual.imageUrl,
                 status: _estruturaAtual.status ?? 'Em Andamento',
               ),
 
               Padding(
-                // 🔥 Respiro fixo de 48px, o SafeArea já cuida do resto!
-                padding: const EdgeInsets.fromLTRB(24, 24, 24, 48),
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 48 + keyboardHeight),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -391,7 +388,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // WIDGET DE PROGRESSO
                     const ProgressoProjetoCard(progresso: 0.90),
                     const SizedBox(height: 32),
 
@@ -414,13 +410,12 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 16),
 
-                    // AQUI ENTRA O NOSSO DROPDOWN GLOBAL!
                     Row(
                       children: [
                         Expanded(
                           flex: 6,
                           child: SizedBox(
-                            height: 36, // Altura pra encaixar bonitinho
+                            height: 36, 
                             child: LocalSearchDropdown(
                               estruturaId: _estruturaAtual.id,
                               value: _localFiltro,
@@ -433,7 +428,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                           ),
                         ),
 
-                        // Botão "X" para limpar o filtro se houver um local selecionado
                         if (_localFiltro != null) ...[
                           const SizedBox(width: 4),
                           IconButton(
@@ -448,13 +442,12 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                           ),
                         ],
 
-                        const Spacer(flex: 1), // Empurra o "Todos" pra direita
+                        const Spacer(flex: 1), 
 
                         Expanded(
                           flex: 3,
                           child: GestureDetector(
-                            onTap:
-                                () {}, // Futuro filtro de status ("Todos", "Ativos", etc)
+                            onTap: () {}, 
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [

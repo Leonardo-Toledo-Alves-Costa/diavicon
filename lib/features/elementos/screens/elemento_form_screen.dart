@@ -16,15 +16,16 @@ import '../widgets/novo_local_widget.dart';
 import '../widgets/right_menu_bar.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
+// 🔥 1. AQUI ESTÁ O IMPORT DO SEU PROVIDER!
+import '../providers/opcoes_elemento_provider.dart'; 
 import '../../projetos/providers/projetos_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
-// 🔥 NOME CORRIGIDO PARA MANTER A ARQUITETURA
 class ElementoFormScreen extends ConsumerStatefulWidget {
   final String estruturaId;
   final String projetoId;
   final ElementoModel? elemento;
-  final VoidCallback? onSalvo; // Mantido para compatibilidade com a listagem
+  final VoidCallback? onSalvo; 
 
   const ElementoFormScreen({
     super.key,
@@ -269,6 +270,21 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
     
+    // 🔥 2. CHAMA O GARÇOM AQUI
+    final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
+
+    // 🔥 3. MESCLA AS OPÇÕES FIXAS COM AS QUE VIERAM DO BANCO
+    List<String> tiposFinais = List.from(_tipoElementoOptions);
+    List<String> tipologiasFinais = List.from(_tipologiaOptions);
+    List<String> revestimentosFinais = List.from(_revestimentoOptions);
+
+    opcoesFormulario.whenData((opcoes) {
+      // Usa um Set para não ficar com nomes duplicados
+      tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
+      tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
+      revestimentosFinais = {...revestimentosFinais, ...opcoes.revestimentos}.toList();
+    });
+
     bool canEdit = false;
     projetoAsync.whenData((projeto) {
       usuarioEmpresaIdAsync.whenData((empresaId) {
@@ -327,10 +343,11 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                     ),
                     const SizedBox(height: 18),
                     
+                    // 🔥 4. PASSANDO AS LISTAS MESCLADAS PARA OS DROPDOWNS:
                     _buildDropdownField(
                       label: 'Tipo do Elemento',
                       value: _tipoElemento,
-                      options: _tipoElementoOptions,
+                      options: tiposFinais, // ATUALIZADO AQUI
                       field: ElementoInfoDropdownField.tipoElemento,
                       canEdit: canEdit,
                     ),
@@ -339,7 +356,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                     _buildDropdownField(
                       label: 'Tipologia Estrutural',
                       value: _tipologiaEstrutural,
-                      options: _tipologiaOptions,
+                      options: tipologiasFinais, // ATUALIZADO AQUI
                       field: ElementoInfoDropdownField.tipologiaEstrutural,
                       canEdit: canEdit,
                     ),
@@ -348,7 +365,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                     _buildDropdownField(
                       label: 'Local do Elemento',
                       value: _localElemento,
-                      options: _localOptions,
+                      options: _localOptions, // O Local continua igual
                       field: ElementoInfoDropdownField.localElemento,
                       canEdit: canEdit,
                     ),
@@ -371,7 +388,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                     _buildDropdownField(
                       label: 'Revestimento',
                       value: _revestimento,
-                      options: _revestimentoOptions,
+                      options: revestimentosFinais, // ATUALIZADO AQUI
                       field: ElementoInfoDropdownField.revestimento,
                       canEdit: canEdit,
                     ),

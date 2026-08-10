@@ -100,6 +100,7 @@ class AuthController extends StateNotifier<bool> {
   }
 
   // Autenticação via Google com verificação de segurança de perfil existente
+  // Autenticação via Google com verificação de segurança de perfil existente
   Future<void> autenticarComGoogle(BuildContext context) async {
     try {
       const webClientId = '138394999909-367jt3c0vud0ms2hjieml3l36ujs8oss.apps.googleusercontent.com'; 
@@ -113,6 +114,34 @@ class AuthController extends StateNotifier<bool> {
       );
 
       final googleUser = await googleSignIn.authenticate();
+      if (googleUser == null) return; // Usuário fechou o pop-up do Google
+
+      final emailDoGoogle = googleUser.email;
+
+      // 🔥 A MÁGICA AQUI: Checamos na SUA tabela ANTES de bater no Supabase Auth
+      final checagemUsuario = await _supabase
+          .from('usuarios')
+          .select('id')
+          .eq('email', emailDoGoogle)
+          .maybeSingle();
+
+      if (checagemUsuario == null) {
+        // O usuário não existe na sua tabela! 
+        // Desloga do Google e corta a operação para não criar o "fantasma" no Supabase.
+        await googleSignIn.signOut();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('E-mail não cadastrado na plataforma. Efetue o cadastro manual primeiro.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; // 🛑 INTERROMPE AQUI! O signInWithIdToken nunca é chamado.
+      }
+
+      // Se passou pela barreira, a conta existe! Agora sim fazemos o login no Supabase.
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
@@ -137,18 +166,6 @@ class AuthController extends StateNotifier<bool> {
         _ref.read(currentUserProvider.notifier).setUser(perfilCompleto);
         if (context.mounted) {
           context.go('/projetos');
-        }
-      } else {
-        await _supabase.auth.signOut();
-        await googleSignIn.signOut();
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('E-mail não cadastrado na plataforma. Efetue o cadastro manual primeiro.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {

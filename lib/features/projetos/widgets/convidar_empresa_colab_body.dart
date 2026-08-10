@@ -1,7 +1,7 @@
 import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
-import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart';
+import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart' hide buscarEmpresaPorCnpjProvider;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';

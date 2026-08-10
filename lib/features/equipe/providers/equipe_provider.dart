@@ -1,6 +1,9 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+// 🔥 Importe o provider de projetos para que possamos avisar a Home para se atualizar
+import '../../projetos/providers/projetos_provider.dart'; 
+
 final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, cnpj) async {
   if (cnpj.isEmpty) return null;
   final supabase = Supabase.instance.client;
@@ -16,7 +19,7 @@ final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<Strin
   }
 });
 
-// 🔥 LIMPEZA AUTOMÁTICA ATIVADA (.autoDispose)
+// Provider exclusivo para o contador da tela de empresas (Conta TODO MUNDO do projeto)
 final contagemGeralColaboradoresProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   final response = await supabase
@@ -27,21 +30,24 @@ final contagemGeralColaboradoresProvider = FutureProvider.autoDispose.family<Lis
   return List<Map<String, dynamic>>.from(response);
 });
 
-// 🔥 LIMPEZA AUTOMÁTICA ATIVADA (.autoDispose)
+// BLINDADO: Busca a equipe interna SÓ da empresa do usuário logado
 final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
   if (userId == null) return [];
 
+  // 1. Descobre qual é a empresa do usuário logado
   final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).single();
   final minhaEmpresaId = userResp['empresa_id'];
 
+  // 2. Busca TODOS os funcionários cadastrados na SUA empresa
   final funcionarios = await supabase
       .from('usuarios')
       .select('id, nome, sobrenome, cargo, foto_url, is_admin_empresa')
       .eq('empresa_id', minhaEmpresaId)
       .eq('ativo', true);
 
+  // 3. Busca quem tem registro na equipe interna DESTE projeto (Só da sua empresa)
   final equipeProjeto = await supabase
       .from('projeto_equipe_interna')
       .select('usuario_id, ativo, is_gestor')
@@ -52,12 +58,14 @@ final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<
     for (var e in equipeProjeto) e['usuario_id']: e
   };
 
+  // 4. Cruza as informações e aplica a "Regra do Admin"
   return funcionarios.map((func) {
     final fId = func['id'];
     final inEquipe = mapaEquipe[fId];
     
     final bool isAdmin = func['is_admin_empresa'] == true;
     
+    // Regra de Ouro: Admin sempre faz parte da equipe da SUA empresa. Senão, puxa do banco (ou falso)
     final bool isAtivo = isAdmin ? true : (inEquipe?['ativo'] ?? false);
     final bool isGestor = isAdmin ? true : (inEquipe?['is_gestor'] ?? false);
 
@@ -72,34 +80,13 @@ final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<
   }).toList();
 });
 
-// 🔥 LIMPEZA AUTOMÁTICA ATIVADA (.autoDispose)
+// Mantém as fotos ativas filtradas para usar nos avatares redondos da tela
 final colaboradoresAtivosProjetoProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final todosColaboradores = await ref.watch(colaboradoresProjetoProvider(projetoId).future);
   return todosColaboradores.where((c) => c['ativo'] == true).toList();
 });
 
-// 🔥 NOVO PROVIDER: Verifica se o usuário logado tem permissão para editar a equipe
-final permissaoEdicaoEquipeProvider = FutureProvider.autoDispose.family<bool, String>((ref, projetoId) async {
-  final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser?.id;
-  if (userId == null) return false;
-
-  // 1. Checa se ele é o Admin da empresa (Tem poder supremo)
-  final userResp = await supabase.from('usuarios').select('is_admin_empresa').eq('id', userId).single();
-  if (userResp['is_admin_empresa'] == true) return true;
-
-  // 2. Se não for admin, checa se ele recebeu permissão de "is_gestor" neste projeto específico
-  final equipeResp = await supabase
-      .from('projeto_equipe_interna')
-      .select('is_gestor')
-      .eq('projeto_id', projetoId)
-      .eq('usuario_id', userId)
-      .maybeSingle();
-
-  return equipeResp?['is_gestor'] == true;
-});
-
-// 🔥 LIMPEZA AUTOMÁTICA ATIVADA (.autoDispose)
+// Traz os dados completos da Gestora (Nome, foto e endereço)
 final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
   
@@ -122,6 +109,26 @@ final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dyna
     'empresas': projetoData['empresas'], 
   };
 });
+
+// 🔥 O SEGURANÇA: Verifica se o usuário logado tem permissão para editar a equipe
+final permissaoEdicaoEquipeProvider = FutureProvider.autoDispose.family<bool, String>((ref, projetoId) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  if (userId == null) return false;
+
+  final userResp = await supabase.from('usuarios').select('is_admin_empresa').eq('id', userId).single();
+  if (userResp['is_admin_empresa'] == true) return true;
+
+  final equipeResp = await supabase
+      .from('projeto_equipe_interna')
+      .select('is_gestor')
+      .eq('projeto_id', projetoId)
+      .eq('usuario_id', userId)
+      .maybeSingle();
+
+  return equipeResp?['is_gestor'] == true;
+});
+
 
 final equipeControllerProvider = Provider((ref) => EquipeController(ref));
 
@@ -164,11 +171,13 @@ class EquipeController {
     });
   }
 
+  /// Liga ou desliga a participação de um funcionário no projeto.
   Future<void> atualizarStatusColaborador({
     required String projetoId, 
     required String usuarioId, 
     required bool ativo,
   }) async {
+    // Proteção: Checa se o usuário é Admin antes de tentar desligar ele
     final userData = await _supabase.from('usuarios').select('empresa_id, is_admin_empresa').eq('id', usuarioId).single();
     if (userData['is_admin_empresa'] == true && !ativo) {
       throw Exception('Administradores da empresa não podem ser removidos do projeto.');
@@ -200,8 +209,13 @@ class EquipeController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));       
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId)); 
     _ref.invalidate(contagemGeralColaboradoresProvider(projetoId)); 
+    
+    // 🔥 AVISA AS TELAS DE PROJETOS PARA ATUALIZAREM OS CARDS
+    _ref.invalidate(filteredProjectsProvider); 
+    _ref.invalidate(projectDetailProvider(projetoId));
   }
 
+  /// Define se um funcionário da sua equipe pode ou não ser "gestor"
   Future<void> alterarGestorEquipe({
     required String projetoId, 
     required String usuarioId, 
@@ -216,5 +230,9 @@ class EquipeController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
     _ref.invalidate(gestaoProjetoProvider(projetoId)); 
+    
+    // 🔥 AVISA AS TELAS DE PROJETOS PARA ATUALIZAREM OS CARDS
+    _ref.invalidate(filteredProjectsProvider); 
+    _ref.invalidate(projectDetailProvider(projetoId));
   }
 }

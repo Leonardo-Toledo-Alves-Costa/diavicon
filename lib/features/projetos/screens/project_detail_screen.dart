@@ -131,7 +131,8 @@ class ProjectDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          _buildGestoraSection(projeto.empresaNome),
+                          // 🔥 Passando também a URL da foto!
+                          _buildGestoraSection(projeto.empresaNome, projeto.empresaFotoUrl),
                           const SizedBox(height: 24),
 
                           ProjectProgressCard(progresso: projeto.progresso), // Componente extraído!
@@ -169,10 +170,22 @@ class ProjectDetailScreen extends ConsumerWidget {
   }
 
   // Mantido na tela principal pois é um trecho de UI muito simples e específico daqui
-  Widget _buildGestoraSection(String empresaNome) {
+  Widget _buildGestoraSection(String empresaNome, String? fotoUrl) {
     return Row(
       children: [
-        Image.asset('assets/images/empresa.png', height: 35),
+        // 🔥 Lógica de fallback para a imagem
+        ClipOval(
+          child: fotoUrl != null && fotoUrl.isNotEmpty
+              ? Image.network(
+                  fotoUrl,
+                  height: 35,
+                  width: 35,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Image.asset('assets/images/empresa.png', height: 35),
+                )
+              : Image.asset('assets/images/empresa.png', height: 35),
+        ),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

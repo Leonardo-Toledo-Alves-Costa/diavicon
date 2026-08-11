@@ -1,14 +1,12 @@
 import 'package:diavicon/features/empresa/screens/editar_tabelas_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; // 🔥 Import adicionado
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../models/empresa_model.dart';
-
-// 🔥 IMPORTANTE: Ajuste este caminho para onde o seu provider realmente está
 import '../../auth/providers/auth_provider.dart'; 
 
-class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget para ConsumerWidget
+class EmpresaHeader extends ConsumerWidget { 
   final double topPadding;
   final EmpresaModel empresa;
   final VoidCallback onOpenDrawer;
@@ -21,8 +19,8 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { // 🔥 WidgetRef adicionado
-    // 👇 Puxando a foto do usuário logado
+  Widget build(BuildContext context, WidgetRef ref) { 
+
     final fotoUrlAsync = ref.watch(fotoUsuarioProvider);
     
     // Medidas base para controlar perfeitamente o layout
@@ -40,7 +38,7 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
       child: Stack(
         clipBehavior: Clip.none,
         children: [
-          // 1. Capa
+          // Capa
           Positioned(
             top: coverTop,
             left: 0,
@@ -56,7 +54,7 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
             ),
           ),
 
-          // 2. Fundo Laranja
+          // Fundo Laranja
           Positioned(
             top: 0,
             left: 0,
@@ -77,7 +75,6 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
                         alignment: Alignment.centerLeft,
                         child: GestureDetector(
                           onTap: onOpenDrawer,
-                          // 👇 LÓGICA DA FOTO DO USUÁRIO APLICADA AQUI
                           child: Container(
                             width: 42,
                             height: 42,
@@ -137,7 +134,7 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
             ),
           ),
 
-          // 3. Barra de Pesquisa Flutuante
+          //  Barra de Pesquisa por empresas
           Positioned(
             top: orangeHeight - 24,
             left: 24,
@@ -160,7 +157,7 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
             ),
           ),
 
-          // 4. Logo Circular da Empresa
+          // Logo Circular da Empresa
           Positioned(
             top: coverBottom - avatarRadius,
             left: 24,
@@ -182,7 +179,7 @@ class EmpresaHeader extends ConsumerWidget { // 🔥 Mudou de StatelessWidget pa
             ),
           ),
           
-          // 5. Botão de Editar Tabelas
+          // Botão de Editar Tabelas
           Positioned(
             top: coverBottom + 16, 
             right: 24,

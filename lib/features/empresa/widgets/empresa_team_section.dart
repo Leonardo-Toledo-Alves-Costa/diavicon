@@ -5,7 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../providers/empresa_provider.dart'; 
 
 class EmpresaTeamSection extends ConsumerWidget {
-  final String empresaId; // 👈 Agora precisamos receber o ID da empresa
+  final String empresaId; 
 
   const EmpresaTeamSection({
     super.key,
@@ -14,7 +14,6 @@ class EmpresaTeamSection extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 👈 Assiste ao provider que acabámos de criar
     final colaboradoresAsync = ref.watch(colaboradoresEmpresaProvider(empresaId));
 
     return Container(
@@ -39,7 +38,6 @@ class EmpresaTeamSection extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
           
-          // 👈 Trata os estados de carregamento, erro e dados reais
           colaboradoresAsync.when(
             loading: () => const Center(
               child: Padding(
@@ -82,7 +80,6 @@ class EmpresaTeamSection extends ConsumerWidget {
     );
   }
 
-  // 👈 Atualizamos para aceitar a URL da foto vinda do banco
   Widget _buildAvatar(String name, String role, String? fotoUrl) {
     return Column(
       children: [

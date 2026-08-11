@@ -52,7 +52,7 @@ class EmpresaInfoSection extends StatelessWidget {
 
         const SizedBox(height: 24),
 
-        // Caixinhas Laranja de Estatísticas
+        // Caixinhas Laranja de Estatísticas mokadas por hora
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
@@ -68,19 +68,15 @@ class EmpresaInfoSection extends StatelessWidget {
   Widget _buildSocialIcon(String imagePath) {
     return Padding(
       padding: const EdgeInsets.only(right: 25.0),
-      // Envolvemos num GestureDetector caso queira adicionar o clique (link) futuramente
       child: GestureDetector(
         onTap: () {
-          // Lógica para abrir o link no futuro
         },
         child: Image.asset(
           imagePath,
-          width: 25, // Ajuste o tamanho para ficar harmonioso
+          width: 25, 
           height: 25,
           fit: BoxFit.contain,
-          // Se as suas imagens forem pretas/brancas e quiser forçar a cor padrão do app, 
-          // basta descomentar a linha abaixo:
-          // color: AppColors.textDark, 
+
         ),
       ),
     );

@@ -92,7 +92,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                 // Cabeçalho dinâmico
                 Row(
                   children: [
-                    // 👇 APLICANDO A LÓGICA DO PROJECT CARD (ClipOval + errorBuilder)
                     Container(
                       height: 48,
                       width: 48,
@@ -131,7 +130,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                 ),
                 const SizedBox(height: 16),
 
-                // 👇 Condição adicionada: Só mostra o texto se NÃO for a mesma empresa
                 if (!isGestoraIgualCliente) ...[
                   const Center(child: Text('Não viu a Estrutura? Solicite o acesso ao proprietário', style: TextStyle(fontSize: 12, color: AppColors.hintText))),
                   const SizedBox(height: 8),
@@ -212,7 +210,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                 // Linha dos botões
                 Row(
                   children: [
-                    // 👇 Condição adicionada: Só mostra o botão de solicitar se NÃO for a mesma empresa
                     if (!isGestoraIgualCliente) ...[
                       Expanded(
                         child: CustomTextbutton(
@@ -232,7 +229,7 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                       const SizedBox(width: 16),
                     ],
                     
-                    // O botão de criar "Nova" estrutura continua existindo, e ocupará a largura total se o outro sumir.
+                    // botão de criar Nova
                     Expanded(
                       child: CompactButton(
                         text: 'Nova',

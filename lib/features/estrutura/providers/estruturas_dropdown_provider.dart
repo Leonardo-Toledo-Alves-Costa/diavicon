@@ -4,11 +4,6 @@ import '../../auth/providers/auth_provider.dart';
 
 final _supabase = Supabase.instance.client;
 
-
-
-// PROVIDERS DE LEITURA EM TEMPO REAL (Streams)
-
-
 // Provider para Tipos de Estrutura
 final tiposEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return _supabase
@@ -46,14 +41,12 @@ final conjuntosEstruturaisProvider = StreamProvider<List<Map<String, dynamic>>>(
 });
 
 
-// 2. CONTROLLER DE ESCRITA 
 
 class EstruturaDropdownsController {
   final Ref ref;
 
   EstruturaDropdownsController(this.ref);
 
-  // Mantém a sua função existente
   Future<String> adicionarNovoItem({
     required String nomeTabela,
     required String nomeItem,
@@ -71,7 +64,6 @@ class EstruturaDropdownsController {
     return response['id'] as String;
   }
 
-  // 👇 ATUALIZE A FUNÇÃO DE EDITAR
   Future<void> editarItem({
     required String nomeTabela,
     required String id,
@@ -90,7 +82,7 @@ class EstruturaDropdownsController {
     }
   }
 
-  // 👇 ATUALIZE A FUNÇÃO DE DELETAR
+
   Future<void> deletarItem({
     required String nomeTabela,
     required String id,

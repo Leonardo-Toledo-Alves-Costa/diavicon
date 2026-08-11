@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/empresa_provider.dart'; 
 import '../../auth/providers/auth_provider.dart';
-import '../../home/screens/perfil_drawer.dart'; // 👈 IMPORTANTE: O Drawer padrão
+import '../../home/screens/perfil_drawer.dart';
 
 import '../widgets/empresa_header.dart';
 import '../widgets/empresa_info_section.dart';
@@ -20,7 +20,6 @@ class EmpresaScreen extends ConsumerStatefulWidget {
 }
 
 class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
-  // 👇 1. Criamos a chave do Scaffold idêntica à de Projetos
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override
@@ -40,8 +39,8 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
     final empresaAtual = ref.watch(empresaAtualProvider);
 
     return Scaffold(
-      key: _scaffoldKey, // 👇 2. Atribuímos a chave ao Scaffold
-      drawer: const PerfilDrawer(), // 👇 3. Adicionamos o Drawer padronizado
+      key: _scaffoldKey, 
+      drawer: const PerfilDrawer(), 
       backgroundColor: const Color(0xFFF5F5F5), 
       body: empresaAtual == null
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -50,7 +49,6 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // 👇 4. Passamos a função onOpenDrawer para o Header
                   EmpresaHeader(
                     topPadding: topPadding, 
                     empresa: empresaAtual,

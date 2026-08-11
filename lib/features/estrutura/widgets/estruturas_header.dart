@@ -6,12 +6,11 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../screens/estruturas_tab_screen.dart';
 
-// 🔥 IMPORTANTE: Ajuste o caminho do auth_provider para onde ele está no seu projeto
 import '../../auth/providers/auth_provider.dart'; 
 
 class EstruturasHeader extends ConsumerWidget {
   final double topPadding;
-  final VoidCallback? onOpenDrawer; // 🔥 1. A função chega por aqui
+  final VoidCallback? onOpenDrawer; 
 
   const EstruturasHeader({
     super.key, 
@@ -21,7 +20,7 @@ class EstruturasHeader extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 👇 Puxa a foto do usuário do banco de dados em tempo real
+
     final fotoUrlAsync = ref.watch(fotoUsuarioProvider);
 
     return Stack(
@@ -39,7 +38,6 @@ class EstruturasHeader extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // 👇 FOTO DO USUÁRIO
                   IconButton(
                     padding: EdgeInsets.zero,
                     constraints: const BoxConstraints(),
@@ -66,7 +64,6 @@ class EstruturasHeader extends ConsumerWidget {
                         },
                       ),
                     ),
-                    // 🔥 2. A função é disparada aqui ao clicar!
                     onPressed: onOpenDrawer,
                   ),
                   const Text(

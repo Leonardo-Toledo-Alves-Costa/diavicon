@@ -31,37 +31,35 @@ class EmpresaController extends StateNotifier<bool> {
       final emailSeguro = dados['email']?.toString() ?? '';
       final senhaSegura = (dados['senha'] ?? dados['password'])?.toString() ?? '';
 
-      // 1. Cria o usuário (Auth + Tabela Usuarios)
+      //  Cria o usuário (Auth + Tabela Usuarios)
       await _ref.read(authControllerProvider.notifier).registrar(
             email: emailSeguro,
             password: senhaSegura,
             dados: dados,
           );
 
-      // 2. Recupera o ID do usuário recém-criado
+      //  Recupera o ID do usuário recém-criado
       final usuario = _ref.read(currentUserProvider);
       if (usuario == null) {
         throw Exception('Usuário não autenticado após registro.');
       }
 
-      // 3. Salva Empresa + Endereço e vincula ao ID do usuário no banco
-      // 🔥 PROTEÇÃO 2: Garante que os dados da empresa não venham nulos
+      //  Salva Empresa + Endereço e vincula ao ID do usuário no banco
+      //  PROTEÇÃO 2: Garante que os dados da empresa não venham nulos
       final empresaDados = (dados['empresa'] as Map<String, dynamic>?) ?? {};
       final repo = _ref.read(empresaRepositoryProvider);
       
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
           ...empresaDados,
-          // Mantém a possibilidade de ser null (para planos Freemium), mas protege a tipagem
+          // Mantém a possibilidade de ser null, mas protege a tipagem
           'plano_id': dados['plano_escolhido_id'], 
           'tipo': dados['tipo']?.toString() ?? 'Profissional',
         },
         userId: usuario.id,
       );
 
-      // 🚨 A SINCRONIZAÇÃO DE ESTADO ACONTECE AQUI:
-      // Como o banco de dados foi atualizado com o empresa_id, precisamos
-      // buscar o perfil de novo para o App "saber" que o usuário agora tem empresa.
+      
       final authRepo = _ref.read(authRepositoryProvider);
       final perfilAtualizado = await authRepo.getUsuarioPerfil(usuario.id);
 
@@ -101,7 +99,7 @@ final colaboradoresEmpresaProvider = FutureProvider.family<List<Map<String, dyna
       .from('usuarios')
       .select()
       .eq('empresa_id', empresaId)
-      .eq('ativo', true); // Opcional: traz apenas quem está ativo
+      .eq('ativo', true); 
       
   return List<Map<String, dynamic>>.from(response);
 });

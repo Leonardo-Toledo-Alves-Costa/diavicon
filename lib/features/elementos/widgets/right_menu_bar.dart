@@ -1,5 +1,4 @@
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -43,9 +42,6 @@ class RightMenuBarState extends State<RightMenuBar> {
 
     switch (destination) {
       case _RightMenuDestination.informacoes:
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const ElementoInfoScreen()),
-        );
         return;
       case _RightMenuDestination.relatorios:
         Navigator.of(context).push(

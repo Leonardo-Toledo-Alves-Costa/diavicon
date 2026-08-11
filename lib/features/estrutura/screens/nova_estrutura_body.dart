@@ -11,7 +11,6 @@ import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/mapa_selecao_screen.dart';
 import '../../../core/utils/formatters/cep_formatter.dart';
 import '../../../core/utils/validators/cep_validator.dart';
 import '../../../core/services/location_service.dart';

@@ -100,6 +100,7 @@ class AuthController extends StateNotifier<bool> {
   }
 
   // Autenticação via Google com verificação de segurança de perfil existente
+  // Autenticação via Google com verificação de segurança de perfil existente
   Future<void> autenticarComGoogle(BuildContext context) async {
     try {
       const webClientId = '138394999909-367jt3c0vud0ms2hjieml3l36ujs8oss.apps.googleusercontent.com'; 
@@ -113,6 +114,30 @@ class AuthController extends StateNotifier<bool> {
       );
 
       final googleUser = await googleSignIn.authenticate();
+      if (googleUser == null) return; 
+
+      final emailDoGoogle = googleUser.email;
+
+      final checagemUsuario = await _supabase
+          .from('usuarios')
+          .select('id')
+          .eq('email', emailDoGoogle)
+          .maybeSingle();
+
+      if (checagemUsuario == null) {
+        await googleSignIn.signOut();
+        
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('E-mail não cadastrado na plataforma. Efetue o cadastro manual primeiro.'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return; 
+      }
+
       final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
@@ -137,18 +162,6 @@ class AuthController extends StateNotifier<bool> {
         _ref.read(currentUserProvider.notifier).setUser(perfilCompleto);
         if (context.mounted) {
           context.go('/projetos');
-        }
-      } else {
-        await _supabase.auth.signOut();
-        await googleSignIn.signOut();
-        
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('E-mail não cadastrado na plataforma. Efetue o cadastro manual primeiro.'),
-              backgroundColor: Colors.red,
-            ),
-          );
         }
       }
     } catch (e) {

@@ -28,7 +28,6 @@ final empresasVinculadasProjetoProvider = StreamProvider.family<List<Map<String,
             if (empData != null) {
               final endereco = empData['enderecos'] is Map ? empData['enderecos'] : null;
               
-              // 🔥 CORREÇÃO DA SINTAXE NOVA DO SUPABASE COUNT:
               final int qtdColaboradores = await supabase
                   .from('projeto_equipe_interna')
                   .count(CountOption.exact)
@@ -199,6 +198,7 @@ class EmpresasProjetoController {
     final userId = _supabase.auth.currentUser?.id;
     if (userId == null) throw Exception('Sessão expirada. Faça login novamente.');
 
+    // Verifica se já existe um convite ou se já é colaboradora
     final jaVinculada = await _supabase
         .from('projeto_empresas_colaboradoras') 
         .select('status')
@@ -208,18 +208,54 @@ class EmpresasProjetoController {
 
     if (jaVinculada != null) {
       if (jaVinculada['status'] == 'aceito') {
-        throw Exception('Esta empresa já é colaboradora activa do projeto.');
+        throw Exception('Esta empresa já é colaboradora ativa do projeto.');
       } else {
         throw Exception('Um convite pendente já foi enviado para esta empresa.');
       }
     }
 
-    await _supabase.from('projeto_empresas_colaboradoras').insert({
+    //  Cria o convite e pega o ID dele de volta
+    final conviteResp = await _supabase.from('projeto_empresas_colaboradoras').insert({
       'projeto_id': projetoId,
       'empresa_id': empresaConvidadaId,
       'criado_por': userId,
       'status': 'pendente'
-    });
+    }).select('id').single();
+
+    final conviteId = conviteResp['id'];
+
+    // busca as informações visuais para deixar a notificação bonita
+    final projetoInfo = await _supabase.from('projetos').select('nome, image_url').eq('id', projetoId).single();
+    final remetenteInfo = await _supabase.from('usuarios').select('nome, sobrenome').eq('id', userId).single();
+    
+    final nomeProjeto = projetoInfo['nome'] ?? 'Projeto Sem Nome';
+    final remetenteNome = '${remetenteInfo['nome'] ?? ''} ${remetenteInfo['sobrenome'] ?? ''}'.trim();
+
+    // Busca TODOS os usuários da empresa que foi convidada
+    final usuariosConvidada = await _supabase
+        .from('usuarios')
+        .select('id')
+        .eq('empresa_id', empresaConvidadaId);
+
+    // Dispara a notificação nova para cada um dos usuários daquela empresa
+    if (usuariosConvidada.isNotEmpty) {
+      final List<Map<String, dynamic>> notificacoesToInsert = (usuariosConvidada as List).map((u) {
+        return {
+          'usuario_id': u['id'],
+          'titulo': 'Novo Convite de Colaboração',
+          'mensagem': '$remetenteNome convidou sua empresa para o projeto $nomeProjeto.',
+          'tipo': 'convite_projeto',
+          'lida': false,
+          'dados_extras': {
+            'projeto_id': projetoId,
+            'convite_id': conviteId,
+            'foto_url': projetoInfo['image_url'], 
+          }
+        };
+      }).toList();
+
+      await _supabase.from('notificacoes').insert(notificacoesToInsert);
+    }
   }
 
   Future<void> aceitarConviteEmpresa({

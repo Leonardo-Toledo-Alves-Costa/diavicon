@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +6,6 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
-import '../models/projeto_model.dart';
 import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
 import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
 import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
@@ -106,7 +104,6 @@ class ProjectDetailScreen extends ConsumerWidget {
             ),
             appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
 
-            // 🔥 TELA PRINCIPAL SUPER LIMPA
             body: SingleChildScrollView(
               padding: EdgeInsets.zero,
               child: Padding(
@@ -114,7 +111,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ProjectHeader(projeto: projeto), // Componente extraído!
+                    ProjectHeader(projeto: projeto), 
 
                     Padding(
                       padding: const EdgeInsets.all(20.0),
@@ -131,7 +128,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          _buildGestoraSection(projeto.empresaNome),
+                          _buildGestoraSection(projeto.empresaNome, projeto.empresaFotoUrl),
                           const SizedBox(height: 24),
 
                           ProjectProgressCard(progresso: projeto.progresso), // Componente extraído!
@@ -169,10 +166,22 @@ class ProjectDetailScreen extends ConsumerWidget {
   }
 
   // Mantido na tela principal pois é um trecho de UI muito simples e específico daqui
-  Widget _buildGestoraSection(String empresaNome) {
+  Widget _buildGestoraSection(String empresaNome, String? fotoUrl) {
     return Row(
       children: [
-        Image.asset('assets/images/empresa.png', height: 35),
+        // 🔥 Lógica de fallback para a imagem
+        ClipOval(
+          child: fotoUrl != null && fotoUrl.isNotEmpty
+              ? Image.network(
+                  fotoUrl,
+                  height: 35,
+                  width: 35,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      Image.asset('assets/images/empresa.png', height: 35),
+                )
+              : Image.asset('assets/images/empresa.png', height: 35),
+        ),
         const SizedBox(width: 12),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,

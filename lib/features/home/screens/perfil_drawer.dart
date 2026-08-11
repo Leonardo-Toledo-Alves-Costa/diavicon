@@ -10,18 +10,25 @@ import 'package:go_router/go_router.dart';
 class PerfilDrawer extends ConsumerWidget {
   const PerfilDrawer({super.key});
 
-  Future<void> _fazerLogout(BuildContext context) async {
+  Future<void> _fazerLogout(BuildContext context, WidgetRef ref) async {
     try {
+      Navigator.of(context).pop();
+
+      // Limpa o "crachá" do usuário da memória do app
+      ref.read(currentUserProvider.notifier).clearUser();
+
+      // Desloga do banco de dados
       await Supabase.instance.client.auth.signOut();
-      // Envia o usuário de volta para a tela de login
+
+      //  Manda para a tela de login
       if (context.mounted) {
         context.go('/login');
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Erro ao sair da conta')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao sair da conta')),
+        );
       }
     }
   }
@@ -42,7 +49,7 @@ class PerfilDrawer extends ConsumerWidget {
     final titulo = usuario?.tituloPrincipal ?? '';
     final empresaNome = empresa?.nome ?? '';
     return Drawer(
-      backgroundColor: const Color(0xFFEFEFEF), // Cor de fundo do protótipo
+      backgroundColor: const Color(0xFFEFEFEF), 
       child: SafeArea(
         child: Column(
           children: [
@@ -51,7 +58,6 @@ class PerfilDrawer extends ConsumerWidget {
               padding: const EdgeInsets.fromLTRB(20, 40, 20, 20),
               child: Row(
                 children: [
-                  // Foto redonda com borda laranja
                   Container(
                     width: 70,
                     height: 70,
@@ -219,7 +225,7 @@ class PerfilDrawer extends ConsumerWidget {
                     icon: Icons.logout,
                     label: 'Sair',
                     isLogout: true,
-                    onTap: () => _fazerLogout(context), // 🔥 Chama o Supabase
+                    onTap: () => _fazerLogout(context, ref),
                   ),
                 ],
               ),

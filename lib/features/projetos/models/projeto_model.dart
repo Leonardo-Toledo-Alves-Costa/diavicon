@@ -41,7 +41,6 @@ class ProjetoModel {
     this.empresaFotoUrl, 
   });
 
-  // 🔥 OLHA A "PORTA" ABERTA AQUI: {String? minhaEmpresaId}
   factory ProjetoModel.fromMap(Map<String, dynamic> map, {String? minhaEmpresaId}) {
     final prioridadeData = map['prioridade'] as Map<String, dynamic>?;
     final statusData = map['status_projeto'] as Map<String, dynamic>?;
@@ -52,7 +51,6 @@ class ProjetoModel {
     if (map['projeto_equipe_interna'] != null) {
       final equipeLista = map['projeto_equipe_interna'] as List;
       for (var item in equipeLista) {
-        // 🔥 A MÁGICA DO B2B AQUI!
         if (minhaEmpresaId != null && item['empresa_id'] != minhaEmpresaId) {
           continue; 
         }

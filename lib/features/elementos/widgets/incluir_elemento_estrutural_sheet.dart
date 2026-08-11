@@ -1,6 +1,7 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/compact_search_bar.dart';
+import 'package:diavicon/core/widgets/local_search_dropdown.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
@@ -25,8 +26,6 @@ class ElementoEstruturalOption {
   final String detail;
   final String? imageUrl;
 
-  /// Se o elemento está atualmente incluído (visível) na estrutura. Reflete a
-  /// coluna `ativo` no banco; controla o checkbox vir marcado ou não.
   final bool incluido;
 }
 
@@ -39,7 +38,7 @@ Future<T?> showIncluirElementoEstruturalSheet<T>({
   return showModalBottomSheet<T>(
     context: context,
     isScrollControlled: true,
-    useSafeArea: true,
+    useSafeArea: false, 
     backgroundColor: Colors.transparent,
     barrierColor: Colors.black.withOpacity(0.42),
     builder: (context) => IncluirElementoEstruturalSheet(
@@ -58,8 +57,6 @@ class IncluirElementoEstruturalSheet extends ConsumerStatefulWidget {
     this.onNovoPressed,
   });
 
-  /// Estrutura atual. Quando informada, a lista vem do Supabase em tempo real
-  /// via [elementosPorEstruturaProvider]; senão, usa [elementos] (mock/demo).
   final String? estruturaId;
   final List<ElementoEstruturalOption> elementos;
   final ValueChanged<List<ElementoEstruturalOption>>? onNovoPressed;
@@ -73,19 +70,20 @@ class _IncluirElementoEstruturalSheetState
     extends ConsumerState<IncluirElementoEstruturalSheet> {
   final Set<String> _selectedIds = <String>{};
 
-  /// Override otimista da inclusão (modo DB): aplica a mudança no checkbox na
-  /// hora do toque, sem esperar o round-trip do banco + re-emissão do stream.
-  /// Cada entrada é descartada quando o stream confirma o mesmo valor.
   final Map<String, bool> _inclusaoOverride = <String, bool>{};
 
-  /// Opções atualmente exibidas (mock ou vindas do banco). Mantido para que a
-  /// seleção e o callback [onNovoPressed] reflitam a lista real renderizada.
   List<ElementoEstruturalOption> _currentOptions = const [];
 
-  /// `true` quando os elementos vêm do banco: o checkbox reflete a coluna
-  /// `ativo` e o toggle persiste a inclusão. `false` no modo mock/demo, onde a
-  /// seleção é apenas local ([_selectedIds]).
   bool get _isDbMode => widget.estruturaId != null;
+
+  String? _localFiltro;
+  final FocusNode _searchFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 
   void _toggle(ElementoEstruturalOption elemento) {
     setState(() {
@@ -97,9 +95,6 @@ class _IncluirElementoEstruturalSheetState
     });
   }
 
-  /// Persiste a inclusão/exclusão do elemento (coluna `ativo`). Ao desmarcar,
-  /// o elemento some da lista da estrutura mas continua aparecendo aqui
-  /// (desmarcado) para poder ser reincluído depois. O stream atualiza sozinho.
   Future<void> _toggleInclusao(ElementoEstruturalOption elemento) async {
     if (!_isDbMode) {
       _toggle(elemento);
@@ -113,7 +108,6 @@ class _IncluirElementoEstruturalSheetState
           .definirInclusao(elemento.id, novoValor);
     } catch (error) {
       if (!mounted) return;
-      // Reverte o override otimista: stream nunca confirmará a mudança.
       setState(() => _inclusaoOverride.remove(elemento.id));
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Erro ao atualizar inclusão: $error')),
@@ -121,14 +115,12 @@ class _IncluirElementoEstruturalSheetState
     }
   }
 
-  /// Converte um elemento do banco no modelo de exibição do sheet.
   ElementoEstruturalOption _toOption(ElementoModel elemento) {
     final subtitlePartes = [
       elemento.tipo,
       elemento.tipologiaEstrutural,
     ].where((parte) => parte != null && parte.trim().isNotEmpty).cast<String>();
 
-    // Puxa a primeira URL de foto se existir
     final imageUrl = (elemento.fotos != null && elemento.fotos!.isNotEmpty)
         ? elemento.fotos!.first
         : null;
@@ -160,19 +152,22 @@ class _IncluirElementoEstruturalSheetState
     navigator.pop();
     navigator.push(
       MaterialPageRoute<void>(
-        builder: (_) =>
-            NovoElemEstruturalScreen(estruturaId: widget.estruturaId),
+        builder: (_) => NovoElemEstruturalScreen(
+          estruturaId: widget.estruturaId,
+        ),
       ),
     );
   }
 
-  /// Lista renderizada conforme o estado do carregamento. Em modo mock
-  /// ([asyncOptions] nulo) mostra direto; senão trata loading/erro/vazio.
   Widget _buildElementoList(
     AsyncValue<List<ElementoEstruturalOption>>? asyncOptions,
   ) {
     if (asyncOptions == null) {
-      return _optionsListView(widget.elementos);
+      var mockList = widget.elementos;
+      if (_localFiltro != null) {
+        mockList = mockList.where((e) => e.detail == _localFiltro).toList();
+      }
+      return _optionsListView(mockList);
     }
 
     return asyncOptions.when(
@@ -184,11 +179,15 @@ class _IncluirElementoEstruturalSheetState
         ),
       ),
       data: (options) {
+        if (_localFiltro != null) {
+          options = options.where((e) => e.detail == _localFiltro).toList();
+        }
+
         if (options.isEmpty) {
           _currentOptions = const [];
           return Center(
             child: Text(
-              'Nenhum elemento cadastrado ainda',
+              'Nenhum elemento encontrado.',
               style: GoogleFonts.lato(
                 color: const Color(0xFF686868),
                 fontSize: 14,
@@ -201,7 +200,6 @@ class _IncluirElementoEstruturalSheetState
     );
   }
 
-  /// Renderiza os cards selecionáveis e registra as opções exibidas.
   Widget _optionsListView(List<ElementoEstruturalOption> options) {
     _currentOptions = options;
     return ListView.separated(
@@ -210,7 +208,6 @@ class _IncluirElementoEstruturalSheetState
       separatorBuilder: (_, _) => const SizedBox(height: 14),
       itemBuilder: (context, index) {
         final elemento = options[index];
-        // Stream confirmou o override → descarta para voltar à fonte da verdade.
         if (_inclusaoOverride[elemento.id] == elemento.incluido) {
           _inclusaoOverride.remove(elemento.id);
         }
@@ -229,7 +226,11 @@ class _IncluirElementoEstruturalSheetState
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.of(context).size.height;
-    final sheetHeight = (screenHeight * 0.78).clamp(620.0, 680.0).toDouble();
+    
+    final safeBottom = MediaQuery.of(context).padding.bottom;
+    final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
+    
+    final sheetHeight = (screenHeight * 0.78).clamp(620.0, 780.0).toDouble() + keyboardHeight * 0.5;
 
     final estruturaId = widget.estruturaId;
     final asyncOptions = estruturaId == null
@@ -240,9 +241,10 @@ class _IncluirElementoEstruturalSheetState
 
     return Align(
       alignment: Alignment.bottomCenter,
-      child: SizedBox(
+      child: Container( 
         width: double.infinity,
         height: sheetHeight,
+        margin: EdgeInsets.only(bottom: safeBottom + 12),
         child: Center(
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 346),
@@ -250,24 +252,32 @@ class _IncluirElementoEstruturalSheetState
               color: Colors.white,
               elevation: 6,
               shadowColor: Colors.black.withOpacity(0.25),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(22),
-              ),
+              borderRadius: BorderRadius.circular(22),
               clipBehavior: Clip.antiAlias,
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(14, 16, 14, 27),
+                padding: const EdgeInsets.fromLTRB(14, 16, 14, 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _SheetHeader(onClose: () => Navigator.of(context).pop()),
                     const SizedBox(height: 16),
-                    // 🔥 ERRO 1 RESOLVIDO: Passando o estruturaId aqui!
                     if (estruturaId != null) 
                       _EstruturaSummary(estruturaId: estruturaId)
                     else 
                       const SizedBox(),
                     const SizedBox(height: 28),
-                    const _FilterRow(),
+                    
+                    _FilterRow(
+                      estruturaId: estruturaId,
+                      localFiltro: _localFiltro,
+                      searchFocusNode: _searchFocusNode,
+                      onLocalChanged: (novoLocal) {
+                        setState(() {
+                          _localFiltro = novoLocal;
+                        });
+                      },
+                    ),
+                    
                     const SizedBox(height: 20),
                     Expanded(child: _buildElementoList(asyncOptions)),
                     const SizedBox(height: 14),
@@ -313,7 +323,7 @@ class _SheetHeader extends StatelessWidget {
                 'Incluir Elemento Estrutural',
                 style: GoogleFonts.lato(
                   color: const Color(0xFF3E3E3D),
-                  fontSize: 24, // Tamanho base, ele só diminui se precisar
+                  fontSize: 24, 
                   fontWeight: FontWeight.w800,
                   height: 1.05,
                 ),
@@ -371,7 +381,6 @@ class _EstruturaSummary extends ConsumerWidget {
                   children: [
                     Text(
                       nomeEstrutura,
-                      // 🔥 MÁGICA 2: Aumentei pra 2 linhas pra não cortar nomes longos
                       maxLines: 2, 
                       overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.lato(
@@ -403,6 +412,7 @@ class _EstruturaSummary extends ConsumerWidget {
     );
   }
 }
+
 class _StructureAvatar extends StatelessWidget {
   const _StructureAvatar({this.imageUrl});
   
@@ -442,15 +452,46 @@ class _StructureAvatar extends StatelessWidget {
 }
 
 class _FilterRow extends StatelessWidget {
-  const _FilterRow();
+  final String? estruturaId;
+  final String? localFiltro;
+  final ValueChanged<String?> onLocalChanged;
+  final FocusNode searchFocusNode;
+
+  const _FilterRow({
+    this.estruturaId,
+    this.localFiltro,
+    required this.onLocalChanged,
+    required this.searchFocusNode,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       children: [
-        Expanded(flex: 7, child: CompactSearchBar(hintText: 'Local')),
-        SizedBox(width: 9),
-        Expanded(flex: 6, child: _ElementoFilterField()),
+        Expanded(
+          flex: 7, 
+          child: estruturaId != null 
+            ? LocalSearchDropdown(
+                estruturaId: estruturaId!,
+                value: localFiltro,
+                focusNode: searchFocusNode,
+                onChanged: onLocalChanged,
+              ) 
+            : const CompactSearchBar(hintText: 'Local')
+        ),
+        
+        if (localFiltro != null) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            icon: const Icon(Icons.clear, color: AppColors.error, size: 20),
+            onPressed: () => onLocalChanged(null),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+        ],
+
+        const SizedBox(width: 9),
+        const Expanded(flex: 6, child: _ElementoFilterField()),
       ],
     );
   }
@@ -577,7 +618,7 @@ class _ElementoSelectionCard extends StatelessWidget {
 }
 
 class _ElementoAvatar extends StatelessWidget {
-  const _ElementoAvatar({this.imageUrl}); // 
+  const _ElementoAvatar({this.imageUrl}); 
 
   final String? imageUrl;
 

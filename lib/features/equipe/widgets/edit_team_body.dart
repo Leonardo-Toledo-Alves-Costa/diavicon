@@ -2,8 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../controllers/equipe_controller.dart';
-import '../providers/equipe_provider.dart';
+import '../providers/equipe_provider.dart'; 
 import 'team_edit_item.dart';
 import '../screens/convidar_funcionario_screen.dart';
 
@@ -183,7 +182,6 @@ class EditTeamBody extends ConsumerWidget {
               ativo: false,
             );
         if (context.mounted) {
-          // 🔥 ATUALIZA A TELA NA HORA SEM HOT RESTART
           ref.invalidate(colaboradoresProjetoProvider(projetoId));
           _mostrarAvisoFlutuante(
             context,
@@ -206,22 +204,19 @@ class EditTeamBody extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final gestaoAsync = ref.watch(gestaoProjetoProvider(projetoId));
+    final permissaoAsync = ref.watch(permissaoEdicaoEquipeProvider(projetoId));
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final currentUserId = Supabase.instance.client.auth.currentUser?.id;
 
     return Padding(
       padding: EdgeInsets.only(bottom: bottomPadding),
-      child: gestaoAsync.when(
+      child: permissaoAsync.when(
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
         ),
         error: (err, stack) =>
             Center(child: Text('Erro ao validar permissões: $err')),
-        data: (gestaoData) {
-          final bool isViewerGestor =
-              gestaoData?['is_user_gestor_equipe'] ?? false;
-
+        data: (isViewerGestor) {
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -270,42 +265,35 @@ class EditTeamBody extends ConsumerWidget {
                                 final String nomeCompleto = '${usuario['nome'] ?? ''} ${usuario['sobrenome'] ?? ''}'.trim();
                                 final String cargo = usuario['cargo'] ?? 'Colaborador';
                                 final String tituloPrincipal = usuario['titulo_principal'] ?? '';
-                                
-                                // 🔥 Puxando a foto direto do banco
                                 final String? fotoUrl = usuario['foto_url'];
-
                                 final bool isAtivo = item['ativo'] ?? false;
                                 final bool isUserGestor = item['is_gestor'] ?? false;
                                 final bool isMe = usuario['id'] == currentUserId;
-                                final bool podeEditar = isViewerGestor && !isMe;
+                                // Trava a edição se o usuário da lista for o Admin da empresa
+                                final bool isAdmin = item['is_admin_empresa'] == true;
+                                final bool podeEditar = isViewerGestor && !isMe && !isAdmin;
 
                                 return TeamEditItem(
                                   name: nomeCompleto,
                                   role: cargo,
                                   subRole: tituloPrincipal,
-                                  imageUrl: fotoUrl, // 🔥 Passando pro Card!
+                                  imageUrl: fotoUrl, 
                                   isSelected: isAtivo,
                                   isUserGestor: isUserGestor,
                                   isViewerGestor: isViewerGestor,
                                   isEditable: podeEditar,
 
                                   onChanged: (val) {
+                                    if (isAdmin) {
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Administradores não podem ser removidos.', isAviso: true);
+                                      return;
+                                    }
                                     if (isMe) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Ação Bloqueada',
-                                        'Você não pode alterar o seu próprio nível de acesso.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode alterar o seu próprio nível de acesso.', isAviso: true);
                                       return;
                                     }
                                     if (!isViewerGestor) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Acesso Negado',
-                                        'Apenas os gestores podem editar os acessos da equipe.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas os gestores podem editar os acessos da equipe.', isAviso: true);
                                       return;
                                     }
 
@@ -328,22 +316,16 @@ class EditTeamBody extends ConsumerWidget {
                                   },
 
                                   onToggleGestor: (val) {
+                                    if (isAdmin) {
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Administradores sempre são gestores.', isAviso: true);
+                                      return;
+                                    }
                                     if (isMe) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Ação Bloqueada',
-                                        'Você não pode alterar a sua própria permissão de gestão.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode alterar a sua própria permissão de gestão.', isAviso: true);
                                       return;
                                     }
                                     if (!isViewerGestor) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Acesso Negado',
-                                        'Apenas gestores podem realizar essa ação.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas gestores podem realizar essa ação.', isAviso: true);
                                       return;
                                     }
 
@@ -362,22 +344,16 @@ class EditTeamBody extends ConsumerWidget {
                                   },
 
                                   onRemove: () {
+                                    if (isAdmin) {
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Administradores não podem ser removidos.', isAviso: true);
+                                      return;
+                                    }
                                     if (isMe) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Ação Bloqueada',
-                                        'Você não pode se remover do projeto.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Ação Bloqueada', 'Você não pode se remover do projeto.', isAviso: true);
                                       return;
                                     }
                                     if (!isViewerGestor) {
-                                      _mostrarAvisoFlutuante(
-                                        context,
-                                        'Acesso Negado',
-                                        'Apenas os gestores podem remover membros.',
-                                        isAviso: true,
-                                      );
+                                      _mostrarAvisoFlutuante(context, 'Acesso Negado', 'Apenas os gestores podem remover membros.', isAviso: true);
                                       return;
                                     }
 

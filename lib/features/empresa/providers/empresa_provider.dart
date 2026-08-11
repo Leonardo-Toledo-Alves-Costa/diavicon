@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../models/empresa_model.dart';
 import '../repositories/empresa_repository.dart';
@@ -89,4 +90,18 @@ class EmpresaController extends StateNotifier<bool> {
     final empresa = await repo.getEmpresa(empresaId);
     _ref.read(empresaAtualProvider.notifier).state = empresa;
   }
+  
 }
+
+final colaboradoresEmpresaProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, empresaId) async {
+  final supabase = Supabase.instance.client;
+  
+  // Busca todos os usuários vinculados ao ID desta empresa
+  final response = await supabase
+      .from('usuarios')
+      .select()
+      .eq('empresa_id', empresaId)
+      .eq('ativo', true); // Opcional: traz apenas quem está ativo
+      
+  return List<Map<String, dynamic>>.from(response);
+});

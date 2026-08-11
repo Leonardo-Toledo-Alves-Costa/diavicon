@@ -102,7 +102,8 @@ class EmpresaRepository {
     try {
       final data = await _supabase
           .from('empresas')
-          .select()
+          // 👇 Fazemos um "Join" para puxar a cidade e o estado da tabela 'enderecos'
+          .select('*, enderecos(cidade, estado)')
           .eq('id', empresaId)
           .maybeSingle();
 

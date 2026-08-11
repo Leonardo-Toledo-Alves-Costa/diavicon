@@ -8,6 +8,7 @@ import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
 import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
 import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
+import 'package:diavicon/features/empresa/screens/empresa_screen.dart';
 import 'package:diavicon/features/home/screens/perfil_Minha_Conta.dart';
 import 'package:diavicon/features/home/screens/perfil_Screen.dart';
 import 'package:diavicon/features/home/screens/perfil_central_ajuda.dart';
@@ -370,7 +371,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/minha-empresa',
             builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Perfil da Empresa'))),
+                const EmpresaScreen(),
           ),
           GoRoute(
             path: '/educacao',

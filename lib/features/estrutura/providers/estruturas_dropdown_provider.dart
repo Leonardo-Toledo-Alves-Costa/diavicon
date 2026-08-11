@@ -53,24 +53,58 @@ class EstruturaDropdownsController {
 
   EstruturaDropdownsController(this.ref);
 
+  // Mantém a sua função existente
   Future<String> adicionarNovoItem({
     required String nomeTabela,
     required String nomeItem,
   }) async {
-    // Pega a empresa do usuário logado
     final user = ref.read(currentUserProvider);
     if (user == null || user.empresaId == null) {
       throw Exception('Usuário ou Empresa não identificados.');
     }
 
-    // Faz o INSERT enviando o empresa_id (para satisfazer o RLS)
     final response = await _supabase.from(nomeTabela).insert({
       'nome': nomeItem.trim(),
       'empresa_id': user.empresaId,
     }).select('id').single();
 
-    // Retorna o ID do novo item criado
     return response['id'] as String;
+  }
+
+  // 👇 ATUALIZE A FUNÇÃO DE EDITAR
+  Future<void> editarItem({
+    required String nomeTabela,
+    required String id,
+    required String novoNome,
+  }) async {
+    // O .select() obriga o Supabase a devolver a linha alterada.
+    final response = await _supabase
+        .from(nomeTabela)
+        .update({'nome': novoNome.trim()})
+        .eq('id', id)
+        .select(); 
+
+    // Se o RLS bloqueou a edição, a resposta vem vazia!
+    if (response.isEmpty) {
+      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de UPDATE na tabela $nomeTabela.');
+    }
+  }
+
+  // 👇 ATUALIZE A FUNÇÃO DE DELETAR
+  Future<void> deletarItem({
+    required String nomeTabela,
+    required String id,
+  }) async {
+    // O .select() obriga o Supabase a devolver a linha apagada.
+    final response = await _supabase
+        .from(nomeTabela)
+        .delete()
+        .eq('id', id)
+        .select();
+
+    if (response.isEmpty) {
+      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de DELETE na tabela $nomeTabela.');
+    }
   }
 }
 

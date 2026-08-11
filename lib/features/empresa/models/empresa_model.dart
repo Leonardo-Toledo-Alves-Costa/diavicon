@@ -13,6 +13,9 @@ class EmpresaModel {
   final String? linkedin; 
   final DateTime? criadoEm;
 
+  final String? cidade;
+  final String? estado;
+
   EmpresaModel({
     required this.id,
     required this.nome,
@@ -27,10 +30,15 @@ class EmpresaModel {
     this.site,
     this.linkedin,
     this.criadoEm,
+    this.cidade,
+    this.estado,
   });
 
   /// Converte o JSON do Supabase para o Model
   factory EmpresaModel.fromMap(Map<String, dynamic> map) {
+
+    final mapEndereco = map['enderecos'] as Map<String, dynamic>?;
+
     return EmpresaModel(
       id: map['id'] ?? '',
       nome: map['nome'] ?? '',
@@ -39,6 +47,8 @@ class EmpresaModel {
       tipo: map['tipo'],
       ativo: map['ativo'] ?? true,
       enderecoId: map['endereco_id'],
+      cidade: mapEndereco?['cidade'],
+      estado: mapEndereco?['estado'],
       planoId: map['plano_id'],
       tamanho: map['tamanho'],
       fotoUrl: map['foto_url'],

@@ -54,6 +54,10 @@ class StructuresSection extends ConsumerWidget {
                     clienteNome: projeto.clienteNome ?? 'Cliente não definido',
                     empresaNome: projeto.empresaNome,
                     projetoId: projetoId,
+                    empresaLogoUrl: projeto.empresaFotoUrl,
+
+
+                    
                   ),
                 );
               },

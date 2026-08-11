@@ -1,0 +1,82 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../../../core/constants/app_colors.dart';
+import '../providers/empresa_provider.dart'; 
+import '../../auth/providers/auth_provider.dart';
+import '../../home/screens/perfil_drawer.dart'; // 👈 IMPORTANTE: O Drawer padrão
+
+import '../widgets/empresa_header.dart';
+import '../widgets/empresa_info_section.dart';
+import '../widgets/empresa_team_section.dart';
+import '../widgets/empresa_about_section.dart';
+import '../widgets/empresa_services_section.dart';
+
+class EmpresaScreen extends ConsumerStatefulWidget {
+  const EmpresaScreen({super.key});
+
+  @override
+  ConsumerState<EmpresaScreen> createState() => _EmpresaScreenState();
+}
+
+class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
+  // 👇 1. Criamos a chave do Scaffold idêntica à de Projetos
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final usuario = ref.read(currentUserProvider);
+      if (usuario != null && usuario.empresaId != null) {
+        ref.read(empresaControllerProvider.notifier).carregarEmpresaAtual(usuario.empresaId!);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    final empresaAtual = ref.watch(empresaAtualProvider);
+
+    return Scaffold(
+      key: _scaffoldKey, // 👇 2. Atribuímos a chave ao Scaffold
+      drawer: const PerfilDrawer(), // 👇 3. Adicionamos o Drawer padronizado
+      backgroundColor: const Color(0xFFF5F5F5), 
+      body: empresaAtual == null
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : SingleChildScrollView(
+              padding: const EdgeInsets.only(bottom: 100), 
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // 👇 4. Passamos a função onOpenDrawer para o Header
+                  EmpresaHeader(
+                    topPadding: topPadding, 
+                    empresa: empresaAtual,
+                    onOpenDrawer: () {
+                      _scaffoldKey.currentState?.openDrawer();
+                    },
+                  ),
+                  
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        EmpresaInfoSection(empresa: empresaAtual),
+                        const SizedBox(height: 24),
+                        EmpresaTeamSection(empresaId: empresaAtual.id),
+                        const SizedBox(height: 24),
+                        EmpresaAboutSection(empresa: empresaAtual),
+                        const SizedBox(height: 24),
+                        const EmpresaServicesSection(),
+                      ],        
+                    ),
+                  ),
+                ],
+              ),
+            ),
+    );
+  }
+}

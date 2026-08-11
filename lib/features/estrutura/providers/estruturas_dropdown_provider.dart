@@ -4,11 +4,6 @@ import '../../auth/providers/auth_provider.dart';
 
 final _supabase = Supabase.instance.client;
 
-
-
-// PROVIDERS DE LEITURA EM TEMPO REAL (Streams)
-
-
 // Provider para Tipos de Estrutura
 final tiposEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
   return _supabase
@@ -46,7 +41,6 @@ final conjuntosEstruturaisProvider = StreamProvider<List<Map<String, dynamic>>>(
 });
 
 
-// 2. CONTROLLER DE ESCRITA 
 
 class EstruturaDropdownsController {
   final Ref ref;
@@ -57,20 +51,52 @@ class EstruturaDropdownsController {
     required String nomeTabela,
     required String nomeItem,
   }) async {
-    // Pega a empresa do usuário logado
     final user = ref.read(currentUserProvider);
     if (user == null || user.empresaId == null) {
       throw Exception('Usuário ou Empresa não identificados.');
     }
 
-    // Faz o INSERT enviando o empresa_id (para satisfazer o RLS)
     final response = await _supabase.from(nomeTabela).insert({
       'nome': nomeItem.trim(),
       'empresa_id': user.empresaId,
     }).select('id').single();
 
-    // Retorna o ID do novo item criado
     return response['id'] as String;
+  }
+
+  Future<void> editarItem({
+    required String nomeTabela,
+    required String id,
+    required String novoNome,
+  }) async {
+    // O .select() obriga o Supabase a devolver a linha alterada.
+    final response = await _supabase
+        .from(nomeTabela)
+        .update({'nome': novoNome.trim()})
+        .eq('id', id)
+        .select(); 
+
+    // Se o RLS bloqueou a edição, a resposta vem vazia!
+    if (response.isEmpty) {
+      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de UPDATE na tabela $nomeTabela.');
+    }
+  }
+
+
+  Future<void> deletarItem({
+    required String nomeTabela,
+    required String id,
+  }) async {
+    // O .select() obriga o Supabase a devolver a linha apagada.
+    final response = await _supabase
+        .from(nomeTabela)
+        .delete()
+        .eq('id', id)
+        .select();
+
+    if (response.isEmpty) {
+      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de DELETE na tabela $nomeTabela.');
+    }
   }
 }
 

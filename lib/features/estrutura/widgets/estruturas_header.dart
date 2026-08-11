@@ -6,13 +6,23 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../screens/estruturas_tab_screen.dart';
 
+import '../../auth/providers/auth_provider.dart'; 
+
 class EstruturasHeader extends ConsumerWidget {
   final double topPadding;
+  final VoidCallback? onOpenDrawer; 
 
-  const EstruturasHeader({super.key, required this.topPadding});
+  const EstruturasHeader({
+    super.key, 
+    required this.topPadding,
+    this.onOpenDrawer, 
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+
+    final fotoUrlAsync = ref.watch(fotoUsuarioProvider);
+
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -28,9 +38,33 @@ class EstruturasHeader extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const CircleAvatar(
-                    radius: 20,
-                    backgroundImage: AssetImage('assets/images/user_avatar.png'),
+                  IconButton(
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(),
+                    icon: ClipRRect(
+                      borderRadius: BorderRadius.circular(21),
+                      child: fotoUrlAsync.when(
+                        loading: () => const SizedBox(
+                          width: 42, 
+                          height: 42, 
+                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                        ),
+                        error: (_, __) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                        data: (fotoUrl) {
+                          if (fotoUrl != null && fotoUrl.isNotEmpty) {
+                            return Image.network(
+                              fotoUrl, 
+                              width: 42, 
+                              height: 42, 
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                            );
+                          }
+                          return Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover);
+                        },
+                      ),
+                    ),
+                    onPressed: onOpenDrawer,
                   ),
                   const Text(
                     'Estruturas',
@@ -43,7 +77,7 @@ class EstruturasHeader extends ConsumerWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.notifications_none, color: Colors.white),
-                    onPressed: () => context.push('/notificacoes'), // Redireciona para as notificações padrão
+                    onPressed: () => context.push('/notificacoes'),
                   ),
                 ],
               ),

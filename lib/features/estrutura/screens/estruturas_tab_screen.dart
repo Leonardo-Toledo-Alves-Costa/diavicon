@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_empty_state.dart';
+// 👇 IMPORT DO DRAWER ADICIONADO AQUI
+import '../../home/screens/perfil_drawer.dart'; 
 import '../providers/estrutura_provider.dart';
 import '../widgets/estruturas_header.dart';
 import '../widgets/estruturas_filter_row.dart';
@@ -14,6 +16,9 @@ import '../widgets/estrutura_compact_card.dart';
 final estruturaSearchQueryProvider = StateProvider<String>((ref) => '');
 final estruturaConjuntoFiltroProvider = StateProvider<String?>((ref) => null);
 final estruturaIsCompactViewProvider = StateProvider<bool>((ref) => false);
+
+// 👇 CHAVE GLOBAL IGUAL À DA TELA DE PROJETOS ADICIONADA AQUI
+final GlobalKey<ScaffoldState> _estruturasScaffoldKey = GlobalKey<ScaffoldState>();
 
 class EstruturasTabScreen extends ConsumerWidget {
   const EstruturasTabScreen({super.key});
@@ -28,19 +33,28 @@ class EstruturasTabScreen extends ConsumerWidget {
     final isCompactView = ref.watch(estruturaIsCompactViewProvider);
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF5F5F5), // Cor de fundo padronizada com Projetos
+      // 👇 CHAVE E DRAWER LIGADOS AO SCAFFOLD
+      key: _estruturasScaffoldKey,
+      drawer: const PerfilDrawer(),
+      backgroundColor: const Color(0xFFF5F5F5), 
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
           // HEADER EXTRAÍDO
-          EstruturasHeader(topPadding: topPadding),
+          EstruturasHeader(
+            topPadding: topPadding,
+            // 👇 FUNÇÃO DE ABRIR O DRAWER IGUAL À DA TELA DE PROJETOS
+            onOpenDrawer: () {
+              _estruturasScaffoldKey.currentState?.openDrawer();
+            },
+          ),
 
           Expanded(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 40), // Espaço para a search bar flutuante
+                  const SizedBox(height: 40), 
 
                   // FILTROS EXTRAÍDOS
                   const EstruturasFilterRow(),
@@ -73,7 +87,7 @@ class EstruturasTabScreen extends ConsumerWidget {
                         }
 
                         return ListView.builder(
-                          padding: const EdgeInsets.only(top: 8, bottom: 100), // Padding inferior para o BottomNav/FAB
+                          padding: const EdgeInsets.only(top: 8, bottom: 100), 
                           itemCount: filtradas.length,
                           itemBuilder: (context, index) {
                             final estrutura = filtradas[index];

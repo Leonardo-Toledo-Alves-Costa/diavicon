@@ -38,6 +38,9 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
 
   @override
   Widget build(BuildContext context) {
+    //verifica se a empresa é tmb cliente
+    final bool isGestoraIgualCliente = widget.empresaNome.trim() == widget.clienteNome.trim();
+
     ref.listen<AsyncValue<List<EstruturaModel>>>(
       projetoEstruturasProvider(widget.projetoId),
       (previous, next) {
@@ -79,7 +82,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
             return nomeEstrutura.contains(busca) || tituloEstrutura.contains(busca);
           }).toList();
 
-          
           return SizedBox(
             height: MediaQuery.of(context).size.height * 0.68, 
             child: Column(
@@ -87,16 +89,31 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Cabeçalho dinâmico
+                // Cabeçalho dinâmico
                 Row(
                   children: [
                     Container(
-                      decoration: const BoxDecoration(shape: BoxShape.circle, boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)]),
-                      child: CircleAvatar(
-                        radius: 24,
-                        backgroundColor: Colors.white,
-                        backgroundImage: widget.empresaLogoUrl != null
-                            ? NetworkImage(widget.empresaLogoUrl!) as ImageProvider
-                            : const AssetImage('assets/images/logo_diavicon.png'),
+                      height: 48,
+                      width: 48,
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle, 
+                        boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 6)]
+                      ),
+                      child: ClipOval(
+                        child: widget.empresaLogoUrl != null && widget.empresaLogoUrl!.isNotEmpty
+                            ? Image.network(
+                                widget.empresaLogoUrl!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Image.asset(
+                                  'assets/images/logo_diavicon.png',
+                                  fit: BoxFit.contain,
+                                ),
+                              )
+                            : Image.asset(
+                                'assets/images/logo_diavicon.png',
+                                fit: BoxFit.contain,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -113,15 +130,16 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                 ),
                 const SizedBox(height: 16),
 
-                const Center(child: Text('Não viu a Estrutura? Solicite o acesso ao proprietário', style: TextStyle(fontSize: 12, color: AppColors.hintText))),
-                const SizedBox(height: 8),
+                if (!isGestoraIgualCliente) ...[
+                  const Center(child: Text('Não viu a Estrutura? Solicite o acesso ao proprietário', style: TextStyle(fontSize: 12, color: AppColors.hintText))),
+                  const SizedBox(height: 8),
+                ],
 
                 CompactSearchBar(
                   hintText: 'Conjunto estrutural ou estrutura',
                   onChanged: (value) => setState(() => _searchQuery = value),
                 ),
                 const SizedBox(height: 16),
-
 
                 Expanded(
                   child: estruturasFiltradas.isEmpty
@@ -132,24 +150,13 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                           itemBuilder: (context, index) {
                             final est = estruturasFiltradas[index];
                             return CardEstrutura(
-                            // Título
                             title: est.nome ?? 'Sem nome',
-                            
-                            // Linha 1: Tipologia e Tipo
                             type: '${est.tipologiaNome ?? 'Sem tipologia'} - ${est.tipoNome ?? 'Sem tipo'}',
-                            
-                            // Linha 2: Idade e CAA
                             details: '${est.idadeCalculada} Anos   CAA ${est.caa ?? '-'}',
-                            
-                            // Linha 3: Conjunto Estrutural
                             group: est.conjuntoNome ?? 'Sem conjunto vinculado',
-                            
                             imageUrl: est.imageUrl ?? '',
                             isSelected: _selectedStructures.contains(est.id),
                             onTap: () {
-                                // // 1. Fecha o modal de incluir que está aberto em baixo
-                                // Navigator.pop(context);
-                                // 2. Empurra a tela da Home da Estrutura
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
@@ -161,7 +168,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                                 );
                               },
                             onChanged: (val) async {
-                              
                               setState(() {
                                 if (val == true) {
                                   _selectedStructures.add(est.id);
@@ -169,8 +175,6 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                                   _selectedStructures.remove(est.id);
                                 }
                               });
-                              // ...
-
                                 try {
                                   if (val == true) {
                                     await ref.read(estruturaRepositoryProvider).vincularEstrutura(est.id, widget.projetoId);
@@ -206,22 +210,26 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                 // Linha dos botões
                 Row(
                   children: [
-                    Expanded(
-                      child: CustomTextbutton(
-                        text: 'Solicitar acesso',
-                        onPressed: () {
-                          showDiaviconModal(
-                            context: context,
-                            title: 'Solicitação de acesso à\nestruturas',
-                            centerTitle: true,
-                            alignment: Alignment.center,
-                            margin: const EdgeInsets.symmetric(horizontal: 24),
-                            body: const SolicitacaoAcessoBody(),
-                          );
-                        },
+                    if (!isGestoraIgualCliente) ...[
+                      Expanded(
+                        child: CustomTextbutton(
+                          text: 'Solicitar acesso',
+                          onPressed: () {
+                            showDiaviconModal(
+                              context: context,
+                              title: 'Solicitação de acesso à\nestruturas',
+                              centerTitle: true,
+                              alignment: Alignment.center,
+                              margin: const EdgeInsets.symmetric(horizontal: 24),
+                              body: const SolicitacaoAcessoBody(),
+                            );
+                          },
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 16),
+                      const SizedBox(width: 16),
+                    ],
+                    
+                    // botão de criar Nova
                     Expanded(
                       child: CompactButton(
                         text: 'Nova',

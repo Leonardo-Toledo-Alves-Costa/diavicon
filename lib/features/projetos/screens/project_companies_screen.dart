@@ -6,6 +6,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart'; 
 import '../../../core/widgets/diavicon_alerts.dart';
+
+import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../../core/widgets/diavicon_menu_item.dart';
+import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
+
 import '../providers/empresas_projeto_provider.dart';
 import '../widgets/modal_incluir_empresa.dart';
 
@@ -20,10 +25,60 @@ class ProjectCompaniesScreen extends ConsumerWidget {
     final empresasConvidadasAsync = ref.watch(empresasVinculadasProjetoProvider(projetoId));
     final minhaEmpresaAsync = ref.watch(minhaEmpresaProvider);
     
+    //CHAMANDO A CONTAGEM GERAL DE COLABORADORES DO PROJETO
+    final colaboradoresAsync = ref.watch(contagemGeralColaboradoresProvider(projetoId));
+    
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
     return Scaffold(
       backgroundColor: Colors.white,
+      
+      endDrawer: MenuDrawerAppBar(
+        title: 'Menu do\nProjeto',
+        items: [
+          DiaviconMenuItem(
+            icon: Icons.info_outline,
+            label: 'Informações',
+            onTap: () {
+              Navigator.pop(context); 
+              Navigator.pushReplacement( 
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProjectInfoScreen(projetoId: projetoId),
+                ),
+              );
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.assignment_outlined,
+            label: 'RDO',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.business_outlined,
+            label: 'Empresas',
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.description_outlined,
+            label: 'Relatórios',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.payments_outlined,
+            label: 'Gastos',
+            onTap: () {},
+          ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {},
+          ),
+        ],
+      ),
+
       appBar: const CustomAppBar( 
         title: 'Empresas',
         showBackButton: true,
@@ -53,9 +108,21 @@ class ProjectCompaniesScreen extends ConsumerWidget {
             error: (err, _) => Center(child: Text('Erro ao carregar convidadas: $err', style: const TextStyle(color: AppColors.error))),
             data: (listaConvidadas) {
               
+              // CALCULANDO QUANTOS COLABORADORES TEM EM CADA EMPRESA (Contagem Geral)
+              final mapColaboradores = <String, int>{};
+              final colaboradores = colaboradoresAsync.value ?? []; 
+              
+              for (var colab in colaboradores) {
+                final empId = colab['empresa_id']?.toString();
+                if (empId != null) {
+                  mapColaboradores[empId] = (mapColaboradores[empId] ?? 0) + 1;
+                }
+              }
+
+              // DECLARA A LISTA VAZIA AQUI ANTES DE COMEÇAR A PREENCHER
               List<Map<String, dynamic>> listaFinalExibicao = [];
 
-              // 1. Adiciona a Gestora
+              // Adiciona a Gestora
               if (empresaGestora != null) {
                 final endereco = empresaGestora['enderecos'];
                 listaFinalExibicao.add({
@@ -66,19 +133,23 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                   'uf': endereco != null ? endereco['estado'] : 'MG',
                   'status_vinculo': 'aceito',
                   'is_gestora': true,
-                  'total_colaboradores': 0,
+                  'total_colaboradores': mapColaboradores[empresaGestora['id']] ?? 0,
                 });
               }
 
-              //  Adiciona as Convidadas
-              listaFinalExibicao.addAll(listaConvidadas);
+              // Adiciona as Convidadas clonando o mapa para poder alterar
+              for (var emp in listaConvidadas) {
+                final empModificavel = Map<String, dynamic>.from(emp);
+                // Pega do mapa local. Se o mapa não tiver o ID, usa o que veio do banco
+                empModificavel['total_colaboradores'] = mapColaboradores[emp['id']] ?? emp['total_colaboradores'] ?? 0;
+                listaFinalExibicao.add(empModificavel);
+              }
 
               // Identifica e Insere "Minha Empresa"
               final minhaEmpresa = minhaEmpresaAsync.value;
               if (minhaEmpresa != null) {
                 bool jaExiste = false;
                 
-                // Se ela já estiver na lista (como gestora ou convidada), marca a flag nela
                 for (var emp in listaFinalExibicao) {
                   if (emp['id'] == minhaEmpresa['id']) {
                     emp['is_minha_empresa'] = true;
@@ -86,7 +157,6 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                   }
                 }
                 
-                // Se não estava no projeto, insere
                 if (!jaExiste) {
                   final endereco = minhaEmpresa['enderecos'];
                   listaFinalExibicao.add({
@@ -98,7 +168,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                     'status_vinculo': 'aceito',
                     'is_gestora': false,
                     'is_minha_empresa': true, 
-                    'total_colaboradores': 0, 
+                    'total_colaboradores': mapColaboradores[minhaEmpresa['id']] ?? 0, 
                   });
                 }
               }
@@ -111,7 +181,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
               });
 
               return ListView(
-                padding: EdgeInsets.fromLTRB(24, 24, 24, 16 + bottomPadding), // Padding ajustado
+                padding: EdgeInsets.fromLTRB(24, 24, 24, 16 + bottomPadding), 
                 children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -165,7 +235,6 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                       
                       Widget card = _buildEmpresaCard(context, ref, emp);
 
-                      //  Se for a sua empresa e existirem outras na lista, coloca a linha de separação
                       if (isMinhaEmpresa && listaFinalExibicao.length > 1) {
                         return Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -207,7 +276,6 @@ class ProjectCompaniesScreen extends ConsumerWidget {
     Color corFundoBadge = const Color(0xFFE2F7E6); 
     Color corTextoBadge = const Color(0xFF31A04C); 
 
-    // Regras de cor das Badges
     if (emp['is_gestora'] == true) {
       labelStatus = emp['is_minha_empresa'] == true ? 'Sua Empresa (Gestora)' : 'Gestora';
       corFundoBadge = const Color(0xFFE2F7E6);

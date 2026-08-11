@@ -1,3 +1,4 @@
+import 'package:diavicon/features/projetos/providers/notificacoes_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +7,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../../auth/providers/auth_provider.dart'; 
 import '../providers/projetos_provider.dart';
+
 
 class ProjetosHeader extends ConsumerWidget {
   final double topPadding;
@@ -40,7 +42,7 @@ class ProjetosHeader extends ConsumerWidget {
                     builder: (context) => IconButton(
                       padding: EdgeInsets.zero,
                       icon: ClipRRect(
-                        borderRadius: BorderRadius.circular(21), // Deixa redondinho
+                        borderRadius: BorderRadius.circular(21), 
                         child: fotoUrlAsync.when(
                           loading: () => const SizedBox(
                             width: 42, 
@@ -74,12 +76,33 @@ class ProjetosHeader extends ConsumerWidget {
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications_none,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => context.push('/notificacoes'),
+                  
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final asyncCount = ref.watch(contadorNaoLidasProvider);
+                      
+                      final qtdeNaoLidas = asyncCount.when(
+                        data: (valor) => valor,
+                        loading: () => 0,
+                        error: (err, stack) {
+                          debugPrint('Erro no contador do badge da home: $err');
+                          return 0;
+                        },
+                      );
+                      
+                      return IconButton(
+                        icon: Badge(
+                          isLabelVisible: qtdeNaoLidas > 0, 
+                          backgroundColor: Colors.orange,
+                          label: Text(
+                            qtdeNaoLidas > 99 ? '99+' : qtdeNaoLidas.toString(),
+                            style: const TextStyle(color: Colors.white, fontSize: 10),
+                          ),
+                          child: const Icon(Icons.notifications_none, color: Colors.white),
+                        ),
+                        onPressed: () => context.push('/notificacoes'),
+                      );
+                    },
                   ),
                   
                 ],

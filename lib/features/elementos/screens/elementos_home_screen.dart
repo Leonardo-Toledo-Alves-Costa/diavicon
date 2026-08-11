@@ -1,16 +1,23 @@
 import 'package:diavicon/features/ensaios/screens/ensaio_carbonatacao_form_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/compact_search_bar.dart';
-import '../../../core/widgets/menu_app_bar.dart';
-import '../widgets/incluir_elemento_estrutural_sheet.dart';
-import '../widgets/right_menu_bar.dart';
+import '../../../core/widgets/custom_appbar.dart'; 
 
-class ElementosHomeScreen extends StatefulWidget {
+import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../../core/widgets/diavicon_menu_item.dart';
+
+import '../widgets/incluir_elemento_estrutural_sheet.dart';
+import '../providers/elemento_provider.dart';
+import '../models/elemento_model.dart';
+import 'elemento_form_screen.dart';
+
+class ElementosHomeScreen extends ConsumerStatefulWidget {
   const ElementosHomeScreen({
     super.key,
     this.onOpenInformacoes,
@@ -39,12 +46,24 @@ class ElementosHomeScreen extends StatefulWidget {
   final String? imageUrl;
 
   @override
-  State<ElementosHomeScreen> createState() => _ElementosHomeScreenState();
+  ConsumerState<ElementosHomeScreen> createState() => _ElementosHomeScreenState();
 }
 
-class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
-  final GlobalKey<RightMenuBarState> _rightMenuKey =
-      GlobalKey<RightMenuBarState>();
+class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
+
+  String? _tituloAtual;
+  String? _tipoAtual;
+  String? _localAtual;
+  String? _imageUrlAtual;
+
+  @override
+  void initState() {
+    super.initState();
+    _tituloAtual = widget.titulo;
+    _tipoAtual = widget.tipo;
+    _localAtual = widget.local;
+    _imageUrlAtual = widget.imageUrl;
+  }
 
   void _openIncluirElementoSheet() {
     if (widget.onNovoEnsaio != null) {
@@ -61,10 +80,10 @@ class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
     if (widget.projetoId != null) 'projetoId': widget.projetoId,
     if (widget.estruturaId != null) 'estruturaId': widget.estruturaId,
     if (widget.elementoId != null) 'elementoId': widget.elementoId,
-    if (widget.titulo != null) 'titulo': widget.titulo,
-    if (widget.tipo != null) 'tipo': widget.tipo,
-    if (widget.local != null) 'local': widget.local,
-    if (widget.imageUrl != null) 'imageUrl': widget.imageUrl,
+    if (_tituloAtual != null) 'titulo': _tituloAtual,
+    if (_tipoAtual != null) 'tipo': _tipoAtual,
+    if (_localAtual != null) 'local': _localAtual,
+    if (_imageUrlAtual != null) 'imageUrl': _imageUrlAtual,
   };
 
   String? get _basePath {
@@ -74,10 +93,49 @@ class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
     return '/estruturas/$estruturaId/elementos/$elementoId';
   }
 
-  void _openInformacoes() {
-    final basePath = _basePath;
-    if (basePath == null) return;
-    context.push('$basePath/informacoes', extra: _routeExtra);
+  Future<void> _openInformacoes() async {
+    if (widget.estruturaId == null || widget.projetoId == null || widget.elementoId == null) return;
+
+
+    ElementoModel? elementoCompleto;
+    try {
+      final repo = ref.read(elementoRepositoryProvider);
+      final lista = await repo.buscarElementosPorEstrutura(widget.estruturaId!);
+      elementoCompleto = lista.firstWhere((e) => e.id == widget.elementoId);
+    } catch (e) {
+      debugPrint('Erro ao buscar elemento: $e');
+    }
+
+    final elementoSalvo = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ElementoFormScreen(
+          estruturaId: widget.estruturaId!,
+          projetoId: widget.projetoId!,
+          elemento: elementoCompleto, 
+        )
+      )
+    );
+
+    if (elementoSalvo != null && elementoSalvo is ElementoModel) {
+      setState(() {
+        _tituloAtual = elementoSalvo.nome;
+        
+        final tipoParte = elementoSalvo.tipo ?? '';
+        final tipologiaParte = elementoSalvo.tipologiaEstrutural ?? '';
+        if (tipoParte.isNotEmpty && tipologiaParte.isNotEmpty) {
+          _tipoAtual = '$tipoParte - $tipologiaParte';
+        } else {
+          _tipoAtual = tipoParte.isNotEmpty ? tipoParte : tipologiaParte;
+        }
+
+        _localAtual = elementoSalvo.local;
+        
+        if (elementoSalvo.fotos != null && elementoSalvo.fotos!.isNotEmpty) {
+          _imageUrlAtual = elementoSalvo.fotos!.first;
+        }
+      });
+    }
   }
 
   void _openRelatorios() {
@@ -88,89 +146,156 @@ class _ElementosHomeScreenState extends State<ElementosHomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return RightMenuBar(
-      key: _rightMenuKey,
-      onInformacoesPressed: widget.onOpenInformacoes ?? _openInformacoes,
-      onRelatoriosPressed: widget.onOpenRelatorios ?? _openRelatorios,
-      child: Scaffold(
-        backgroundColor: Colors.white,
-        extendBodyBehindAppBar: true,
-        appBar: MenuAppBar(
-          topTitle: 'Projeto',
-          title: 'Elemento',
-          onMenuPressed: () => _rightMenuKey.currentState?.toggle(),
-        ),
-        body: SafeArea(
-          top: false,
-          bottom: false,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _ElementoHero(imageUrl: widget.imageUrl),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 14, 20, 96),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _ElementoHeader(
-                        titulo: widget.titulo,
-                        tipo: widget.tipo,
-                        local: widget.local,
-                      ),
-                      const SizedBox(height: 18),
-                      const _ResumoStrip(),
-                      const SizedBox(height: 29),
-                      _SectionHeader(
-                        onIncluirElemento: _openIncluirElementoSheet,
-                      ),
-                      const SizedBox(height: 13),
-                      SizedBox(
-                        width: 196,
-                        child: CompactSearchBar(
-                          hintText: 'Ensaio',
-                          onChanged: widget.onSearchChanged,
-                        ),
-                      ),
-                      const SizedBox(height: 18),
+    return Scaffold(
+      backgroundColor: Colors.white,
+      extendBodyBehindAppBar: true,
+      
+      endDrawer: MenuDrawerAppBar(
+        title: 'Menu do\nElemento',
+        items: [
+          DiaviconMenuItem(
+            icon: Icons.info_outline,
+            label: 'Informações',
+            onTap: () {
+              Navigator.pop(context); 
+              if (widget.onOpenInformacoes != null) {
+                widget.onOpenInformacoes!();
+              } else {
+                _openInformacoes();
+              }
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.layers_outlined,
+            label: 'Relatórios',
+            onTap: () {
+              Navigator.pop(context);
+              if (widget.onOpenRelatorios != null) {
+                widget.onOpenRelatorios!();
+              } else {
+                _openRelatorios();
+              }
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {
+              Navigator.pop(context);
+            },
+          ),
+        ],
+      ),
 
-                      _EnsaioCard(
-                        iconAsset: 'assets/images/ensaios/carbonatacao.png',
-                        title: 'Frente de carbonatação',
-                        subtitle: 'Ponto 01',
-                        detail: 'Prof. 42 mm',
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => EnsaioCarbonatacaoFormScreen(
-                                pontoNome: 'Ponto 01',
-                                elementoNome: widget.titulo ?? 'V102',
-                                tipoElemento: widget.tipo ?? 'Viga - Concreto Armado',
-                                local: widget.local ?? '2ª Subsolo',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 16),
-                      const _EnsaioCard(
-                        iconAsset: 'assets/images/ensaios/potencial_corrosao.png',
-                        title: 'Potencial de Corrosão',
-                        subtitle: 'Ponto 01',
-                        detail: 'Alta probabilidade de corrosão',
-                      ),
-                    ],
+      appBar: CustomAppBar(
+            title: '',
+            showBackButton: true,
+            showMenuButton: true, 
+            showNotificationButton: true, 
+            titleWidget: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Projeto',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Colors.white.withOpacity(0.8),
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Elemento',
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
+          ),
+
+      body: SafeArea(
+        top: false,
+        bottom: true, 
+        child: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ElementoHero(imageUrl: _imageUrlAtual),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 40), 
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _ElementoHeader(
+                      titulo: _tituloAtual,
+                      tipo: _tipoAtual,
+                      local: _localAtual,
+                    ),
+                    const SizedBox(height: 18),
+                    const _ResumoStrip(),
+                    const SizedBox(height: 32),
+                    _SectionHeader(
+                      onIncluirElemento: _openIncluirElementoSheet,
+                    ),
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: 220, 
+                      child: CompactSearchBar(
+                        hintText: 'Ensaio',
+                        onChanged: widget.onSearchChanged,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _EnsaioCard(
+                      iconAsset: 'assets/images/ensaios/carbonatacao.png',
+                      title: 'Frente de carbonatação',
+                      subtitle: 'Ponto 01',
+                      detail: 'Prof. 42 mm',
+                      statusText: 'Risco Alto',
+                      statusColor: const Color(0xFFE53935),
+                      statusBgColor: const Color(0xFFFFEBEE),
+                      mockAvatar: true,
+                      onTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => EnsaioCarbonatacaoFormScreen(
+                              pontoNome: 'Ponto 01',
+                              elementoNome: _tituloAtual ?? 'V102',
+                              tipoElemento: _tipoAtual ?? 'Viga - Concreto Armado',
+                              local: _localAtual ?? '2ª Subsolo',
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                    const _EnsaioCard(
+                      iconAsset: 'assets/images/ensaios/potencial_corrosao.png',
+                      title: 'Potencial de Corrosão',
+                      subtitle: 'Ponto 01',
+                      detail: 'Alta probabilidade de corrosão',
+                      mockAvatar: true, 
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTES DE UI MANTIDOS
+// ─────────────────────────────────────────────────────────────────────────────
 
 class _ElementoHero extends StatelessWidget {
   const _ElementoHero({this.imageUrl});
@@ -179,34 +304,37 @@ class _ElementoHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final imageUrl = this.imageUrl;
-    if (imageUrl != null && imageUrl.isNotEmpty) {
-      return Image.asset(
-        imageUrl,
+    const double heroHeight = 280; 
+
+    final String? urlLocal = imageUrl;
+
+    if (urlLocal != null && urlLocal.isNotEmpty) {
+      return Image.network(
+        urlLocal, 
         width: double.infinity,
-        height: 210,
-        alignment: Alignment.bottomCenter,
-        fit: BoxFit.fitWidth,
-        errorBuilder: (_, __, ___) => _fallbackImage(),
+        height: heroHeight,
+        alignment: Alignment.center, 
+        fit: BoxFit.cover, 
+        errorBuilder: (_, __, ___) => _fallbackImage(heroHeight),
       );
     }
 
-    return _fallbackImage();
+    return _fallbackImage(heroHeight);
   }
 
-  Widget _fallbackImage() {
+  Widget _fallbackImage(double height) {
     return Image.asset(
       'assets/images/frame_135.png',
       width: double.infinity,
-      height: 210,
-      alignment: Alignment.bottomCenter,
-      fit: BoxFit.fitWidth,
+      height: height,
+      alignment: Alignment.center,
+      fit: BoxFit.cover,
       errorBuilder: (_, __, ___) => Image.asset(
         'assets/images/elemento_info.png',
         width: double.infinity,
-        height: 210,
-        alignment: Alignment.bottomCenter,
-        fit: BoxFit.fitWidth,
+        height: height,
+        alignment: Alignment.center,
+        fit: BoxFit.cover,
       ),
     );
   }
@@ -227,29 +355,29 @@ class _ElementoHeader extends StatelessWidget {
         Text(
           titulo ?? 'V102',
           style: GoogleFonts.lato(
-            color: const Color(0xFF3E3E3D),
-            fontSize: 24,
-            fontWeight: FontWeight.w800,
+            color: const Color(0xFF4A4A4A),
+            fontSize: 26,
+            fontWeight: FontWeight.w900,
             height: 1.05,
           ),
         ),
-        const SizedBox(height: 6),
+        const SizedBox(height: 8),
         Text(
           tipo ?? 'Viga - Concreto Armado',
           style: GoogleFonts.lato(
-            color: const Color(0xFF686868),
+            color: const Color(0xFF757575),
             fontSize: 14,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w400,
             height: 1.1,
           ),
         ),
-        const SizedBox(height: 7),
+        const SizedBox(height: 4),
         Text(
           local ?? '2ª Subsolo',
           style: GoogleFonts.lato(
-            color: const Color(0xFF686868),
+            color: const Color(0xFF757575),
             fontSize: 14,
-            fontWeight: FontWeight.w300,
+            fontWeight: FontWeight.w400,
             height: 1.1,
           ),
         ),
@@ -263,36 +391,40 @@ class _ResumoStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 88,
-          child: _ResumoCard(
-            title: 'Frente de carbonatação',
-            count: '01/04',
-            borderColor: AppColors.primary,
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      clipBehavior: Clip.none, 
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: const [
+          SizedBox(
+            width: 95,
+            child: _ResumoCard(
+              title: 'Frente de carbonatação',
+              count: '01/04',
+              borderColor: AppColors.primary,
+            ),
           ),
-        ),
-        SizedBox(width: 14),
-        SizedBox(
-          width: 88,
-          child: _ResumoCard(
-            title: 'Potencial de corrosão',
-            count: '02/02',
-            borderColor: Color(0xFF20A862),
+          SizedBox(width: 12),
+          SizedBox(
+            width: 95,
+            child: _ResumoCard(
+              title: 'Potencial de corrosão',
+              count: '02/02',
+              borderColor: Color(0xFF20A862),
+            ),
           ),
-        ),
-        SizedBox(width: 14),
-        SizedBox(
-          width: 88,
-          child: _ResumoCard(
-            title: 'Resistividade elet. sup.',
-            count: '03/04',
-            borderColor: AppColors.primary,
+          SizedBox(width: 12),
+          SizedBox(
+            width: 95,
+            child: _ResumoCard(
+              title: 'Resistividade elet. sup.',
+              count: '03/04',
+              borderColor: AppColors.primary,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -310,17 +442,24 @@ class _ResumoCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFAFAFA),
-      elevation: 3,
-      shadowColor: Colors.black.withOpacity(0.35),
-      borderRadius: BorderRadius.circular(9),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.12),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
       child: Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+        height: 70,
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: borderColor, width: 1.2),
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -331,18 +470,18 @@ class _ResumoCard extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: GoogleFonts.lato(
-                color: AppColors.textDark,
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                height: 1.05,
+                color: const Color(0xFF4A4A4A),
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                height: 1.1,
               ),
             ),
             const SizedBox(height: 6),
             Text(
               count,
               style: GoogleFonts.lato(
-                color: AppColors.textDark,
-                fontSize: 14,
+                color: const Color(0xFF757575),
+                fontSize: 13,
                 fontWeight: FontWeight.w400,
                 height: 1,
               ),
@@ -367,9 +506,9 @@ class _SectionHeader extends StatelessWidget {
           child: Text(
             'Ensaios Realizados',
             style: GoogleFonts.lato(
-              color: const Color(0xFF3E3E3D),
-              fontSize: 22,
-              fontWeight: FontWeight.w400,
+              color: const Color(0xFF4A4A4A),
+              fontSize: 20,
+              fontWeight: FontWeight.w500,
               height: 1,
             ),
           ),
@@ -386,6 +525,10 @@ class _EnsaioCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.detail,
+    this.statusText,
+    this.statusColor,
+    this.statusBgColor,
+    this.mockAvatar = false,
     this.onTap,
   });
 
@@ -393,76 +536,141 @@ class _EnsaioCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String detail;
+  final String? statusText;
+  final Color? statusColor;
+  final Color? statusBgColor;
+  final bool mockAvatar;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: const Color(0xFFFAFAFA),
-      elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.25),
-      borderRadius: BorderRadius.circular(20),
-      child: InkWell(
-        onTap: onTap, 
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 20, 14),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 42,
-                height: 42,
-                child: Image.asset(
-                  iconAsset,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.06), 
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap, 
+          borderRadius: BorderRadius.circular(20),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 42,
+                  height: 42,
+                  child: Image.asset(
+                    iconAsset,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lato(
-                        color: const Color(0xFF3E3E3D),
-                        fontSize: 16,
-                        fontWeight: FontWeight.w400,
-                        height: 1.1,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.lato(
+                          color: const Color(0xFF3E3E3D),
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold, 
+                          height: 1.1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      subtitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lato(
-                        color: const Color(0xFF686868),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w300,
-                        height: 1.1,
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.lato(
+                          color: const Color(0xFF8B8B8B),
+                          fontSize: 13,
+                          fontWeight: FontWeight.w400,
+                          height: 1.1,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    Text(
-                      detail,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lato(
-                        color: const Color(0xFFA0A0A0),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w300,
-                        height: 1.1,
+                      const SizedBox(height: 8), 
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              detail,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.lato(
+                                color: const Color(0xFFA0A0A0),
+                                fontSize: 13,
+                                fontWeight: FontWeight.w400,
+                                height: 1.1,
+                              ),
+                            ),
+                          ),
+                          if (statusText != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
+                              decoration: BoxDecoration(
+                                color: statusBgColor,
+                                borderRadius: BorderRadius.circular(16),
+                              ),
+                              child: Text(
+                                statusText!,
+                                style: GoogleFonts.lato(
+                                  color: statusColor,
+                                  fontSize: 11, 
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ),
+                          
+                          if (statusText != null && mockAvatar)
+                            const SizedBox(width: 12), 
+
+                          if (mockAvatar)
+                            Container(
+                              width: 32, 
+                              height: 32,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Colors.white,
+                                border: Border.all(color: Colors.grey.shade200, width: 1.5), 
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withOpacity(0.08),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ]
+                              ),
+                              child: ClipOval( 
+                                child: Image.network(
+                                  'https://ui-avatars.com/api/?name=Asimov&background=random&size=100', 
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 16, color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

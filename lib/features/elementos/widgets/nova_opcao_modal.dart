@@ -1,45 +1,56 @@
 import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
+import 'package:diavicon/features/elementos/providers/elemento_provider.dart'; 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import 'package:google_fonts/google_fonts.dart';
 
-/// Abre um popup simples para criar uma nova opção de dropdown (texto livre).
-///
-/// Usado nos campos cujo "adicionar opção" é apenas um novo valor de texto
-/// (tipo do elemento, tipologia estrutural, revestimento). Retorna o nome
-/// digitado, ou `null` se o usuário cancelar/fechar.
 Future<String?> showNovaOpcaoModal(
   BuildContext context, {
   required String titulo,
   String label = 'Nome',
   String hint = 'Nome',
+  String? empresaId,
+  String? campoBanco, 
 }) {
   return showDialog<String>(
     context: context,
-    barrierColor: Colors.black.withValues(alpha: 0.42),
-    builder: (_) => NovaOpcaoModal(titulo: titulo, label: label, hint: hint),
+    barrierColor: Colors.black.withOpacity(0.42),
+    builder: (_) => NovaOpcaoModal(
+      titulo: titulo, 
+      label: label, 
+      hint: hint,
+      empresaId: empresaId,
+      campoBanco: campoBanco,
+    ),
   );
 }
 
-class NovaOpcaoModal extends StatefulWidget {
+class NovaOpcaoModal extends ConsumerStatefulWidget {
   const NovaOpcaoModal({
     super.key,
     required this.titulo,
     this.label = 'Nome',
     this.hint = 'Nome',
+    this.empresaId,
+    this.campoBanco,
   });
 
   final String titulo;
   final String label;
   final String hint;
+  final String? empresaId;
+  final String? campoBanco;
 
   @override
-  State<NovaOpcaoModal> createState() => _NovaOpcaoModalState();
+  ConsumerState<NovaOpcaoModal> createState() => _NovaOpcaoModalState();
 }
 
-class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
+class _NovaOpcaoModalState extends ConsumerState<NovaOpcaoModal> {
   final _controller = TextEditingController();
   bool _erro = false;
+  bool _isLoading = false; 
 
   @override
   void dispose() {
@@ -47,13 +58,42 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
     super.dispose();
   }
 
-  void _salvar() {
+  Future<void> _salvar() async {
     final nome = _controller.text.trim();
     if (nome.isEmpty) {
       setState(() => _erro = true);
       return;
     }
-    Navigator.of(context).pop(nome);
+
+    setState(() => _isLoading = true);
+
+    try {
+      if (widget.campoBanco != null) {
+        final repo = ref.read(elementoRepositoryProvider); 
+        
+        //Pega a empresa de quem clicou em salvar
+        final user = ref.read(currentUserProvider);
+        final minhaEmpresaId = user?.empresaId;
+
+        if (minhaEmpresaId != null) {
+          if (widget.campoBanco == 'tipologia') {
+            await repo.criarTipologiaElemento(nome, minhaEmpresaId);
+          } else if (widget.campoBanco == 'revestimento') {
+            await repo.criarRevestimentoElemento(nome, minhaEmpresaId);
+          }
+        }
+      }
+      
+      if (mounted) Navigator.of(context).pop(nome);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erro ao salvar opção ou ela já existe!'))
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
   }
 
   @override
@@ -66,13 +106,7 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x33000000),
-              offset: Offset(0, 4),
-              blurRadius: 12,
-            ),
-          ],
+          boxShadow: const [BoxShadow(color: Color(0x33000000), offset: Offset(0, 4), blurRadius: 12)],
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -86,11 +120,7 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
                   Expanded(
                     child: Text(
                       widget.titulo,
-                      style: GoogleFonts.lato(
-                        color: const Color(0xFF3E3E3D),
-                        fontSize: 22,
-                        fontWeight: FontWeight.w900,
-                      ),
+                      style: GoogleFonts.lato(color: const Color(0xFF3E3E3D), fontSize: 22, fontWeight: FontWeight.w900),
                     ),
                   ),
                   GestureDetector(
@@ -105,20 +135,8 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
                 child: Text.rich(
                   TextSpan(
                     children: [
-                      TextSpan(
-                        text: widget.label,
-                        style: GoogleFonts.lato(
-                          color: const Color(0xFF626365),
-                          fontSize: 16,
-                        ),
-                      ),
-                      TextSpan(
-                        text: ' *',
-                        style: GoogleFonts.lato(
-                          color: const Color(0xFFF71D20),
-                          fontSize: 16,
-                        ),
-                      ),
+                      TextSpan(text: widget.label, style: GoogleFonts.lato(color: const Color(0xFF626365), fontSize: 16)),
+                      TextSpan(text: ' *', style: GoogleFonts.lato(color: const Color(0xFFF71D20), fontSize: 16)),
                     ],
                   ),
                 ),
@@ -130,14 +148,11 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
                 onChanged: (_) {
                   if (_erro) setState(() => _erro = false);
                 },
-                onFieldSubmitted: (_) => _salvar(),
+                onFieldSubmitted: (_) => _isLoading ? null : _salvar(),
                 style: GoogleFonts.lato(color: AppColors.textDark),
                 decoration: InputDecoration(
                   hintText: widget.hint,
-                  hintStyle: GoogleFonts.lato(
-                    color: AppColors.hintText,
-                    fontWeight: FontWeight.w300,
-                  ),
+                  hintStyle: GoogleFonts.lato(color: AppColors.hintText, fontWeight: FontWeight.w300),
                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                   errorText: _erro ? 'Informe um nome' : null,
                   border: _border(AppColors.inputBorder),
@@ -147,12 +162,9 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
               ),
               const SizedBox(height: 28),
               Center(
-                child: BiggerCustomButton(
-                  width: 86,
-                  height: 34,
-                  text: 'Salvar',
-                  onPressed: _salvar,
-                ),
+                child: _isLoading 
+                    ? const CircularProgressIndicator(color: AppColors.primary)
+                    : BiggerCustomButton(width: 86, height: 34, text: 'Salvar', onPressed: _salvar),
               ),
             ],
           ),
@@ -162,7 +174,6 @@ class _NovaOpcaoModalState extends State<NovaOpcaoModal> {
   }
 
   OutlineInputBorder _border(Color color) => OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: BorderSide(color: color),
+        borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: color),
       );
 }

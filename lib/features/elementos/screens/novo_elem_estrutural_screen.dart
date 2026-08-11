@@ -13,6 +13,9 @@ import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
+
+import 'package:diavicon/features/elementos/providers/opcoes_elemento_provider.dart';
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -21,7 +24,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart'; 
 import 'package:image_cropper/image_cropper.dart';
 import 'package:pdfx/pdfx.dart'; 
-
 
 const List<String> _defaultTipoElementoOptions = <String>[
   'Pilar',
@@ -257,6 +259,7 @@ class _NovoElemEstruturalScreenState
       novaOpcao = await showNovaOpcaoModal(
         context,
         titulo: _tituloNovaOpcao(field),
+        campoBanco: field == EstruturalDropdownField.tipologiaEstrutural ? 'tipologia' : 'revestimento',
       );
     }
 
@@ -303,7 +306,6 @@ class _NovoElemEstruturalScreenState
       idPlanta = planta.id;
     }
 
-    // Pega o nome atual digitado no campo (se houver)
     final nomeDigitado = _nomeController.text.trim();
 
     final resultado = await showMarcacaoPlantaPopup(
@@ -498,6 +500,18 @@ class _NovoElemEstruturalScreenState
   Widget build(BuildContext context) {
     final nomeAtual = _nomeController.text.trim();
 
+    final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
+
+    List<String> tiposFinais = List.from(_tipoElementoOptions);
+    List<String> tipologiasFinais = List.from(_tipologiaOptions);
+    List<String> revestimentosFinais = List.from(_revestimentoOptions);
+
+    opcoesFormulario.whenData((opcoes) {
+      tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
+      tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
+      revestimentosFinais = {...revestimentosFinais, ...opcoes.revestimentos}.toList();
+    });
+
     return RightMenuBar(
       key: _rightMenuKey,
       onInformacoesPressed: widget.onOpenInformacoes,
@@ -543,21 +557,22 @@ class _NovoElemEstruturalScreenState
                             controller: _nomeController,
                           ),
                           const SizedBox(height: 10),
+                          
+                          //  PASSANDO AS OPÇÕES FINAIS PROS DROPDOWNS
                           _buildDropdownField(
                             label: 'Tipo do Elemento',
                             value: _tipoElemento,
-                            options: _tipoElementoOptions,
+                            options: tiposFinais, 
                             field: EstruturalDropdownField.tipoElemento,
                           ),
                           const SizedBox(height: 10),
                           _buildDropdownField(
                             label: 'Tipologia Estrutural',
                             value: _tipologiaEstrutural,
-                            options: _tipologiaOptions,
+                            options: tipologiasFinais, 
                             field: EstruturalDropdownField.tipologiaEstrutural,
                           ),
                           
-                          //  Lógica do Local com Fake Dropdown e Provider
                           const SizedBox(height: 10),
                           Builder(
                             builder: (context) {
@@ -565,7 +580,7 @@ class _NovoElemEstruturalScreenState
                                 return _buildDropdownField(
                                   label: 'Local do Elemento',
                                   value: _localElemento,
-                                  options: _localOptions,
+                                  options: _localOptions, // O Local continua isolado
                                   field: EstruturalDropdownField.localElemento,
                                 );
                               }
@@ -628,7 +643,7 @@ class _NovoElemEstruturalScreenState
                           _buildDropdownField(
                             label: 'Revestimento',
                             value: _revestimento,
-                            options: _revestimentoOptions,
+                            options: revestimentosFinais, 
                             field: EstruturalDropdownField.revestimento,
                           ),
                           const SizedBox(height: 24),
@@ -843,7 +858,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
       return;
     }
     
-    // Evita baixar o mesmo PDF de novo se a tela der rebuild
     if (url == _currentUrl && _pdfBytes != null) return;
 
     setState(() { _isLoadingPdf = true; _currentUrl = url; });
@@ -900,7 +914,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
-                  //  A IMAGEM DE FUNDO 
                   if (_isLoadingPdf)
                     const CircularProgressIndicator(color: AppColors.primary)
                   else if (bytesThumbnail != null)
@@ -912,7 +925,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                   else
                     const Icon(Icons.image_not_supported, color: Colors.grey),
 
-                  // O PINO E O NOME (Separados)
                   if (marcacao != null && temFundoReal)
                     Positioned.fill(
                       child: LayoutBuilder(
@@ -923,10 +935,8 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                           final wPino = marcacao.largura * w;
                           final hPino = marcacao.altura * h;
                           
-                          // Resgata a cor salva
                           final corSalva = Color(int.parse(marcacao.cor.replaceFirst('#', '0xff')));
                           
-                          // Resgata a posição do nome (com proteção contra valores antigos)
                           double nx = marcacao.nomeX;
                           double ny = marcacao.nomeY;
                           if (ny < -1.0 || ny > 2.0) { nx = marcacao.x; ny = marcacao.y - 0.06; }
@@ -934,7 +944,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                           return Stack(
                             clipBehavior: Clip.none,
                             children: [
-                              // DESENHA SÓ O PINO
                               Positioned(
                                 left: (marcacao.x * w) - (wPino / 2),
                                 top: (marcacao.y * h) - (hPino / 2),
@@ -947,7 +956,6 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                                   corBase: corSalva,
                                 ),
                               ),
-                              // DESENHA SÓ O NOME (Se existir)
                               if (widget.nomeElemento != null && widget.nomeElemento!.isNotEmpty)
                                 Positioned(
                                   left: nx * w, 

@@ -21,7 +21,9 @@ class ProjetosFilterRow extends ConsumerWidget {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
+          onOpened: () => FocusManager.instance.primaryFocus?.unfocus(),
           onSelected: (val) {
+            FocusManager.instance.primaryFocus?.unfocus();
             ref.read(filtroStatusProvider.notifier).state = val;
           },
           itemBuilder: (context) => const [
@@ -82,6 +84,7 @@ class ProjetosFilterRow extends ConsumerWidget {
 
         InkWell(
           onTap: () {
+            FocusManager.instance.primaryFocus?.unfocus();
             ref.read(filtroRecentesProvider.notifier).state = !isRecente;
           },
           borderRadius: BorderRadius.circular(8),

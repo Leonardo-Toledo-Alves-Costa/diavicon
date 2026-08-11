@@ -5,6 +5,7 @@ import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -21,10 +22,11 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
 
-  final List<String> _tipologiaOptions = [];
+  // Opções padrão como ponto de partida
+  final List<String> _defaultTipologias = ['Área Comum', 'Fachada', 'Cobertura', 'Subsolo'];
+  final List<String> _defaultCondicoes = ['Externo coberto', 'Externo descoberto', 'Interno'];
+
   String? _tipologiaSelecionada;
-  
-  final List<String> _condicoesOptions = ['Externo coberto', 'Externo descoberto', 'Interno'];
   String? _condicaoSelecionada;
   
   bool _isLoading = false;
@@ -45,12 +47,21 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
 
     if (novaOpcao != null && novaOpcao.trim().isNotEmpty) {
       final opcaoFormatada = novaOpcao.trim();
-      setState(() {
-        if (!_tipologiaOptions.contains(opcaoFormatada)) {
-          _tipologiaOptions.add(opcaoFormatada);
+      final repo = ref.read(localRepositoryProvider);
+      final user = ref.read(currentUserProvider);
+      final empresaId = user?.empresaId;
+
+      if (empresaId != null) {
+        try {
+          // Salva no banco de dados novo!
+          await repo.criarTipologiaLocal(opcaoFormatada, empresaId);
+          setState(() {
+            _tipologiaSelecionada = opcaoFormatada;
+          });
+        } catch (e) {
+          if (mounted) DiaviconAlerts.show(context, 'Erro', 'Erro ao salvar Tipologia', isErro: true);
         }
-        _tipologiaSelecionada = opcaoFormatada;
-      });
+      }
     }
   }
 
@@ -63,98 +74,42 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
 
     if (novaOpcao != null && novaOpcao.trim().isNotEmpty) {
       final opcaoFormatada = novaOpcao.trim();
-      setState(() {
-        if (!_condicoesOptions.contains(opcaoFormatada)) {
-          _condicoesOptions.add(opcaoFormatada);
-        }
-        _condicaoSelecionada = opcaoFormatada;
-      });
-    }
-  }
+      final repo = ref.read(localRepositoryProvider);
+      final user = ref.read(currentUserProvider);
+      final empresaId = user?.empresaId;
 
-  Widget _buildFakeDropdownRow({
-    required String label,
-    required String hint,
-    required VoidCallback onDropdownTap,
-    required VoidCallback onAddPressed,
-    required String tooltip,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            RichText(
-              text: TextSpan(
-                text: label,
-                style: GoogleFonts.lato(color: AppColors.textDark, fontSize: 20, fontWeight: FontWeight.w300, height: 1),
-                children: const [
-                  TextSpan(text: ' *', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500)),
-                ],
-              ),
-            ),
-            const SizedBox(width: 4),
-            Tooltip(
-              message: tooltip,
-              triggerMode: TooltipTriggerMode.tap,
-              preferBelow: false,
-              showDuration: const Duration(seconds: 3),
-              padding: const EdgeInsets.all(12),
-              margin: const EdgeInsets.symmetric(horizontal: 24),
-              textStyle: const TextStyle(color: Colors.white, fontSize: 14),
-              decoration: BoxDecoration(color: Colors.black87, borderRadius: BorderRadius.circular(8)),
-              child: const Icon(Icons.info_outline, size: 16, color: AppColors.greyLight),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: [
-            Expanded(
-              child: GestureDetector(
-                onTap: onDropdownTap,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: AppColors.inputBorder),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(hint, style: GoogleFonts.lato(color: AppColors.hintText, fontSize: 18, fontWeight: FontWeight.w300, height: 1, letterSpacing: 0.54)),
-                      const Icon(Icons.keyboard_arrow_down, color: Color(0xFF313144)),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            InkWell(
-              onTap: onAddPressed,
-              borderRadius: BorderRadius.circular(24),
-              child: Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(
-                  color: AppColors.primary,
-                  shape: BoxShape.circle,
-                  boxShadow: [BoxShadow(color: Color(0x4D3A57E8), offset: Offset(0, 2), blurRadius: 4)],
-                ),
-                child: const Icon(Icons.add, color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
+      if (empresaId != null) {
+        try {
+          // Salva no banco de dados novo!
+          await repo.criarCondicaoLocal(opcaoFormatada, empresaId);
+          setState(() {
+            _condicaoSelecionada = opcaoFormatada;
+          });
+        } catch (e) {
+          if (mounted) DiaviconAlerts.show(context, 'Erro', 'Erro ao salvar Condição', isErro: true);
+        }
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    // Puxa as listas oficiais do banco de dados em tempo real
+    final tipologiasAsync = ref.watch(tipologiasLocalProvider);
+    final condicoesAsync = ref.watch(condicoesLocalProvider);
+
+    //  Mescla os valores padrão com os valores que vieram do banco
+    List<String> tipologiaOptions = {..._defaultTipologias, ...(tipologiasAsync.value ?? [])}.toList();
+    List<String> condicoesOptions = {..._defaultCondicoes, ...(condicoesAsync.value ?? [])}.toList();
+
+    // Garante que a opção que você acabou de criar esteja na lista para o Dropdown não quebrar
+    if (_tipologiaSelecionada != null && !tipologiaOptions.contains(_tipologiaSelecionada!)) {
+      tipologiaOptions.add(_tipologiaSelecionada!);
+    }
+    if (_condicaoSelecionada != null && !condicoesOptions.contains(_condicaoSelecionada!)) {
+      condicoesOptions.add(_condicaoSelecionada!);
+    }
+
     return Dialog(
       backgroundColor: Colors.transparent,
       elevation: 0,
@@ -200,43 +155,27 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
                   ),
                   const SizedBox(height: 16),
                   
-                  if (_tipologiaOptions.isEmpty)
-                    _buildFakeDropdownRow(
-                      label: 'Tipologia do Local',
-                      hint: 'Nenhuma tipologia',
-                      onDropdownTap: () {
-                        DiaviconAlerts.show(
-                          context,
-                          'Nenhuma tipologia cadastrada',
-                          'Você precisa cadastrar uma tipologia clicando no botão "+" ao lado.',
-                          isAviso: true,
-                        );
-                      },
-                      onAddPressed: _adicionarTipologia,
-                      tooltip: 'Adicione ou selecione o tipo do local (Ex: Sala, Quarto, Garagem).',
-                    )
-                  else
-                    CustomDropdownWithAdd<String>(
-                      label: 'Tipologia do Local',
-                      hint: 'Selecione',
-                      value: _tipologiaSelecionada,
-                      items: _tipologiaOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
-                      onChanged: (val) => setState(() => _tipologiaSelecionada = val), 
-                      onAddPressed: _adicionarTipologia,
-                      isRequired: true,
-                      tooltip: 'Adicione ou selecione o tipo do local (Ex: Sala, Quarto, Garagem).',
-                    ),
+                  CustomDropdownWithAdd<String>(
+                    label: 'Tipologia do Local',
+                    hint: 'Selecione',
+                    value: _tipologiaSelecionada,
+                    items: tipologiaOptions.map((t) => DropdownMenuItem(value: t, child: Text(t, overflow: TextOverflow.ellipsis))).toList(),
+                    onChanged: (val) => setState(() => _tipologiaSelecionada = val), 
+                    onAddPressed: _adicionarTipologia,
+                    isRequired: true,
+                    tooltip: 'Adicione ou selecione o tipo do local.',
+                  ),
                   const SizedBox(height: 16),
                   
                   CustomDropdownWithAdd<String>(
                     label: 'Condição de Exposição',
                     hint: 'Selecione',
                     value: _condicaoSelecionada,
-                    items: _condicoesOptions.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
+                    items: condicoesOptions.map((c) => DropdownMenuItem(value: c, child: Text(c, overflow: TextOverflow.ellipsis))).toList(),
                     onChanged: (val) => setState(() => _condicaoSelecionada = val),
                     onAddPressed: _adicionarCondicao,
                     isRequired: true,
-                    tooltip: 'Adicione ou selecione a condição de exposição do ambiente.',
+                    tooltip: 'Adicione ou selecione a condição de exposição.',
                   ),
                   const SizedBox(height: 16),
                   
@@ -269,30 +208,32 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
                                 DiaviconAlerts.show(context, 'Campo obrigatório', 'Selecione a condição de exposição.', isErro: true);
                                 return;
                               }
+                              if (widget.estruturaId == null) {
+                                DiaviconAlerts.show(context, 'Erro crítico', 'ID da estrutura não foi informado para este local.', isErro: true);
+                                return;
+                              }
 
-                              if (widget.estruturaId != null) {
-                                setState(() => _isLoading = true);
-                                try {
-                                  final repo = ref.read(localRepositoryProvider);
-                                  
-                                  final localCriado = await repo.criarLocal(
-                                    estruturaId: widget.estruturaId!, 
-                                    nome: nome,
-                                    tipologia: _tipologiaSelecionada,
-                                    condicao: _condicaoSelecionada,
-                                    descricao: _descricaoController.text.trim(),
-                                  );
-                                  
-                                  ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId!));
-                                  
-                                  if (!context.mounted) return;
-                                  Navigator.of(context).pop(localCriado.id);
-                                  
-                                } catch (e) {
-                                  if (!context.mounted) return;
-                                  DiaviconAlerts.show(context, 'Erro', 'Falha ao salvar local: $e', isErro: true);
-                                  setState(() => _isLoading = false);
-                                }
+                              setState(() => _isLoading = true);
+                              try {
+                                final repo = ref.read(localRepositoryProvider);
+                                
+                                final localCriado = await repo.criarLocal(
+                                  estruturaId: widget.estruturaId!, 
+                                  nome: nome,
+                                  tipologia: _tipologiaSelecionada,
+                                  condicao: _condicaoSelecionada,
+                                  descricao: _descricaoController.text.trim(),
+                                );
+                                
+                                ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId!));
+                                
+                                if (!context.mounted) return;
+                                Navigator.of(context).pop(localCriado.id);
+                                
+                              } catch (e) {
+                                if (!context.mounted) return;
+                                DiaviconAlerts.show(context, 'Erro', 'Falha ao salvar local: $e', isErro: true);
+                                setState(() => _isLoading = false);
                               }
                             },
                           ),

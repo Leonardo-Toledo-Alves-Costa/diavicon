@@ -8,7 +8,7 @@ import '../controller/auth_controller.dart';
 // Provider do Repositório (Acesso ao Banco)
 final authRepositoryProvider = Provider((ref) => AuthRepository());
 
-// 🔥 ATUALIZADO: O Provider agora se auto-inicializa e escuta o Supabase Auth
+//  O Provider agora se auto-inicializa e escuta o Supabase Auth
 final currentUserProvider = StateNotifierProvider<CurrentUserNotifier, UsuarioModel?>((ref) {
   final notifier = CurrentUserNotifier();
   notifier.sincronizarSessaoAtiva(); // Busca o perfil imediatamente se houver token

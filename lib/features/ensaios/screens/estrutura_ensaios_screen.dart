@@ -41,6 +41,8 @@ class _EstruturaEnsaiosScreenState extends ConsumerState<EstruturaEnsaiosScreen>
       appBar: const CustomAppBar(
         title: 'Ensaios',
         showBackButton: true,
+        showMenuButton: false,
+        showNotificationButton: false,
       ),
       body: ListView.separated(
         padding: const EdgeInsets.all(24.0),

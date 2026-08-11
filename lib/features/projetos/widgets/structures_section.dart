@@ -77,7 +77,7 @@ class StructuresSection extends ConsumerWidget {
                 );
               }
               return SizedBox(
-                height: 0,
+                height: 230, 
                 child: ListView.builder(
                   scrollDirection: Axis.horizontal,
                   itemCount: estruturas.length,

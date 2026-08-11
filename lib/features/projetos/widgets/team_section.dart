@@ -21,6 +21,9 @@ class TeamSection extends ConsumerWidget {
     final colaboradoresAsync = ref.watch(
       colaboradoresAtivosProjetoProvider(projetoId),
     );
+    
+    final canEditAsync = ref.watch(permissaoEdicaoEquipeProvider(projetoId));
+    final bool canEdit = canEditAsync.value ?? false;
 
     return colaboradoresAsync.when(
       loading: () => const Padding(
@@ -34,7 +37,8 @@ class TeamSection extends ConsumerWidget {
         style: TextStyle(color: Colors.red),
       ),
       data: (listaColaboradores) {
-        // 🔥 ESTADO VAZIO DA EQUIPE
+        
+        // ESTADO VAZIO DA EQUIPE
         if (listaColaboradores.isEmpty) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -43,29 +47,31 @@ class TeamSection extends ConsumerWidget {
                 text: 'Equipe não definida',
               ),
               const SizedBox(height: 12),
-              // O Botão de adicionar ainda deve aparecer se a equipe estiver vazia
-              GestureDetector(
-                onTap: () {
-                  showDiaviconModal(
-                    context: context,
-                    title: 'Edite a equipe',
-                    body: EditTeamBody(projetoId: projetoId),
-                  );
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(20),
+              
+              //  Só mostra o botão se tiver permissão
+              if (canEdit)
+                GestureDetector(
+                  onTap: () {
+                    showDiaviconModal(
+                      context: context,
+                      title: 'Edite a equipe',
+                      body: EditTeamBody(projetoId: projetoId),
+                    );
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: const Text('Adicionar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   ),
-                  child: const Text('Adicionar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                 ),
-              ),
             ],
           );
         }
 
-        // Se tiver colaboradores, renderiza a lista normal
+        // COM COLABORADORES NA EQUIPE
         return SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -80,26 +86,28 @@ class TeamSection extends ConsumerWidget {
                 );
               }),
 
-              Padding(
-                padding: const EdgeInsets.only(bottom: 16, left: 0, right: 0),
-                child: GestureDetector(
-                  onTap: () {
-                    showDiaviconModal(
-                      context: context,
-                      title: 'Edite a equipe',
-                      body: EditTeamBody(projetoId: projetoId),
-                    );
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primary,
-                      shape: BoxShape.circle,
+              //  O botão redondo de "+" só aparece para Admin/Gestor
+              if (canEdit)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16, left: 0, right: 0),
+                  child: GestureDetector(
+                    onTap: () {
+                      showDiaviconModal(
+                        context: context,
+                        title: 'Edite a equipe',
+                        body: EditTeamBody(projetoId: projetoId),
+                      );
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add, color: Colors.white, size: 20),
                     ),
-                    child: const Icon(Icons.add, color: Colors.white, size: 20),
                   ),
                 ),
-              ),
             ],
           ),
         );

@@ -24,6 +24,13 @@ final projetoEstruturasProvider = StreamProvider.family<List<EstruturaModel>, St
       .asyncMap((event) => repo.buscarEstruturasPorProjeto(projetoId));
 });
 
+final estruturasDoProjetoProvider = FutureProvider.autoDispose.family<List<EstruturaModel>, String>((ref, projetoId) async {
+  final repository = ref.read(estruturaRepositoryProvider);
+  
+  // Chama a função que já está pronta lá no EstruturaRepository
+  return await repository.buscarEstruturasPorProjeto(projetoId);
+});
+
 final estruturaResumoProvider = FutureProvider.autoDispose.family<Map<String, dynamic>?, String>((ref, id) async {
   final resp = await Supabase.instance.client
       .from('estruturas')

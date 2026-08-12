@@ -1,4 +1,4 @@
-import 'package:diavicon/features/ensaios/models/regiao_ensaio_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/models/regiao_ensaio_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 

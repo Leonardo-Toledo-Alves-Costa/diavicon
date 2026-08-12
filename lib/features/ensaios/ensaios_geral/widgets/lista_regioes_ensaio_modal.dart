@@ -7,8 +7,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:math' as math;
 
-import 'selecionar_local_regiao_modal.dart';
-import 'nova_regiao_ensaio_modal.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/widgets/selecionar_local_regiao_modal.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/widgets/nova_regiao_ensaio_modal.dart';
 
 class ListaRegioesEnsaioModal extends ConsumerWidget {
   final String estruturaId,

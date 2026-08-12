@@ -1,0 +1,73 @@
+
+  <div class="fields-grid">
+    <div class="field"><span class="label">Projeto</span><span class="value">{{projeto}}</span></div>
+    <div class="field"><span class="label">Estrutura</span><span class="value">{{estrutura}}</span></div>
+    <div class="field"><span class="label">Idade</span><span class="value">{{idade}}</span></div>
+
+    <div class="field"><span class="label">Tipo</span><span class="value">{{tipo}}</span></div>
+    <div class="field"><span class="label">Tipologia</span><span class="value">{{tipologiaEstrutura}}</span></div>
+    <div class="field"><span class="label">CAA</span><span class="value">{{caa}}</span></div>
+    
+
+    <div class="field"><span class="label">Elementos</span><span class="value">{{elementos}}</span></div>
+    <div class="field"><span class="label">Locais</span><span class="value">{{local}}</span></div>
+    <div class="field"><span class="label">Utilização</span><span class="value">{{utilizacao}}</span></div>
+    <div></div>
+  </div>
+
+  <table class="data-table" style="margin-bottom:10px;">
+    <tr>
+      <th rowspan="2" style="width:14%;">Armadura</th>
+      <th colspan="3">Cobrimento</th>
+      <th colspan="3">Frente de Carbonatação</th>
+      <th rowspan="2" style="width:12%;">Vida Útil Residual</th>
+    </tr>
+    <tr>
+      <th>Média (mm)</th><th>Desv. Pad.</th><th>Coef. Var.</th>
+      <th>Média (mm)</th><th>Desv. Pad.</th><th>Coef. Var.</th>
+    </tr>
+    <tr>
+      <td class="label-cell">Principal</td>
+      <td>{{cob_principal_media}}</td><td>{{cob_principal_desvpad}}</td><td>{{cob_principal_coefvar}}</td>
+      <td>{{carb_principal_media}}</td><td>{{carb_principal_desvpad}}</td><td>{{carb_principal_coefvar}}</td>
+      <td rowspan="2">{{vida_util_anos}} anos<br><span class="condicao">{{vida_util_condicao}}</span></td>
+    </tr>
+    <tr>
+      <td class="label-cell">Secundária</td>
+      <td>{{cob_secundaria_media}}</td><td>{{cob_secundaria_desvpad}}</td><td>{{cob_secundaria_coefvar}}</td>
+      <td colspan="3" style="font-weight:600;">Coef. de Carb. (k mm/ano²): {{coef_carb_k}}</td>
+    </tr>
+  </table>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">Estimativa do Avanço Frente de Carbonatação ao longo do tempo</div>
+      <canvas id="chartFrenteCarbon" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Estimativa da Probabilidade de Despassivação ao Longo do Tempo</div>
+      <canvas id="chartProbGeral" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="chart-row">
+    <div class="chart-box">
+      <div class="chart-title">Distribuição dos resultados por elementos estruturais</div>
+      <canvas id="chartBoxElementos" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+      <div class="chart-title">Distribuição dos resultados por locais</div>
+      <canvas id="chartBoxLocal" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="cols-2" style="margin-top:10px;">
+     <div class="chart-box">
+      <div class="chart-title">Distribuição dos Riscos na Estrutura</div>
+      <canvas id="chartRiscos" height="220"></canvas>
+    </div>
+  </div>
+
+  <div class="footer-bar"></div>
+</div>
+

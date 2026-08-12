@@ -1,35 +1,33 @@
 import 'dart:io';
+
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
-
-import '../widgets/bigger_custom_button.dart';
-import '../widgets/novo_local_widget.dart';
+import '../../estrutura/providers/local_provider.dart';
+import '../../projetos/providers/projetos_provider.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
-import '../providers/opcoes_elemento_provider.dart'; 
-import '../../projetos/providers/projetos_provider.dart';
-
-import '../../estrutura/providers/local_provider.dart';
-
+import '../providers/opcoes_elemento_provider.dart';
+import '../widgets/bigger_custom_button.dart';
+import '../widgets/novo_local_widget.dart';
 import 'planejamento_plantas_screen.dart';
 
 class ElementoFormScreen extends ConsumerStatefulWidget {
   final String estruturaId;
   final String projetoId;
   final ElementoModel? elemento;
-  final VoidCallback? onSalvo; 
+  final VoidCallback? onSalvo;
 
   const ElementoFormScreen({
     super.key,
@@ -51,10 +49,18 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
   String? _localElemento;
   String? _revestimento;
 
-  List<String> _tipoElementoOptions = ['Pilar', 'Viga', 'Laje'];
-  List<String> _tipologiaOptions = ['Concreto armado', 'Metalica', 'Mista'];
-  List<String> _localOptions = ['Interno', 'Externo', 'Cobertura'];
-  List<String> _revestimentoOptions = ['Pintura', 'Argamassa', 'Ceramica'];
+  final List<String> _tipoElementoOptions = ['Pilar', 'Viga', 'Laje'];
+  final List<String> _tipologiaOptions = [
+    'Concreto armado',
+    'Metalica',
+    'Mista',
+  ];
+  final List<String> _localOptions = ['Interno', 'Externo', 'Cobertura'];
+  final List<String> _revestimentoOptions = [
+    'Pintura',
+    'Argamassa',
+    'Ceramica',
+  ];
 
   File? _novaImagemBanner;
   bool _isSubmitting = false;
@@ -73,16 +79,22 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final el = widget.elemento!;
     _nomeController.text = el.nome ?? '';
 
-    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!)) _tipoElementoOptions.add(el.tipo!);
+    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!))
+      _tipoElementoOptions.add(el.tipo!);
     _tipoElemento = el.tipo;
 
-    if (el.tipologiaEstrutural != null && !_tipologiaOptions.contains(el.tipologiaEstrutural!)) _tipologiaOptions.add(el.tipologiaEstrutural!);
+    if (el.tipologiaEstrutural != null &&
+        !_tipologiaOptions.contains(el.tipologiaEstrutural!))
+      _tipologiaOptions.add(el.tipologiaEstrutural!);
     _tipologiaEstrutural = el.tipologiaEstrutural;
 
-    if (el.local != null && !_localOptions.contains(el.local!)) _localOptions.add(el.local!);
+    if (el.local != null && !_localOptions.contains(el.local!))
+      _localOptions.add(el.local!);
     _localElemento = el.local;
 
-    if (el.revestimento != null && !_revestimentoOptions.contains(el.revestimento!)) _revestimentoOptions.add(el.revestimento!);
+    if (el.revestimento != null &&
+        !_revestimentoOptions.contains(el.revestimento!))
+      _revestimentoOptions.add(el.revestimento!);
     _revestimento = el.revestimento;
   }
 
@@ -107,11 +119,31 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Alterações não salvas', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
-        content: const Text('Você fez alterações que ainda não foram salvas. Deseja sair e perder tudo?'),
+        title: const Text(
+          'Alterações não salvas',
+          style: TextStyle(
+            color: AppColors.textDark,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Você fez alterações que ainda não foram salvas. Deseja sair e perder tudo?',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Ficar', style: TextStyle(color: AppColors.primary))),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Sair sem salvar', style: TextStyle(color: AppColors.error))),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text(
+              'Ficar',
+              style: TextStyle(color: AppColors.primary),
+            ),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text(
+              'Sair sem salvar',
+              style: TextStyle(color: AppColors.error),
+            ),
+          ),
         ],
       ),
     );
@@ -123,7 +155,10 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
   Future<void> _alterarBanner() async {
     final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(source: ImageSource.gallery, imageQuality: 80);
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 80,
+    );
 
     if (pickedFile != null) {
       final croppedFile = await ImageCropper().cropImage(
@@ -150,7 +185,12 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
   Future<void> _salvar() async {
     if (_nomeController.text.trim().isEmpty) {
-      DiaviconAlerts.show(context, 'Atenção', 'O nome do elemento é obrigatório.', isErro: true);
+      DiaviconAlerts.show(
+        context,
+        'Atenção',
+        'O nome do elemento é obrigatório.',
+        isErro: true,
+      );
       return;
     }
 
@@ -158,12 +198,19 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
     try {
       final repo = ref.read(elementoRepositoryProvider);
-      List<String> fotosFinais = widget.elemento?.fotos != null ? List.from(widget.elemento!.fotos!) : [];
+      List<String> fotosFinais = widget.elemento?.fotos != null
+          ? List.from(widget.elemento!.fotos!)
+          : [];
 
       if (_novaImagemBanner != null) {
-        final refId = _isEditing ? widget.elemento!.id : 'novo_${DateTime.now().millisecondsSinceEpoch}';
-        final urlPublica = await repo.uploadFoto(elementoId: refId, caminhoLocalFoto: _novaImagemBanner!.path);
-        
+        final refId = _isEditing
+            ? widget.elemento!.id
+            : 'novo_${DateTime.now().millisecondsSinceEpoch}';
+        final urlPublica = await repo.uploadFoto(
+          elementoId: refId,
+          caminhoLocalFoto: _novaImagemBanner!.path,
+        );
+
         if (fotosFinais.isNotEmpty) {
           fotosFinais[0] = urlPublica;
         } else {
@@ -199,7 +246,10 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       if (_isEditing) {
         elementoSalvo = await repo.atualizarElemento(elementoAtualizado);
       } else {
-        elementoSalvo = await repo.criarElemento(elementoAtualizado, widget.estruturaId);
+        elementoSalvo = await repo.criarElemento(
+          elementoAtualizado,
+          widget.estruturaId,
+        );
       }
 
       ref.invalidate(elementosPorEstruturaProvider(widget.estruturaId));
@@ -207,7 +257,11 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
       if (mounted) {
         Navigator.pop(context, elementoSalvo);
-        DiaviconAlerts.show(context, 'Sucesso!', _isEditing ? 'Elemento atualizado.' : 'Elemento criado.');
+        DiaviconAlerts.show(
+          context,
+          'Sucesso!',
+          _isEditing ? 'Elemento atualizado.' : 'Elemento criado.',
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -227,7 +281,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         barrierColor: Colors.transparent,
         builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
-      
+
       if (novoLocalId != null) {
         try {
           final response = await Supabase.instance.client
@@ -235,7 +289,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
               .select('nome')
               .eq('id', novoLocalId)
               .single();
-              
+
           setState(() {
             _isDirty = true;
             _localElemento = response['nome'] as String;
@@ -273,18 +327,22 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       _isDirty = true;
       switch (field) {
         case ElementoInfoDropdownField.tipoElemento:
-          if (!_tipoElementoOptions.contains(normalized)) _tipoElementoOptions.add(normalized);
+          if (!_tipoElementoOptions.contains(normalized))
+            _tipoElementoOptions.add(normalized);
           _tipoElemento = normalized;
           break;
         case ElementoInfoDropdownField.tipologiaEstrutural:
-          if (!_tipologiaOptions.contains(normalized)) _tipologiaOptions.add(normalized);
+          if (!_tipologiaOptions.contains(normalized))
+            _tipologiaOptions.add(normalized);
           _tipologiaEstrutural = normalized;
           break;
         case ElementoInfoDropdownField.revestimento:
-          if (!_revestimentoOptions.contains(normalized)) _revestimentoOptions.add(normalized);
+          if (!_revestimentoOptions.contains(normalized))
+            _revestimentoOptions.add(normalized);
           _revestimento = normalized;
           break;
-        default: break;
+        default:
+          break;
       }
     });
 
@@ -309,21 +367,36 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         label: label,
         hint: 'Selecione',
         value: value,
-        items: safeOptions.map((item) => DropdownMenuItem<String>(value: item, child: Text(item, overflow: TextOverflow.ellipsis))).toList(),
+        items: safeOptions
+            .map(
+              (item) => DropdownMenuItem<String>(
+                value: item,
+                child: Text(item, overflow: TextOverflow.ellipsis),
+              ),
+            )
+            .toList(),
         onChanged: (newValue) {
           if (!canEdit) return;
           setState(() {
             _isDirty = true;
             switch (field) {
-              case ElementoInfoDropdownField.tipoElemento: _tipoElemento = newValue; break;
-              case ElementoInfoDropdownField.tipologiaEstrutural: _tipologiaEstrutural = newValue; break;
-              case ElementoInfoDropdownField.localElemento: _localElemento = newValue; break;
-              case ElementoInfoDropdownField.revestimento: _revestimento = newValue; break;
+              case ElementoInfoDropdownField.tipoElemento:
+                _tipoElemento = newValue;
+                break;
+              case ElementoInfoDropdownField.tipologiaEstrutural:
+                _tipologiaEstrutural = newValue;
+                break;
+              case ElementoInfoDropdownField.localElemento:
+                _localElemento = newValue;
+                break;
+              case ElementoInfoDropdownField.revestimento:
+                _revestimento = newValue;
+                break;
             }
           });
         },
         onAddPressed: () async {
-          _handleAddOption(field); 
+          _handleAddOption(field);
         },
         isAddEnabled: canEdit,
       ),
@@ -335,19 +408,24 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final topContentPadding = MediaQuery.paddingOf(context).top + 124;
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
-    
+
     final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
-    final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId)); 
+    final locaisAsync = ref.watch(
+      locaisPorEstruturaProvider(widget.estruturaId),
+    );
 
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
-    List<String> locaisFinais = List.from(_localOptions); 
+    List<String> locaisFinais = List.from(_localOptions);
 
     opcoesFormulario.whenData((opcoes) {
       tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
       tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
-      revestimentosFinais = {...revestimentosFinais, ...opcoes.revestimentos}.toList();
+      revestimentosFinais = {
+        ...revestimentosFinais,
+        ...opcoes.revestimentos,
+      }.toList();
     });
 
     locaisAsync.whenData((locais) {
@@ -363,8 +441,9 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
     String? imageUrl;
     if (_novaImagemBanner != null) {
-      imageUrl = _novaImagemBanner!.path; 
-    } else if (widget.elemento?.fotos != null && widget.elemento!.fotos!.isNotEmpty) {
+      imageUrl = _novaImagemBanner!.path;
+    } else if (widget.elemento?.fotos != null &&
+        widget.elemento!.fotos!.isNotEmpty) {
       imageUrl = widget.elemento!.fotos!.first;
     }
 
@@ -375,16 +454,18 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
         await _verificarSaida();
       },
       child: AnnotatedRegion<SystemUiOverlayStyle>(
-        value: SystemUiOverlayStyle.dark.copyWith(statusBarColor: AppColors.primary),
+        value: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: AppColors.primary,
+        ),
         child: Scaffold(
           backgroundColor: Colors.white,
           extendBodyBehindAppBar: true,
-          
+
           appBar: CustomAppBar(
             title: "",
             showBackButton: true,
-            showMenuButton: false, 
-            showNotificationButton: false, 
+            showMenuButton: false,
+            showNotificationButton: false,
             titleWidget: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -409,7 +490,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
               ],
             ),
           ),
-          
+
           body: SafeArea(
             top: false,
             bottom: false,
@@ -421,48 +502,50 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   _ElementoBanner(
                     onEditPressed: canEdit ? _alterarBanner : null,
                     imageFile: _novaImagemBanner,
-                    networkUrl: (_novaImagemBanner == null && imageUrl != null) ? imageUrl : null,
+                    networkUrl: (_novaImagemBanner == null && imageUrl != null)
+                        ? imageUrl
+                        : null,
                   ),
                   const SizedBox(height: 22),
-                  
+
                   CustomTextField(
                     label: 'Nome do Elemento',
                     hint: 'ABC Corp.',
                     controller: _nomeController,
-                    enabled: canEdit, 
+                    enabled: canEdit,
                   ),
                   const SizedBox(height: 18),
-                  
+
                   _buildDropdownField(
                     label: 'Tipo do Elemento',
                     value: _tipoElemento,
-                    options: tiposFinais, 
+                    options: tiposFinais,
                     field: ElementoInfoDropdownField.tipoElemento,
                     canEdit: canEdit,
                   ),
                   const SizedBox(height: 18),
-                  
+
                   _buildDropdownField(
                     label: 'Tipologia Estrutural',
                     value: _tipologiaEstrutural,
-                    options: tipologiasFinais, 
+                    options: tipologiasFinais,
                     field: ElementoInfoDropdownField.tipologiaEstrutural,
                     canEdit: canEdit,
                   ),
                   const SizedBox(height: 18),
-                  
+
                   _buildDropdownField(
                     label: 'Local do Elemento',
                     value: _localElemento,
-                    options: locaisFinais, 
+                    options: locaisFinais,
                     field: ElementoInfoDropdownField.localElemento,
                     canEdit: canEdit,
                   ),
                   const SizedBox(height: 20),
-                  
+
                   Center(child: _PlantaCard(onPressed: canEdit ? () {} : null)),
                   const SizedBox(height: 14),
-                  
+
                   if (canEdit)
                     Center(
                       child: BiggerCustomButton(
@@ -482,22 +565,24 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                       ),
                     ),
                   const SizedBox(height: 18),
-                  
+
                   _buildDropdownField(
                     label: 'Revestimento',
                     value: _revestimento,
-                    options: revestimentosFinais, 
+                    options: revestimentosFinais,
                     field: ElementoInfoDropdownField.revestimento,
                     canEdit: canEdit,
                   ),
                   const SizedBox(height: 44),
-                  
+
                   if (_isDirty && canEdit)
                     Center(
                       child: BiggerCustomButton(
                         width: 139,
                         height: 52,
-                        text: _isSubmitting ? 'Salvando...' : (_isEditing ? 'Salvar' : 'Criar'),
+                        text: _isSubmitting
+                            ? 'Salvando...'
+                            : (_isEditing ? 'Salvar' : 'Criar'),
                         onPressed: _isSubmitting ? () {} : _salvar,
                       ),
                     ),
@@ -530,10 +615,12 @@ class _ElementoBanner extends StatelessWidget {
             borderRadius: BorderRadius.circular(24),
             image: DecorationImage(
               image: imageFile != null
-                  ? ResizeImage(FileImage(imageFile!), width: 800) as ImageProvider
-                  : (networkUrl != null 
-                      ? NetworkImage(networkUrl!) 
-                      : const AssetImage('assets/images/elemento_info.png') as ImageProvider),
+                  ? ResizeImage(FileImage(imageFile!), width: 800)
+                        as ImageProvider
+                  : (networkUrl != null
+                        ? NetworkImage(networkUrl!)
+                        : const AssetImage('assets/images/elemento_info.png')
+                              as ImageProvider),
               fit: BoxFit.cover,
             ),
           ),
@@ -552,7 +639,11 @@ class _ElementoBanner extends StatelessWidget {
                 child: SizedBox(
                   width: 46,
                   height: 46,
-                  child: Icon(Icons.edit_outlined, color: AppColors.greyDarkest.withOpacity(0.95), size: 31),
+                  child: Icon(
+                    Icons.edit_outlined,
+                    color: AppColors.greyDarkest.withOpacity(0.95),
+                    size: 31,
+                  ),
                 ),
               ),
             ),
@@ -570,13 +661,30 @@ class _PlantaCard extends StatelessWidget {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 279, height: 150,
-        decoration: BoxDecoration(color: const Color(0xFFD9D9D9), border: Border.all(color: const Color(0xFFD1D1D1), width: 4)),
+        width: 279,
+        height: 150,
+        decoration: BoxDecoration(
+          color: const Color(0xFFD9D9D9),
+          border: Border.all(color: const Color(0xFFD1D1D1), width: 4),
+        ),
         padding: const EdgeInsets.all(2),
-        child: Container(decoration: BoxDecoration(border: Border.all(color: const Color(0xFF5E5E5E), width: 1), image: const DecorationImage(image: AssetImage('assets/images/planta_elementos_info.png'), fit: BoxFit.cover))),
+        child: Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFF5E5E5E), width: 1),
+            image: const DecorationImage(
+              image: AssetImage('assets/images/planta_elementos_info.png'),
+              fit: BoxFit.cover,
+            ),
+          ),
+        ),
       ),
     );
   }
 }
 
-enum ElementoInfoDropdownField { tipoElemento, tipologiaEstrutural, localElemento, revestimento }
+enum ElementoInfoDropdownField {
+  tipoElemento,
+  tipologiaEstrutural,
+  localElemento,
+  revestimento,
+}

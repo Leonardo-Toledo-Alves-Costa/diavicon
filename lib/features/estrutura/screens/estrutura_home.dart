@@ -1,21 +1,21 @@
 import 'package:diavicon/core/widgets/local_search_dropdown.dart';
 import 'package:diavicon/features/elementos/screens/elemento_form_screen.dart';
-import 'package:diavicon/features/ensaios/screens/estrutura_ensaios_screen.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/screens/estrutura_ensaios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/compact_button.dart';
+import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
-
 import '../../elementos/models/elemento_model.dart';
 import '../../elementos/providers/elemento_provider.dart';
 import '../../elementos/screens/planejamento_plantas_screen.dart';
 import '../../elementos/widgets/incluir_elemento_estrutural_sheet.dart';
 import '../models/estrutura_model.dart';
-import '../providers/estrutura_provider.dart'; 
+import '../providers/estrutura_provider.dart';
 import '../widgets/elemento_estrutural_card.dart';
 import '../widgets/estrutura_home_header.dart';
 import '../widgets/progresso_projeto_card.dart';
@@ -38,7 +38,6 @@ class EstruturaHomeScreen extends ConsumerStatefulWidget {
 
 class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   String? _localFiltro;
-  
 
   void _openElemento(
     BuildContext context, {
@@ -52,7 +51,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
       '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
       extra: <String, dynamic>{
         'projetoId': widget.projetoId,
-        'estruturaId': widget.estrutura.id, 
+        'estruturaId': widget.estrutura.id,
         'elementoId': elementoId,
         'titulo': titulo,
         'tipo': tipo,
@@ -93,7 +92,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                   MaterialPageRoute<void>(
                     builder: (_) => ElementoFormScreen(
                       estruturaId: widget.estrutura.id,
-                      projetoId: widget.projetoId, 
+                      projetoId: widget.projetoId,
                       elemento: elemento,
                     ),
                   ),
@@ -236,15 +235,19 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
 
-    // Assiste a mesma lista que a tela anterior de Projetos assiste. 
+    // Assiste a mesma lista que a tela anterior de Projetos assiste.
     // Como você invalida na tela de edição, aqui é re-buscado no mesmo milésimo de segundo!
-    final estruturasAsync = ref.watch(estruturasDoProjetoProvider(widget.projetoId));
-    
+    final estruturasAsync = ref.watch(
+      estruturasDoProjetoProvider(widget.projetoId),
+    );
+
     // Procura a estrutura recém-baixada do provedor. Se der B.O e não achar, usa a inicial como fallback.
-    final EstruturaModel estruturaExibida = estruturasAsync.value?.firstWhere(
-      (e) => e.id == widget.estrutura.id, 
-      orElse: () => widget.estrutura,
-    ) ?? widget.estrutura;
+    final EstruturaModel estruturaExibida =
+        estruturasAsync.value?.firstWhere(
+          (e) => e.id == widget.estrutura.id,
+          orElse: () => widget.estrutura,
+        ) ??
+        widget.estrutura;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -257,13 +260,14 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
             label: 'Informações',
             onTap: () async {
               Navigator.pop(context);
-              // Não precisa mais do `setState` ou de esperar um retorno! 
+              // Não precisa mais do `setState` ou de esperar um retorno!
               // O Riverpod já cuida da atualização em background.
               await Navigator.push(
                 context,
                 MaterialPageRoute(
                   builder: (_) => EstruturaInformacaoScreen(
-                    estrutura: estruturaExibida, // Envia sempre os dados mais recentes pra edição
+                    estrutura:
+                        estruturaExibida, // Envia sempre os dados mais recentes pra edição
                     projetoId: widget.projetoId,
                   ),
                 ),
@@ -289,7 +293,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
             icon: Icons.science_outlined,
             label: 'Ensaios',
             onTap: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -342,8 +346,8 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
       ),
 
       body: SafeArea(
-        top: false, 
-        bottom: true, 
+        top: false,
+        bottom: true,
         child: SingleChildScrollView(
           padding: EdgeInsets.zero,
           child: Column(
@@ -405,7 +409,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                         Expanded(
                           flex: 6,
                           child: SizedBox(
-                            height: 36, 
+                            height: 36,
                             child: LocalSearchDropdown(
                               estruturaId: widget.estrutura.id,
                               value: _localFiltro,
@@ -426,18 +430,19 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                               color: AppColors.error,
                               size: 20,
                             ),
-                            onPressed: () => setState(() => _localFiltro = null),
+                            onPressed: () =>
+                                setState(() => _localFiltro = null),
                             padding: EdgeInsets.zero,
                             constraints: const BoxConstraints(),
                           ),
                         ],
 
-                        const Spacer(flex: 1), 
+                        const Spacer(flex: 1),
 
                         Expanded(
                           flex: 3,
                           child: GestureDetector(
-                            onTap: () {}, 
+                            onTap: () {},
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.end,
                               children: [
@@ -449,7 +454,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(width: 4),
+                                SizedBox(width: 4),
                                 Icon(
                                   Icons.keyboard_arrow_down,
                                   color: AppColors.textDark,

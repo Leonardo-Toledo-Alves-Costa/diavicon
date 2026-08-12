@@ -1,4 +1,3 @@
-import 'package:diavicon/features/ensaios/screens/ensaio_carbonatacao_form_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -7,14 +6,16 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/compact_search_bar.dart';
-import '../../../core/widgets/custom_appbar.dart'; 
-
-import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
-
-import '../widgets/incluir_elemento_estrutural_sheet.dart';
-import '../providers/elemento_provider.dart';
+import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../ensaios/ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart';
+import '../../ensaios/ensaios_geral/widgets/novo_ponto_ensaio_modal.dart';
+//imports de ensaios
+import '../../ensaios/ensaios_geral/widgets/selecionar_tipo_ensaio_modal.dart';
 import '../models/elemento_model.dart';
+import '../providers/elemento_provider.dart';
 import 'elemento_form_screen.dart';
 
 class ElementosHomeScreen extends ConsumerStatefulWidget {
@@ -46,11 +47,11 @@ class ElementosHomeScreen extends ConsumerStatefulWidget {
   final String? imageUrl;
 
   @override
-  ConsumerState<ElementosHomeScreen> createState() => _ElementosHomeScreenState();
+  ConsumerState<ElementosHomeScreen> createState() =>
+      _ElementosHomeScreenState();
 }
 
 class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
-
   String? _tituloAtual;
   String? _tipoAtual;
   String? _localAtual;
@@ -65,15 +66,50 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     _imageUrlAtual = widget.imageUrl;
   }
 
-  void _openIncluirElementoSheet() {
-    if (widget.onNovoEnsaio != null) {
-      widget.onNovoEnsaio!();
-      return;
-    }
-    showIncluirElementoEstruturalSheet<void>(
+  void _openNovoEnsaioModal() async {
+    if (widget.projetoId == null || widget.estruturaId == null) return;
+
+    final ensaioEscolhido = await showModalBottomSheet<Map<String, dynamic>>(
       context: context,
-      estruturaId: widget.estruturaId,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const SelecionarTipoEnsaioModal(),
     );
+
+    if (ensaioEscolhido != null && mounted) {
+      final realTipoId = await ref.read(
+        buscarIdTipoEnsaioProvider(ensaioEscolhido['nome']).future,
+      );
+
+      if (!mounted) return;
+
+      if (realTipoId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Este tipo de ensaio não está cadastrado no banco de dados!',
+            ),
+            backgroundColor: Colors.orange,
+          ),
+        );
+        return;
+      }
+
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.white,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (context) => NovoPontoEnsaioModal(
+          projetoId: widget.projetoId!,
+          estruturaId: widget.estruturaId!,
+          tipoEnsaioNome: ensaioEscolhido['nome'],
+          tipoEnsaioId: realTipoId,
+        ),
+      );
+    }
   }
 
   Map<String, dynamic> get _routeExtra => <String, dynamic>{
@@ -94,8 +130,10 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
   }
 
   Future<void> _openInformacoes() async {
-    if (widget.estruturaId == null || widget.projetoId == null || widget.elementoId == null) return;
-
+    if (widget.estruturaId == null ||
+        widget.projetoId == null ||
+        widget.elementoId == null)
+      return;
 
     ElementoModel? elementoCompleto;
     try {
@@ -112,15 +150,15 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
         builder: (_) => ElementoFormScreen(
           estruturaId: widget.estruturaId!,
           projetoId: widget.projetoId!,
-          elemento: elementoCompleto, 
-        )
-      )
+          elemento: elementoCompleto,
+        ),
+      ),
     );
 
     if (elementoSalvo != null && elementoSalvo is ElementoModel) {
       setState(() {
         _tituloAtual = elementoSalvo.nome;
-        
+
         final tipoParte = elementoSalvo.tipo ?? '';
         final tipologiaParte = elementoSalvo.tipologiaEstrutural ?? '';
         if (tipoParte.isNotEmpty && tipologiaParte.isNotEmpty) {
@@ -130,7 +168,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
         }
 
         _localAtual = elementoSalvo.local;
-        
+
         if (elementoSalvo.fotos != null && elementoSalvo.fotos!.isNotEmpty) {
           _imageUrlAtual = elementoSalvo.fotos!.first;
         }
@@ -149,7 +187,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       extendBodyBehindAppBar: true,
-      
+
       endDrawer: MenuDrawerAppBar(
         title: 'Menu do\nElemento',
         items: [
@@ -157,7 +195,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
             icon: Icons.info_outline,
             label: 'Informações',
             onTap: () {
-              Navigator.pop(context); 
+              Navigator.pop(context);
               if (widget.onOpenInformacoes != null) {
                 widget.onOpenInformacoes!();
               } else {
@@ -188,45 +226,45 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
       ),
 
       appBar: CustomAppBar(
-            title: '',
-            showBackButton: true,
-            showMenuButton: true, 
-            showNotificationButton: true, 
-            titleWidget: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Projeto',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 0.5,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Elemento',
-                  style: TextStyle(
-                    fontSize: 18,
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+        title: '',
+        showBackButton: true,
+        showMenuButton: true,
+        showNotificationButton: true,
+        titleWidget: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Projeto',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.white.withOpacity(0.8),
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
             ),
-          ),
+            const SizedBox(height: 2),
+            const Text(
+              'Elemento',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
 
       body: SafeArea(
         top: false,
-        bottom: true, 
+        bottom: true,
         child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               _ElementoHero(imageUrl: _imageUrlAtual),
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 18, 20, 40), 
+                padding: const EdgeInsets.fromLTRB(20, 18, 20, 40),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -238,12 +276,12 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                     const SizedBox(height: 18),
                     const _ResumoStrip(),
                     const SizedBox(height: 32),
-                    _SectionHeader(
-                      onIncluirElemento: _openIncluirElementoSheet,
-                    ),
+
+                    _SectionHeader(onIncluirElemento: _openNovoEnsaioModal),
+
                     const SizedBox(height: 16),
                     SizedBox(
-                      width: 220, 
+                      width: 220,
                       child: CompactSearchBar(
                         hintText: 'Ensaio',
                         onChanged: widget.onSearchChanged,
@@ -251,37 +289,122 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    _EnsaioCard(
-                      iconAsset: 'assets/images/ensaios/carbonatacao.png',
-                      title: 'Frente de carbonatação',
-                      subtitle: 'Ponto 01',
-                      detail: 'Prof. 42 mm',
-                      statusText: 'Risco Alto',
-                      statusColor: const Color(0xFFE53935),
-                      statusBgColor: const Color(0xFFFFEBEE),
-                      mockAvatar: true,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => EnsaioCarbonatacaoFormScreen(
-                              pontoNome: 'Ponto 01',
-                              elementoNome: _tituloAtual ?? 'V102',
-                              tipoElemento: _tipoAtual ?? 'Viga - Concreto Armado',
-                              local: _localAtual ?? '2ª Subsolo',
+                    const SizedBox(height: 24),
+
+                    // 👇 NOVA LISTA DINÂMICA VINDA DO BANCO DE DADOS
+                    Consumer(
+                      builder: (context, ref, child) {
+                        if (widget.elementoId == null)
+                          return const SizedBox.shrink();
+
+                        final ensaiosAsync = ref.watch(
+                          ensaiosDoElementoProvider(widget.elementoId!),
+                        );
+
+                        return ensaiosAsync.when(
+                          loading: () => const Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
                             ),
                           ),
+                          error: (err, _) => Text(
+                            'Erro ao carregar: $err',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                          data: (pontos) {
+                            if (pontos.isEmpty) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 32.0),
+                                child: Center(
+                                  child: Text(
+                                    'Nenhum ensaio realizado neste elemento.',
+                                    style: TextStyle(
+                                      color: AppColors.greyMedium,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+
+                            // 1. AGRUPA OS PONTOS POR TIPO DE ENSAIO
+                            final Map<String, Map<String, dynamic>>
+                            ensaiosAgrupados = {};
+
+                            for (var ponto in pontos) {
+                              final tipoEnsaio = ponto['tipos_ensaio'];
+                              if (tipoEnsaio == null) continue;
+
+                              final tipoId = tipoEnsaio['id'];
+
+                              if (!ensaiosAgrupados.containsKey(tipoId)) {
+                                ensaiosAgrupados[tipoId] = {
+                                  'id': tipoId,
+                                  'nome':
+                                      tipoEnsaio['nome'] ??
+                                      'Ensaio Desconhecido',
+                                  'icone':
+                                      tipoEnsaio['icone_path'] ??
+                                      'assets/images/ensaios/carbonatacao.png',
+                                  'quantidade': 0,
+                                };
+                              }
+                              // Soma +1 ponto a este tipo de ensaio
+                              ensaiosAgrupados[tipoId]!['quantidade'] += 1;
+                            }
+
+                            // 2. DESENHA UM CARD PARA CADA TIPO DE ENSAIO ENCONTRADO
+                            return Column(
+                              children: ensaiosAgrupados.values.map((grupo) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 16.0),
+                                  child: _EnsaioCard(
+                                    iconAsset: grupo['icone'],
+                                    title: grupo['nome'],
+                                    subtitle:
+                                        '${grupo['quantidade']} ponto(s) neste elemento',
+                                    detail: 'Ver todos os pontos na estrutura',
+                                    statusText: 'Acessar',
+                                    statusColor: AppColors.primary,
+                                    statusBgColor: AppColors.primary
+                                        .withOpacity(0.1),
+                                    mockAvatar: false, // Desliga o avatar falso
+                                    onTap: () {
+                                      // 👇 3. ROTA PARA A TELA GERAL DE PONTOS (Protótipo image_73209d)
+                                      if (widget.projetoId == null ||
+                                          widget.estruturaId == null)
+                                        return;
+
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              PontosEnsaioScreen(
+                                                projetoId: widget.projetoId!,
+                                                estruturaId:
+                                                    widget.estruturaId!,
+                                                iconeEnsaio: grupo['icone'],
+                                                tipoEnsaioId: grupo['id'],
+                                              ),
+                                        ),
+                                      ).then((_) {
+                                        // Atualiza a lista ao voltar
+                                        ref.refresh(
+                                          ensaiosDoElementoProvider(
+                                            widget.elementoId!,
+                                          ),
+                                        );
+                                      });
+                                    },
+                                  ),
+                                );
+                              }).toList(),
+                            );
+                          },
                         );
                       },
                     ),
-                    const SizedBox(height: 16),
-                    const _EnsaioCard(
-                      iconAsset: 'assets/images/ensaios/potencial_corrosao.png',
-                      title: 'Potencial de Corrosão',
-                      subtitle: 'Ponto 01',
-                      detail: 'Alta probabilidade de corrosão',
-                      mockAvatar: true, 
-                    ),
+                    // const SizedBox(height: 16),
+                    // const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -304,18 +427,18 @@ class _ElementoHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const double heroHeight = 280; 
+    const double heroHeight = 280;
 
     final String? urlLocal = imageUrl;
 
     if (urlLocal != null && urlLocal.isNotEmpty) {
       return Image.network(
-        urlLocal, 
+        urlLocal,
         width: double.infinity,
         height: heroHeight,
-        alignment: Alignment.center, 
-        fit: BoxFit.cover, 
-        errorBuilder: (_, __, ___) => _fallbackImage(heroHeight),
+        alignment: Alignment.center,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => _fallbackImage(heroHeight),
       );
     }
 
@@ -329,7 +452,7 @@ class _ElementoHero extends StatelessWidget {
       height: height,
       alignment: Alignment.center,
       fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Image.asset(
+      errorBuilder: (_, _, _) => Image.asset(
         'assets/images/elemento_info.png',
         width: double.infinity,
         height: height,
@@ -393,7 +516,7 @@ class _ResumoStrip extends StatelessWidget {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none, 
+      clipBehavior: Clip.none,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: const [
@@ -550,7 +673,7 @@ class _EnsaioCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06), 
+            color: Colors.black.withOpacity(0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -559,7 +682,7 @@ class _EnsaioCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: onTap, 
+          onTap: onTap,
           borderRadius: BorderRadius.circular(20),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -572,7 +695,11 @@ class _EnsaioCard extends StatelessWidget {
                   child: Image.asset(
                     iconAsset,
                     fit: BoxFit.contain,
-                    errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
+                    errorBuilder: (_, _, _) => const Icon(
+                      Icons.science_outlined,
+                      color: AppColors.textDark,
+                      size: 28,
+                    ),
                   ),
                 ),
                 const SizedBox(width: 16),
@@ -588,7 +715,7 @@ class _EnsaioCard extends StatelessWidget {
                         style: GoogleFonts.lato(
                           color: const Color(0xFF3E3E3D),
                           fontSize: 15,
-                          fontWeight: FontWeight.bold, 
+                          fontWeight: FontWeight.bold,
                           height: 1.1,
                         ),
                       ),
@@ -604,7 +731,7 @@ class _EnsaioCard extends StatelessWidget {
                           height: 1.1,
                         ),
                       ),
-                      const SizedBox(height: 8), 
+                      const SizedBox(height: 8),
                       Row(
                         children: [
                           Expanded(
@@ -622,7 +749,10 @@ class _EnsaioCard extends StatelessWidget {
                           ),
                           if (statusText != null)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6), 
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
                                 color: statusBgColor,
                                 borderRadius: BorderRadius.circular(16),
@@ -631,36 +761,43 @@ class _EnsaioCard extends StatelessWidget {
                                 statusText!,
                                 style: GoogleFonts.lato(
                                   color: statusColor,
-                                  fontSize: 11, 
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w800,
                                 ),
                               ),
                             ),
-                          
+
                           if (statusText != null && mockAvatar)
-                            const SizedBox(width: 12), 
+                            const SizedBox(width: 12),
 
                           if (mockAvatar)
                             Container(
-                              width: 32, 
+                              width: 32,
                               height: 32,
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: Colors.white,
-                                border: Border.all(color: Colors.grey.shade200, width: 1.5), 
+                                border: Border.all(
+                                  color: Colors.grey.shade200,
+                                  width: 1.5,
+                                ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withOpacity(0.08),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
-                                  )
-                                ]
+                                  ),
+                                ],
                               ),
-                              child: ClipOval( 
+                              child: ClipOval(
                                 child: Image.network(
-                                  'https://ui-avatars.com/api/?name=Asimov&background=random&size=100', 
+                                  'https://ui-avatars.com/api/?name=Asimov&background=random&size=100',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.business, size: 16, color: Colors.grey),
+                                  errorBuilder: (_, _, _) => const Icon(
+                                    Icons.business,
+                                    size: 16,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ),
                             ),

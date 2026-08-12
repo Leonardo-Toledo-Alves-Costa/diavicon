@@ -48,6 +48,12 @@ dependencies:
   internet_file: ^1.3.0
   flutter_colorpicker: ^1.1.0
   flutter_svg: ^2.3.0
+  fl_chart: ^1.2.0
+  syncfusion_flutter_charts: ^34.2.2
+
+  flutter_html_to_pdf_plus: ^0.4.0
+  path_provider: ^2.1.2
+  open_filex: ^4.5.0
 
   # Navegação
 
@@ -83,3 +89,12 @@ flutter:
     - assets/images/voltage_1.png
     - assets/images/
     - assets/images/ensaios/
+    - assets/reports/
+    - assets/reports/carbonatacao/css/style.css
+    - assets/reports/carbonatacao/components/header.html
+    - assets/reports/carbonatacao/components/footer.html
+    - assets/reports/carbonatacao/templates/ensaio_geral_template.html
+    - assets/reports/carbonatacao/templates/ensaio_individual_template.html
+    - assets/reports/carbonatacao/templates/tabela_geral_template.html
+    - assets/reports/carbonatacao/templates/galeria_ensaio_template.html
+    - lib/features/ensaios/ensaios_carbonatacao/

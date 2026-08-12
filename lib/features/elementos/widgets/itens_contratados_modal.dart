@@ -1,4 +1,4 @@
-import 'package:diavicon/features/ensaios/screens/ensaios_contratados_screen.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/screens/ensaios_contratados_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -64,7 +64,11 @@ class ItensContratadosModal extends StatelessWidget {
                 ),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: AppColors.greyMedium, size: 24),
+                  child: const Icon(
+                    Icons.close,
+                    color: AppColors.greyMedium,
+                    size: 24,
+                  ),
                 ),
               ],
             ),
@@ -82,7 +86,8 @@ class ItensContratadosModal extends StatelessWidget {
                   child: CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.white,
-                    backgroundImage: (empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty)
+                    backgroundImage:
+                        (empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty)
                         ? NetworkImage(empresaFotoUrl!)
                         : null,
                     child: (empresaFotoUrl == null || empresaFotoUrl!.isEmpty)
@@ -108,12 +113,13 @@ class ItensContratadosModal extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               itemCount: itensContratados.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 16),
+              separatorBuilder: (_, _) => const SizedBox(height: 16),
               itemBuilder: (context, index) {
                 final item = itensContratados[index];
-                
+
                 final bool marcadasOk = item['marcadas'] >= item['contratadas'];
-                final bool realizadasOk = item['realizadas'] >= item['contratadas'];
+                final bool realizadasOk =
+                    item['realizadas'] >= item['contratadas'];
 
                 return Container(
                   padding: const EdgeInsets.all(16),
@@ -137,11 +143,15 @@ class ItensContratadosModal extends StatelessWidget {
                         child: Image.asset(
                           item['icone'],
                           fit: BoxFit.contain,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
+                          errorBuilder: (_, _, _) => const Icon(
+                            Icons.science_outlined,
+                            color: AppColors.textDark,
+                            size: 28,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 16),
-                      
+
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -164,17 +174,19 @@ class ItensContratadosModal extends StatelessWidget {
                               ),
                             ),
                             const SizedBox(height: 12),
-                            
+
                             Wrap(
                               spacing: 8,
                               runSpacing: 8,
                               children: [
                                 _buildBadge(
-                                  texto: '${item['marcadas'].toString().padLeft(2, '0')} Und. marcadas',
+                                  texto:
+                                      '${item['marcadas'].toString().padLeft(2, '0')} Und. marcadas',
                                   isSuccess: marcadasOk,
                                 ),
                                 _buildBadge(
-                                  texto: '${item['realizadas'].toString().padLeft(2, '0')} Und. realizadas',
+                                  texto:
+                                      '${item['realizadas'].toString().padLeft(2, '0')} Und. realizadas',
                                   isSuccess: realizadasOk,
                                 ),
                               ],
@@ -201,16 +213,18 @@ class ItensContratadosModal extends StatelessWidget {
                   onPressed: () {
                     // 1. Fecha o Modal de Itens Contratados
                     Navigator.pop(context);
-                    
+
                     // 2. Navega para a tela de Ensaios Contratados da Empresa
                     Navigator.push(
                       context,
                       MaterialPageRoute(
                         builder: (context) => EnsaiosContratadosScreen(
-                          estruturaId: 'mock_estrutura_123', // ID mockado por enquanto
+                          estruturaId:
+                              'mock_estrutura_123', // ID mockado por enquanto
                           empresaId: empresaId,
                           empresaNome: empresaNome,
-                          isGestora: true, // Passando true para liberar o botão de "Adicionar" e a Lixeira
+                          isGestora:
+                              true, // Passando true para liberar o botão de "Adicionar" e a Lixeira
                         ),
                       ),
                     );

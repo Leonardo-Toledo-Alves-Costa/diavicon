@@ -3,7 +3,7 @@ import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/elementos/providers/info_planejamento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/itens_contratados_modal.dart';
 import 'package:diavicon/features/elementos/widgets/marcar_elemento_planejamento_modal.dart';
-import 'package:diavicon/features/ensaios/widgets/lista_regioes_ensaio_modal.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/widgets/lista_regioes_ensaio_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfx/pdfx.dart';

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/diavicon_alerts.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/compact_button.dart';
+import '../../../../core/widgets/diavicon_alerts.dart';
 
 class ConfigurarQtdEnsaioModal extends StatefulWidget {
   final String nomeEnsaio;

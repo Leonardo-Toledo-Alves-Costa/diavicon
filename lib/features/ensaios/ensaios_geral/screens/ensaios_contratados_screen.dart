@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/compact_search_bar.dart';
-import '../../../core/widgets/custom_appbar.dart';
-import '../../../core/widgets/diavicon_alerts.dart';
+import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/compact_button.dart';
+import '../../../../core/widgets/compact_search_bar.dart';
+import '../../../../core/widgets/custom_appbar.dart';
+import '../../../../core/widgets/diavicon_alerts.dart';
 
 class EnsaiosContratadosScreen extends StatefulWidget {
   final String estruturaId;

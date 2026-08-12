@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../estrutura/providers/estruturas_dropdown_provider.dart';
@@ -10,7 +11,6 @@ class EditarTabelasScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final conjuntosAsync = ref.watch(conjuntosEstruturaisProvider);
     final utilizacoesAsync = ref.watch(utilizacoesEstruturaProvider);
     final tiposAsync = ref.watch(tiposEstruturaProvider);

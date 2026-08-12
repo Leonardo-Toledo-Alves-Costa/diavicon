@@ -1,9 +1,9 @@
 import 'dart:io';
 import 'package:diavicon/core/widgets/confirmar_exclusao_dialog.dart';
 import 'package:diavicon/features/elementos/providers/info_planejamento_provider.dart';
-import 'package:diavicon/features/ensaios/models/regiao_ensaio_model.dart';
-import 'package:diavicon/features/ensaios/widgets/configurar_qtd_ensaio_modal.dart';
-import 'package:diavicon/features/ensaios/widgets/selecionar_tipo_ensaio_modal.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/models/regiao_ensaio_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/widgets/configurar_qtd_ensaio_modal.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/widgets/selecionar_tipo_ensaio_modal.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

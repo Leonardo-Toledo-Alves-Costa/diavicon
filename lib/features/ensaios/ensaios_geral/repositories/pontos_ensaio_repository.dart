@@ -1,0 +1,102 @@
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/pontos_ensaio_model.dart';
+
+
+class PontosEnsaioRepository {
+  final SupabaseClient _supabase;
+  PontosEnsaioRepository(this._supabase);
+
+  Future<List<PontoEnsaioModel>> getPontosEnsaio({
+    required String projetoId,
+    required String estruturaId,
+    required String tipoEnsaioId,
+  }) async {
+    try {
+      // 1. Busca os pontos de ensaio cruzando com os elementos
+      final response = await _supabase
+          .from('pontos_ensaios_geral')
+          .select('''
+            id,
+            nome_ponto,
+            criado_por,
+            valor_resultado,
+            cor_resultado,
+            tipo_ensaio_id, 
+            elementos_estruturais!inner (
+              id,
+              nome,
+              tipo,
+              local,
+              fotos
+            )
+          ''') // 👈 CORREÇÃO: tipo_ensaio_id adicionado ao select
+          .eq('projeto_id', projetoId)
+          .eq('tipo_ensaio_id', tipoEnsaioId) // 👈 CORREÇÃO: Uso de .eq para comparar UUID
+          .eq('elementos_estruturais.estrutura_id', estruturaId);
+
+      final List data = response as List;
+      if (data.isEmpty) return [];
+
+      // 2. Coletar IDs dos autores para buscar a logo das empresas
+      final autoresIds = data
+          .map((row) => row['criado_por']?.toString())
+          .where((id) => id != null && id.isNotEmpty)
+          .toSet()
+          .toList();
+
+      Map<String, String> logosEmpresas = {};
+
+      if (autoresIds.isNotEmpty) {
+        final usuariosResp = await _supabase
+            .from('usuarios')
+            .select('id, empresas(foto_url)')
+            .inFilter('id', autoresIds);
+
+        for (var u in usuariosResp) {
+          final emp = u['empresas'] as Map<String, dynamic>?;
+          logosEmpresas[u['id'].toString()] = emp?['foto_url'] ?? '';
+        }
+      }
+
+      // 3. Montar a lista final
+      return data.map((row) {
+        final el = row['elementos_estruturais'] as Map<String, dynamic>;
+        final String criadoPor = row['criado_por']?.toString() ?? '';
+
+        final List? arrayFotos = el['fotos'] as List?;
+        final String fotoElemento = (arrayFotos != null && arrayFotos.isNotEmpty)
+            ? arrayFotos.first.toString()
+            : 'https://via.placeholder.com/150';
+
+        final String? valorBanco = row['valor_resultado']?.toString();
+        final String? corBanco = row['cor_resultado']?.toString();
+
+        String txtRisco = valorBanco ?? 'Pendente';
+        String bgRisco = corBanco ?? '#F5F5F5';
+        String txtCorRisco = (valorBanco != null && valorBanco != 'Pendente') 
+            ? '#FFFFFF' 
+            : '#3E3E3D';
+
+        return PontoEnsaioModel(
+          id: row['id'].toString(),
+          nome: row['nome_ponto'] ?? 'Ponto sem nome',
+          elementoId: el['id'].toString(),
+          elementoNome: el['nome'] ?? 'Elemento Desconhecido',
+          tipoElemento: el['tipo'] ?? '-',
+          local: el['local'] ?? 'Não informado',
+          fotoElementoUrl: fotoElemento,
+          avatarEmpresaUrl: logosEmpresas[criadoPor] != null && logosEmpresas[criadoPor]!.isNotEmpty
+              ? logosEmpresas[criadoPor]!
+              : 'https://via.placeholder.com/150',
+          textoRisco: txtRisco.toUpperCase(),
+          corFundoRisco: bgRisco,
+          corTextoRisco: txtCorRisco,
+          tipoEnsaioId: row['tipo_ensaio_id']?.toString() ?? tipoEnsaioId,
+        );
+      }).toList();
+
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao buscar pontos de ensaio: ${e.message}');
+    }
+  }
+}

@@ -380,10 +380,10 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 15),
 
                     const ProgressoProjetoCard(progresso: 0.90),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 15),
 
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,

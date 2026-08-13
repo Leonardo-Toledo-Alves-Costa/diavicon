@@ -6,6 +6,10 @@ import '../../../../core/constants/app_colors.dart';
 // Certifique-se de que esses imports estão corretos para o seu projeto:
 import '../../ensaios_carbonatacao/screens/ponto_ensaio_carbonatacao_screen.dart';
 import '../providers/pontos_ensaio_provider.dart';
+// Importando o mapa de rotas
+import '../models/ensaios_routes_map.dart';
+import '../providers/pontos_ensaio_provider.dart';
+
 
 class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
   final String estruturaId;
@@ -22,14 +26,13 @@ class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NovoPontoEnsaioModal> createState() =>
-      _NovoPontoEnsaioModalState();
+  ConsumerState<NovoPontoEnsaioModal> createState() => _NovoPontoEnsaioModalState();
 }
 
 class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   final TextEditingController _nomeController = TextEditingController();
   String? _selectedLocal;
-  String? _selectedElementoId;
+  String? _selectedElementoId; 
 
   @override
   void dispose() {
@@ -40,17 +43,13 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   void _salvar(List<Map<String, dynamic>> elementos) {
     if (_nomeController.text.trim().isEmpty || _selectedElementoId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Preencha o nome do ponto e selecione o elemento.'),
-        ),
+        const SnackBar(content: Text('Preencha o nome do ponto e selecione o elemento.')),
       );
       return;
     }
 
     // Busca o elemento filtrando pelo ID
-    final elementosEncontrados = elementos.where(
-      (e) => e['id'].toString() == _selectedElementoId,
-    );
+    final elementosEncontrados = elementos.where((e) => e['id'].toString() == _selectedElementoId);
 
     if (elementosEncontrados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -63,48 +62,35 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
 
     Navigator.pop(context); // Fecha o modal
 
-    // Roteamento Dinâmico
-    final tipo = widget.tipoEnsaioNome.toLowerCase();
+    // Utilizando o roteamento dinâmico através do EnsaioRoutesMap
+    final Widget? telaFormulario = EnsaioRoutesMap.getFormularioScreen(
+      tipoEnsaio: widget.tipoEnsaioNome,
+      projetoId: widget.projetoId,
+      pontoNome: _nomeController.text.trim(),
+      elementoNome: elementoSelecionado['nome']?.toString() ?? 'Desconhecido',
+      tipoElemento: elementoSelecionado['tipo']?.toString() ?? '-',
+      local: _selectedLocal ?? 'Não informado',
+      elementoId: _selectedElementoId!,
+      pontoGeralId: '', // 👈 Enviando string vazia (ou nula se você aceitar) pois é um NOVO ponto
+      tipoEnsaioId: widget.tipoEnsaioId,
+    );
 
-    if (tipo.contains('carbonatação') || tipo.contains('carbonatacao')) {
+    if (telaFormulario != null) {
       Navigator.push(
         context,
         MaterialPageRoute(
-          builder: (context) => PontoEnsaioCarbonatacaoScreen(
-            projetoId: widget.projetoId,
-            pontoNome: _nomeController.text.trim(),
-            elementoNome:
-                elementoSelecionado['nome']?.toString() ?? 'Desconhecido',
-            tipoElemento: elementoSelecionado['tipo']?.toString() ?? '-',
-            local: _selectedLocal ?? 'Não informado',
-            elementoId: _selectedElementoId!,
-            tipoEnsaioId: widget
-                .tipoEnsaioId, // 👈 CORREÇÃO: Enviando o UUID para a tela responsável por salvar no banco
-            // pontoGeralId omitido propositalmente, pois é um NOVO ponto
-          ),
+          builder: (context) => telaFormulario,
         ),
       );
-    } else if (tipo.contains('potencial')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tela de Potencial de Corrosão em desenvolvimento.'),
-        ),
-      );
-    } else if (tipo.contains('resistividade')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Tela de Resistividade em desenvolvimento.'),
-        ),
-      );
+      ref.invalidate(pontosEnsaioProvider);
     } else {
+      // Caso a rota retorne null, exibe a mensagem de que não está implementado
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Formulário não implementado para este ensaio.'),
-        ),
+        const SnackBar(content: Text('Formulário não implementado para este ensaio.')),
       );
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     final elementosAsync = ref.watch(

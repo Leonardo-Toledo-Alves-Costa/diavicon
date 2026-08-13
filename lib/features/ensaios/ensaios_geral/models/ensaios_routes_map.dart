@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 // Importe aqui as telas dos ensaios já desenvolvidas
 import '../../ensaios_carbonatacao/screens/ponto_ensaio_carbonatacao_screen.dart';
 import '../../ensaios_carbonatacao/screens/analise_ensaio_todos_screen.dart'; // Tela de análise geral
+import '../../ensaios_resistividade/screens/ponto_ensaio_resistividade_screen.dart'; 
+import '../../ensaios_resistividade/screens/analise_todos_pontos_resistividade.dart';
 
 
 class EnsaioRoutesMap {
@@ -34,6 +36,21 @@ class EnsaioRoutesMap {
 
       );
     }
+
+    // 2. Resistividade
+    if (tipo.contains('resistividade') || tipo.contains('resistividade')) {
+      return PontoEnsaioResistividadeScreen(
+        projetoId: projetoId,
+        pontoNome: pontoNome,
+        elementoNome: elementoNome,
+        tipoElemento: tipoElemento,
+        local: local,
+        elementoId: elementoId,
+        pontoGeralId: pontoGeralId,
+        tipoEnsaioId: tipoEnsaioId,
+
+      );
+    }
     
     // 2. Potencial de Corrosão (Descomente quando criar a tela)
     /*
@@ -52,6 +69,7 @@ class EnsaioRoutesMap {
     required String projetoId,
     required String estruturaId,
     required String tipoEnsaioNome,
+    required String tipoEnsaioId,
     required String projetoNome,
     required String estruturaNome,
   }) {
@@ -68,7 +86,20 @@ class EnsaioRoutesMap {
       );
     }
 
+    if (tipo.contains('resistividade') || tipo.contains('Resistividade')){
+      return AnaliseResistividadeScreen(
+        projetoId: projetoId,
+        //estruturaId: estruturaId,
+        tipoEnsaioId: tipoEnsaioId,
+        projetoNome: projetoNome,
+        estruturaId: estruturaId,
+        estruturaNome: estruturaNome,
+        tipoEnsaioNome: tipoEnsaioNome,
+      );
+    }
+
     // Retorna null se não houver rota mapeada (Em desenvolvimento)
     return null;
   }
+
 }

@@ -1,0 +1,35 @@
+<div class="page">
+
+  <div class="fields-grid">
+    <div class="field"><span class="label">Projeto</span><span class="value">{{projeto}}</span></div>
+    <div class="field"><span class="label">Estrutura</span><span class="value">{{estrutura}}</span></div>
+    <div class="field"><span class="label">Idade</span><span class="value">{{idade}}</span></div>
+
+    <div class="field"><span class="label">Tipo</span><span class="value">{{tipo}}</span></div>
+    <div class="field"><span class="label">Tipologia</span><span class="value">{{tipologiaEstrutura}}</span></div>
+    <div class="field"><span class="label">CAA</span><span class="value">{{caa}}</span></div>
+    
+
+    <div class="field"><span class="label">Elementos</span><span class="value">{{elementos}}</span></div>
+    <div class="field"><span class="label">Locais</span><span class="value">{{local}}</span></div>
+    <div class="field"><span class="label">Utilização</span><span class="value">{{utilizacao}}</span></div>
+    <div></div>
+  </div>
+
+  <div class="photo-frame">
+    
+    <div class="photo-grid">
+      <!-- REPEAT:fotos (esperado 6 itens; cada item = {url, legenda}) -->
+      <div class="photo-cell">
+        <figure>
+          <img src="{{foto.url}}" alt="{{foto.legenda}}">
+          <figcaption>{{foto.legenda}}</figcaption>
+        </figure>
+      </div>
+      <!-- /REPEAT -->
+    </div>
+  </div>
+
+  <div class="footer-bar"></div>
+</div>
+

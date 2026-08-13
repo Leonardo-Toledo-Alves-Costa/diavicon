@@ -132,7 +132,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 24),
 
                           ProjectProgressCard(progresso: projeto.progresso), // Componente extraído!
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 15),
 
                           const Text(
                             'Equipe',
@@ -145,13 +145,13 @@ class ProjectDetailScreen extends ConsumerWidget {
                           const SizedBox(height: 12),
 
                           TeamSection(projetoId: projetoId), // Componente extraído!
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 15),
 
                           StructuresSection(
                             projeto: projeto,
                             projetoId: projetoId,
                           ), // Componente extraído!
-                          const SizedBox(height: 24),
+                          const SizedBox(height: 10),
                         ],
                       ),
                     ),

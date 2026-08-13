@@ -121,6 +121,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                   tipoEnsaioNome: tipoEnsaioNomeUI, 
                   projetoNome: projetoNomeUI,
                   estruturaNome: estruturaNomeUI,
+                  tipoEnsaioId: widget.tipoEnsaioId,
                 );
 
                 if (telaAnalise != null) {

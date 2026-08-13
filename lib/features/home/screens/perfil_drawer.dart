@@ -3,9 +3,11 @@ import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/empresa/providers/empresa_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:go_router/go_router.dart';
+
+import '../../../../core/widgets/diavicon_alerts.dart';
 
 class PerfilDrawer extends ConsumerWidget {
   const PerfilDrawer({super.key});
@@ -26,9 +28,9 @@ class PerfilDrawer extends ConsumerWidget {
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Erro ao sair da conta')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Erro ao sair da conta')));
       }
     }
   }
@@ -36,9 +38,10 @@ class PerfilDrawer extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final usuario = ref.watch(currentUserProvider);
-    ref.read(empresaControllerProvider.notifier).carregarEmpresaAtual(usuario?.empresaId ?? '');
+    ref
+        .read(empresaControllerProvider.notifier)
+        .carregarEmpresaAtual(usuario?.empresaId ?? '');
     final empresa = ref.watch(empresaAtualProvider);
-
 
     final nome = usuario == null
         ? 'Carregando...'
@@ -49,7 +52,7 @@ class PerfilDrawer extends ConsumerWidget {
     final titulo = usuario?.tituloPrincipal ?? '';
     final empresaNome = empresa?.nome ?? '';
     return Drawer(
-      backgroundColor: const Color(0xFFEFEFEF), 
+      backgroundColor: const Color(0xFFEFEFEF),
       child: SafeArea(
         child: Column(
           children: [
@@ -66,7 +69,7 @@ class PerfilDrawer extends ConsumerWidget {
                       border: Border.all(color: Colors.orange, width: 2),
                       image: DecorationImage(
                         image: fotoUrl != null && fotoUrl.isNotEmpty
-                            ?  NetworkImage(fotoUrl)
+                            ? NetworkImage(fotoUrl)
                             : const AssetImage('assets/images/user.png')
                                   as ImageProvider,
                         fit: BoxFit.cover,
@@ -130,16 +133,19 @@ class PerfilDrawer extends ConsumerWidget {
                   _TopButton(
                     icon: Icons.monetization_on_outlined,
                     label: 'Gastos',
+                    isDisabled: true,
                     onTap: () {},
                   ),
                   _TopButton(
                     icon: Icons.assignment_outlined,
                     label: 'RDO',
+                    isDisabled: true,
                     onTap: () {},
                   ),
                   _TopButton(
                     icon: Icons.business_outlined,
                     label: 'Empresa',
+                    isDisabled: true,
                     onTap: () {},
                   ),
                 ],
@@ -268,44 +274,60 @@ class _TopButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
+  final bool isDisabled;
 
   const _TopButton({
     required this.icon,
     required this.label,
     required this.onTap,
+    this.isDisabled = false,
   });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 70,
-        height: 70,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          boxShadow: const [
-            BoxShadow(
-              color: Colors.black12,
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(icon, color: const Color(0xFF686868), size: 28),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.lato(
-                fontSize: 12,
-                color: const Color(0xFF686868),
+      onTap: () {
+        if (isDisabled) {
+          DiaviconAlerts.show(
+            context,
+            'Em desenvolvimento',
+            'Esta funcionalidade estará disponível em breve!',
+            isAviso: true,
+          );
+        } else {
+          onTap();
+        }
+      },
+      child: Opacity(
+        opacity: isDisabled ? 0.4 : 1.0, // 👇 Deixa opaco
+        child: Container(
+          width: 70,
+          height: 70,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: const [
+              BoxShadow(
+                color: Colors.black12,
+                blurRadius: 4,
+                offset: Offset(0, 2),
               ),
-            ),
-          ],
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, color: const Color(0xFF686868), size: 28),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: GoogleFonts.lato(
+                  fontSize: 12,
+                  color: const Color(0xFF686868),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

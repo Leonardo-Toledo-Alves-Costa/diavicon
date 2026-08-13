@@ -1,11 +1,12 @@
 import 'package:diavicon/core/utils/diavicon_modal.dart';
 import 'package:diavicon/core/widgets/rodape_seguro.dart';
-import 'package:diavicon/features/estrutura/widgets/nova_estrutura_modal_body.dart';
 import 'package:diavicon/features/projetos/widgets/new_project_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/diavicon_alerts.dart';
 
 class MainScreen extends StatelessWidget {
   final Widget child;
@@ -81,6 +82,7 @@ class MainScreen extends StatelessWidget {
                         'Estruturas',
                         '/estruturas',
                         location,
+                        isDisabled: true,
                       ),
 
                       const SizedBox(width: spaceBetweenCenter),
@@ -99,6 +101,7 @@ class MainScreen extends StatelessWidget {
                         'Educação',
                         '/educacao',
                         location,
+                        isDisabled: true,
                       ),
                     ],
                   ),
@@ -110,56 +113,74 @@ class MainScreen extends StatelessWidget {
             Positioned(
               left: (size.width / 2) - (fabSize / 2),
               bottom: fabBottomOffset,
-              child: GestureDetector(
-                onTap: () {
-                  if (location.startsWith('/projetos')) {
-                    showDiaviconModal(
-                      context: context,
-                      title: 'Novo Projeto',
-                      height: 540,
-                      body: const NewProjectBody(),
-                    );
-                  }
-                  if (location.startsWith('/estruturas')) {
-                    showDiaviconModal(
-                      context: context,
-                      height: 540,
-                      title: 'Nova estrutura',
-                      body: const NovaEstruturaModalBody(),
-                    );
-                  }
-                },
-                child: Container(
-                  width: fabSize,
-                  height: fabSize,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.15),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Center(
-                    child: Container(
-                      width: innerCircleSize,
-                      height: innerCircleSize,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 2),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        color: Colors.white,
-                        size: plusIconSize,
-                        fontWeight: FontWeight.w900,
+              child: Builder(
+                builder: (context) {
+                  // 👇 Define automaticamente se o botão deve estar desativado na tela atual
+                  final bool isFabDisabled =
+                      location.startsWith('/minha-empresa') ||
+                      location.startsWith('/educacao') ||
+                      location.startsWith('/estruturas');
+
+                  return GestureDetector(
+                    onTap: () {
+                      if (isFabDisabled) {
+                        // 👇 Mostra o alerta e bloqueia o clique
+                        DiaviconAlerts.show(
+                          context,
+                          'Em desenvolvimento',
+                          'As ações rápidas para esta tela estarão disponíveis em breve!',
+                          isAviso: true,
+                        );
+                        return;
+                      }
+
+                      // Ações normais para as telas ativas
+                      if (location.startsWith('/projetos')) {
+                        showDiaviconModal(
+                          context: context,
+                          title: 'Novo Projeto',
+                          height: 540,
+                          body: const NewProjectBody(),
+                        );
+                      }
+                    },
+                    child: Opacity(
+                      // 👇 Aplica o efeito "apagado" (cinza) se estiver desativado
+                      opacity: isFabDisabled ? 0.4 : 1.0,
+                      child: Container(
+                        width: fabSize,
+                        height: fabSize,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 4),
+                            ),
+                          ],
+                        ),
+                        child: Center(
+                          child: Container(
+                            width: innerCircleSize,
+                            height: innerCircleSize,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                            ),
+                            child: const Icon(
+                              Icons.add,
+                              color: Colors.white,
+                              size: plusIconSize,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ),
+                  );
+                },
               ),
             ),
           ],
@@ -173,44 +194,61 @@ class MainScreen extends StatelessWidget {
     IconData icon,
     String label,
     String route,
-    String location,
-  ) {
-    final bool isSelected = location.startsWith(route);
+    String location, {
+    bool isDisabled = false, // 👈 Novo parâmetro
+  }) {
+    final bool isSelected = location.startsWith(route) && !isDisabled;
     return InkWell(
-      onTap: () => context.go(route),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (isSelected)
-            Container(
-              width: 18,
-              height: 2,
-              margin: const EdgeInsets.only(bottom: 6),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(1),
-              ),
-            )
-          else
-            const SizedBox(height: 8),
+      onTap: () {
+        if (isDisabled) {
+          // 👇 Mostra o aviso se estiver desativado
+          DiaviconAlerts.show(
+            context,
+            'Em desenvolvimento',
+            'Esta funcionalidade estará disponível em breve!',
+            isAviso: true,
+          );
+        } else {
+          // Navega normalmente se estiver ativo
+          context.go(route);
+        }
+      },
+      child: Opacity(
+        opacity: isDisabled ? 0.4 : 1.0, // 👇 Deixa o botão cinza clarinho
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (isSelected)
+              Container(
+                width: 18,
+                height: 2,
+                margin: const EdgeInsets.only(bottom: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.primary,
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              )
+            else
+              const SizedBox(height: 8),
 
-          Icon(
-            icon,
-            color: isSelected ? AppColors.primary : Colors.grey[400],
-            size: 26,
-          ),
-
-          const SizedBox(height: 4),
-
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
+            Icon(
+              icon,
               color: isSelected ? AppColors.primary : Colors.grey[400],
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              size: 26,
             ),
-          ),
-        ],
+
+            const SizedBox(height: 4),
+
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                color: isSelected ? AppColors.primary : Colors.grey[400],
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

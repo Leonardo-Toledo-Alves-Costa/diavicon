@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/core/widgets/local_search_dropdown.dart';
 import 'package:diavicon/features/elementos/screens/elemento_form_screen.dart';
 import 'package:diavicon/features/ensaios/ensaios_geral/screens/estrutura_ensaios_screen.dart';
@@ -204,7 +205,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
           children: elementosFiltrados.map((el) {
             final tipo = [
               el.tipo,
-              el.revestimento,
+              el.tipologiaEstrutural,
             ].where((p) => p != null && p.trim().isNotEmpty).join(' - ');
             final imageUrl = (el.fotos != null && el.fotos!.isNotEmpty)
                 ? el.fotos!.first
@@ -305,15 +306,35 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
               );
             },
           ),
-          DiaviconMenuItem(
-            icon: Icons.description_outlined,
-            label: 'Relatórios',
-            onTap: () {},
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(
+              icon: Icons.description_outlined,
+              label: 'Relatórios',
+              onTap: () {
+                DiaviconAlerts.show(
+                  context,
+                  'Em desenvolvimento',
+                  'Esta funcionalidade estará disponível em breve!',
+                  isAviso: true,
+                );
+              },
+            ),
           ),
-          DiaviconMenuItem(
-            icon: Icons.pie_chart_outline,
-            label: 'Dashboard',
-            onTap: () {},
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(
+              icon: Icons.pie_chart_outline,
+              label: 'Dashboard',
+              onTap: () {
+                DiaviconAlerts.show(
+                  context,
+                  'Em desenvolvimento',
+                  'Esta funcionalidade estará disponível em breve!',
+                  isAviso: true,
+                );
+              },
+            ),
           ),
         ],
       ),

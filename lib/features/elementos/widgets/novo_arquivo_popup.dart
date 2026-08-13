@@ -1,16 +1,16 @@
 import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
 import 'package:diavicon/features/estrutura/models/local_model.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
-import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart'; 
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; 
-import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class NovoArquivoResult {
   const NovoArquivoResult({
     required this.nome,
-    required this.localId, 
+    required this.localId,
     required this.arquivo,
   });
 
@@ -19,7 +19,10 @@ class NovoArquivoResult {
   final PlatformFile arquivo;
 }
 
-Future<NovoArquivoResult?> showNovoArquivoPopup(BuildContext context, String estruturaId) {
+Future<NovoArquivoResult?> showNovoArquivoPopup(
+  BuildContext context,
+  String estruturaId,
+) {
   return showDialog<NovoArquivoResult>(
     context: context,
     barrierColor: Colors.black.withValues(alpha: 0.42),
@@ -27,7 +30,7 @@ Future<NovoArquivoResult?> showNovoArquivoPopup(BuildContext context, String est
   );
 }
 
-class NovoArquivoPopup extends ConsumerStatefulWidget { 
+class NovoArquivoPopup extends ConsumerStatefulWidget {
   const NovoArquivoPopup({super.key, required this.estruturaId});
 
   final String estruturaId;
@@ -48,8 +51,8 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
   }
 
   bool get _podeSalvar =>
-      _nomeController.text.trim().isNotEmpty && 
-      _localSelecionadoId != null && 
+      _nomeController.text.trim().isNotEmpty &&
+      _localSelecionadoId != null &&
       _arquivoSelecionado != null;
 
   void _salvar() {
@@ -79,26 +82,27 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
     }
   }
 
-  
   Future<void> _criarNovoLocal() async {
-    final novoLocalId = await showDialog<String>(
+    final novoLocal = await showDialog<LocalModel>(
       context: context,
       barrierColor: Colors.black.withValues(alpha: 0.42),
-      builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId), 
+      builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
     );
 
-    if (novoLocalId != null && mounted) {
+    if (novoLocal != null && mounted) {
       ref.invalidate(locaisPorEstruturaProvider(widget.estruturaId));
-      
+
       setState(() {
-        _localSelecionadoId = novoLocalId; 
+        _localSelecionadoId = novoLocal.id;
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final locaisAsync = ref.watch(locaisPorEstruturaProvider(widget.estruturaId));
+    final locaisAsync = ref.watch(
+      locaisPorEstruturaProvider(widget.estruturaId),
+    );
 
     final mediaQuery = MediaQuery.of(context);
     final largura = (mediaQuery.size.width - 32).clamp(280.0, 350.0).toDouble();
@@ -123,7 +127,9 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
               children: [
                 Align(
                   alignment: Alignment.centerRight,
-                  child: _CloseButton(onPressed: () => Navigator.of(context).maybePop()),
+                  child: _CloseButton(
+                    onPressed: () => Navigator.of(context).maybePop(),
+                  ),
                 ),
                 Text(
                   'Novo Arquivo',
@@ -148,22 +154,36 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                   children: [
                     Expanded(
                       child: locaisAsync.when(
-                        loading: () => const Center(child: LinearProgressIndicator(color: AppColors.primary)),
-                        error: (err, _) => Text('Erro ao carregar locais', style: TextStyle(color: AppColors.error, fontSize: 12)),
+                        loading: () => const Center(
+                          child: LinearProgressIndicator(
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        error: (err, _) => Text(
+                          'Erro ao carregar locais',
+                          style: TextStyle(
+                            color: AppColors.error,
+                            fontSize: 12,
+                          ),
+                        ),
                         data: (locais) {
                           if (locais.isEmpty) {
-                            return _EmptyLocalButton(onPressed: _criarNovoLocal);
+                            return _EmptyLocalButton(
+                              onPressed: _criarNovoLocal,
+                            );
                           }
-                          
+
                           // Garante que o valor selecionado seja válido
-                          if (_localSelecionadoId != null && !locais.any((l) => l.id == _localSelecionadoId)) {
-                             _localSelecionadoId = null;
+                          if (_localSelecionadoId != null &&
+                              !locais.any((l) => l.id == _localSelecionadoId)) {
+                            _localSelecionadoId = null;
                           }
 
                           return _LocalDropdown(
                             valor: _localSelecionadoId,
                             locais: locais,
-                            onChanged: (valor) => setState(() => _localSelecionadoId = valor),
+                            onChanged: (valor) =>
+                                setState(() => _localSelecionadoId = valor),
                           );
                         },
                       ),
@@ -176,7 +196,8 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                 if (_arquivoSelecionado != null)
                   _ArquivoAnexadoCard(
                     nome: _arquivoSelecionado!.name,
-                    tamanho: '${(_arquivoSelecionado!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+                    tamanho:
+                        '${(_arquivoSelecionado!.size / (1024 * 1024)).toStringAsFixed(2)} MB',
                     onRemove: () => setState(() => _arquivoSelecionado = null),
                   )
                 else
@@ -194,7 +215,13 @@ class _NovoArquivoPopupState extends ConsumerState<NovoArquivoPopup> {
                         children: [
                           Icon(Icons.upload_file, color: AppColors.primary),
                           SizedBox(width: 8),
-                          Text('Selecionar PDF ou Imagem', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                          Text(
+                            'Selecionar PDF ou Imagem',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -221,8 +248,17 @@ class _CampoLabel extends StatelessWidget {
     return Text.rich(
       TextSpan(
         text: texto,
-        style: GoogleFonts.lato(color: const Color(0xFF626365), fontSize: 18, fontWeight: FontWeight.w300),
-        children: const [TextSpan(text: ' *', style: TextStyle(color: Color(0xFFF71D21)))],
+        style: GoogleFonts.lato(
+          color: const Color(0xFF626365),
+          fontSize: 18,
+          fontWeight: FontWeight.w300,
+        ),
+        children: const [
+          TextSpan(
+            text: ' *',
+            style: TextStyle(color: Color(0xFFF71D21)),
+          ),
+        ],
       ),
     );
   }
@@ -237,24 +273,42 @@ class _NomeField extends StatelessWidget {
     return TextField(
       controller: controller,
       onChanged: onChanged,
-      style: GoogleFonts.lato(color: const Color(0xFF626365), fontSize: 18, fontWeight: FontWeight.w300),
+      style: GoogleFonts.lato(
+        color: const Color(0xFF626365),
+        fontSize: 18,
+        fontWeight: FontWeight.w300,
+      ),
       decoration: InputDecoration(
         isDense: true,
         hintText: 'Nome',
-        hintStyle: GoogleFonts.lato(color: const Color(0xFF626365).withOpacity(0.87), fontSize: 18, fontWeight: FontWeight.w300),
+        hintStyle: GoogleFonts.lato(
+          color: const Color(0xFF626365).withOpacity(0.87),
+          fontSize: 18,
+          fontWeight: FontWeight.w300,
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF626365))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 1.4)),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF626365)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.primary, width: 1.4),
+        ),
       ),
     );
   }
 }
 
 class _LocalDropdown extends StatelessWidget {
-  const _LocalDropdown({required this.valor, required this.onChanged, required this.locais});
+  const _LocalDropdown({
+    required this.valor,
+    required this.onChanged,
+    required this.locais,
+  });
   final String? valor;
   final ValueChanged<String?> onChanged;
-  final List<LocalModel> locais; 
+  final List<LocalModel> locais;
 
   @override
   Widget build(BuildContext context) {
@@ -271,12 +325,23 @@ class _LocalDropdown extends StatelessWidget {
           value: valor,
           isExpanded: true,
           icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF313144)),
-          hint: Text('Selecione', style: GoogleFonts.lato(color: const Color(0xFF313144), fontSize: 18, fontWeight: FontWeight.w300)),
-          style: GoogleFonts.lato(color: const Color(0xFF313144), fontSize: 18, fontWeight: FontWeight.w300),
+          hint: Text(
+            'Selecione',
+            style: GoogleFonts.lato(
+              color: const Color(0xFF313144),
+              fontSize: 18,
+              fontWeight: FontWeight.w300,
+            ),
+          ),
+          style: GoogleFonts.lato(
+            color: const Color(0xFF313144),
+            fontSize: 18,
+            fontWeight: FontWeight.w300,
+          ),
           items: [
             for (final local in locais)
               DropdownMenuItem<String>(
-                value: local.id, 
+                value: local.id,
                 child: Text(local.nome),
               ),
           ],
@@ -295,7 +360,13 @@ class _AddLocalButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: [BoxShadow(color: const Color(0xFF3A57E8).withOpacity(0.30), blurRadius: 2, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF3A57E8).withOpacity(0.30),
+            blurRadius: 2,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -315,7 +386,11 @@ class _AddLocalButton extends StatelessWidget {
 }
 
 class _ArquivoAnexadoCard extends StatelessWidget {
-  const _ArquivoAnexadoCard({required this.nome, required this.tamanho, required this.onRemove});
+  const _ArquivoAnexadoCard({
+    required this.nome,
+    required this.tamanho,
+    required this.onRemove,
+  });
   final String nome;
   final String tamanho;
   final VoidCallback onRemove;
@@ -328,7 +403,13 @@ class _ArquivoAnexadoCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFFFAFAFA),
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.25), blurRadius: 4, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 4,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -339,13 +420,32 @@ class _ArquivoAnexadoCard extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(nome, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.lato(color: const Color(0xFF3E3E3D), fontSize: 16, fontWeight: FontWeight.w400)),
+                Text(
+                  nome,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.lato(
+                    color: const Color(0xFF3E3E3D),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
                 const SizedBox(height: 4),
-                Text(tamanho, style: GoogleFonts.lato(color: const Color(0xFF3E3E3D), fontSize: 14, fontWeight: FontWeight.w300)),
+                Text(
+                  tamanho,
+                  style: GoogleFonts.lato(
+                    color: const Color(0xFF3E3E3D),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w300,
+                  ),
+                ),
               ],
             ),
           ),
-          IconButton(icon: const Icon(Icons.delete_outline, color: AppColors.error), onPressed: onRemove),
+          IconButton(
+            icon: const Icon(Icons.delete_outline, color: AppColors.error),
+            onPressed: onRemove,
+          ),
         ],
       ),
     );
@@ -360,7 +460,15 @@ class _SalvarButton extends StatelessWidget {
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(30),
-        boxShadow: onPressed == null ? const [] : [BoxShadow(color: const Color(0xFF3A57E8).withOpacity(0.30), blurRadius: 2, offset: const Offset(0, 2))],
+        boxShadow: onPressed == null
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF3A57E8).withOpacity(0.30),
+                  blurRadius: 2,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: ElevatedButton(
         onPressed: onPressed,
@@ -373,9 +481,19 @@ class _SalvarButton extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(30),
+          ),
         ),
-        child: Text('Salvar', style: GoogleFonts.lato(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w400, height: 1)),
+        child: Text(
+          'Salvar',
+          style: GoogleFonts.lato(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w400,
+            height: 1,
+          ),
+        ),
       ),
     );
   }
@@ -393,7 +511,11 @@ class _CloseButton extends StatelessWidget {
         onPressed: onPressed,
         padding: EdgeInsets.zero,
         splashRadius: 18,
-        icon: Icon(Icons.close, color: const Color(0xFF626365).withOpacity(0.40), size: 24),
+        icon: Icon(
+          Icons.close,
+          color: const Color(0xFF626365).withOpacity(0.40),
+          size: 24,
+        ),
       ),
     );
   }
@@ -418,7 +540,11 @@ class _EmptyLocalButton extends StatelessWidget {
         alignment: Alignment.centerLeft,
         child: Text(
           'Nenhum local cadastrado. Toque no +',
-          style: GoogleFonts.lato(color: AppColors.error, fontSize: 14, fontWeight: FontWeight.w600),
+          style: GoogleFonts.lato(
+            color: AppColors.error,
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+          ),
         ),
       ),
     );

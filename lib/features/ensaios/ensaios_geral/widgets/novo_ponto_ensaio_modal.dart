@@ -1,15 +1,14 @@
+import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
-// Certifique-se de que esses imports estão corretos para o seu projeto:
-import '../../ensaios_carbonatacao/screens/ponto_ensaio_carbonatacao_screen.dart';
-import '../providers/pontos_ensaio_provider.dart';
+import '../../../elementos/widgets/novo_local_widget.dart';
+import '../../../estrutura/models/local_model.dart';
 // Importando o mapa de rotas
 import '../models/ensaios_routes_map.dart';
 import '../providers/pontos_ensaio_provider.dart';
-
 
 class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
   final String estruturaId;
@@ -26,13 +25,14 @@ class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
   });
 
   @override
-  ConsumerState<NovoPontoEnsaioModal> createState() => _NovoPontoEnsaioModalState();
+  ConsumerState<NovoPontoEnsaioModal> createState() =>
+      _NovoPontoEnsaioModalState();
 }
 
 class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   final TextEditingController _nomeController = TextEditingController();
   String? _selectedLocal;
-  String? _selectedElementoId; 
+  String? _selectedElementoId;
 
   @override
   void dispose() {
@@ -43,13 +43,17 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   void _salvar(List<Map<String, dynamic>> elementos) {
     if (_nomeController.text.trim().isEmpty || _selectedElementoId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Preencha o nome do ponto e selecione o elemento.')),
+        const SnackBar(
+          content: Text('Preencha o nome do ponto e selecione o elemento.'),
+        ),
       );
       return;
     }
 
     // Busca o elemento filtrando pelo ID
-    final elementosEncontrados = elementos.where((e) => e['id'].toString() == _selectedElementoId);
+    final elementosEncontrados = elementos.where(
+      (e) => e['id'].toString() == _selectedElementoId,
+    );
 
     if (elementosEncontrados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -71,26 +75,27 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
       tipoElemento: elementoSelecionado['tipo']?.toString() ?? '-',
       local: _selectedLocal ?? 'Não informado',
       elementoId: _selectedElementoId!,
-      pontoGeralId: '', // 👈 Enviando string vazia (ou nula se você aceitar) pois é um NOVO ponto
+      pontoGeralId:
+          '', // 👈 Enviando string vazia (ou nula se você aceitar) pois é um NOVO ponto
       tipoEnsaioId: widget.tipoEnsaioId,
     );
 
     if (telaFormulario != null) {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => telaFormulario,
-        ),
+        MaterialPageRoute(builder: (context) => telaFormulario),
       );
       ref.invalidate(pontosEnsaioProvider);
     } else {
       // Caso a rota retorne null, exibe a mensagem de que não está implementado
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Formulário não implementado para este ensaio.')),
+        const SnackBar(
+          content: Text('Formulário não implementado para este ensaio.'),
+        ),
       );
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final elementosAsync = ref.watch(
@@ -279,7 +284,26 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        _buildAddButton(onPressed: () {}),
+                        _buildAddButton(
+                          onPressed: () async {
+                            final novoLocal = await showDialog<LocalModel>(
+                              context: context,
+                              barrierColor: Colors.black.withOpacity(0.42),
+                              builder: (_) => NovoLocalModal(
+                                estruturaId: widget.estruturaId,
+                              ),
+                            );
+
+                            if (novoLocal != null) {
+                              setState(() {
+                                // Seleciona automaticamente o local recém-criado
+                                _selectedLocal = novoLocal.nome;
+                                _selectedElementoId =
+                                    null; // Limpa o elemento pois mudamos de local
+                              });
+                            }
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 16),
@@ -343,7 +367,24 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                           ),
                         ),
                         const SizedBox(width: 12),
-                        _buildAddButton(onPressed: () {}),
+                        _buildAddButton(
+                          onPressed: () async {
+                            await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => NovoElemEstruturalScreen(
+                                  estruturaId: widget.estruturaId,
+                                  initialLocalElemento:
+                                      _selectedLocal, // Passa o local atual para facilitar
+                                ),
+                              ),
+                            );
+                            // Atualiza o provedor para que o novo elemento apareça na lista imediatamente!
+                            ref.invalidate(
+                              elementosEstruturaProvider(widget.estruturaId),
+                            );
+                          },
+                        ),
                       ],
                     ),
                     const SizedBox(height: 32),

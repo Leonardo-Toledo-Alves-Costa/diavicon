@@ -12,7 +12,7 @@ class ProjectCard extends StatelessWidget {
   final String priority;
   final String imageUrl;
   final List<String> teamAvatars;
-  final String? empresaFotoUrl; 
+  final String? empresaFotoUrl;
 
   const ProjectCard({
     super.key,
@@ -22,7 +22,7 @@ class ProjectCard extends StatelessWidget {
     required this.priority,
     required this.imageUrl,
     required this.teamAvatars,
-    this.empresaFotoUrl, 
+    this.empresaFotoUrl,
   });
 
   @override
@@ -52,16 +52,8 @@ class ProjectCard extends StatelessWidget {
                 ),
                 child: _buildCapaProjeto(),
               ),
-              Positioned(
-                top: 16,
-                left: 16,
-                child: StatusBadge(status: status),
-              ),
-              Positioned(
-                top: 16,
-                right: 16,
-                child: _buildPriorityLabel(),
-              ),
+              Positioned(top: 16, left: 16, child: StatusBadge(status: status)),
+              Positioned(top: 16, right: 16, child: _buildPriorityLabel()),
               Positioned(
                 bottom: -16,
                 right: 20,
@@ -82,7 +74,8 @@ class ProjectCard extends StatelessWidget {
                             height: 32,
                             width: 32,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => _fallbackLogo(),
+                            errorBuilder: (context, error, stackTrace) =>
+                                _fallbackLogo(),
                           )
                         : _fallbackLogo(),
                   ),
@@ -100,8 +93,8 @@ class ProjectCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontSize: 17, 
-                    fontWeight: FontWeight.w800, 
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
                     color: AppColors.textDark,
                   ),
                 ),
@@ -116,15 +109,15 @@ class ProjectCard extends StatelessWidget {
                       'Progresso',
                       style: TextStyle(
                         fontSize: 15,
-                        color: Colors.grey, 
+                        color: Colors.grey,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     _buildTeamStack(),
                   ],
                 ),
-                
-                const SizedBox(height: 12), 
+
+                const SizedBox(height: 12),
 
                 // ── Barra de Progresso e Porcentagem (Linha Inferior) ──────
                 Row(
@@ -140,7 +133,7 @@ class ProjectCard extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16), 
+                    const SizedBox(width: 16),
                     // O valor percentual na direita
                     Text(
                       '${(progress * 100).toInt()}%',
@@ -163,15 +156,15 @@ class ProjectCard extends StatelessWidget {
   // Helper para o logo padrão da Diavicon se a empresa não tiver foto
   Widget _fallbackLogo() {
     return Image.asset(
-      'assets/images/logo_diavicon.png', 
-      height: 32, 
+      'assets/images/logo_diavicon.png',
+      height: 32,
       width: 32,
       fit: BoxFit.contain, // contain para não cortar o escudo
     );
   }
 
   Widget _buildCapaProjeto() {
-    const double imgHeight = 110; 
+    const double imgHeight = 110;
 
     if (imageUrl.startsWith('http')) {
       return Image.network(
@@ -233,10 +226,7 @@ class ProjectCard extends StatelessWidget {
               priority,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
             ),
           ),
         ],
@@ -245,14 +235,14 @@ class ProjectCard extends StatelessWidget {
   }
 
   Color _getProgressColor() {
-    if (status == BadgeStatus.concluido) return Colors.green; 
+    if (status == BadgeStatus.concluido) return Colors.green;
     if (status == BadgeStatus.cancelado) return Colors.red;
     return AppColors.primary;
   }
 
   Widget _buildTeamStack() {
-    const double avatarRadius = 19; 
-    const double avatarOverlap = 12; 
+    const double avatarRadius = 19;
+    const double avatarOverlap = 12;
 
     final int visibleCount = teamAvatars.length.clamp(0, 3);
     final int extraCount = teamAvatars.length - visibleCount;
@@ -261,8 +251,8 @@ class ProjectCard extends StatelessWidget {
     for (int i = 0; i < visibleCount; i++) {
       avatars.add(
         _positionedAvatar(
-          i * (2 * avatarRadius - avatarOverlap), 
-          teamAvatars[i], 
+          i * (2 * avatarRadius - avatarOverlap),
+          teamAvatars[i],
           avatarRadius,
         ),
       );
@@ -271,11 +261,11 @@ class ProjectCard extends StatelessWidget {
     if (extraCount > 0) {
       avatars.add(
         Positioned(
-          left: visibleCount * (2 * avatarRadius - avatarOverlap), 
+          left: visibleCount * (2 * avatarRadius - avatarOverlap),
           child: Container(
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white, width: 2), 
+              border: Border.all(color: Colors.white, width: 2),
             ),
             child: CircleAvatar(
               radius: avatarRadius,
@@ -284,7 +274,7 @@ class ProjectCard extends StatelessWidget {
                 '+$extraCount',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: avatarRadius - 4, 
+                  fontSize: avatarRadius - 4,
                   fontWeight: FontWeight.bold,
                 ),
               ),
@@ -295,15 +285,15 @@ class ProjectCard extends StatelessWidget {
     }
 
     final int totalItems = visibleCount + (extraCount > 0 ? 1 : 0);
-    final double totalWidth = totalItems > 0 
-        ? (totalItems * (2 * avatarRadius)) - ((totalItems - 1) * avatarOverlap) 
+    final double totalWidth = totalItems > 0
+        ? (totalItems * (2 * avatarRadius)) - ((totalItems - 1) * avatarOverlap)
         : 0;
 
     return SizedBox(
       width: totalWidth,
-      height: 2 * avatarRadius, 
+      height: 2 * avatarRadius,
       child: Stack(
-        alignment: Alignment.centerLeft, 
+        alignment: Alignment.centerLeft,
         clipBehavior: Clip.none,
         children: avatars,
       ),
@@ -318,10 +308,10 @@ class ProjectCard extends StatelessWidget {
       child: Container(
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white, width: 2), 
+          border: Border.all(color: Colors.white, width: 2),
         ),
         child: CircleAvatar(
-          radius: radius, 
+          radius: radius,
           backgroundColor: AppColors.greyVeryLight,
           backgroundImage: isNetwork
               ? NetworkImage(imageUrl)

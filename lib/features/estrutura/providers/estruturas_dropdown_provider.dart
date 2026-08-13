@@ -1,46 +1,59 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/providers/auth_provider.dart'; 
+
+import '../../auth/providers/auth_provider.dart';
 
 final _supabase = Supabase.instance.client;
 
 // Provider para Tipos de Estrutura
-final tiposEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  return _supabase
-      .from('tipos_estrutura')
-      .stream(primaryKey: ['id'])
-      .order('nome', ascending: true)
-      .map((lista) => List<Map<String, dynamic>>.from(lista));
-});
+// --- STREAMS ORIGINAIS (ESTRUTURAS) ---
+final conjuntosEstruturaisProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
 
-// Provider para Tipologias
-final tipologiasEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  return _supabase
-      .from('tipologias_estrutura')
-      .stream(primaryKey: ['id'])
-      .order('nome', ascending: true)
-      .map((lista) => List<Map<String, dynamic>>.from(lista));
-});
+      return Supabase.instance.client
+          .from('conjuntos_estruturais')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .order('nome');
+    });
 
-// Provider para Utilizações
-final utilizacoesEstruturaProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  return _supabase
-      .from('utilizacoes_estrutura')
-      .stream(primaryKey: ['id'])
-      .order('nome', ascending: true)
-      .map((lista) => List<Map<String, dynamic>>.from(lista));
-});
+final utilizacoesEstruturaProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
 
-// Provider para Conjuntos Estruturais
-final conjuntosEstruturaisProvider = StreamProvider<List<Map<String, dynamic>>>((ref) {
-  return _supabase
-      .from('conjuntos_estruturais')
-      .stream(primaryKey: ['id'])
-      .order('nome', ascending: true)
-      .map((lista) => List<Map<String, dynamic>>.from(lista));
-});
+      return Supabase.instance.client
+          .from('utilizacoes_estrutura')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .order('nome');
+    });
 
+final tiposEstruturaProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
 
+      return Supabase.instance.client
+          .from('tipos_estrutura')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .order('nome');
+    });
+
+final tipologiasEstruturaProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
+
+      return Supabase.instance.client
+          .from('tipologias_estrutura')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .order('nome');
+    });
 
 class EstruturaDropdownsController {
   final Ref ref;
@@ -56,10 +69,11 @@ class EstruturaDropdownsController {
       throw Exception('Usuário ou Empresa não identificados.');
     }
 
-    final response = await _supabase.from(nomeTabela).insert({
-      'nome': nomeItem.trim(),
-      'empresa_id': user.empresaId,
-    }).select('id').single();
+    final response = await _supabase
+        .from(nomeTabela)
+        .insert({'nome': nomeItem.trim(), 'empresa_id': user.empresaId})
+        .select('id')
+        .single();
 
     return response['id'] as String;
   }
@@ -74,14 +88,15 @@ class EstruturaDropdownsController {
         .from(nomeTabela)
         .update({'nome': novoNome.trim()})
         .eq('id', id)
-        .select(); 
+        .select();
 
     // Se o RLS bloqueou a edição, a resposta vem vazia!
     if (response.isEmpty) {
-      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de UPDATE na tabela $nomeTabela.');
+      throw Exception(
+        'Ação bloqueada! Verifique as permissões (RLS) de UPDATE na tabela $nomeTabela.',
+      );
     }
   }
-
 
   Future<void> deletarItem({
     required String nomeTabela,
@@ -95,7 +110,9 @@ class EstruturaDropdownsController {
         .select();
 
     if (response.isEmpty) {
-      throw Exception('Ação bloqueada! Verifique as permissões (RLS) de DELETE na tabela $nomeTabela.');
+      throw Exception(
+        'Ação bloqueada! Verifique as permissões (RLS) de DELETE na tabela $nomeTabela.',
+      );
     }
   }
 }
@@ -104,3 +121,68 @@ class EstruturaDropdownsController {
 final estruturaDropdownsControllerProvider = Provider((ref) {
   return EstruturaDropdownsController(ref);
 });
+
+// --- STREAMS PARA ELEMENTOS ESTRUTURAIS ---
+final tiposElementoStreamProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null)
+        return Stream.value(
+          [],
+        ); // Retorna lista vazia se não tiver empresa logada
+
+      return Supabase.instance.client
+          .from('tipos_elemento')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId)
+          .order('nome');
+    });
+
+final tipologiasElementoStreamProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
+
+      return Supabase.instance.client
+          .from('tipologias_elemento')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId)
+          .order('nome');
+    });
+
+final revestimentosElementoStreamProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
+
+      return Supabase.instance.client
+          .from('revestimentos_elemento')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId)
+          .order('nome');
+    });
+
+// --- STREAMS PARA LOCAIS ---
+final tipologiasLocalStreamProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
+
+      return Supabase.instance.client
+          .from('tipologias_local')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId)
+          .order('nome');
+    });
+
+final condicoesLocalStreamProvider =
+    StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
+      final empresaId = ref.watch(currentUserProvider)?.empresaId;
+      if (empresaId == null) return Stream.value([]);
+
+      return Supabase.instance.client
+          .from('condicoes_local')
+          .stream(primaryKey: ['id'])
+          .eq('empresa_id', empresaId)
+          .order('nome');
+    });

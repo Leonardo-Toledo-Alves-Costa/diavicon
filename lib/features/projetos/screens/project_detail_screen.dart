@@ -1,19 +1,19 @@
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
+import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
+import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
-import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
-import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
-import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
-import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
-
+import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../widgets/project_header.dart';
 import '../widgets/project_progress_card.dart';
-import '../widgets/team_section.dart';
 import '../widgets/structures_section.dart';
+import '../widgets/team_section.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -52,6 +52,7 @@ class ProjectDetailScreen extends ConsumerWidget {
             endDrawer: MenuDrawerAppBar(
               title: 'Menu do\nProjeto',
               items: [
+                // 1. INFORMAÇÕES (Ativo)
                 DiaviconMenuItem(
                   icon: Icons.info_outline,
                   label: 'Informações',
@@ -66,11 +67,25 @@ class ProjectDetailScreen extends ConsumerWidget {
                     );
                   },
                 ),
-                DiaviconMenuItem(
-                  icon: Icons.assignment_outlined,
-                  label: 'RDO',
-                  onTap: () {},
+
+                // 2. RDO (Desativado)
+                Opacity(
+                  opacity: 0.4,
+                  child: DiaviconMenuItem(
+                    icon: Icons.assignment_outlined,
+                    label: 'RDO',
+                    onTap: () {
+                      DiaviconAlerts.show(
+                        context,
+                        'Em desenvolvimento',
+                        'Esta funcionalidade estará disponível em breve!',
+                        isAviso: true,
+                      );
+                    },
+                  ),
                 ),
+
+                // 3. EMPRESAS (Ativo)
                 DiaviconMenuItem(
                   icon: Icons.business_outlined,
                   label: 'Empresas',
@@ -85,20 +100,56 @@ class ProjectDetailScreen extends ConsumerWidget {
                     );
                   },
                 ),
-                DiaviconMenuItem(
-                  icon: Icons.description_outlined,
-                  label: 'Relatórios',
-                  onTap: () {},
+
+                // 4. RELATÓRIOS (Desativado)
+                Opacity(
+                  opacity: 0.4,
+                  child: DiaviconMenuItem(
+                    icon: Icons.description_outlined,
+                    label: 'Relatórios',
+                    onTap: () {
+                      DiaviconAlerts.show(
+                        context,
+                        'Em desenvolvimento',
+                        'Esta funcionalidade estará disponível em breve!',
+                        isAviso: true,
+                      );
+                    },
+                  ),
                 ),
-                DiaviconMenuItem(
-                  icon: Icons.payments_outlined,
-                  label: 'Gastos',
-                  onTap: () {},
+
+                // 5. GASTOS (Desativado)
+                Opacity(
+                  opacity: 0.4,
+                  child: DiaviconMenuItem(
+                    icon: Icons.payments_outlined,
+                    label: 'Gastos',
+                    onTap: () {
+                      DiaviconAlerts.show(
+                        context,
+                        'Em desenvolvimento',
+                        'Esta funcionalidade estará disponível em breve!',
+                        isAviso: true,
+                      );
+                    },
+                  ),
                 ),
-                DiaviconMenuItem(
-                  icon: Icons.pie_chart_outline,
-                  label: 'Dashboard',
-                  onTap: () {},
+
+                // 6. DASHBOARD (Desativado)
+                Opacity(
+                  opacity: 0.4,
+                  child: DiaviconMenuItem(
+                    icon: Icons.pie_chart_outline,
+                    label: 'Dashboard',
+                    onTap: () {
+                      DiaviconAlerts.show(
+                        context,
+                        'Em desenvolvimento',
+                        'Esta funcionalidade estará disponível em breve!',
+                        isAviso: true,
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
@@ -111,7 +162,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ProjectHeader(projeto: projeto), 
+                    ProjectHeader(projeto: projeto),
 
                     Padding(
                       padding: const EdgeInsets.all(20.0),
@@ -128,10 +179,15 @@ class ProjectDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          _buildGestoraSection(projeto.empresaNome, projeto.empresaFotoUrl),
+                          _buildGestoraSection(
+                            projeto.empresaNome,
+                            projeto.empresaFotoUrl,
+                          ),
                           const SizedBox(height: 24),
 
-                          ProjectProgressCard(progresso: projeto.progresso), // Componente extraído!
+                          ProjectProgressCard(
+                            progresso: projeto.progresso,
+                          ), // Componente extraído!
                           const SizedBox(height: 15),
 
                           const Text(
@@ -144,7 +200,9 @@ class ProjectDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 12),
 
-                          TeamSection(projetoId: projetoId), // Componente extraído!
+                          TeamSection(
+                            projetoId: projetoId,
+                          ), // Componente extraído!
                           const SizedBox(height: 15),
 
                           StructuresSection(

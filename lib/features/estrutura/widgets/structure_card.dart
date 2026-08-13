@@ -1,16 +1,21 @@
-import 'package:flutter/material.dart';
-import '../../../core/constants/app_colors.dart';
-import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
 import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
+import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
+import 'package:flutter/material.dart';
+
+import '../../../core/constants/app_colors.dart';
 
 class StructureCard extends StatelessWidget {
   final EstruturaModel estrutura;
   final String projetoId;
 
-  const StructureCard({super.key, required this.estrutura, required this.projetoId,});
+  const StructureCard({
+    super.key,
+    required this.estrutura,
+    required this.projetoId,
+  });
 
   Widget _buildImage() {
-    const String defaultAsset = 'assets/images/sem_estrutura.png'; 
+    const String defaultAsset = 'assets/images/sem_estrutura.png';
 
     if (estrutura.imageUrl == null || estrutura.imageUrl!.isEmpty) {
       return Image.asset(
@@ -41,14 +46,17 @@ class StructureCard extends StatelessWidget {
       onTap: () {
         Navigator.push(
           context,
-          MaterialPageRoute(builder: (context) =>  EstruturaHomeScreen(estrutura: estrutura, projetoId: projetoId,)),
+          MaterialPageRoute(
+            builder: (context) =>
+                EstruturaHomeScreen(estrutura: estrutura, projetoId: projetoId),
+          ),
         );
       },
       child: Container(
         width: 170,
         margin: const EdgeInsets.only(right: 16),
         // Obriga o Container a "aparar" as pontas de tudo o que estiver lá dentro
-        clipBehavior: Clip.antiAlias, 
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -61,7 +69,7 @@ class StructureCard extends StatelessWidget {
               children: [
                 //  A imagem agora preenche 100% da largura.
                 _buildImage(),
-                
+
                 Positioned(
                   bottom: 8,
                   left: 8,
@@ -75,7 +83,7 @@ class StructureCard extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                     child: Text(
-                      estrutura.status ?? 'Em Andamento', 
+                      estrutura.status ?? 'Em Andamento',
                       style: const TextStyle(
                         fontSize: 8,
                         color: AppColors.primary,
@@ -112,7 +120,7 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    '${estrutura.idadeCalculada } Anos  CAA ${estrutura.caa ?? '-'}',
+                    '${estrutura.idadeCalculada} Anos  CAA ${estrutura.caa ?? '-'}',
                     style: const TextStyle(
                       fontSize: 9,
                       color: AppColors.hintText,
@@ -131,14 +139,14 @@ class StructureCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
-                  
+
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: const LinearProgressIndicator(
-                      value: 0.8, 
+                      value: 0.0,
                       minHeight: 5,
                       backgroundColor: Color(0xFFEEEEEE),
-                      color: AppColors.primary, 
+                      color: AppColors.primary,
                     ),
                   ),
                 ],

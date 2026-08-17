@@ -1,0 +1,313 @@
+import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/ponto_arrancamento_model.dart';
+
+final arrancamentoRepositoryProvider = Provider<ArrancamentoRepository>((ref) {
+  return ArrancamentoRepository(Supabase.instance.client);
+});
+
+class ArrancamentoRepository {
+  final SupabaseClient _supabase;
+
+  ArrancamentoRepository(this._supabase);
+
+  /// Realiza o upload da imagem de forma segura e exibe logs em caso de erro de permissão (RLS)
+  Future<String?> uploadImagem(File file, String folder) async {
+    try {
+      final fileExt = file.path.split('.').last;
+      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      final fullPath = 'ensaios/$folder/$fileName';
+
+      // Usando o método .upload() nativo para File, ideal para iOS/Android
+      await _supabase.storage.from('projetos').upload(
+        fullPath,
+        file,
+        fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
+      );
+
+      final publicUrl = _supabase.storage.from('projetos').getPublicUrl(fullPath);
+      debugPrint('Upload realizado com sucesso: $publicUrl');
+      return publicUrl;
+      
+    } on StorageException catch (e) {
+      debugPrint('Erro de Storage (Verifique as políticas RLS no Supabase): ${e.message}');
+      return null;
+    } catch (e) {
+      debugPrint('Erro desconhecido no upload: $e');
+      return null;
+    }
+  }
+
+  Future<String?> buscarIdadeEstruturaPorElemento(String elementoId) async {
+    try {
+      final res = await _supabase
+          .from('elementos_estruturais')
+          .select('estruturas(ano_concepcao)')
+          .eq('id', elementoId)
+          .maybeSingle();
+
+      if (res != null && res['estruturas'] != null && res['estruturas']['ano_concepcao'] != null) {
+        final anoConcepcao = res['estruturas']['ano_concepcao'] as int;
+        final anoAtual = DateTime.now().year;
+        final idade = anoAtual - anoConcepcao;
+        return idade >= 0 ? idade.toString() : '0';
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  Future<PontoArrancamentoModel?> buscarPontoArrancamento(String pontoGeralId) async {
+    try {
+      final res = await _supabase
+          .from('ponto_ensaio_arrancamento')
+          .select('*')
+          .eq('ponto_ensaio_id', pontoGeralId)
+          .maybeSingle();
+
+      if (res == null) return null;
+
+      final idArrancamento = res['id'] as String;
+
+      final leiturasRes = await _supabase
+          .from('ponto_ensaio_arrancamento_leitura')
+          .select('*')
+          .eq('id_ponto_arrancamento', idArrancamento)
+          .order('criado_em', ascending: true);
+
+      List<PontoArrancamentoLeituraModel> leituras = [];
+
+      for (var lMap in (leiturasRes as List)) {
+        final lId = lMap['id'] as String;
+        final rupturasRes = await _supabase
+            .from('ponto_ensaio_arrancamento_ruptura')
+            .select('*')
+            .eq('id_ponto_leitura', lId);
+
+        final rupturas = (rupturasRes as List)
+            .map((r) => PontoArrancamentoRupturaModel.fromMap(r))
+            .toList();
+
+        leituras.add(PontoArrancamentoLeituraModel.fromMap(lMap, rupturas: rupturas));
+      }
+
+      return PontoArrancamentoModel.fromMap(res, leituras: leituras);
+    } on PostgrestException catch (e) {
+      throw Exception('Erro no banco de dados: ${e.message}');
+    } catch (e) {
+      throw Exception('Erro ao carregar dados: $e');
+    }
+  }
+
+  Future<Map<String, dynamic>> salvarArrancamentoCompleto({
+    required PontoArrancamentoModel dados,
+    required String projetoId,
+    required String elementoId,
+    required String tipoEnsaioId,
+    required String pontoNome,
+    File? fotoRegiao,
+    File? fotoColagem,
+  }) async {
+    try {
+      String? urlRegiao = dados.imagemRegiao;
+      String? urlColagem = dados.imagemColagem;
+
+      // Executa o upload e atualiza as variáveis se a foto não for nula
+      if (fotoRegiao != null) {
+        final u = await uploadImagem(fotoRegiao, 'arrancamento');
+        if (u != null) urlRegiao = u;
+      }
+      if (fotoColagem != null) {
+        final u = await uploadImagem(fotoColagem, 'arrancamento');
+        if (u != null) urlColagem = u;
+      }
+
+      String pontoGeralId = dados.pontoEnsaioId ?? '';
+
+      final mediaVal = dados.mediaTensao;
+      final tagTexto = mediaVal > 0 ? '${mediaVal.toStringAsFixed(2)} MPa' : 'Pendente';
+      final tagCor = mediaVal >= 0.30 ? '#4CAF50' : (mediaVal > 0 ? '#F44336' : '#9E9E9E');
+
+      // 1. Salva na tabela geral
+      if (pontoGeralId.isEmpty) {
+        // Atenção: Removido 'tipo_ensaio_id' caso a tabela pontos_ensaios_geral não possua essa coluna, 
+        // ou inclua de volta se ela existir no seu banco.
+        final resGeral = await _supabase.from('pontos_ensaios_geral').insert({
+          'nome_ponto': pontoNome,
+          'tipo_ensaio': 'Arrancamento em Argamassa', // Preenchendo a coluna tipo_ensaio texto
+          'elemento_estrutural_id': elementoId,
+          'projeto_id': projetoId,
+          'valor_resultado': tagTexto,
+          'cor_resultado': tagCor,
+        }).select('id').single();
+
+        pontoGeralId = resGeral['id'] as String;
+      } else {
+        await _supabase.from('pontos_ensaios_geral').update({
+          'nome_ponto': pontoNome,
+          'valor_resultado': tagTexto,
+          'cor_resultado': tagCor,
+        }).eq('id', pontoGeralId);
+      }
+
+      // 2. Salva na tabela específica de Arrancamento
+      String arrancamentoId = dados.id ?? '';
+      
+      final payloadArrancamento = {
+        'ponto_ensaio_id': pontoGeralId,
+        'imagem_regiao': urlRegiao,
+        'imagem_colagem': urlColagem,
+        'norma': dados.norma,
+        'eqp_utilizado': dados.eqpUtilizado, // Se for UUID no DB, precisa tratar
+        'temperatura': dados.temperatura,
+        'umidade': dados.umidade,
+        'idade_revestimento': dados.idadeRevestimento,
+        'cola_utilizada': dados.colaUtilizada,
+      };
+
+      if (arrancamentoId.isEmpty) {
+        final resArr = await _supabase
+            .from('ponto_ensaio_arrancamento')
+            .insert(payloadArrancamento)
+            .select('id')
+            .single();
+        arrancamentoId = resArr['id'] as String;
+      } else {
+        await _supabase
+            .from('ponto_ensaio_arrancamento')
+            .update(payloadArrancamento)
+            .eq('id', arrancamentoId);
+      }
+
+      return {
+        'pontoGeralId': pontoGeralId,
+        'arrancamentoId': arrancamentoId,
+        'urlRegiao': urlRegiao,
+        'urlColagem': urlColagem,
+      };
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao persistir no Supabase: ${e.message}');
+    } catch (e) {
+      throw Exception('Erro inesperado: $e');
+    }
+  }
+
+  Future<void> deletarPontoCompleto(String pontoGeralId, String? arrancamentoId) async {
+    try {
+      if (arrancamentoId != null && arrancamentoId.isNotEmpty) {
+        // 1. Busca todas as leituras para deletar as rupturas filhas
+        final leituras = await _supabase
+            .from('ponto_ensaio_arrancamento_leitura')
+            .select('id')
+            .eq('id_ponto_arrancamento', arrancamentoId);
+
+        for (var l in (leituras as List)) {
+          await _supabase
+              .from('ponto_ensaio_arrancamento_ruptura')
+              .delete()
+              .eq('id_ponto_leitura', l['id']);
+        }
+
+        // 2. Deleta as leituras
+        await _supabase
+            .from('ponto_ensaio_arrancamento_leitura')
+            .delete()
+            .eq('id_ponto_arrancamento', arrancamentoId);
+
+        // 3. Deleta o cabeçalho de arrancamento
+        await _supabase
+            .from('ponto_ensaio_arrancamento')
+            .delete()
+            .eq('id', arrancamentoId);
+      }
+
+      // 4. Por fim, deleta o ponto geral
+      await _supabase.from('pontos_ensaios_geral').delete().eq('id', pontoGeralId);
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao excluir ponto completo: ${e.message}');
+    }
+  }
+
+  Future<void> salvarPontoLeitura({
+    required String idArrancamento,
+    required PontoArrancamentoLeituraModel leitura,
+    File? fotoEnsaio,
+    File? fotoRuptura,
+  }) async {
+    try {
+      String? urlEnsaio = leitura.imagemEnsaio;
+      String? urlRuptura = leitura.imagemRuptura;
+
+      if (fotoEnsaio != null) {
+        final u = await uploadImagem(fotoEnsaio, 'arrancamento');
+        if (u != null) urlEnsaio = u;
+      }
+      if (fotoRuptura != null) {
+        final u = await uploadImagem(fotoRuptura, 'arrancamento');
+        if (u != null) urlRuptura = u;
+      }
+
+      // Verifique a nomenclatura exata da coluna no Supabase. O schema passado tem 'imgem_ruptura' escrito errado.
+      final payload = {
+        'id_ponto_arrancamento': idArrancamento,
+        'nome': leitura.nome,
+        'imagem_ensaio': urlEnsaio,
+        'imgem_ruptura': urlRuptura, 
+        'd1': leitura.d1,
+        'd2': leitura.d2,
+        'area': leitura.areaCalculada,
+        'carga': leitura.carga,
+      };
+
+      String leituraId = leitura.id ?? '';
+
+      if (leituraId.isEmpty) {
+        final res = await _supabase
+            .from('ponto_ensaio_arrancamento_leitura')
+            .insert(payload)
+            .select('id')
+            .single();
+        leituraId = res['id'] as String;
+      } else {
+        await _supabase
+            .from('ponto_ensaio_arrancamento_leitura')
+            .update(payload)
+            .eq('id', leituraId);
+      }
+
+      // 3. Atualização das porcentagens de ruptura
+      await _supabase
+          .from('ponto_ensaio_arrancamento_ruptura')
+          .delete()
+          .eq('id_ponto_leitura', leituraId);
+
+      final rupturasValidas = leitura.rupturas.where((r) => r.porcentagem > 0).map((r) => {
+        'id_ponto_leitura': leituraId,
+        'tipo_ruptura': r.tipoRuptura,
+        'porcentagem': r.porcentagem,
+      }).toList();
+
+      if (rupturasValidas.isNotEmpty) {
+        await _supabase.from('ponto_ensaio_arrancamento_ruptura').insert(rupturasValidas);
+      }
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao gravar leitura: ${e.message}');
+    }
+  }
+
+  Future<void> deletarPontoLeitura(String leituraId) async {
+    try {
+      await _supabase
+          .from('ponto_ensaio_arrancamento_ruptura')
+          .delete()
+          .eq('id_ponto_leitura', leituraId);
+      await _supabase
+          .from('ponto_ensaio_arrancamento_leitura')
+          .delete()
+          .eq('id', leituraId);
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao remover leitura: ${e.message}');
+    }
+  }
+}

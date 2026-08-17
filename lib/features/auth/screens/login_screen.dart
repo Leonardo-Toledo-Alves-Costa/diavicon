@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+
 import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/custom_text_field.dart';
-import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
+import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
@@ -131,7 +132,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Image.asset('assets/images/ic_linkedin.png', height: 45),
+                    // Image.asset('assets/images/ic_linkedin.png', height: 45),
                     const SizedBox(width: 35),
                     GestureDetector(
                       onTap: () {
@@ -149,35 +150,35 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                 const SizedBox(height: 20),
 
-                Column(
-                  children: [
-                    const Text(
-                      'AINDA NÃO POSSUI UMA CONTA?',
-                      style: TextStyle(
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
-                        letterSpacing: 0.8,
-                        fontFamily: 'Lato',
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => context.push('/register'),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4),
-                        child: Text(
-                          'CADASTRE-SE',
-                          style: TextStyle(
-                            color: AppColors.primary,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 15,
-                            fontFamily: 'Lato',
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
+                // Column(
+                //   children: [
+                //     const Text(
+                //       'AINDA NÃO POSSUI UMA CONTA?',
+                //       style: TextStyle(
+                //         fontSize: 10,
+                //         fontWeight: FontWeight.bold,
+                //         color: Colors.grey,
+                //         letterSpacing: 0.8,
+                //         fontFamily: 'Lato',
+                //       ),
+                //     ),
+                //     // GestureDetector(
+                //     //   onTap: () => context.push('/register'),
+                //     //   child: const Padding(
+                //     //     padding: EdgeInsets.symmetric(vertical: 4),
+                //     //     child: Text(
+                //     //       'CADASTRE-SE',
+                //     //       style: TextStyle(
+                //     //         color: AppColors.primary,
+                //     //         fontWeight: FontWeight.w900,
+                //     //         fontSize: 15,
+                //     //         fontFamily: 'Lato',
+                //     //       ),
+                //     //     ),
+                //     //   ),
+                //     // ),
+                //   ],
+                // ),
               ],
             ),
           ),

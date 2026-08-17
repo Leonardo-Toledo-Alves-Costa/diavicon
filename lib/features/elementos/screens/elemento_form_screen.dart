@@ -3,12 +3,12 @@ import 'dart:io';
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
 import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
+import 'package:diavicon/features/estrutura/models/local_model.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
@@ -276,27 +276,20 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     String? newOption;
 
     if (field == ElementoInfoDropdownField.localElemento) {
-      final novoLocalId = await showDialog<String>(
+      final novoLocal = await showDialog<LocalModel>(
         context: context,
         barrierColor: Colors.transparent,
         builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
 
-      if (novoLocalId != null) {
-        try {
-          final response = await Supabase.instance.client
-              .from('estruturas_locais')
-              .select('nome')
-              .eq('id', novoLocalId)
-              .single();
-
-          setState(() {
-            _isDirty = true;
-            _localElemento = response['nome'] as String;
-          });
-        } catch (e) {
-          debugPrint('Erro ao buscar nome do local: $e');
-        }
+      if (novoLocal != null) {
+        setState(() {
+          _isDirty = true;
+          if (!_localOptions.contains(novoLocal.nome)) {
+            _localOptions.add(novoLocal.nome);
+          }
+          _localElemento = novoLocal.nome;
+        });
       }
       return;
     } else if (field == ElementoInfoDropdownField.tipoElemento) {

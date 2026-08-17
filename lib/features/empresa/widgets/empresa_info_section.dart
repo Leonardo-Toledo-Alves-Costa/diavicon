@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../models/empresa_model.dart';
 
@@ -56,9 +57,9 @@ class EmpresaInfoSection extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            _buildStatBox('141', 'Estruturas\nMonitoradas'),
-            _buildStatBox('215', 'Projetos\nRealizados'),
-            _buildStatBox('10.000', 'Ensaios\nExecutados'),
+            _buildStatBox('-', 'Estruturas\nMonitoradas'),
+            _buildStatBox('-', 'Projetos\nRealizados'),
+            _buildStatBox('-', 'Ensaios\nExecutados'),
           ],
         ),
       ],
@@ -69,14 +70,12 @@ class EmpresaInfoSection extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 25.0),
       child: GestureDetector(
-        onTap: () {
-        },
+        onTap: () {},
         child: Image.asset(
           imagePath,
-          width: 25, 
+          width: 25,
           height: 25,
           fit: BoxFit.contain,
-
         ),
       ),
     );

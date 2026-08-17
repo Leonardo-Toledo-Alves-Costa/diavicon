@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
-import '../../../core/widgets/compact_search_bar.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
@@ -203,24 +203,41 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
               }
             },
           ),
-          DiaviconMenuItem(
-            icon: Icons.layers_outlined,
-            label: 'Relatórios',
-            onTap: () {
-              Navigator.pop(context);
-              if (widget.onOpenRelatorios != null) {
-                widget.onOpenRelatorios!();
-              } else {
-                _openRelatorios();
-              }
-            },
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(
+              icon: Icons.layers_outlined,
+              label: 'Relatórios',
+              onTap: () {
+                DiaviconAlerts.show(
+                  context,
+                  'Em desenvolvimento',
+                  'Esta funcionalidade estará disponível em breve!',
+                  isAviso: true,
+                );
+                // Navigator.pop(context);
+                // if (widget.onOpenRelatorios != null) {
+                //   widget.onOpenRelatorios!();
+                // } else {
+                //   _openRelatorios();
+                // }
+              },
+            ),
           ),
-          DiaviconMenuItem(
-            icon: Icons.pie_chart_outline,
-            label: 'Dashboard',
-            onTap: () {
-              Navigator.pop(context);
-            },
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(
+              icon: Icons.pie_chart_outline,
+              label: 'Dashboard',
+              onTap: () {
+                DiaviconAlerts.show(
+                  context,
+                  'Em desenvolvimento',
+                  'Esta funcionalidade estará disponível em breve!',
+                  isAviso: true,
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -282,16 +299,15 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                     const SizedBox(height: 16),
                     SizedBox(
                       width: 220,
-                      child: CompactSearchBar(
-                        hintText: 'Ensaio',
-                        onChanged: widget.onSearchChanged,
-                      ),
+                      // child: CompactSearchBar(
+                      //   hintText: 'Ensaio',
+                      //   onChanged: widget.onSearchChanged,
+                      // ),
                     ),
-                    const SizedBox(height: 24),
 
-                    const SizedBox(height: 24),
+                    // const SizedBox(height: 24),
 
-                    // 👇 NOVA LISTA DINÂMICA VINDA DO BANCO DE DADOS
+                    // const SizedBox(height: 24),
                     Consumer(
                       builder: (context, ref, child) {
                         if (widget.elementoId == null)
@@ -519,34 +535,34 @@ class _ResumoStrip extends StatelessWidget {
       clipBehavior: Clip.none,
       child: Row(
         mainAxisSize: MainAxisSize.min,
-        children: const [
-          SizedBox(
-            width: 95,
-            child: _ResumoCard(
-              title: 'Frente de carbonatação',
-              count: '01/04',
-              borderColor: AppColors.primary,
-            ),
-          ),
-          SizedBox(width: 12),
-          SizedBox(
-            width: 95,
-            child: _ResumoCard(
-              title: 'Potencial de corrosão',
-              count: '02/02',
-              borderColor: Color(0xFF20A862),
-            ),
-          ),
-          SizedBox(width: 12),
-          SizedBox(
-            width: 95,
-            child: _ResumoCard(
-              title: 'Resistividade elet. sup.',
-              count: '03/04',
-              borderColor: AppColors.primary,
-            ),
-          ),
-        ],
+        // children: const [
+        //   SizedBox(
+        //     width: 95,
+        //     child: _ResumoCard(
+        //       title: 'Frente de carbonatação',
+        //       count: '01/04',
+        //       borderColor: AppColors.primary,
+        //     ),
+        //   ),
+        //   SizedBox(width: 12),
+        //   SizedBox(
+        //     width: 95,
+        //     child: _ResumoCard(
+        //       title: 'Potencial de corrosão',
+        //       count: '02/02',
+        //       borderColor: Color(0xFF20A862),
+        //     ),
+        //   ),
+        //   SizedBox(width: 12),
+        //   SizedBox(
+        //     width: 95,
+        //     child: _ResumoCard(
+        //       title: 'Resistividade elet. sup.',
+        //       count: '03/04',
+        //       borderColor: AppColors.primary,
+        //     ),
+        //   ),
+        // ],
       ),
     );
   }

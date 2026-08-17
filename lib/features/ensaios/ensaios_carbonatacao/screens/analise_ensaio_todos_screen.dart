@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -263,10 +264,20 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
       endDrawer: MenuDrawerAppBar(
         title: 'Menu do\nEnsaio',
         items: [
-          DiaviconMenuItem(
-            icon: Icons.book_outlined,
-            label: 'Informações',
-            onTap: () => Navigator.pop(context),
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(
+              icon: Icons.book_outlined,
+              label: 'Informações',
+              onTap: () {
+                DiaviconAlerts.show(
+                  context,
+                  'Em desenvolvimento',
+                  'Esta funcionalidade estará disponível em breve!',
+                  isAviso: true,
+                );
+              },
+            ),
           ),
           Opacity(
             opacity: 0.4,

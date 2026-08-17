@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
-import '../../estrutura/widgets/novo_item_dropdown_modal.dart';
+import '../../elementos/widgets/novo_tipo_elemento_modal.dart';
 import '../../estrutura/providers/estruturas_dropdown_provider.dart';
+import '../../estrutura/widgets/novo_item_dropdown_modal.dart';
 
 /// Widget modular que cria a caixa de seleção expansível e conecta ao backend
 class BuildTabelaExpansion extends ConsumerWidget {
@@ -96,12 +99,8 @@ class BuildTabelaExpansion extends ConsumerWidget {
                             size: 20,
                             color: Colors.blueGrey,
                           ),
-                          onPressed: () => _mostrarModalEdicao(
-                            context,
-                            item['id'].toString(),
-                            item['nome'].toString(),
-                            ref,
-                          ),
+                          onPressed: () =>
+                              _mostrarModalEdicao(context, item, ref),
                         ),
                         // BOTÃO DELETAR
                         IconButton(
@@ -127,7 +126,7 @@ class BuildTabelaExpansion extends ConsumerWidget {
 
           const Divider(height: 1, color: Color(0xFFEEEEEE)),
 
-          // BOTÃO ADICIONAR NOVO 
+          // BOTÃO ADICIONAR NOVO
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextButton.icon(
@@ -139,13 +138,21 @@ class BuildTabelaExpansion extends ConsumerWidget {
                 ),
               ),
               onPressed: () async {
-                await showDialog<String>(
-                  context: context,
-                  builder: (context) => NovoItemDropdownModal(
-                    titulo: titulo,
-                    nomeTabela: nomeTabela,
-                  ),
-                );
+                if (nomeTabela == 'tipos_elemento') {
+                  await showDialog<String>(
+                    context: context,
+                    barrierColor: Colors.black.withOpacity(0.42),
+                    builder: (context) => const NovoTipoElementoModal(),
+                  );
+                } else {
+                  await showDialog<String>(
+                    context: context,
+                    builder: (context) => NovoItemDropdownModal(
+                      titulo: titulo,
+                      nomeTabela: nomeTabela,
+                    ),
+                  );
+                }
               },
               icon: const Icon(Icons.add_circle_outline, size: 20),
               label: const Text(
@@ -162,12 +169,22 @@ class BuildTabelaExpansion extends ConsumerWidget {
   // --- LÓGICA DE EDIÇÃO ---
   Future<void> _mostrarModalEdicao(
     BuildContext context,
-    String idItem,
-    String nomeAtual,
+    Map<String, dynamic> item,
     WidgetRef ref,
   ) async {
+    final String idItem = item['id'].toString();
+    final String nomeAtual = item['nome'].toString();
     final controller = TextEditingController(text: nomeAtual);
+
+    // 👇 Prepara o formato atual (só será usado se for tipo de elemento)
+    String formatoSelecionado =
+        item['formato_marcacao']?.toString() ?? 'Retângulo';
+    if (!['Retângulo', 'Círculo'].contains(formatoSelecionado)) {
+      formatoSelecionado = 'Retângulo';
+    }
+
     bool isLoading = false;
+    final bool isTipoElemento = nomeTabela == 'tipos_elemento';
 
     await showDialog(
       context: context,
@@ -188,6 +205,7 @@ class BuildTabelaExpansion extends ConsumerWidget {
             ),
             content: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 CustomTextField(
                   label: 'Nome',
@@ -195,6 +213,39 @@ class BuildTabelaExpansion extends ConsumerWidget {
                   controller: controller,
                   enabled: !isLoading,
                 ),
+                // 👇 Renderiza o Dropdown APENAS se for a tabela de Tipos de Elemento
+                if (isTipoElemento) ...[
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Formato na Planta',
+                    style: TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: formatoSelecionado,
+                        isExpanded: true,
+                        items: ['Retângulo', 'Círculo']
+                            .map(
+                              (f) => DropdownMenuItem(value: f, child: Text(f)),
+                            )
+                            .toList(),
+                        onChanged: isLoading
+                            ? null
+                            : (val) {
+                                if (val != null)
+                                  setStateModal(() => formatoSelecionado = val);
+                              },
+                      ),
+                    ),
+                  ),
+                ],
               ],
             ),
             actions: [
@@ -216,20 +267,33 @@ class BuildTabelaExpansion extends ConsumerWidget {
                     ? null
                     : () async {
                         final novoNome = controller.text.trim();
-                        if (novoNome.isEmpty || novoNome == nomeAtual) {
+                        if (novoNome.isEmpty) return;
+
+                        // Verifica se houve alguma alteração real
+                        if (novoNome == nomeAtual &&
+                            (!isTipoElemento ||
+                                formatoSelecionado ==
+                                    item['formato_marcacao'])) {
                           Navigator.pop(context);
                           return;
                         }
 
                         setStateModal(() => isLoading = true);
                         try {
-                          await ref
-                              .read(estruturaDropdownsControllerProvider)
-                              .editarItem(
-                                nomeTabela: nomeTabela,
-                                id: idItem,
-                                novoNome: novoNome,
-                              );
+                          // 👇 Monta os dados para salvar
+                          final Map<String, dynamic> updateData = {
+                            'nome': novoNome,
+                          };
+                          if (isTipoElemento) {
+                            updateData['formato_marcacao'] = formatoSelecionado;
+                          }
+
+                          // Faz o update direto no Supabase (as Streams cuidam de atualizar a UI!)
+                          await Supabase.instance.client
+                              .from(nomeTabela)
+                              .update(updateData)
+                              .eq('id', idItem);
+
                           if (context.mounted) Navigator.pop(context);
                         } catch (e) {
                           if (context.mounted) {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../widgets/rdo_modals.dart';
+import '../../services/ensaios_mock_service.dart';
 
 enum PeriodoRdo { manha, tarde, noite }
 
@@ -104,7 +105,7 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
                     onChanged: (v) => setState(() => _condicoesClimatica = v),
                   ),
                   const SizedBox(height: 20),
-                  _buildRotulo('Atividades realizadas'),
+                  _buildRotuloAtividades(context),
                   const SizedBox(height: 6),
                   _buildTextarea(_atividadesController, 'Medição de abc...'),
                   const SizedBox(height: 20),
@@ -206,6 +207,35 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
     return Text(
       texto,
       style: const TextStyle(fontSize: 14, color: corTextoTitulo),
+    );
+  }
+
+  Widget _buildRotuloAtividades(BuildContext context) {
+    final bool dataPreenchida = _dataController.text.isNotEmpty;
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        _buildRotulo('Atividades realizadas'),
+        if (dataPreenchida)
+          TextButton.icon(
+            onPressed: () => _importarHistorico(context),
+            icon: const Icon(Icons.download_rounded, size: 16, color: corLaranja),
+            label: const Text(
+              'Importar histórico',
+              style: TextStyle(
+                color: corLaranja,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: const Color(0xFFFCE7CC),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            ),
+          ),
+      ],
     );
   }
 
@@ -511,5 +541,26 @@ class _NovoRdoScreenState extends State<NovoRdoScreen> {
             '${horario.hour.toString().padLeft(2, '0')}:${horario.minute.toString().padLeft(2, '0')}';
       });
     }
+  }
+
+  void _importarHistorico(BuildContext context) {
+    final ensaios = EnsaiosMockService.buscarPorData(
+      _dataController.text,
+      empresa: 'Empresa Execução',
+    );
+
+    if (ensaios.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Nenhum ensaio encontrado para essa data.')),
+      );
+      return;
+    }
+
+    setState(() {
+      final textoEnsaios = ensaios.map((e) => '- $e').join('\n');
+      _atividadesController.text = _atividadesController.text.isEmpty
+          ? textoEnsaios
+          : '${_atividadesController.text}\n$textoEnsaios';
+    });
   }
 }

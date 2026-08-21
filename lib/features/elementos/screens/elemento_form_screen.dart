@@ -63,6 +63,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
   ];
 
   File? _novaImagemBanner;
+  String? _marcacaoImagemUrl;
   bool _isSubmitting = false;
   bool _isDirty = false;
 
@@ -100,6 +101,28 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       _revestimentoOptions.add(el.revestimento!);
     }
     _revestimento = el.revestimento;
+    _marcacaoImagemUrl = el.marcacaoImagemUrl;
+  }
+
+  Future<void> _abrirPlanejamento() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PlanejamentoPlantasScreen(estruturaId: widget.estruturaId),
+      ),
+    );
+
+    if (!_isEditing || !mounted) return;
+    final elementos = await ref
+        .read(elementoRepositoryProvider)
+        .buscarElementosPorEstrutura(widget.estruturaId);
+    final atualizado = elementos.firstWhere(
+      (elemento) => elemento.id == widget.elemento!.id,
+    );
+    if (mounted) {
+      setState(() => _marcacaoImagemUrl = atualizado.marcacaoImagemUrl);
+    }
   }
 
   void _marcarComoSujo() {
@@ -543,7 +566,12 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  Center(child: _PlantaCard(onPressed: canEdit ? () {} : null)),
+                  Center(
+                    child: _PlantaCard(
+                      imageUrl: _marcacaoImagemUrl,
+                      onPressed: canEdit ? _abrirPlanejamento : null,
+                    ),
+                  ),
                   const SizedBox(height: 14),
 
                   if (canEdit)
@@ -552,16 +580,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                         width: 292,
                         height: 40,
                         text: 'Adicionar marcação em Planta',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PlanejamentoPlantasScreen(
-                                estruturaId: widget.estruturaId,
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _abrirPlanejamento,
                       ),
                     ),
                   const SizedBox(height: 18),
@@ -654,7 +673,8 @@ class _ElementoBanner extends StatelessWidget {
 }
 
 class _PlantaCard extends StatelessWidget {
-  const _PlantaCard({this.onPressed});
+  const _PlantaCard({this.imageUrl, this.onPressed});
+  final String? imageUrl;
   final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) {
@@ -671,15 +691,34 @@ class _PlantaCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFF5E5E5E), width: 1),
-            image: const DecorationImage(
-              image: AssetImage('assets/images/planta_elementos_info.png'),
-              fit: BoxFit.cover,
-            ),
           ),
+          child: _PlantaCardImage(imageUrl: imageUrl),
         ),
       ),
     );
   }
+}
+
+class _PlantaCardImage extends StatelessWidget {
+  const _PlantaCardImage({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return _fallback();
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Image.asset(
+    'assets/images/planta_elementos_info.png',
+    fit: BoxFit.cover,
+  );
 }
 
 enum ElementoInfoDropdownField {

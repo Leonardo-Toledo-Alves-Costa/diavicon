@@ -47,6 +47,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     required String tipo,
     required String local,
     required String imageUrl,
+    String? marcacaoImagemUrl,
   }) {
     context.push(
       '/estruturas/${widget.estrutura.id}/elementos/$elementoId',
@@ -58,6 +59,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         'tipo': tipo,
         'local': local,
         'imageUrl': imageUrl,
+        if (marcacaoImagemUrl != null) 'marcacaoImagemUrl': marcacaoImagemUrl,
       },
     );
   }
@@ -222,6 +224,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 tipo: tipo,
                 local: el.local ?? '',
                 imageUrl: imageUrl,
+                marcacaoImagemUrl: el.marcacaoImagemUrl,
               ),
               onLongPress: () => _abrirAcoesElemento(context, ref, el),
             );

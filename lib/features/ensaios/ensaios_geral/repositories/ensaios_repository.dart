@@ -4,6 +4,102 @@ import '../models/ensaio_resumo_model.dart';
 class EnsaiosRepository {
   final SupabaseClient _supabase;
   EnsaiosRepository(this._supabase);
+  Future<String?> buscarTipoEnsaioIdPorNome(String nomeEnsaio) async {
+    try {
+      final resp = await _supabase
+          .from('tipos_ensaio')
+          .select('id, nome, icone_path')
+          .ilike('nome', nomeEnsaio)
+          .maybeSingle();
+
+      return resp?['id']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> salvarEnsaioNaRegiao({
+    required String estruturaId,
+    required String empresaId,
+    required String regiaoId,
+    required String nomeEnsaio,
+    required int quantidade,
+  }) async {
+    final tipoEnsaioId = await buscarTipoEnsaioIdPorNome(nomeEnsaio);
+
+    if (tipoEnsaioId == null || tipoEnsaioId.isEmpty) {
+      throw Exception('Tipo de ensaio não encontrado no banco: $nomeEnsaio');
+    }
+
+    final tipoResp = await _supabase
+        .from('tipos_ensaio')
+        .select('icone_path')
+        .eq('id', tipoEnsaioId)
+        .maybeSingle();
+
+    final iconePath =
+        tipoResp?['icone_path']?.toString() ??
+        'assets/images/ensaios/default.png';
+
+    final contratoExistente = await _supabase
+        .from('ensaios_contratados')
+        .select('id, quantidade')
+        .eq('estrutura_id', estruturaId)
+        .eq('empresa_id', empresaId)
+        .eq('tipo_ensaio_id', tipoEnsaioId)
+        .maybeSingle();
+
+    if (contratoExistente != null) {
+      final qtdAtual = (contratoExistente['quantidade'] as num?)?.toInt() ?? 0;
+      await _supabase
+          .from('ensaios_contratados')
+          .update({'quantidade': qtdAtual + quantidade})
+          .eq('id', contratoExistente['id']);
+    } else {
+      await _supabase.from('ensaios_contratados').insert({
+        'estrutura_id': estruturaId,
+        'empresa_id': empresaId,
+        'tipo_ensaio_id': tipoEnsaioId,
+        'quantidade': quantidade,
+        'regiao_id': regiaoId,
+      });
+    }
+
+    final regiaoResp = await _supabase
+        .from('regioes_ensaio')
+        .select('ensaios')
+        .eq('id', regiaoId)
+        .maybeSingle();
+
+    final listaAtual = <Map<String, dynamic>>[];
+    final raw = regiaoResp?['ensaios'];
+
+    if (raw is List) {
+      for (final item in raw) {
+        if (item is Map) {
+          listaAtual.add(Map<String, dynamic>.from(item));
+        }
+      }
+    }
+
+    final index = listaAtual.indexWhere((item) => item['nome'] == nomeEnsaio);
+
+    if (index >= 0) {
+      listaAtual[index]['qtd'] = quantidade;
+      listaAtual[index]['icone'] = iconePath;
+    } else {
+      listaAtual.add({
+        'nome': nomeEnsaio,
+        'icone': iconePath,
+        'qtd': quantidade,
+      });
+    }
+
+    await _supabase
+        .from('regioes_ensaio')
+        .update({'ensaios': listaAtual, 'qtd_ensaios': listaAtual.length})
+        .eq('id', regiaoId);
+  }
 
   Future<List<ResumoEnsaioModel>> getResumoEnsaiosEstrutura({
     required String projetoId,
@@ -33,11 +129,14 @@ class EnsaiosRepository {
 
       // 4. Mapeia quantidades contratadas com segurança de tipo
       Map<String, int> mapContratados = {};
-      for (var c in (contratadosResp as List)) {
-        final tipoEnsaioId = c['tipo_ensaio_id']?.toString();
-        if (tipoEnsaioId != null) {
-          final qtd = (c['quantidade'] as num?)?.toInt() ?? 0;
-          mapContratados[tipoEnsaioId] = (mapContratados[tipoEnsaioId] ?? 0) + qtd;
+      if (contratadosResp != null) {
+        for (var c in (contratadosResp as List)) {
+          final tipoEnsaioId = c['tipo_ensaio_id']?.toString();
+          if (tipoEnsaioId != null) {
+            final qtd = (c['quantidade'] as num?)?.toInt() ?? 0;
+            mapContratados[tipoEnsaioId] =
+                (mapContratados[tipoEnsaioId] ?? 0) + qtd;
+          }
         }
       }
 
@@ -45,9 +144,13 @@ class EnsaiosRepository {
       Map<String, int> mapRealizados = {};
       if (realizadosValidadosResp is List) {
         for (var r in realizadosValidadosResp) {
-          final tipoEnsaioId = (r['tipo_ensaio_id'] ?? '').toString().trim().toLowerCase();
-          if (tipoEnsaioId.isNotEmpty) {
-            mapRealizados[tipoEnsaioId] = (mapRealizados[tipoEnsaioId] ?? 0) + 1;
+          final tipoEnsaioNome = (r['tipo_ensaio'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          if (tipoEnsaioNome.isNotEmpty) {
+            mapRealizados[tipoEnsaioNome] =
+                (mapRealizados[tipoEnsaioNome] ?? 0) + 1;
           }
         }
       }
@@ -66,17 +169,23 @@ class EnsaiosRepository {
 
         // Normalização específica para carbonatação conforme tabelas criadas[cite: 2]
         if (nomeLower.contains('carbonata')) {
-          realizadas = mapRealizados['frente de carbonatação'] ??
-              mapRealizados['carbonatação'] ?? realizadas;
+          realizadas =
+              mapRealizados['frente de carbonatação'] ??
+              mapRealizados['carbonatação'] ??
+              realizadas;
         }
 
-        lista.add(ResumoEnsaioModel(
-          id: id,
-          nome: nome,
-          iconePath: (iconePath != null && iconePath.isNotEmpty) ? iconePath : 'assets/images/ensaios/default.png',
-          contratadas: contratadas,
-          realizadas: realizadas,
-        ));
+        lista.add(
+          ResumoEnsaioModel(
+            id: id,
+            nome: nome,
+            iconePath: (iconePath != null && iconePath.isNotEmpty)
+                ? iconePath
+                : 'assets/images/ensaios/default.png',
+            contratadas: contratadas,
+            realizadas: realizadas,
+          ),
+        );
       }
 
       // 7. Ordenação limpa
@@ -87,7 +196,6 @@ class EnsaiosRepository {
       });
 
       return lista;
-
     } on PostgrestException catch (e) {
       throw Exception('Erro de Banco de Dados (${e.code}): ${e.message}');
     } on AuthException catch (e) {

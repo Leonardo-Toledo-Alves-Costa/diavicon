@@ -1,9 +1,11 @@
 import 'dart:io';
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdfx/pdfx.dart';
@@ -13,7 +15,6 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/constants/app_text_styles.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
-
 
 class MarcacaoPlanta {
   const MarcacaoPlanta({
@@ -39,26 +40,47 @@ class MarcacaoPlanta {
   final String? nomeElemento;
 
   MarcacaoPlanta copyWith({
-    double? x, double? y, String? plantaId, String? tipoMarcacao, 
-    int? numero, Uint8List? thumbnailBytes, double? largura, double? altura, 
-    double? rotacao, String? cor, double? nomeX, double? nomeY,
+    double? x,
+    double? y,
+    String? plantaId,
+    String? tipoMarcacao,
+    int? numero,
+    Uint8List? thumbnailBytes,
+    double? largura,
+    double? altura,
+    double? rotacao,
+    String? cor,
+    double? nomeX,
+    double? nomeY,
   }) {
     return MarcacaoPlanta(
-      x: x ?? this.x, y: y ?? this.y, plantaId: plantaId ?? this.plantaId,
-      tipoMarcacao: tipoMarcacao ?? this.tipoMarcacao, numero: numero ?? this.numero,
+      x: x ?? this.x,
+      y: y ?? this.y,
+      plantaId: plantaId ?? this.plantaId,
+      tipoMarcacao: tipoMarcacao ?? this.tipoMarcacao,
+      numero: numero ?? this.numero,
       thumbnailBytes: thumbnailBytes ?? this.thumbnailBytes,
-      largura: largura ?? this.largura, altura: altura ?? this.altura,
-      rotacao: rotacao ?? this.rotacao, cor: cor ?? this.cor,
-      nomeX: nomeX ?? this.nomeX, nomeY: nomeY ?? this.nomeY,
+      largura: largura ?? this.largura,
+      altura: altura ?? this.altura,
+      rotacao: rotacao ?? this.rotacao,
+      cor: cor ?? this.cor,
+      nomeX: nomeX ?? this.nomeX,
+      nomeY: nomeY ?? this.nomeY,
     );
   }
 
   Map<String, dynamic> toPosicaoMap() => <String, dynamic>{
-        'posicao_x': x, 'posicao_y': y, 'planta_id': plantaId,
-        'tipo_marcacao': tipoMarcacao, 'marcacao_largura': largura, 'marcacao_altura': altura,
-        'marcacao_rotacao': rotacao, 'marcacao_cor': cor,
-        'marcacao_nome_x': nomeX, 'marcacao_nome_y': nomeY,
-      };
+    'posicao_x': x,
+    'posicao_y': y,
+    'planta_id': plantaId,
+    'tipo_marcacao': tipoMarcacao,
+    'marcacao_largura': largura,
+    'marcacao_altura': altura,
+    'marcacao_rotacao': rotacao,
+    'marcacao_cor': cor,
+    'marcacao_nome_x': nomeX,
+    'marcacao_nome_y': nomeY,
+  };
 }
 
 enum ModoFerramenta { navegar, mover, redimensionar }
@@ -71,6 +93,7 @@ Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
   MarcacaoPlanta? inicial,
   int numero = 1,
   String? nomeElemento,
+  bool capturarImagem = false,
 }) {
   return showDialog<MarcacaoPlanta>(
     context: context,
@@ -83,6 +106,7 @@ Future<MarcacaoPlanta?> showMarcacaoPlantaPopup(
       marcacaoInicial: inicial,
       numero: numero,
       nomeElemento: nomeElemento,
+      capturarImagem: capturarImagem,
     ),
   );
 }
@@ -98,6 +122,7 @@ class MarcacaoPlantaPopup extends StatefulWidget {
     this.marcacaoInicial,
     this.numero = 1,
     this.nomeElemento,
+    this.capturarImagem = false,
   });
 
   final String arquivoUrl;
@@ -106,13 +131,16 @@ class MarcacaoPlantaPopup extends StatefulWidget {
   final MarcacaoPlanta? marcacaoInicial;
   final int numero;
   final String? nomeElemento;
+  final bool capturarImagem;
 
   @override
   State<MarcacaoPlantaPopup> createState() => _MarcacaoPlantaPopupState();
 }
 
 class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
-  final TransformationController _transformationController = TransformationController();
+  final TransformationController _transformationController =
+      TransformationController();
+  final GlobalKey _plantaCaptureKey = GlobalKey();
 
   Offset? _ponto;
   String _tipoMarcacaoSelecionado = 'Retângulo';
@@ -120,12 +148,15 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
   double _altura = 0.08;
   double _rotacao = 0.0;
   ModoFerramenta _modoAtivo = ModoFerramenta.navegar;
-  
-  String _corSelecionada = '#FF9800'; 
+
+  String _corSelecionada = '#FF9800';
   double _nomeX = 0.0;
   double _nomeY = 0.0;
+  bool _ocultarVizinhosNaCaptura = false;
+  bool _salvandoImagem = false;
+  bool _plantaPronta = false;
 
-  static final List<String> _coresSalvas = ['#FF9800', '#F44336', '#2196F3']; 
+  static final List<String> _coresSalvas = ['#FF9800', '#F44336', '#2196F3'];
 
   @override
   void initState() {
@@ -133,7 +164,8 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
     if (widget.marcacaoInicial != null) {
       _ponto = Offset(widget.marcacaoInicial!.x, widget.marcacaoInicial!.y);
       final tipoSalvo = widget.marcacaoInicial!.tipoMarcacao;
-      if (tipoSalvo.isNotEmpty && ['Retângulo', 'Círculo'].contains(tipoSalvo)) {
+      if (tipoSalvo.isNotEmpty &&
+          ['Retângulo', 'Círculo'].contains(tipoSalvo)) {
         _tipoMarcacaoSelecionado = tipoSalvo;
       }
       _largura = widget.marcacaoInicial!.largura;
@@ -142,7 +174,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
       _corSelecionada = widget.marcacaoInicial!.cor;
       _nomeX = widget.marcacaoInicial!.nomeX;
       _nomeY = widget.marcacaoInicial!.nomeY;
-      
+
       if (_nomeY < -1.0 || _nomeY > 2.0) {
         _nomeX = _ponto!.dx;
         _nomeY = _ponto!.dy - 0.06;
@@ -166,9 +198,73 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
     return Color(int.parse(hex.replaceFirst('#', '0xff')));
   }
 
-  void _salvar() {
-    if (_ponto != null) {
-      Navigator.of(context).pop(MarcacaoPlanta(
+  Future<void> _salvar() async {
+    if (_ponto == null || _salvandoImagem) return;
+    if (widget.capturarImagem && !_plantaPronta) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Aguarde a planta terminar de carregar.')),
+      );
+      return;
+    }
+
+    Uint8List? thumbnailBytes;
+    if (widget.capturarImagem) {
+      final transformacaoAnterior = Matrix4.copy(
+        _transformationController.value,
+      );
+
+      setState(() {
+        _salvandoImagem = true;
+        _ocultarVizinhosNaCaptura = true;
+      });
+      _transformationController.value = Matrix4.identity();
+
+      try {
+        await WidgetsBinding.instance.endOfFrame;
+        final boundary =
+            _plantaCaptureKey.currentContext?.findRenderObject()
+                as RenderRepaintBoundary?;
+        if (boundary == null) {
+          throw Exception('Visualização da planta indisponível para captura.');
+        }
+
+        if (boundary.size.width <= 0) {
+          throw Exception(
+            'A planta não possui uma largura válida para captura.',
+          );
+        }
+        final pixelRatio = 1024.0 / boundary.size.width;
+        final image = await boundary.toImage(pixelRatio: pixelRatio);
+        final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+        image.dispose();
+        if (byteData == null) {
+          throw Exception('Não foi possível gerar a imagem da marcação.');
+        }
+        thumbnailBytes = byteData.buffer.asUint8List(
+          byteData.offsetInBytes,
+          byteData.lengthInBytes,
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erro ao gerar imagem da marcação: $e')),
+          );
+        }
+        return;
+      } finally {
+        _transformationController.value = transformacaoAnterior;
+        if (mounted) {
+          setState(() {
+            _salvandoImagem = false;
+            _ocultarVizinhosNaCaptura = false;
+          });
+        }
+      }
+    }
+
+    if (!mounted) return;
+    Navigator.of(context).pop(
+      MarcacaoPlanta(
         x: _ponto!.dx,
         y: _ponto!.dy,
         plantaId: widget.plantaId,
@@ -181,8 +277,9 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
         nomeX: _nomeX,
         nomeY: _nomeY,
         nomeElemento: widget.nomeElemento,
-      ));
-    }
+        thumbnailBytes: thumbnailBytes,
+      ),
+    );
   }
 
   void _abrirColorPicker() {
@@ -190,32 +287,42 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Escolha a cor', style: AppTextStyles.tituloPrincipal),
+        title: const Text(
+          'Escolha a cor',
+          style: AppTextStyles.tituloPrincipal,
+        ),
         content: SingleChildScrollView(
           child: ColorPicker(
             pickerColor: corTemporaria,
             onColorChanged: (Color color) => corTemporaria = color,
             enableAlpha: false,
-            labelTypes: const [], 
+            labelTypes: const [],
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+            child: const Text(
+              'Cancelar',
+              style: TextStyle(color: AppColors.greyMedium),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () {
               setState(() {
-                _corSelecionada = '#${corTemporaria.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
+                _corSelecionada =
+                    '#${corTemporaria.value.toRadixString(16).substring(2).toUpperCase()}';
                 if (!_coresSalvas.contains(_corSelecionada)) {
                   _coresSalvas.add(_corSelecionada);
                 }
               });
               Navigator.of(context).pop();
             },
-            child: const Text('Salvar', style: AppTextStyles.corpoDestaqueBranco),
+            child: const Text(
+              'Salvar',
+              style: AppTextStyles.corpoDestaqueBranco,
+            ),
           ),
         ],
       ),
@@ -228,7 +335,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Cor da Marcação', style: AppTextStyles.labelCampo), 
+          const Text('Cor da Marcação', style: AppTextStyles.labelCampo),
           const SizedBox(height: 12),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -240,12 +347,24 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                     onTap: () => setState(() => _corSelecionada = cor),
                     child: Container(
                       margin: const EdgeInsets.only(right: 14),
-                      width: 34, height: 34,
+                      width: 34,
+                      height: 34,
                       decoration: BoxDecoration(
                         color: _hexToColor(cor),
                         shape: BoxShape.circle,
-                        border: isSelected ? Border.all(color: AppColors.greyDarkest, width: 2.5) : Border.all(color: Colors.black12),
-                        boxShadow: [if (isSelected) const BoxShadow(color: Colors.black26, blurRadius: 4)],
+                        border: isSelected
+                            ? Border.all(
+                                color: AppColors.greyDarkest,
+                                width: 2.5,
+                              )
+                            : Border.all(color: Colors.black12),
+                        boxShadow: [
+                          if (isSelected)
+                            const BoxShadow(
+                              color: Colors.black26,
+                              blurRadius: 4,
+                            ),
+                        ],
                       ),
                     ),
                   );
@@ -254,13 +373,21 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                   onTap: _abrirColorPicker,
                   child: Container(
                     margin: const EdgeInsets.only(right: 14),
-                    width: 34, height: 34,
+                    width: 34,
+                    height: 34,
                     decoration: BoxDecoration(
                       color: AppColors.white,
                       shape: BoxShape.circle,
-                      border: Border.all(color: AppColors.inputBorder, width: 1.5),
+                      border: Border.all(
+                        color: AppColors.inputBorder,
+                        width: 1.5,
+                      ),
                     ),
-                    child: const Icon(Icons.colorize, size: 18, color: AppColors.greyMedium),
+                    child: const Icon(
+                      Icons.colorize,
+                      size: 18,
+                      color: AppColors.greyMedium,
+                    ),
                   ),
                 ),
               ],
@@ -281,22 +408,33 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: isActive ? AppColors.primary.withValues(alpha: 0.1) : AppColors.white,
+              color: isActive
+                  ? AppColors.primary.withValues(alpha: 0.1)
+                  : AppColors.white,
               shape: BoxShape.circle,
-              border: Border.all(color: isActive ? AppColors.primary : AppColors.greyVeryLight, width: 2),
-              boxShadow: isActive ? [] : [const BoxShadow(color: Colors.black12, blurRadius: 4)],
+              border: Border.all(
+                color: isActive ? AppColors.primary : AppColors.greyVeryLight,
+                width: 2,
+              ),
+              boxShadow: isActive
+                  ? []
+                  : [const BoxShadow(color: Colors.black12, blurRadius: 4)],
             ),
-            child: Icon(icon, color: isActive ? AppColors.primary : AppColors.greyMedium, size: 28),
+            child: Icon(
+              icon,
+              color: isActive ? AppColors.primary : AppColors.greyMedium,
+              size: 28,
+            ),
           ),
           const SizedBox(height: 6),
           Text(
-            label, 
+            label,
             style: TextStyle(
-              color: isActive ? AppColors.primary : AppColors.greyMedium, 
-              fontSize: 13, 
+              color: isActive ? AppColors.primary : AppColors.greyMedium,
+              fontSize: 13,
               fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-              fontFamily: 'Lato', 
-            )
+              fontFamily: 'Lato',
+            ),
           ),
         ],
       ),
@@ -308,8 +446,8 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
     final isCirculo = _tipoMarcacaoSelecionado.toLowerCase() == 'círculo';
 
     return Scaffold(
-      backgroundColor: AppColors.background, 
-      appBar: const CustomAppBar( 
+      backgroundColor: AppColors.background,
+      appBar: const CustomAppBar(
         title: 'Marcar na Planta',
         showBackButton: true,
         showMenuButton: false,
@@ -323,32 +461,39 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                 color: AppColors.greyVeryLight,
                 child: _PlantaInterativa(
                   transformationController: _transformationController,
-                  arquivoUrl: widget.arquivoUrl, 
-                  plantaId: widget.plantaId, 
-                  estruturaId: widget.estruturaId, 
-                  numero: widget.numero, 
-                  ponto: _ponto, 
-                  largura: _largura, 
+                  arquivoUrl: widget.arquivoUrl,
+                  plantaId: widget.plantaId,
+                  estruturaId: widget.estruturaId,
+                  numero: widget.numero,
+                  ponto: _ponto,
+                  largura: _largura,
                   altura: _altura,
-                  tipoMarcacao: _tipoMarcacaoSelecionado, 
-                  nomeElemento: widget.nomeElemento,   
-                  modo: _modoAtivo,   
+                  tipoMarcacao: _tipoMarcacaoSelecionado,
+                  nomeElemento: widget.nomeElemento,
+                  modo: _modoAtivo,
                   rotacao: _rotacao,
-                  corSelecionada: _corSelecionada, 
-                  nomeX: _nomeX,                   
-                  nomeY: _nomeY,                   
-                  onNomeDrag: (deltaFraction) {       
+                  corSelecionada: _corSelecionada,
+                  nomeX: _nomeX,
+                  nomeY: _nomeY,
+                  captureKey: _plantaCaptureKey,
+                  mostrarVizinhos: !_ocultarVizinhosNaCaptura,
+                  onImagemProntaChanged: (pronta) {
+                    if (mounted && _plantaPronta != pronta) {
+                      setState(() => _plantaPronta = pronta);
+                    }
+                  },
+                  onNomeDrag: (deltaFraction) {
                     setState(() {
                       _nomeX = (_nomeX + deltaFraction.dx).clamp(0.0, 1.0);
                       _nomeY = (_nomeY + deltaFraction.dy).clamp(0.0, 1.0);
                     });
-                  }, 
+                  },
                   onInitialTap: (pontoInicial) {
                     setState(() {
                       _ponto = pontoInicial;
                       _nomeX = pontoInicial.dx;
-                      _nomeY = (pontoInicial.dy - 0.06).clamp(0.0, 1.0); 
-                      _modoAtivo = ModoFerramenta.redimensionar; 
+                      _nomeY = (pontoInicial.dy - 0.06).clamp(0.0, 1.0);
+                      _modoAtivo = ModoFerramenta.redimensionar;
                     });
                   },
                   onChanged: (novoPonto) {
@@ -362,9 +507,15 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
             Container(
               padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
               decoration: const BoxDecoration(
-                color: AppColors.white, 
+                color: AppColors.white,
                 borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-                boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 12, offset: Offset(0, -4))],
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black12,
+                    blurRadius: 12,
+                    offset: Offset(0, -4),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -372,39 +523,75 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
-                      _buildBotaoModo(ModoFerramenta.navegar, Icons.pan_tool, 'Navegar'),
-                      _buildBotaoModo(ModoFerramenta.mover, Icons.open_with, 'Mover'),
-                      _buildBotaoModo(ModoFerramenta.redimensionar, Icons.aspect_ratio, 'Tamanho'),
+                      _buildBotaoModo(
+                        ModoFerramenta.navegar,
+                        Icons.pan_tool,
+                        'Navegar',
+                      ),
+                      _buildBotaoModo(
+                        ModoFerramenta.mover,
+                        Icons.open_with,
+                        'Mover',
+                      ),
+                      _buildBotaoModo(
+                        ModoFerramenta.redimensionar,
+                        Icons.aspect_ratio,
+                        'Tamanho',
+                      ),
                     ],
                   ),
                   const Padding(
                     padding: EdgeInsets.symmetric(vertical: 16),
                     child: Divider(height: 1, color: AppColors.greyVeryLight),
                   ),
-                  
+
                   ConstrainedBox(
-                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.30),
+                    constraints: BoxConstraints(
+                      maxHeight: MediaQuery.of(context).size.height * 0.30,
+                    ),
                     child: SingleChildScrollView(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           if (_modoAtivo != ModoFerramenta.redimensionar) ...[
-                            const Text('Tipo de Marcação', style: AppTextStyles.labelCampo), 
+                            const Text(
+                              'Tipo de Marcação',
+                              style: AppTextStyles.labelCampo,
+                            ),
                             const SizedBox(height: 8),
                             SizedBox(
                               height: 48,
                               child: DropdownButtonFormField<String>(
                                 initialValue: _tipoMarcacaoSelecionado,
                                 decoration: InputDecoration(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
-                                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 16,
+                                  ),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.inputBorder,
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.inputBorder,
+                                    ),
+                                  ),
                                 ),
                                 style: AppTextStyles.corpoTextoEscuro,
                                 items: ['Retângulo', 'Círculo']
-                                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                                    .map(
+                                      (t) => DropdownMenuItem(
+                                        value: t,
+                                        child: Text(t),
+                                      ),
+                                    )
                                     .toList(),
-                                onChanged: (val) => setState(() => _tipoMarcacaoSelecionado = val!),
+                                onChanged: (val) => setState(
+                                  () => _tipoMarcacaoSelecionado = val!,
+                                ),
                               ),
                             ),
                             const SizedBox(height: 20),
@@ -412,18 +599,35 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                           ],
 
                           if (_modoAtivo == ModoFerramenta.redimensionar) ...[
-                            const Text('Ajuste de Dimensões e Rotação', style: AppTextStyles.labelCampo), 
+                            const Text(
+                              'Ajuste de Dimensões e Rotação',
+                              style: AppTextStyles.labelCampo,
+                            ),
                             const SizedBox(height: 12),
                             Row(
                               children: [
-                                const Icon(Icons.straighten, size: 20, color: AppColors.primary),
+                                const Icon(
+                                  Icons.straighten,
+                                  size: 20,
+                                  color: AppColors.primary,
+                                ),
                                 Expanded(
                                   child: SliderTheme(
-                                    data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                    data: SliderTheme.of(context).copyWith(
+                                      trackHeight: 4,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 8,
+                                      ),
+                                    ),
                                     child: Slider(
-                                      value: _largura, min: 0.01, max: 0.40,
-                                      activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
-                                      onChanged: (val) => setState(() => _largura = val),
+                                      value: _largura,
+                                      min: 0.01,
+                                      max: 0.40,
+                                      activeColor: AppColors.primary,
+                                      inactiveColor: AppColors.primary
+                                          .withValues(alpha: 0.2),
+                                      onChanged: (val) =>
+                                          setState(() => _largura = val),
                                     ),
                                   ),
                                 ),
@@ -432,14 +636,28 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                             if (!isCirculo) ...[
                               Row(
                                 children: [
-                                  const Icon(Icons.swap_vert, size: 20, color: AppColors.primary),
+                                  const Icon(
+                                    Icons.swap_vert,
+                                    size: 20,
+                                    color: AppColors.primary,
+                                  ),
                                   Expanded(
                                     child: SliderTheme(
-                                      data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                      data: SliderTheme.of(context).copyWith(
+                                        trackHeight: 4,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 8,
+                                        ),
+                                      ),
                                       child: Slider(
-                                        value: _altura, min: 0.01, max: 0.40,
-                                        activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
-                                        onChanged: (val) => setState(() => _altura = val),
+                                        value: _altura,
+                                        min: 0.01,
+                                        max: 0.40,
+                                        activeColor: AppColors.primary,
+                                        inactiveColor: AppColors.primary
+                                            .withValues(alpha: 0.2),
+                                        onChanged: (val) =>
+                                            setState(() => _altura = val),
                                       ),
                                     ),
                                   ),
@@ -447,14 +665,28 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                               ),
                               Row(
                                 children: [
-                                  const Icon(Icons.rotate_right, size: 20, color: AppColors.primary),
+                                  const Icon(
+                                    Icons.rotate_right,
+                                    size: 20,
+                                    color: AppColors.primary,
+                                  ),
                                   Expanded(
                                     child: SliderTheme(
-                                      data: SliderTheme.of(context).copyWith(trackHeight: 4, thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8)),
+                                      data: SliderTheme.of(context).copyWith(
+                                        trackHeight: 4,
+                                        thumbShape: const RoundSliderThumbShape(
+                                          enabledThumbRadius: 8,
+                                        ),
+                                      ),
                                       child: Slider(
-                                        value: _rotacao, min: 0, max: 360,
-                                        activeColor: AppColors.primary, inactiveColor: AppColors.primary.withValues(alpha: 0.2),
-                                        onChanged: (val) => setState(() => _rotacao = val),
+                                        value: _rotacao,
+                                        min: 0,
+                                        max: 360,
+                                        activeColor: AppColors.primary,
+                                        inactiveColor: AppColors.primary
+                                            .withValues(alpha: 0.2),
+                                        onChanged: (val) =>
+                                            setState(() => _rotacao = val),
                                       ),
                                     ),
                                   ),
@@ -467,7 +699,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                     ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   Row(
                     children: [
                       Expanded(
@@ -483,19 +715,21 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: CompactButton(
-                          text: 'Salvar',
-                          backgroundColor: _ponto == null ? AppColors.greyLight : AppColors.primary,
+                          text: _salvandoImagem ? 'Gerando...' : 'Salvar',
+                          backgroundColor:
+                              _ponto == null ||
+                                  (widget.capturarImagem && !_plantaPronta)
+                              ? AppColors.greyLight
+                              : AppColors.primary,
                           foregroundColor: AppColors.white,
-                          onPressed: () {
-                            if (_ponto != null) _salvar();
-                          },
+                          onPressed: _salvandoImagem ? () {} : _salvar,
                         ),
                       ),
                     ],
                   ),
                 ],
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -507,15 +741,15 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
 
 class PinoDinamico extends StatelessWidget {
   const PinoDinamico({
-    super.key, 
-    required this.tipoMarcacao, 
-    this.numero = 1, 
-    this.largura, 
-    this.altura, 
-    this.ocultarTexto = false, 
+    super.key,
+    required this.tipoMarcacao,
+    this.numero = 1,
+    this.largura,
+    this.altura,
+    this.ocultarTexto = false,
     this.rotacao = 0.0,
     this.corBase = Colors.orange,
-    this.mostrarNumero = false, 
+    this.mostrarNumero = false,
   });
 
   final String tipoMarcacao;
@@ -524,7 +758,7 @@ class PinoDinamico extends StatelessWidget {
   final bool ocultarTexto;
   final double rotacao;
   final Color corBase;
-  final bool mostrarNumero; 
+  final bool mostrarNumero;
 
   @override
   Widget build(BuildContext context) {
@@ -532,31 +766,37 @@ class PinoDinamico extends StatelessWidget {
 
     double larguraPino = largura ?? 26.0;
     double alturaPino = altura ?? 26.0;
-    
+
     return Stack(
-      clipBehavior: Clip.none, 
+      clipBehavior: Clip.none,
       alignment: Alignment.center,
       children: [
         Transform.rotate(
           angle: rotacao * (math.pi / 180),
           child: Container(
-            width: larguraPino, 
-            height: alturaPino, 
+            width: larguraPino,
+            height: alturaPino,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: corBase.withValues(alpha: 0.45), 
+              color: corBase.withValues(alpha: 0.45),
               shape: isCirculo ? BoxShape.circle : BoxShape.rectangle,
               //  Bordas quinas vivas),  1 de raio pra não ficar serrilhado feio
               borderRadius: isCirculo ? null : BorderRadius.circular(1.0),
-              border: Border.all(color: corBase, width: 1.5), 
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 2)],
+              border: Border.all(color: corBase, width: 1.5),
+              boxShadow: const [
+                BoxShadow(color: Colors.black12, blurRadius: 2),
+              ],
             ),
-            child: (mostrarNumero && !ocultarTexto) 
+            child: (mostrarNumero && !ocultarTexto)
                 ? Transform.rotate(
-                    angle: -rotacao * (math.pi / 180), 
+                    angle: -rotacao * (math.pi / 180),
                     child: Text(
-                      '$numero', 
-                      style: GoogleFonts.lato(color: corBase, fontSize: larguraPino > 24 ? 13 : 9, fontWeight: FontWeight.w900)
+                      '$numero',
+                      style: GoogleFonts.lato(
+                        color: corBase,
+                        fontSize: larguraPino > 24 ? 13 : 9,
+                        fontWeight: FontWeight.w900,
+                      ),
                     ),
                   )
                 : null,
@@ -572,12 +812,26 @@ class PinoDinamico extends StatelessWidget {
 class _PlantaInterativa extends ConsumerStatefulWidget {
   const _PlantaInterativa({
     required this.transformationController,
-    required this.arquivoUrl, required this.plantaId, this.estruturaId,
-    required this.numero, required this.ponto, required this.largura, required this.altura,
-    required this.tipoMarcacao, this.nomeElemento, required this.onChanged,
-    required this.modo, required this.onInitialTap, required this.rotacao,
-    required this.corSelecionada, required this.nomeX, required this.nomeY,
+    required this.arquivoUrl,
+    required this.plantaId,
+    this.estruturaId,
+    required this.numero,
+    required this.ponto,
+    required this.largura,
+    required this.altura,
+    required this.tipoMarcacao,
+    this.nomeElemento,
+    required this.onChanged,
+    required this.modo,
+    required this.onInitialTap,
+    required this.rotacao,
+    required this.corSelecionada,
+    required this.nomeX,
+    required this.nomeY,
     required this.onNomeDrag,
+    required this.captureKey,
+    required this.mostrarVizinhos,
+    required this.onImagemProntaChanged,
   });
 
   final TransformationController transformationController;
@@ -589,6 +843,9 @@ class _PlantaInterativa extends ConsumerStatefulWidget {
   final String corSelecionada;
   final ValueChanged<Offset> onChanged, onInitialTap, onNomeDrag;
   final ModoFerramenta modo;
+  final GlobalKey captureKey;
+  final bool mostrarVizinhos;
+  final ValueChanged<bool> onImagemProntaChanged;
 
   @override
   ConsumerState<_PlantaInterativa> createState() => _PlantaInterativaState();
@@ -597,6 +854,15 @@ class _PlantaInterativa extends ConsumerStatefulWidget {
 class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
   bool _isPdf = false, _isLoadingPdf = false;
   Uint8List? _pdfImageBytes;
+  bool _notificouImagemPronta = false;
+
+  void _notificarImagemPronta() {
+    if (_notificouImagemPronta) return;
+    _notificouImagemPronta = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onImagemProntaChanged(true);
+    });
+  }
 
   @override
   void initState() {
@@ -606,7 +872,10 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
 
   Future<void> _carregarPdf() async {
     if (!widget.arquivoUrl.toLowerCase().contains('.pdf')) return;
-    setState(() { _isPdf = true; _isLoadingPdf = true; });
+    setState(() {
+      _isPdf = true;
+      _isLoadingPdf = true;
+    });
     try {
       final req = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
       final res = await req.close();
@@ -614,10 +883,22 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
       final doc = await PdfDocument.openData(bytes);
       final page = await doc.getPage(1);
       double w = page.width, h = page.height;
-      if (w < 1000) { w *= 2; h *= 2; }
-      final pageImg = await page.render(width: w, height: h, format: PdfPageImageFormat.jpeg, backgroundColor: '#FFFFFF');
-      if (pageImg != null && mounted) setState(() => _pdfImageBytes = pageImg.bytes);
-      await page.close(); await doc.close();
+      if (w < 1000) {
+        w *= 2;
+        h *= 2;
+      }
+      final pageImg = await page.render(
+        width: w,
+        height: h,
+        format: PdfPageImageFormat.jpeg,
+        backgroundColor: '#FFFFFF',
+      );
+      if (pageImg != null && mounted) {
+        setState(() => _pdfImageBytes = pageImg.bytes);
+        _notificarImagemPronta();
+      }
+      await page.close();
+      await doc.close();
     } catch (_) {
     } finally {
       if (mounted) setState(() => _isLoadingPdf = false);
@@ -627,154 +908,242 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
   @override
   Widget build(BuildContext context) {
     List<ElementoModel> pinosVizinhos = [];
-    if (widget.estruturaId != null) {
-      final els = ref.watch(elementosPorEstruturaProvider(widget.estruturaId!)).value;
-      pinosVizinhos = els?.where((el) => el.plantaId == widget.plantaId && el.posicaoX != null).toList() ?? [];
+    if (widget.mostrarVizinhos && widget.estruturaId != null) {
+      final els = ref
+          .watch(elementosPorEstruturaProvider(widget.estruturaId!))
+          .value;
+      pinosVizinhos =
+          els
+              ?.where(
+                (el) => el.plantaId == widget.plantaId && el.posicaoX != null,
+              )
+              .toList() ??
+          [];
     }
 
-    final bool permitirMoverPlanta = widget.ponto == null || widget.modo == ModoFerramenta.navegar;
+    final bool permitirMoverPlanta =
+        widget.ponto == null || widget.modo == ModoFerramenta.navegar;
 
     return InteractiveViewer(
       transformationController: widget.transformationController,
-      minScale: 1.0, maxScale: 5.0,
-      panEnabled: permitirMoverPlanta, 
+      minScale: 1.0,
+      maxScale: 5.0,
+      panEnabled: permitirMoverPlanta,
       scaleEnabled: permitirMoverPlanta,
       child: Center(
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            if (_isPdf) ...[
-              if (_isLoadingPdf) const Center(child: CircularProgressIndicator(color: AppColors.primary))
-              else if (_pdfImageBytes != null) Image.memory(_pdfImageBytes!)
-              else const Icon(Icons.broken_image, size: 50, color: AppColors.greyMedium)
-            ] else Image.network(widget.arquivoUrl),
+        child: RepaintBoundary(
+          key: widget.captureKey,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              if (_isPdf) ...[
+                if (_isLoadingPdf)
+                  const Center(
+                    child: CircularProgressIndicator(color: AppColors.primary),
+                  )
+                else if (_pdfImageBytes != null)
+                  Image.memory(_pdfImageBytes!)
+                else
+                  const Icon(
+                    Icons.broken_image,
+                    size: 50,
+                    color: AppColors.greyMedium,
+                  ),
+              ] else
+                Image.network(
+                  widget.arquivoUrl,
+                  frameBuilder:
+                      (context, child, frame, wasSynchronouslyLoaded) {
+                        if (wasSynchronouslyLoaded || frame != null) {
+                          _notificarImagemPronta();
+                        }
+                        return child;
+                      },
+                ),
 
-            Positioned.fill(
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  final double w = constraints.maxWidth;
-                  final double h = constraints.maxHeight;
+              Positioned.fill(
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final double w = constraints.maxWidth;
+                    final double h = constraints.maxHeight;
 
-                  return GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTapDown: widget.ponto != null ? null : (details) {
-                      final local = details.localPosition;
-                      widget.onInitialTap(Offset(
-                        (local.dx / w).clamp(0.0, 1.0),
-                        (local.dy / h).clamp(0.0, 1.0),
-                      ));
-                    },
-                    onPanUpdate: (widget.ponto != null && widget.modo == ModoFerramenta.mover)
-                        ? (details) {
-                            final novoX = (widget.ponto!.dx + (details.delta.dx / w)).clamp(0.0, 1.0);
-                            final novoY = (widget.ponto!.dy + (details.delta.dy / h)).clamp(0.0, 1.0);
-                            widget.onChanged(Offset(novoX, novoY));
-                          }
-                        : null,
-                    child: Stack(
-                      clipBehavior: Clip.none,
-                      children: [
-                        ...pinosVizinhos.expand((el) {
-                          final cx = el.posicaoX! * w;
-                          final cy = el.posicaoY! * h;
-                          final wPino = (el.marcacaoLargura ?? 0.12) * w;
-                          final hPino = (el.marcacaoAltura ?? 0.08) * h;
-                          final corVizinho = el.marcacaoCor != null 
-                              ? Color(int.parse(el.marcacaoCor!.replaceFirst('#', '0xff'))) 
-                              : AppColors.primary;
+                    return GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTapDown: widget.ponto != null
+                          ? null
+                          : (details) {
+                              final local = details.localPosition;
+                              widget.onInitialTap(
+                                Offset(
+                                  (local.dx / w).clamp(0.0, 1.0),
+                                  (local.dy / h).clamp(0.0, 1.0),
+                                ),
+                              );
+                            },
+                      onPanUpdate:
+                          (widget.ponto != null &&
+                              widget.modo == ModoFerramenta.mover)
+                          ? (details) {
+                              final novoX =
+                                  (widget.ponto!.dx + (details.delta.dx / w))
+                                      .clamp(0.0, 1.0);
+                              final novoY =
+                                  (widget.ponto!.dy + (details.delta.dy / h))
+                                      .clamp(0.0, 1.0);
+                              widget.onChanged(Offset(novoX, novoY));
+                            }
+                          : null,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          ...pinosVizinhos.expand((el) {
+                            final cx = el.posicaoX! * w;
+                            final cy = el.posicaoY! * h;
+                            final wPino = (el.marcacaoLargura ?? 0.12) * w;
+                            final hPino = (el.marcacaoAltura ?? 0.08) * h;
+                            final corVizinho = el.marcacaoCor != null
+                                ? Color(
+                                    int.parse(
+                                      el.marcacaoCor!.replaceFirst('#', '0xff'),
+                                    ),
+                                  )
+                                : AppColors.primary;
 
-                          final pino = Positioned(
-                            left: cx - (wPino / 2), top: cy - (hPino / 2),
-                            child: Opacity(
-                              opacity: 0.35, 
-                              child: PinoDinamico(
-                                tipoMarcacao: el.tipoMarcacao ?? 'Retângulo', 
-                                largura: wPino, altura: hPino,
-                                rotacao: el.marcacaoRotacao ?? 0.0,
-                                corBase: corVizinho,
-                                mostrarNumero: false, 
-                              )
-                            ),
-                          );
-
-                          Widget? nomeVizinho;
-                          if (el.nome != null && el.nome!.isNotEmpty) {
-                             double nx = el.marcacaoNomeX ?? el.posicaoX!;
-                             double ny = el.marcacaoNomeY ?? el.posicaoY!;
-                             if (ny < -1.0 || ny > 2.0) { nx = el.posicaoX!; ny = el.posicaoY! - 0.06; }
-                             
-                             nomeVizinho = Positioned(
-                               left: nx * w, top: ny * h,
-                               child: FractionalTranslation(
-                                 translation: const Offset(-0.5, -0.5),
-                                 child: Text(
-                                   el.nome!, 
-                                   style: TextStyle(
-                                     color: corVizinho.withValues(alpha: 0.5), 
-                                     fontSize: 12, fontWeight: FontWeight.bold,
-                                     shadows: const [Shadow(color: Colors.white, blurRadius: 4)]
-                                   )
-                                 ),
-                               ),
-                             );
-                          }
-                          return [pino, ?nomeVizinho];
-                        }),
-
-                        if (widget.ponto != null) ...[
-                          () {
-                            final wPixels = widget.largura * w;
-                            final hPixels = widget.altura * h;
-                            final cxPixels = widget.ponto!.dx * w;
-                            final cyPixels = widget.ponto!.dy * h;
-
-                            return Positioned(
-                              left: cxPixels - (wPixels / 2), top: cyPixels - (hPixels / 2),
-                              child: PinoDinamico(
-                                tipoMarcacao: widget.tipoMarcacao, 
-                                largura: wPixels, altura: hPixels,
-                                numero: widget.numero, 
-                                ocultarTexto: widget.modo == ModoFerramenta.redimensionar, 
-                                rotacao: widget.rotacao,
-                                corBase: Color(int.parse(widget.corSelecionada.replaceFirst('#', '0xff'))),
-                                mostrarNumero: false, 
+                            final pino = Positioned(
+                              left: cx - (wPino / 2),
+                              top: cy - (hPino / 2),
+                              child: Opacity(
+                                opacity: 0.35,
+                                child: PinoDinamico(
+                                  tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
+                                  largura: wPino,
+                                  altura: hPino,
+                                  rotacao: el.marcacaoRotacao ?? 0.0,
+                                  corBase: corVizinho,
+                                  mostrarNumero: false,
+                                ),
                               ),
                             );
-                          }(),
-                          
-                          if (widget.nomeElemento != null)
-                            Positioned(
-                              left: widget.nomeX * w, top: widget.nomeY * h,
-                              child: FractionalTranslation(
-                                translation: const Offset(-0.5, -0.5),
-                                child: GestureDetector(
-                                  behavior: HitTestBehavior.opaque,
-                                  onPanUpdate: (details) {
-                                    widget.onNomeDrag(Offset(details.delta.dx / w, details.delta.dy / h));
-                                  },
-                                  child: Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 4.0, vertical: 2.0), 
-                                    child: Text(
-                                      widget.nomeElemento!,
-                                      style: TextStyle(
-                                        color: Color(int.parse(widget.corSelecionada.replaceFirst('#', '0xff'))),
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        shadows: const [Shadow(color: Colors.white, blurRadius: 4)] 
+
+                            Widget? nomeVizinho;
+                            if (el.nome != null && el.nome!.isNotEmpty) {
+                              double nx = el.marcacaoNomeX ?? el.posicaoX!;
+                              double ny = el.marcacaoNomeY ?? el.posicaoY!;
+                              if (ny < -1.0 || ny > 2.0) {
+                                nx = el.posicaoX!;
+                                ny = el.posicaoY! - 0.06;
+                              }
+
+                              nomeVizinho = Positioned(
+                                left: nx * w,
+                                top: ny * h,
+                                child: FractionalTranslation(
+                                  translation: const Offset(-0.5, -0.5),
+                                  child: Text(
+                                    el.nome!,
+                                    style: TextStyle(
+                                      color: corVizinho.withValues(alpha: 0.5),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      shadows: const [
+                                        Shadow(
+                                          color: Colors.white,
+                                          blurRadius: 4,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }
+                            return [pino, if (nomeVizinho != null) nomeVizinho];
+                          }),
+
+                          if (widget.ponto != null) ...[
+                            () {
+                              final wPixels = widget.largura * w;
+                              final hPixels = widget.altura * h;
+                              final cxPixels = widget.ponto!.dx * w;
+                              final cyPixels = widget.ponto!.dy * h;
+
+                              return Positioned(
+                                left: cxPixels - (wPixels / 2),
+                                top: cyPixels - (hPixels / 2),
+                                child: PinoDinamico(
+                                  tipoMarcacao: widget.tipoMarcacao,
+                                  largura: wPixels,
+                                  altura: hPixels,
+                                  numero: widget.numero,
+                                  ocultarTexto:
+                                      widget.modo ==
+                                      ModoFerramenta.redimensionar,
+                                  rotacao: widget.rotacao,
+                                  corBase: Color(
+                                    int.parse(
+                                      widget.corSelecionada.replaceFirst(
+                                        '#',
+                                        '0xff',
+                                      ),
+                                    ),
+                                  ),
+                                  mostrarNumero: false,
+                                ),
+                              );
+                            }(),
+
+                            if (widget.nomeElemento != null)
+                              Positioned(
+                                left: widget.nomeX * w,
+                                top: widget.nomeY * h,
+                                child: FractionalTranslation(
+                                  translation: const Offset(-0.5, -0.5),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onPanUpdate: (details) {
+                                      widget.onNomeDrag(
+                                        Offset(
+                                          details.delta.dx / w,
+                                          details.delta.dy / h,
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4.0,
+                                        vertical: 2.0,
+                                      ),
+                                      child: Text(
+                                        widget.nomeElemento!,
+                                        style: TextStyle(
+                                          color: Color(
+                                            int.parse(
+                                              widget.corSelecionada
+                                                  .replaceFirst('#', '0xff'),
+                                            ),
+                                          ),
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          shadows: const [
+                                            Shadow(
+                                              color: Colors.white,
+                                              blurRadius: 4,
+                                            ),
+                                          ],
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
-                            ),
-                        ]
-                      ],
-                    ),
-                  );
-                },
+                          ],
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

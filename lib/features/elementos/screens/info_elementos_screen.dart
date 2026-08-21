@@ -40,6 +40,7 @@ class ElementoInfoScreen extends StatefulWidget {
     this.initialTipologiaEstrutural,
     this.initialLocalElemento,
     this.initialRevestimento,
+    this.initialMarcacaoImagemUrl,
     this.initialTipoElementoOptions = _defaultTipoElementoOptions,
     this.initialTipologiaOptions = _defaultTipologiaOptions,
     this.initialLocalOptions = _defaultLocalOptions,
@@ -58,6 +59,7 @@ class ElementoInfoScreen extends StatefulWidget {
   final String? initialTipologiaEstrutural;
   final String? initialLocalElemento;
   final String? initialRevestimento;
+  final String? initialMarcacaoImagemUrl;
   final List<String> initialTipoElementoOptions;
   final List<String> initialTipologiaOptions;
   final List<String> initialLocalOptions;
@@ -83,6 +85,7 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
   String? _tipologiaEstrutural;
   String? _localElemento;
   String? _revestimento;
+  String? _marcacaoImagemUrl;
 
   List<String> _tipoElementoOptions = <String>[];
   List<String> _tipologiaOptions = <String>[];
@@ -101,6 +104,7 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
     _tipologiaEstrutural = widget.initialTipologiaEstrutural;
     _localElemento = widget.initialLocalElemento;
     _revestimento = widget.initialRevestimento;
+    _marcacaoImagemUrl = widget.initialMarcacaoImagemUrl;
     _tipoElementoOptions = List<String>.from(widget.initialTipoElementoOptions);
     _tipologiaOptions = List<String>.from(widget.initialTipologiaOptions);
     _localOptions = List<String>.from(widget.initialLocalOptions);
@@ -147,6 +151,7 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
         _tipologiaEstrutural = data.tipologiaEstrutural ?? _tipologiaEstrutural;
         _localElemento = data.localElemento ?? _localElemento;
         _revestimento = data.revestimento ?? _revestimento;
+        _marcacaoImagemUrl = data.marcacaoImagemUrl ?? _marcacaoImagemUrl;
         _sanitizeSelections();
       });
     } catch (error) {
@@ -378,7 +383,12 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
                     field: ElementoInfoDropdownField.localElemento,
                   ),
                   const SizedBox(height: 20),
-                  Center(child: _PlantaCard(onPressed: widget.onPlanPressed)),
+                  Center(
+                    child: _PlantaCard(
+                      imageUrl: _marcacaoImagemUrl,
+                      onPressed: widget.onPlanPressed,
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Center(
                     child: BiggerCustomButton(
@@ -465,8 +475,9 @@ class _ElementoBanner extends StatelessWidget {
 }
 
 class _PlantaCard extends StatelessWidget {
-  const _PlantaCard({this.onPressed});
+  const _PlantaCard({this.imageUrl, this.onPressed});
 
+  final String? imageUrl;
   final VoidCallback? onPressed;
 
   @override
@@ -484,15 +495,34 @@ class _PlantaCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFF5E5E5E), width: 1),
-            image: const DecorationImage(
-              image: AssetImage('assets/images/planta_elementos_info.png'),
-              fit: BoxFit.cover,
-            ),
           ),
+          child: _PlantaCardImage(imageUrl: imageUrl),
         ),
       ),
     );
   }
+}
+
+class _PlantaCardImage extends StatelessWidget {
+  const _PlantaCardImage({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return _fallback();
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Image.asset(
+    'assets/images/planta_elementos_info.png',
+    fit: BoxFit.cover,
+  );
 }
 
 enum ElementoInfoDropdownField {
@@ -509,6 +539,7 @@ class ElementoInfoFormData {
     this.tipologiaEstrutural,
     this.localElemento,
     this.revestimento,
+    this.marcacaoImagemUrl,
     this.tipoElementoOptions = const <String>[],
     this.tipologiaOptions = const <String>[],
     this.localOptions = const <String>[],
@@ -520,6 +551,7 @@ class ElementoInfoFormData {
   final String? tipologiaEstrutural;
   final String? localElemento;
   final String? revestimento;
+  final String? marcacaoImagemUrl;
   final List<String> tipoElementoOptions;
   final List<String> tipologiaOptions;
   final List<String> localOptions;

@@ -114,6 +114,8 @@ flutter:
     - lib/features/ensaios/ensaios_carbonatacao/
     - assets/images/ensaios/arrancamento_ceramica.png
     - assets/images/ensaios/insp_visual.png
+
+    - assets/images/
      
     - assets/images/ensaios/arrancamento/argamassa-pastilha.png
     - assets/images/ensaios/arrancamento/argamassa.png

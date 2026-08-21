@@ -64,8 +64,21 @@ dependencies:
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  flutter_launcher_icons: "^0.13.1"
+  flutter_native_splash: "^2.3.13" # Adicione esta linha
   flutter_lints: ^6.0.0
+
+flutter_launcher_icons:
+  image_path: "assets/images/logo_app.png"
+  android: true
+  ios: true
+
+# Adicione estas linhas para a tela de carregamento (Splash)
+flutter_native_splash:
+  color: "#FFFFFF" # Cor de fundo da tela de carregamento (Branco)
+  image: "assets/images/logo_app.png" # A mesma logo
+  android: true
+  ios: true
 
 flutter:
   uses-material-design: true
@@ -87,8 +100,8 @@ flutter:
     - assets/images/co2_1.png
     - assets/images/frame_135.png
     - assets/images/voltage_1.png
-    - assets/images/
     - assets/images/ensaios/
+    - assets/images/sem_estrutura.png
     - assets/reports/
     - assets/reports/carbonatacao/css/style.css
     - assets/reports/carbonatacao/components/header.html
@@ -97,4 +110,3 @@ flutter:
     - assets/reports/carbonatacao/templates/ensaio_individual_template.html
     - assets/reports/carbonatacao/templates/tabela_geral_template.html
     - assets/reports/carbonatacao/templates/galeria_ensaio_template.html
-    - lib/features/ensaios/ensaios_carbonatacao/

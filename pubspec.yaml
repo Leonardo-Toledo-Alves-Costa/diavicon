@@ -110,3 +110,12 @@ flutter:
     - assets/reports/carbonatacao/templates/ensaio_individual_template.html
     - assets/reports/carbonatacao/templates/tabela_geral_template.html
     - assets/reports/carbonatacao/templates/galeria_ensaio_template.html
+    - lib/features/ensaios/ensaios_carbonatacao/
+    - assets/images/ensaios/arrancamento/argamassa-pastilha.png
+    - assets/images/ensaios/arrancamento/argamassa.png
+    - assets/images/ensaios/arrancamento/chapisco-argamassa.png
+    - assets/images/ensaios/arrancamento/chapisco.png
+    - assets/images/ensaios/arrancamento/substrato-argamassa.png
+    - assets/images/ensaios/arrancamento/substrato-chapisco.png
+    - assets/images/ensaios/arrancamento/substrato.png
+    

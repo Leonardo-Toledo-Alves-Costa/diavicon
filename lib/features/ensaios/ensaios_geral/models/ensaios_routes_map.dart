@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 
-// Importe aqui as telas dos ensaios já desenvolvidas
 import '../../ensaios_carbonatacao/screens/ponto_ensaio_carbonatacao_screen.dart';
-import '../../ensaios_carbonatacao/screens/analise_ensaio_todos_screen.dart'; // Tela de análise geral
-import '../../ensaios_resistividade/screens/ponto_ensaio_resistividade_screen.dart'; 
+import '../../ensaios_carbonatacao/screens/analise_ensaio_todos_screen.dart';
+import '../../ensaios_resistividade/screens/ponto_ensaio_resistividade_screen.dart';
 import '../../ensaios_resistividade/screens/analise_todos_pontos_resistividade.dart';
-
+import '../../ensaios_arrancamento_argamassa/screens/ponto_ensaio_arrancamento_screen.dart';
 
 class EnsaioRoutesMap {
-  /// Retorna a Tela de Formulário do Ponto de Ensaio (Galeria)
   static Widget? getFormularioScreen({
     required String tipoEnsaio,
     required String projetoId,
@@ -22,7 +20,7 @@ class EnsaioRoutesMap {
   }) {
     final tipo = tipoEnsaio.toLowerCase();
 
-    // 1. Frente de Carbonatação
+    // 1. Carbonatação
     if (tipo.contains('carbonatação') || tipo.contains('carbonatacao')) {
       return PontoEnsaioCarbonatacaoScreen(
         projetoId: projetoId,
@@ -33,12 +31,11 @@ class EnsaioRoutesMap {
         elementoId: elementoId,
         pontoGeralId: pontoGeralId,
         tipoEnsaioId: tipoEnsaioId,
-
       );
     }
 
-    // 2. Resistividade
-    if (tipo.contains('resistividade') || tipo.contains('resistividade')) {
+    // 2. Resistividade Elétrica
+    if (tipo.contains('resistividade')) {
       return PontoEnsaioResistividadeScreen(
         projetoId: projetoId,
         pontoNome: pontoNome,
@@ -48,22 +45,26 @@ class EnsaioRoutesMap {
         elementoId: elementoId,
         pontoGeralId: pontoGeralId,
         tipoEnsaioId: tipoEnsaioId,
-
       );
     }
-    
-    // 2. Potencial de Corrosão (Descomente quando criar a tela)
-    /*
-    if (tipo.contains('potencial')) {
-      return PontoEnsaioPotencialScreen(...);
-    }
-    */
 
-    // Retorna null se não houver rota mapeada (Em desenvolvimento)
+    // 3. Arrancamento em Argamassa (ID: 082321cb-ce13-4205-95f1-ec767b5e7d53)
+    if (tipo.contains('arrancamento') || tipoEnsaioId == '082321cb-ce13-4205-95f1-ec767b5e7d53') {
+      return PontoEnsaioArrancamentoScreen(
+        projetoId: projetoId,
+        pontoNome: pontoNome,
+        elementoNome: elementoNome,
+        tipoElemento: tipoElemento,
+        local: local,
+        elementoId: elementoId,
+        pontoGeralId: pontoGeralId,
+        tipoEnsaioId: tipoEnsaioId,
+      );
+    }
+
     return null;
   }
 
-  /// Retorna a Tela de Análise Geral do Ensaio
   static Widget? getAnaliseScreen({
     required String tipoEnsaio,
     required String projetoId,
@@ -75,7 +76,6 @@ class EnsaioRoutesMap {
   }) {
     final tipo = tipoEnsaio.toLowerCase();
 
-    // 1. Frente de Carbonatação
     if (tipo.contains('carbonatação') || tipo.contains('carbonatacao')) {
       return AnaliseEnsaioScreen(
         projetoId: projetoId,
@@ -86,10 +86,9 @@ class EnsaioRoutesMap {
       );
     }
 
-    if (tipo.contains('resistividade') || tipo.contains('Resistividade')){
+    if (tipo.contains('resistividade')) {
       return AnaliseResistividadeScreen(
         projetoId: projetoId,
-        //estruturaId: estruturaId,
         tipoEnsaioId: tipoEnsaioId,
         projetoNome: projetoNome,
         estruturaId: estruturaId,
@@ -98,8 +97,6 @@ class EnsaioRoutesMap {
       );
     }
 
-    // Retorna null se não houver rota mapeada (Em desenvolvimento)
     return null;
   }
-
 }

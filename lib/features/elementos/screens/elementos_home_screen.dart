@@ -32,6 +32,7 @@ class ElementosHomeScreen extends ConsumerStatefulWidget {
     this.tipo,
     this.local,
     this.imageUrl,
+    this.marcacaoImagemUrl,
   });
 
   final VoidCallback? onOpenInformacoes;
@@ -45,6 +46,7 @@ class ElementosHomeScreen extends ConsumerStatefulWidget {
   final String? tipo;
   final String? local;
   final String? imageUrl;
+  final String? marcacaoImagemUrl;
 
   @override
   ConsumerState<ElementosHomeScreen> createState() =>
@@ -56,6 +58,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
   String? _tipoAtual;
   String? _localAtual;
   String? _imageUrlAtual;
+  String? _marcacaoImagemUrlAtual;
 
   @override
   void initState() {
@@ -64,6 +67,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     _tipoAtual = widget.tipo;
     _localAtual = widget.local;
     _imageUrlAtual = widget.imageUrl;
+    _marcacaoImagemUrlAtual = widget.marcacaoImagemUrl;
   }
 
   void _openNovoEnsaioModal() async {
@@ -120,6 +124,8 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     if (_tipoAtual != null) 'tipo': _tipoAtual,
     if (_localAtual != null) 'local': _localAtual,
     if (_imageUrlAtual != null) 'imageUrl': _imageUrlAtual,
+    if (_marcacaoImagemUrlAtual != null)
+      'marcacaoImagemUrl': _marcacaoImagemUrlAtual,
   };
 
   String? get _basePath {
@@ -168,6 +174,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
         }
 
         _localAtual = elementoSalvo.local;
+        _marcacaoImagemUrlAtual = elementoSalvo.marcacaoImagemUrl;
 
         if (elementoSalvo.fotos != null && elementoSalvo.fotos!.isNotEmpty) {
           _imageUrlAtual = elementoSalvo.fotos!.first;

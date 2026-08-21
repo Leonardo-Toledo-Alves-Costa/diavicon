@@ -53,7 +53,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _carregarPreferenciasPlanta() async {
     try {
       final resp = await Supabase.instance.client
-          .from('plantas') 
+          .from('plantas')
           .select('mostrar_nomes, tamanho_fonte_nomes')
           .eq('id', widget.plantaId)
           .maybeSingle();
@@ -75,7 +75,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _salvarPreferenciasPlanta() async {
     try {
       await Supabase.instance.client
-          .from('plantas') 
+          .from('plantas')
           .update({
             'mostrar_nomes': _visualizarNomeElementos,
             'tamanho_fonte_nomes': _tamanhoFonteNome,
@@ -90,7 +90,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
     final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: false, 
+      useSafeArea: false,
       backgroundColor: Colors.transparent,
       builder: (context) =>
           MarcarElementoPlanejamentoModal(estruturaId: widget.estruturaId),
@@ -620,7 +620,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 padding: const EdgeInsets.all(24.0),
                 child: Row(
                   children: [
-                    // Quantitativos Contratados 
+                    // Quantitativos Contratados
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -639,6 +639,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                             empresaId: empSelecionada['id'],
                             empresaNome: empSelecionada['nome'],
                             empresaFotoUrl: empSelecionada['foto_url'],
+                            estruturaId: widget.estruturaId,
                           );
                         },
                         child: Container(
@@ -688,7 +689,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                     ),
                     const SizedBox(width: 12),
 
-                    // Regiões de Ensaio 
+                    // Regiões de Ensaio
                     Expanded(
                       child: GestureDetector(
                         onTap: () {

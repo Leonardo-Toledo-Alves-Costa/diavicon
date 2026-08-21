@@ -763,6 +763,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                             empresaId: empSelecionada['id'],
                             empresaNome: empSelecionada['nome'],
                             empresaFotoUrl: empSelecionada['foto_url'],
+                            estruturaId: widget.estruturaId,
                           );
                         },
                         child: Container(

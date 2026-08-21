@@ -28,6 +28,22 @@ class ResumoEnsaiosParams {
       projetoId.hashCode ^ estruturaId.hashCode ^ tipoEnsaioId.hashCode;
 }
 
+final tiposEnsaioProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final response = await Supabase.instance.client
+      .from('tipos_ensaio')
+      .select('id, nome, icone_path')
+      .order('nome', ascending: true);
+
+  return (response as List).map((item) {
+    return {
+      'id': item['id'],
+      'nome': item['nome'],
+      'icone': item['icone_path'] ?? 'assets/images/ensaios/default.png',
+    };
+  }).toList();
+});
+
 final resumoEnsaiosProvider = FutureProvider.family
     .autoDispose<List<ResumoEnsaioModel>, ResumoEnsaiosParams>((
       ref,

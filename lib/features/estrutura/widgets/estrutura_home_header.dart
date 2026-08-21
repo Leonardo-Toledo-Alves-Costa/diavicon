@@ -20,7 +20,7 @@ class EstruturaHomeHeader extends StatelessWidget {
                 width: double.infinity,
                 height: 280,
                 fit: BoxFit.cover,
-                errorBuilder: (_, __, ___) => Image.asset(defaultAsset, width: double.infinity, height: 280, fit: BoxFit.cover),
+                errorBuilder: (_, _, _) => Image.asset(defaultAsset, width: double.infinity, height: 280, fit: BoxFit.cover),
               ),
         Positioned.fill(
           child: Container(
@@ -29,7 +29,7 @@ class EstruturaHomeHeader extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.4],
-                colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                colors: [Colors.black.withValues(alpha: 0.5), Colors.transparent],
               ),
             ),
           ),

@@ -348,7 +348,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
               'Projeto',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),

@@ -208,7 +208,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             onPressed: () {
               setState(() {
-                _corSelecionada = '#${corTemporaria.value.toRadixString(16).substring(2).toUpperCase()}';
+                _corSelecionada = '#${corTemporaria.toARGB32().toRadixString(16).substring(2).toUpperCase()}';
                 if (!_coresSalvas.contains(_corSelecionada)) {
                   _coresSalvas.add(_corSelecionada);
                 }
@@ -394,7 +394,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                             SizedBox(
                               height: 48,
                               child: DropdownButtonFormField<String>(
-                                value: _tipoMarcacaoSelecionado,
+                                initialValue: _tipoMarcacaoSelecionado,
                                 decoration: InputDecoration(
                                   contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.inputBorder)),
@@ -718,7 +718,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                                ),
                              );
                           }
-                          return [pino, if (nomeVizinho != null) nomeVizinho];
+                          return [pino, ?nomeVizinho];
                         }),
 
                         if (widget.ponto != null) ...[

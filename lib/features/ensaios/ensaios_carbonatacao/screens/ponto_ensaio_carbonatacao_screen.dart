@@ -155,14 +155,18 @@ class _PontoEnsaioCarbonatacaoScreenState
         _carbIdExistente = carbResp['id'] as String;
         _nomePontoCtrl.text = carbResp['nome_ponto'] ?? widget.pontoNome;
 
-        if (carbResp['cob_arm_p'] != null)
+        if (carbResp['cob_arm_p'] != null) {
           _cobArmPCtrl.text = carbResp['cob_arm_p'].toString();
-        if (carbResp['bit_arm_p'] != null)
+        }
+        if (carbResp['bit_arm_p'] != null) {
           _bitArmPCtrl.text = carbResp['bit_arm_p'].toString();
-        if (carbResp['cob_arm_s'] != null)
+        }
+        if (carbResp['cob_arm_s'] != null) {
           _cobArmSCtrl.text = carbResp['cob_arm_s'].toString();
-        if (carbResp['bit_arm_s'] != null)
+        }
+        if (carbResp['bit_arm_s'] != null) {
           _bitArmSCtrl.text = carbResp['bit_arm_s'].toString();
+        }
 
         if (_carbIdExistente != null) {
           final frentesResp = await supabase
@@ -186,27 +190,30 @@ class _PontoEnsaioCarbonatacaoScreenState
 
           for (var foto in (fotosResp as List)) {
             if (foto['referencia'] == '1') _urlFotoQuebra = foto['imagem_url'];
-            if (foto['referencia'] == '2')
+            if (foto['referencia'] == '2') {
               _urlFotoAspersao = foto['imagem_url'];
+            }
           }
         }
       }
     } on PostgrestException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao carregar dados: ${e.message}'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro inesperado: $e'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -333,7 +340,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                       final repo = ref.read(carbonatacaoRepositoryProvider);
                       await repo.deletarFrente(frenteParaRemover.id!);
                     } catch (e) {
-                      if (context.mounted)
+                      if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -342,6 +349,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                             backgroundColor: Colors.red,
                           ),
                         );
+                      }
                       setState(() => _isLoading = false);
                       return;
                     }
@@ -425,15 +433,23 @@ class _PontoEnsaioCarbonatacaoScreenState
           _pontoGeralIdAtual = resultados['pontoGeralId'];
           _carbIdExistente = resultados['carbId'];
 
-          if (resultados['urlFotoQuebra'] != null)
+          if (resultados['urlFotoQuebra'] != null) {
             _urlFotoQuebra = resultados['urlFotoQuebra'];
-          if (resultados['urlFotoAspersao'] != null)
+          }
+          if (resultados['urlFotoAspersao'] != null) {
             _urlFotoAspersao = resultados['urlFotoAspersao'];
+          }
 
           _fotoQuebraLocal = null;
           _fotoAspersaoLocal = null;
           _hasChanges = false;
         });
+        // <-- INVALIDE O PROVIDER AQUI PARA RECARREGAR A TELA ANTERIOR -->
+      // Caso sua tela de pontos geral use este provider específico (ajuste se usar outro nome):
+      try {
+        ref.invalidate(resumoEnsaiosProvider);
+      } catch(_) {}
+
 
         ref.invalidate(resumoEnsaiosProvider);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -805,7 +821,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

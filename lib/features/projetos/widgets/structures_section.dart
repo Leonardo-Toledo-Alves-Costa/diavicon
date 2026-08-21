@@ -32,7 +32,7 @@ class StructuresSection extends ConsumerWidget {
             const Text(
               'Estruturas',
               style: TextStyle(
-                fontSize: 16,
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: AppColors.textDark,
               ),

@@ -132,8 +132,9 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
   Future<void> _openInformacoes() async {
     if (widget.estruturaId == null ||
         widget.projetoId == null ||
-        widget.elementoId == null)
+        widget.elementoId == null) {
       return;
+    }
 
     ElementoModel? elementoCompleto;
     try {
@@ -254,7 +255,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
               'Projeto',
               style: TextStyle(
                 fontSize: 11,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),
@@ -310,8 +311,9 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                     // const SizedBox(height: 24),
                     Consumer(
                       builder: (context, ref, child) {
-                        if (widget.elementoId == null)
+                        if (widget.elementoId == null) {
                           return const SizedBox.shrink();
+                        }
 
                         final ensaiosAsync = ref.watch(
                           ensaiosDoElementoProvider(widget.elementoId!),
@@ -382,13 +384,14 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                                     statusText: 'Acessar',
                                     statusColor: AppColors.primary,
                                     statusBgColor: AppColors.primary
-                                        .withOpacity(0.1),
+                                        .withValues(alpha: 0.1),
                                     mockAvatar: false, // Desliga o avatar falso
                                     onTap: () {
                                       // 👇 3. ROTA PARA A TELA GERAL DE PONTOS (Protótipo image_73209d)
                                       if (widget.projetoId == null ||
-                                          widget.estruturaId == null)
+                                          widget.estruturaId == null) {
                                         return;
+                                      }
 
                                       Navigator.push(
                                         context,
@@ -587,7 +590,7 @@ class _ResumoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.12),
+            color: Colors.black.withValues(alpha: 0.12),
             blurRadius: 8,
             offset: const Offset(0, 3),
           ),
@@ -689,7 +692,7 @@ class _EnsaioCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.06),
+            color: Colors.black.withValues(alpha: 0.06),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -799,7 +802,7 @@ class _EnsaioCard extends StatelessWidget {
                                 ),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.08),
+                                    color: Colors.black.withValues(alpha: 0.08),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

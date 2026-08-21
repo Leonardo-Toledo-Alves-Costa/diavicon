@@ -460,7 +460,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                   'Estrutura',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
@@ -532,7 +532,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                             color: AppColors.white,
                             shape: BoxShape.circle,
                             boxShadow: [
-                              BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                              BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
                             ],
                           ),
                           child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),

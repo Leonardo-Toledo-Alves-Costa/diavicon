@@ -127,7 +127,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                     vertical: 8,
                   ),
                   itemCount: regioes.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final regiao = regioes[index];
                     final corPino = Color(
@@ -251,7 +251,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                     : BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: corPino.withOpacity(0.3),
+                                    color: corPino.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),

@@ -27,13 +27,13 @@ class BiggerCustomButton extends StatelessWidget {
             ? []
             : [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.15),
+                  color: Colors.black.withValues(alpha: 0.15),
                   offset: const Offset(0, 1),
                   blurRadius: 3,
                   spreadRadius: 1,
                 ),
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.30),
+                  color: Colors.black.withValues(alpha: 0.30),
                   offset: const Offset(0, 1),
                   blurRadius: 2,
                   spreadRadius: 0,
@@ -45,8 +45,8 @@ class BiggerCustomButton extends StatelessWidget {
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFFF9A232),
           foregroundColor: Colors.white,
-          disabledBackgroundColor: const Color(0xFFF9A232).withOpacity(0.5),
-          disabledForegroundColor: Colors.white.withOpacity(0.8),
+          disabledBackgroundColor: const Color(0xFFF9A232).withValues(alpha: 0.5),
+          disabledForegroundColor: Colors.white.withValues(alpha: 0.8),
           elevation: 0,
 
 

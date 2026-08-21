@@ -46,11 +46,13 @@ final analiseEnsaioProvider = FutureProvider.family
           List<double> frentes = [];
 
           if (carbResp != null) {
-            if (carbResp['cob_arm_p'] != null)
+            if (carbResp['cob_arm_p'] != null) {
               cobrimentosPrin.add((carbResp['cob_arm_p'] as num).toDouble());
+            }
 
-            if (carbResp['cob_arm_s'] != null)
+            if (carbResp['cob_arm_s'] != null) {
               cobrimentosSec.add((carbResp['cob_arm_s'] as num).toDouble());
+            }
 
             final frentesResp = await supabase
                 .from('ponto_ensaio_carb_frentes')

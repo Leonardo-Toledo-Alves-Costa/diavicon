@@ -198,7 +198,7 @@ class ProjectRepository {
         'descricao': descricao,
         if (statusResp != null) 'status_id': statusResp['id'],
         if (prioridadeResp != null) 'prioridade_id': prioridadeResp['id'],
-        if (imageUrl != null) 'image_url': imageUrl,
+        'image_url': ?imageUrl,
       };
 
       // 4. Salva tudo no banco

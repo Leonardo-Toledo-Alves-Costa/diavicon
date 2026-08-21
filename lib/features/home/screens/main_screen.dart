@@ -90,7 +90,7 @@ class MainScreen extends StatelessWidget {
                       _buildNavItem(
                         context,
                         Icons.business_outlined,
-                        'Empresa',
+                        'Empresas',
                         '/minha-empresa',
                         location,
                       ),
@@ -155,7 +155,7 @@ class MainScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -295,7 +295,7 @@ class BottomBarPainter extends CustomPainter {
     path.lineTo(0, size.height);
     path.close();
 
-    canvas.drawShadow(path, Colors.black.withOpacity(0.12), 12, false);
+    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.12), 12, false);
     canvas.drawPath(path, paint);
   }
 

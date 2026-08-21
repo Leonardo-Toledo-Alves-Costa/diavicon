@@ -237,14 +237,14 @@ class _NovoElemEstruturalScreenState
     if (field == EstruturalDropdownField.localElemento) {
       final localCriado = await showDialog<LocalModel>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
       novaOpcao = localCriado?.nome;
     } else if (field == EstruturalDropdownField.tipoElemento) {
       novaOpcao = await showDialog<String>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => const NovoTipoElementoModal(),
       );
     } else if (widget.onAddOption != null) {
@@ -821,7 +821,7 @@ class _ElementoAvatar extends StatelessWidget {
                       child: Icon(
                         Icons.location_city_outlined,
                         size: 64,
-                        color: AppColors.greyDarkest.withOpacity(0.8),
+                        color: AppColors.greyDarkest.withValues(alpha: 0.8),
                       ),
                     )
                   : null,
@@ -838,7 +838,7 @@ class _ElementoAvatar extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.edit_outlined,
-                  color: AppColors.greyDarkest.withOpacity(0.9),
+                  color: AppColors.greyDarkest.withValues(alpha: 0.9),
                   size: 25,
                 ),
               ),
@@ -852,7 +852,6 @@ class _ElementoAvatar extends StatelessWidget {
 
 class _PlanImageCard extends StatefulWidget {
   const _PlanImageCard({
-    super.key,
     this.onPressed,
     this.marcacao,
     this.arquivoUrl,
@@ -890,11 +889,12 @@ class _PlanImageCardState extends State<_PlanImageCard> {
   Future<void> _carregarPreviewPdf() async {
     final url = widget.arquivoUrl;
     if (url == null || !url.toLowerCase().contains('.pdf')) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _pdfBytes = null;
           _currentUrl = url;
         });
+      }
       return;
     }
 

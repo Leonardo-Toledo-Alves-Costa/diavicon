@@ -80,7 +80,7 @@ class _RelatoriosScreenState extends State<RelatoriosScreen> {
 
     showDialog<void>(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.42),
+      barrierColor: Colors.black.withValues(alpha: 0.42),
       builder: (dialogContext) => NovoRelatorioPopup(
         ensaios: const [
           NovoRelatorioOption(id: 'carbonatacao', label: 'Carbonatação'),
@@ -202,7 +202,7 @@ class _ReportSearchField extends StatelessWidget {
         border: Border.all(color: const Color(0x9ED9D9D9)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 2,
             offset: const Offset(0, 4),
           ),
@@ -262,7 +262,7 @@ class _NewReportButton extends StatelessWidget {
           borderRadius: BorderRadius.circular(30),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF3A57E8).withOpacity(0.30),
+              color: const Color(0xFF3A57E8).withValues(alpha: 0.30),
               blurRadius: 2,
               offset: const Offset(0, 2),
             ),
@@ -317,7 +317,7 @@ class _ReportCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 4,
             offset: const Offset(0, 4),
           ),

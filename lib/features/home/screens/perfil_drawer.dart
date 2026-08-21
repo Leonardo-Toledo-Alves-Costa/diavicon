@@ -6,7 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
+import '../../empresa/screens/empresa_profile_screen.dart';
 import '../../../../core/widgets/diavicon_alerts.dart';
 
 class PerfilDrawer extends ConsumerWidget {
@@ -51,6 +51,8 @@ class PerfilDrawer extends ConsumerWidget {
     final fotoUrl = usuario?.fotoUrl;
     final titulo = usuario?.tituloPrincipal ?? '';
     final empresaNome = empresa?.nome ?? '';
+    final empresaId =empresa?.id ?? '';
+
     return Drawer(
       backgroundColor: const Color(0xFFEFEFEF),
       child: SafeArea(
@@ -145,8 +147,17 @@ class PerfilDrawer extends ConsumerWidget {
                   _TopButton(
                     icon: Icons.business_outlined,
                     label: 'Empresa',
-                    isDisabled: true,
-                    onTap: () {},
+                    isDisabled: false,
+                    onTap: () {
+                        Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => EmpresaProfileScreen(
+                      empresaId: empresaId,
+                    ),
+                  ),
+                );
+                    },
                   ),
                 ],
               ),

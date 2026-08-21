@@ -126,13 +126,9 @@ final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<Strin
 
     var response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjFormatado).maybeSingle();
 
-    if (response == null) {
-      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjLimpo).maybeSingle();
-    }
+    response ??= await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjLimpo).maybeSingle();
 
-    if (response == null) {
-      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', filtroTrimmed).maybeSingle();
-    }
+    response ??= await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', filtroTrimmed).maybeSingle();
 
     return response;
     
@@ -171,21 +167,17 @@ class EmpresasProjetoController {
         .eq('cnpj', cnpjFormatado)
         .maybeSingle();
 
-    if (empresa == null) {
-      empresa = await _supabase
+    empresa ??= await _supabase
           .from('empresas')
           .select('id, nome, foto_url, enderecos(cidade, estado)')
           .eq('cnpj', cnpjLimpo)
           .maybeSingle();
-    }
 
-    if (empresa == null) {
-      empresa = await _supabase
+    empresa ??= await _supabase
           .from('empresas')
           .select('id, nome, foto_url, enderecos(cidade, estado)')
           .eq('cnpj', filtroTrimmed)
           .maybeSingle();
-    }
 
     if (empresa == null) {
       throw Exception('Nenhuma empresa encontrada com este CNPJ.');

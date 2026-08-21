@@ -32,7 +32,7 @@ final analiseResistividadeProvider = FutureProvider.family<List<AnaliseResistivi
           .eq('elementos_estruturais.estrutura_id', params.estruturaId)
           .ilike('tipo_ensaio', '%Resistividade%'); 
 
-      if (response == null || (response as List).isEmpty) {
+      if ((response as List).isEmpty) {
         return [];
       }
 

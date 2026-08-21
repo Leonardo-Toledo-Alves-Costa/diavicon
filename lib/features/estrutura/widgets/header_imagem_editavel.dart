@@ -20,7 +20,7 @@ class HeaderImagemEditavel extends StatelessWidget {
               width: double.infinity,
               height: 160,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Image.asset(defaultAsset, width: double.infinity, height: 160, fit: BoxFit.cover),
+              errorBuilder: (_, _, _) => Image.asset(defaultAsset, width: double.infinity, height: 160, fit: BoxFit.cover),
             ),
         Positioned(
           bottom: 16,

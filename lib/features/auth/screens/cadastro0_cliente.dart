@@ -1,7 +1,6 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/auth_layout.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
-import 'package:diavicon/core/widgets/custom_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

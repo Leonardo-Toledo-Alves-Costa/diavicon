@@ -49,7 +49,7 @@ class EstruturasHeader extends ConsumerWidget {
                           height: 42, 
                           child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                         ),
-                        error: (_, __) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                        error: (_, _) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
                         data: (fotoUrl) {
                           if (fotoUrl != null && fotoUrl.isNotEmpty) {
                             return Image.network(
@@ -57,7 +57,7 @@ class EstruturasHeader extends ConsumerWidget {
                               width: 42, 
                               height: 42, 
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                              errorBuilder: (_, _, _) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
                             );
                           }
                           return Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover);
@@ -98,7 +98,7 @@ class EstruturasHeader extends ConsumerWidget {
               borderRadius: BorderRadius.circular(50),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 15,
                   offset: const Offset(0, 6),
                 ),

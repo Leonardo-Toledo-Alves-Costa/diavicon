@@ -117,7 +117,7 @@ double intervaloY;
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: Colors.grey.withOpacity(0.3),
+                color: Colors.grey.withValues(alpha: 0.3),
               ),
             ),
 
@@ -130,7 +130,7 @@ double intervaloY;
               dotData: const FlDotData(show: false),
               belowBarData: BarAreaData(
                 show: true,
-                color: Color(0xFFDDA0DD).withOpacity(0.3),
+                color: Color(0xFFDDA0DD).withValues(alpha: 0.3),
               ),
             ),
           ],

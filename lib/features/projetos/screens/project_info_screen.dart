@@ -440,7 +440,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
                   _buildSectionHeader(
                     title: 'Cliente proprietário',
-                    subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este point focal do projeto.',
+                    subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este ponto focal do projeto.',
                   ),
                   const SizedBox(height: 16),
                   _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit),
@@ -508,7 +508,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                   color: AppColors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
                   ],
                 ),
                 child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),

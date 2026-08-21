@@ -104,9 +104,9 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
     double deltaCarb = tempoCarbonatar - idade;
 
     String condicao;
-    if (deltaCarb <= 0)
+    if (deltaCarb <= 0) {
       condicao = "Despassivado";
-    else if (deltaCarb < 5)
+    } else if (deltaCarb < 5)
       condicao = "Risco Alto";
     else if (deltaCarb < 15)
       condicao = "Risco Moderado";
@@ -116,9 +116,9 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
       condicao = "Risco Irrelevante";
 
     Color corCondicao;
-    if (deltaCarb <= 0)
+    if (deltaCarb <= 0) {
       corCondicao = Color(0xFFFF4C4C); // "Despassivado";
-    else if (deltaCarb < 5)
+    } else if (deltaCarb < 5)
       corCondicao = Color(0xFFFF8C00);
     else if (deltaCarb < 15)
       corCondicao = Color(0xFFFFB74D);
@@ -328,13 +328,14 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
           child: Text('Erro: $err', style: const TextStyle(color: Colors.red)),
         ),
         data: (todosPontos) {
-          if (todosPontos.isEmpty)
+          if (todosPontos.isEmpty) {
             return const Center(
               child: Text(
                 'Nenhum ponto registrado para análise.',
                 style: TextStyle(color: Colors.grey),
               ),
             );
+          }
 
           // Lista de locais para o Dropdown
           final todosLocais = [
@@ -428,8 +429,9 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
                                     )
                                     .toList(),
                                 onChanged: (val) {
-                                  if (val != null)
+                                  if (val != null) {
                                     setState(() => _filtroLocal = val);
+                                  }
                                 },
                               ),
                             ),
@@ -468,8 +470,9 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
                                     )
                                     .toList(),
                                 onChanged: (val) {
-                                  if (val != null)
+                                  if (val != null) {
                                     setState(() => _filtroTipoElemento = val);
+                                  }
                                 },
                               ),
                             ),
@@ -718,8 +721,8 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: (calc['cor_condicao'] as Color).withOpacity(
-                          0.15,
+                        color: (calc['cor_condicao'] as Color).withValues(
+                          alpha: 0.15,
                         ),
                         borderRadius: BorderRadius.circular(12),
                       ),
@@ -858,7 +861,7 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: badgeColor?.withOpacity(0.2),
+                color: badgeColor?.withValues(alpha: 0.2),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(

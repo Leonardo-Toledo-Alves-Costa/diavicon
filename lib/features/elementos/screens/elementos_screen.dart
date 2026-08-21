@@ -242,7 +242,7 @@ class _ElementoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -251,7 +251,7 @@ class _ElementoCard extends StatelessWidget {
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         leading: CircleAvatar(
-          backgroundColor: AppColors.primary.withOpacity(0.12),
+          backgroundColor: AppColors.primary.withValues(alpha: 0.12),
           child: const Icon(Icons.foundation, color: AppColors.primary),
         ),
         title: Text(

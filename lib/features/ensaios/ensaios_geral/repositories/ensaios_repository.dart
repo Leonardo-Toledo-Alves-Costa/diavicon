@@ -27,29 +27,27 @@ class EnsaiosRepository {
       // 3. Busca pontos já realizados de forma segura[cite: 2]
       final realizadosValidadosResp = await _supabase
           .from('pontos_ensaios_geral')
-          .select('tipo_ensaio, elementos_estruturais!inner(estrutura_id)')
+          .select('tipo_ensaio_id, estrutura_id')
           .eq('projeto_id', projetoId)
-          .eq('elementos_estruturais.estrutura_id', estruturaId);
+          .eq('estrutura_id', estruturaId);
 
       // 4. Mapeia quantidades contratadas com segurança de tipo
       Map<String, int> mapContratados = {};
-      if (contratadosResp != null) {
-        for (var c in (contratadosResp as List)) {
-          final tipoEnsaioId = c['tipo_ensaio_id']?.toString();
-          if (tipoEnsaioId != null) {
-            final qtd = (c['quantidade'] as num?)?.toInt() ?? 0;
-            mapContratados[tipoEnsaioId] = (mapContratados[tipoEnsaioId] ?? 0) + qtd;
-          }
+      for (var c in (contratadosResp as List)) {
+        final tipoEnsaioId = c['tipo_ensaio_id']?.toString();
+        if (tipoEnsaioId != null) {
+          final qtd = (c['quantidade'] as num?)?.toInt() ?? 0;
+          mapContratados[tipoEnsaioId] = (mapContratados[tipoEnsaioId] ?? 0) + qtd;
         }
       }
 
       // 5. Mapeia quantidades realizadas
       Map<String, int> mapRealizados = {};
-      if (realizadosValidadosResp != null && realizadosValidadosResp is List) {
+      if (realizadosValidadosResp is List) {
         for (var r in realizadosValidadosResp) {
-          final tipoEnsaioNome = (r['tipo_ensaio'] ?? '').toString().trim().toLowerCase();
-          if (tipoEnsaioNome.isNotEmpty) {
-            mapRealizados[tipoEnsaioNome] = (mapRealizados[tipoEnsaioNome] ?? 0) + 1;
+          final tipoEnsaioId = (r['tipo_ensaio_id'] ?? '').toString().trim().toLowerCase();
+          if (tipoEnsaioId.isNotEmpty) {
+            mapRealizados[tipoEnsaioId] = (mapRealizados[tipoEnsaioId] ?? 0) + 1;
           }
         }
       }

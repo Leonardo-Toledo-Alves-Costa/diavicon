@@ -68,13 +68,14 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
             _tipologiaSelecionada = opcaoFormatada;
           });
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             DiaviconAlerts.show(
               context,
               'Erro',
               'Erro ao salvar Tipologia',
               isErro: true,
             );
+          }
         }
       }
     }
@@ -101,13 +102,14 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
             _condicaoSelecionada = opcaoFormatada;
           });
         } catch (e) {
-          if (mounted)
+          if (mounted) {
             DiaviconAlerts.show(
               context,
               'Erro',
               'Erro ao salvar Condição',
               isErro: true,
             );
+          }
         }
       }
     }

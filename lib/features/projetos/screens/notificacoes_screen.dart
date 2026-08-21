@@ -94,10 +94,10 @@ class NotificacoesScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: isNova ? Border.all(color: AppColors.primary.withOpacity(0.3), width: 1) : null,
+          border: isNova ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1) : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),

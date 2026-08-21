@@ -468,6 +468,12 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
         ref.invalidate(resumoEnsaiosProvider);
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Salvo com sucesso!'), backgroundColor: Colors.green));
       }
+      // <-- INVALIDE O PROVIDER AQUI PARA RECARREGAR A TELA ANTERIOR -->
+      // Caso sua tela de pontos geral use este provider específico (ajuste se usar outro nome):
+      try {
+        ref.invalidate(resumoEnsaiosProvider);
+      } catch(_) {}
+
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
     } finally {
@@ -883,7 +889,7 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(12),
-                boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
                 border: Border.all(color: Colors.grey.shade200)
               ),
               child: Column(
@@ -958,7 +964,7 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
             decoration: BoxDecoration(
               color: const Color(0xFFFFA726),
               borderRadius: BorderRadius.circular(12),
-              boxShadow: [BoxShadow(color: Colors.orange.withOpacity(0.3), blurRadius: 8, offset: const Offset(0, 4))],
+              boxShadow: [BoxShadow(color: Colors.orange.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
             ),
             child: Row(
               children: [
@@ -1065,7 +1071,7 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: (condicao['cor'] as Color).withOpacity(0.1),
+                    color: (condicao['cor'] as Color).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(

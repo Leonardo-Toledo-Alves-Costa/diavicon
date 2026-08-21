@@ -263,7 +263,7 @@ class _EnsaiosContratadosScreenState extends State<EnsaiosContratadosScreen> {
                           child: Image.asset(
                             ensaio['icone'],
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
+                            errorBuilder: (_, _, _) => const Icon(Icons.science_outlined, color: AppColors.textDark, size: 28),
                           ),
                         ),
                         const SizedBox(width: 14),

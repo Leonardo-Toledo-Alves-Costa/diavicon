@@ -54,10 +54,10 @@ final resumoEnsaiosProvider = FutureProvider.family
         var queryExecutados = supabase
             .from('pontos_ensaios_geral')
             .select(
-              'tipo_ensaio_id, projeto_id, elementos_estruturais!inner(estrutura_id)',
+              'tipo_ensaio_id, projeto_id, estrutura_id',
             )
             .eq('projeto_id', params.projetoId)
-            .eq('elementos_estruturais.estrutura_id', params.estruturaId);
+            .eq('estrutura_id', params.estruturaId);
 
         if (params.tipoEnsaioId != null) {
           queryExecutados = queryExecutados.eq(

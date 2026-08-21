@@ -138,10 +138,12 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
 
     bool matchStatus = true;
     if (statusFiltro != 'Todos') {
-      if (statusFiltro == 'Em andamento')
+      if (statusFiltro == 'Em andamento') {
         matchStatus = p.statusBadge == BadgeStatus.emAndamento;
-      if (statusFiltro == 'Concluído')
+      }
+      if (statusFiltro == 'Concluído') {
         matchStatus = p.statusBadge == BadgeStatus.concluido;
+      }
     }
 
     return matchBusca && matchStatus;

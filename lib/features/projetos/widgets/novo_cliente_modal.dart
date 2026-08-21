@@ -20,7 +20,7 @@ class _NovoClienteModalState extends ConsumerState<NovoClienteModal> {
   final _emailController = TextEditingController();
   String? _tipoSelecionado;
   String? _areaSelecionada;
-  bool _isLoading = false;
+  final bool _isLoading = false;
   File? _fotoSelecionada; 
 
   @override

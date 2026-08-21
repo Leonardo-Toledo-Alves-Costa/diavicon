@@ -195,7 +195,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                       color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),

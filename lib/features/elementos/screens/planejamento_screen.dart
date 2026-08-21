@@ -60,10 +60,12 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
 
       if (resp != null && mounted) {
         setState(() {
-          if (resp['mostrar_nomes'] != null)
+          if (resp['mostrar_nomes'] != null) {
             _visualizarNomeElementos = resp['mostrar_nomes'];
-          if (resp['tamanho_fonte_nomes'] != null)
+          }
+          if (resp['tamanho_fonte_nomes'] != null) {
             _tamanhoFonteNome = (resp['tamanho_fonte_nomes'] as num).toDouble();
+          }
         });
       }
     } catch (e) {
@@ -216,7 +218,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
     return AppBar(
       backgroundColor: AppColors.primary,
       elevation: 6,
-      shadowColor: Colors.black.withOpacity(0.5),
+      shadowColor: Colors.black.withValues(alpha: 0.5),
       centerTitle: true,
       toolbarHeight: 75,
       shape: const RoundedRectangleBorder(
@@ -231,7 +233,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
           Text(
             'Projeto',
             style: GoogleFonts.lato(
-              color: Colors.white.withOpacity(0.8),
+              color: Colors.white.withValues(alpha: 0.8),
               fontSize: 12,
               fontWeight: FontWeight.w300,
             ),
@@ -416,8 +418,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                           constraints: const BoxConstraints(),
                           onPressed: () {
                             setState(() {
-                              if (_tamanhoFonteNome > 2.0)
+                              if (_tamanhoFonteNome > 2.0) {
                                 _tamanhoFonteNome -= 2.0;
+                              }
                             });
                             _salvarPreferenciasPlanta();
                           },
@@ -442,8 +445,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                           constraints: const BoxConstraints(),
                           onPressed: () {
                             setState(() {
-                              if (_tamanhoFonteNome < 32.0)
+                              if (_tamanhoFonteNome < 32.0) {
                                 _tamanhoFonteNome += 2.0;
+                              }
                             });
                             _salvarPreferenciasPlanta();
                           },
@@ -507,8 +511,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
         final gestoraId = info['gestoraId'];
         final List<Map<String, dynamic>> empresas = info['empresas'];
 
-        if (empresas.isEmpty)
+        if (empresas.isEmpty) {
           return const Center(child: Text('Nenhuma empresa disponível.'));
+        }
 
         final isGestora = minhaEmpresaId == gestoraId;
         String valorDropdown =
@@ -570,8 +575,9 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 );
               }).toList(),
               onChanged: (val) {
-                if (isGestora && val != null)
+                if (isGestora && val != null) {
                   setState(() => _empresaSelecionadaId = val);
+                }
               },
             ),
           ),
@@ -624,16 +630,6 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
-                          if (valorDropdown == null) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  'Selecione uma empresa no filtro primeiro!',
-                                ),
-                              ),
-                            );
-                            return;
-                          }
                           showItensContratadosModal(
                             context,
                             empresaId: empSelecionada['id'],
@@ -662,7 +658,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                                 width: 24,
                                 height: 24,
                                 // Fallback para não quebrar a tela enquanto você baixa o PNG:
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.assignment_turned_in,
                                   color: Color(0xFF686868),
                                   size: 24,
@@ -724,7 +720,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                                 'assets/images/icone_regioes.png',
                                 width: 24,
                                 height: 24,
-                                errorBuilder: (_, __, ___) => const Icon(
+                                errorBuilder: (_, _, _) => const Icon(
                                   Icons.science_outlined,
                                   color: Colors.white,
                                   size: 24,
@@ -845,8 +841,9 @@ class _VisualizadorPlantaPlanejamentoState
       try {
         final request = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
         final response = await request.close();
-        if (response.statusCode != 200)
+        if (response.statusCode != 200) {
           throw Exception('Status: ${response.statusCode}');
+        }
         final bytes = await consolidateHttpClientResponseBytes(response);
         final doc = await PdfDocument.openData(bytes);
         final page = await doc.getPage(1);
@@ -874,8 +871,9 @@ class _VisualizadorPlantaPlanejamentoState
           format: PdfPageImageFormat.jpeg,
           backgroundColor: '#FFFFFF',
         );
-        if (pageImg != null && mounted)
+        if (pageImg != null && mounted) {
           setState(() => _imageBytes = pageImg.bytes);
+        }
         await page.close();
         await doc.close();
       } catch (e) {
@@ -888,17 +886,19 @@ class _VisualizadorPlantaPlanejamentoState
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading)
+    if (_isLoading) {
       return const Center(
         child: CircularProgressIndicator(color: AppColors.primary),
       );
-    if (_error != null)
+    }
+    if (_error != null) {
       return Center(
         child: Text(
           'Erro: $_error',
           style: const TextStyle(color: Colors.red, fontSize: 12),
         ),
       );
+    }
 
     final elementosAsync = ref.watch(
       elementosPorEstruturaProvider(widget.estruturaId),
@@ -958,7 +958,7 @@ class _VisualizadorPlantaPlanejamentoState
                             int.parse(
                               regiao.corMarcacao.replaceFirst('#', '0xff'),
                             ),
-                          ).withOpacity(0.85);
+                          ).withValues(alpha: 0.85);
 
                           return Positioned(
                             left: cx - (wPino / 2),
@@ -1065,7 +1065,7 @@ class _VisualizadorPlantaPlanejamentoState
                               }
                               return [
                                 pino,
-                                if (nomeVizinho != null) nomeVizinho,
+                                ?nomeVizinho,
                               ];
                             }),
 

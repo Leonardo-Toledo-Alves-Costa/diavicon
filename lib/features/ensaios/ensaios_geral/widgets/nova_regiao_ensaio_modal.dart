@@ -261,7 +261,7 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
                                       child: Stack(
                                         alignment: Alignment.center,
                                         children: [
-                                          PinoDinamico(tipoMarcacao: widget.tipoMarcacao, largura: widget.larguraMarcacao * w, altura: widget.alturaMarcacao * h, rotacao: widget.rotacaoMarcacao, corBase: corPino.withOpacity(0.85), mostrarNumero: false),
+                                          PinoDinamico(tipoMarcacao: widget.tipoMarcacao, largura: widget.larguraMarcacao * w, altura: widget.alturaMarcacao * h, rotacao: widget.rotacaoMarcacao, corBase: corPino.withValues(alpha: 0.85), mostrarNumero: false),
                                           Text('${widget.numeroMarcacao}', style: GoogleFonts.lato(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, shadows: const [Shadow(color: Colors.black45, blurRadius: 2)])),
                                         ],
                                       ),
@@ -402,7 +402,7 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
                                 child: Image.asset(
                                   ensaio['icone'],
                                   fit: BoxFit.contain,
-                                  errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, color: AppColors.textDark),
+                                  errorBuilder: (_, _, _) => const Icon(Icons.science_outlined, color: AppColors.textDark),
                                 ),
                               ),
                               const SizedBox(width: 12),

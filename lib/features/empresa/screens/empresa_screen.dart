@@ -10,14 +10,14 @@ import '../widgets/empresa_header.dart';
 import '../widgets/empresa_info_section.dart';
 import '../widgets/empresa_team_section.dart';
 
-class EmpresaScreen extends ConsumerStatefulWidget {
-  const EmpresaScreen({super.key});
+class EmpresaScreen1 extends ConsumerStatefulWidget {
+  const EmpresaScreen1({super.key});
 
   @override
-  ConsumerState<EmpresaScreen> createState() => _EmpresaScreenState();
+  ConsumerState<EmpresaScreen1> createState() => _EmpresaScreenState();
 }
 
-class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
+class _EmpresaScreenState extends ConsumerState<EmpresaScreen1> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override

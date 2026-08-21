@@ -79,22 +79,26 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final el = widget.elemento!;
     _nomeController.text = el.nome ?? '';
 
-    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!))
+    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!)) {
       _tipoElementoOptions.add(el.tipo!);
+    }
     _tipoElemento = el.tipo;
 
     if (el.tipologiaEstrutural != null &&
-        !_tipologiaOptions.contains(el.tipologiaEstrutural!))
+        !_tipologiaOptions.contains(el.tipologiaEstrutural!)) {
       _tipologiaOptions.add(el.tipologiaEstrutural!);
+    }
     _tipologiaEstrutural = el.tipologiaEstrutural;
 
-    if (el.local != null && !_localOptions.contains(el.local!))
+    if (el.local != null && !_localOptions.contains(el.local!)) {
       _localOptions.add(el.local!);
+    }
     _localElemento = el.local;
 
     if (el.revestimento != null &&
-        !_revestimentoOptions.contains(el.revestimento!))
+        !_revestimentoOptions.contains(el.revestimento!)) {
       _revestimentoOptions.add(el.revestimento!);
+    }
     _revestimento = el.revestimento;
   }
 
@@ -295,7 +299,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     } else if (field == ElementoInfoDropdownField.tipoElemento) {
       newOption = await showDialog<String>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => const NovoTipoElementoModal(),
       );
     } else if (field == ElementoInfoDropdownField.tipologiaEstrutural) {
@@ -320,18 +324,21 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       _isDirty = true;
       switch (field) {
         case ElementoInfoDropdownField.tipoElemento:
-          if (!_tipoElementoOptions.contains(normalized))
+          if (!_tipoElementoOptions.contains(normalized)) {
             _tipoElementoOptions.add(normalized);
+          }
           _tipoElemento = normalized;
           break;
         case ElementoInfoDropdownField.tipologiaEstrutural:
-          if (!_tipologiaOptions.contains(normalized))
+          if (!_tipologiaOptions.contains(normalized)) {
             _tipologiaOptions.add(normalized);
+          }
           _tipologiaEstrutural = normalized;
           break;
         case ElementoInfoDropdownField.revestimento:
-          if (!_revestimentoOptions.contains(normalized))
+          if (!_revestimentoOptions.contains(normalized)) {
             _revestimentoOptions.add(normalized);
+          }
           _revestimento = normalized;
           break;
         default:
@@ -466,7 +473,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   'Elemento',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
@@ -634,7 +641,7 @@ class _ElementoBanner extends StatelessWidget {
                   height: 46,
                   child: Icon(
                     Icons.edit_outlined,
-                    color: AppColors.greyDarkest.withOpacity(0.95),
+                    color: AppColors.greyDarkest.withValues(alpha: 0.95),
                     size: 31,
                   ),
                 ),

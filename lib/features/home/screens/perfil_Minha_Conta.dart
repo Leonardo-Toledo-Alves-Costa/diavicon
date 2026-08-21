@@ -6,10 +6,13 @@ import 'package:diavicon/features/home/screens/perfil_header.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'dart:io'; // Adicione este import
+import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
 class PerfilMinhaConta extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosCadastro;
+  
 
   const PerfilMinhaConta({super.key, required this.dadosCadastro});
 
@@ -37,6 +40,7 @@ class _PerfilMinhaContaState extends ConsumerState<PerfilMinhaConta> {
     });
   }
 
+  @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final usuario = ref.watch(currentUserProvider);

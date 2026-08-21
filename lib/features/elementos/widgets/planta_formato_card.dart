@@ -55,7 +55,7 @@ class PlantaFormatoCard extends StatelessWidget {
                     iconAsset,
                     fit: BoxFit.contain,
                     // se a imagem não existir na pasta, ele mostra o ícone de erro certo!
-                    errorBuilder: (_, __, ___) => Icon(
+                    errorBuilder: (_, _, _) => Icon(
                       esImagem ? Icons.image_outlined : Icons.picture_as_pdf_outlined,
                       color: const Color(0xFF3E3E3D),
                       size: 32,

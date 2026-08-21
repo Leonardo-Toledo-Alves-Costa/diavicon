@@ -35,12 +35,15 @@ import '../../features/auth/screens/cadastro2_empresa.dart';
 import '../../features/auth/screens/cadastro3_empresa.dart';
 
 // ── Elementos Estruturais ─────────────────────────────────────────────────────
-import '../../features/elementos/screens/elementos_screen.dart';
 
 import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
 import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+
+
+// ── feed empresas produtos ─────────────────────────────────────────────────────
+import '../../features/empresas_servicos/screens/empresas_screen.dart';
 
 Map<String, dynamic> _routeExtra(Object? extra) {
   if (extra is Map<String, dynamic>) return extra;

@@ -222,7 +222,7 @@ class AnalisePontosEnsaiosCarbonatacaoScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -263,7 +263,7 @@ class AnalisePontosEnsaiosCarbonatacaoScreen extends ConsumerWidget {
                         decoration: BoxDecoration(
                           color: Colors.white,
                           borderRadius: BorderRadius.circular(12),
-                          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.center,
@@ -299,7 +299,7 @@ class AnalisePontosEnsaiosCarbonatacaoScreen extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(12),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
                   ),
                   child: Row(
                     children: [
@@ -322,7 +322,7 @@ class AnalisePontosEnsaiosCarbonatacaoScreen extends ConsumerWidget {
                             const SizedBox(height: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                              decoration: BoxDecoration(color: dados.corRisco.withOpacity(0.2), borderRadius: BorderRadius.circular(16)),
+                              decoration: BoxDecoration(color: dados.corRisco.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
                               child: Text(
                                 dados.condicaoRisco,
                                 style: TextStyle(color: dados.corRisco, fontWeight: FontWeight.bold, fontSize: 12),
@@ -375,7 +375,7 @@ class AnalisePontosEnsaiosCarbonatacaoScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 4, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,

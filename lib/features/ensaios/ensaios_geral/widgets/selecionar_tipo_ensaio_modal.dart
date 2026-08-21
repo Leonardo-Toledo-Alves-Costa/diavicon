@@ -54,7 +54,7 @@ class SelecionarTipoEnsaioModal extends StatelessWidget {
             child: ListView.separated(
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
               itemCount: tiposEnsaio.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 12),
+              separatorBuilder: (_, _) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final ensaio = tiposEnsaio[index];
 
@@ -76,7 +76,7 @@ class SelecionarTipoEnsaioModal extends StatelessWidget {
                           ensaio['icone'],
                           width: 40,
                           height: 40,
-                          errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, size: 32, color: AppColors.textDark),
+                          errorBuilder: (_, _, _) => const Icon(Icons.science_outlined, size: 32, color: AppColors.textDark),
                         ),
                         const SizedBox(width: 16),
                         Expanded(

@@ -452,7 +452,7 @@ class _ElementoBanner extends StatelessWidget {
                 height: 46,
                 child: Icon(
                   Icons.edit_outlined,
-                  color: AppColors.greyDarkest.withOpacity(0.95),
+                  color: AppColors.greyDarkest.withValues(alpha: 0.95),
                   size: 31,
                 ),
               ),

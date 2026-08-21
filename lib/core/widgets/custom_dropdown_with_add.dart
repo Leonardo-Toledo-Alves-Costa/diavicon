@@ -105,7 +105,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                   absorbing: isKeyboardOpen,
                   child: DropdownButtonFormField<T>(
                     isExpanded: true,
-                    value: safeValue,
+                    initialValue: safeValue,
                     items: items,
                     onChanged: onChanged,
                     validator: validator,

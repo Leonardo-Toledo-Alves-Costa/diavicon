@@ -1,7 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/pontos_ensaio_model.dart';
 
-
 class PontosEnsaioRepository {
   final SupabaseClient _supabase;
   PontosEnsaioRepository(this._supabase);
@@ -19,6 +18,7 @@ class PontosEnsaioRepository {
             id,
             nome_ponto,
             criado_por,
+            criado_em, 
             valor_resultado,
             cor_resultado,
             tipo_ensaio_id, 
@@ -29,9 +29,9 @@ class PontosEnsaioRepository {
               local,
               fotos
             )
-          ''') // 👈 CORREÇÃO: tipo_ensaio_id adicionado ao select
+          ''') // <-- 'criado_em' adicionado
           .eq('projeto_id', projetoId)
-          .eq('tipo_ensaio_id', tipoEnsaioId) // 👈 CORREÇÃO: Uso de .eq para comparar UUID
+          .eq('tipo_ensaio_id', tipoEnsaioId)
           .eq('elementos_estruturais.estrutura_id', estruturaId);
 
       final List data = response as List;
@@ -76,6 +76,12 @@ class PontosEnsaioRepository {
         String txtCorRisco = (valorBanco != null && valorBanco != 'Pendente') 
             ? '#FFFFFF' 
             : '#3E3E3D';
+            
+        // Tratamento seguro do DateTime
+        DateTime dataCriacao = DateTime.now();
+        if (row['criado_em'] != null) {
+          dataCriacao = DateTime.tryParse(row['criado_em'].toString()) ?? DateTime.now();
+        }
 
         return PontoEnsaioModel(
           id: row['id'].toString(),
@@ -92,6 +98,7 @@ class PontosEnsaioRepository {
           corFundoRisco: bgRisco,
           corTextoRisco: txtCorRisco,
           tipoEnsaioId: row['tipo_ensaio_id']?.toString() ?? tipoEnsaioId,
+          criadoEm: dataCriacao, // <-- Passando a data para o Model
         );
       }).toList();
 

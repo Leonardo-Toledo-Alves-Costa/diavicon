@@ -33,13 +33,13 @@ class CardEstrutura extends StatelessWidget {
     if (imageUrl!.startsWith('http')) {
       return Image.network(
         imageUrl!, width: 56, height: 56, fit: BoxFit.cover,
-        errorBuilder: (_, __, ___) => Image.asset(defaultAsset, width: 56, height: 56, fit: BoxFit.cover),
+        errorBuilder: (_, _, _) => Image.asset(defaultAsset, width: 56, height: 56, fit: BoxFit.cover),
       );
     }
 
     return Image.asset(
       imageUrl!, width: 56, height: 56, fit: BoxFit.cover,
-      errorBuilder: (_, __, ___) => Image.asset(defaultAsset, width: 56, height: 56, fit: BoxFit.cover),
+      errorBuilder: (_, _, _) => Image.asset(defaultAsset, width: 56, height: 56, fit: BoxFit.cover),
     );
   }
 
@@ -54,12 +54,12 @@ class CardEstrutura extends StatelessWidget {
           color: Colors.white,
           borderRadius: BorderRadius.circular(19), 
           border: Border.all(
-            color: const Color(0xFFE0E0E0).withOpacity(0.6), 
+            color: const Color(0xFFE0E0E0).withValues(alpha: 0.6), 
             width: 1,
           ),
          boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.23), 
+              color: Colors.black.withValues(alpha: 0.23), 
               blurRadius: 10,                      
               spreadRadius: -6,                     
               offset: const Offset(0, 14),           
@@ -81,11 +81,11 @@ class CardEstrutura extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AppColors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w900, color: AppColors.textDark), maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 2), 
-                    Text(type, style: const TextStyle(fontSize: 11, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(details, style: const TextStyle(fontSize: 11, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    Text(group, style: const TextStyle(fontSize: 11, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(type, style: const TextStyle(fontSize: 14, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(details, style: const TextStyle(fontSize: 14, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
+                    Text(group, style: const TextStyle(fontSize: 14, color: AppColors.hintText), maxLines: 1, overflow: TextOverflow.ellipsis),
                   ],
                 ),
               ),

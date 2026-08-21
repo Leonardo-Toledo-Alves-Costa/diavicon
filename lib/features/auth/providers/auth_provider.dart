@@ -50,7 +50,7 @@ class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
   //  Método que salva o app-onboarding de usuários pré-cadastrados/convidados
   Future<void> sincronizarSessaoAtiva() async {
     final session = Supabase.instance.client.auth.currentSession;
-    if (session != null && session.user != null) {
+    if (session != null) {
       try {
         // Busca os dados do perfil direto na sua tabela pública de usuários
         final response = await Supabase.instance.client

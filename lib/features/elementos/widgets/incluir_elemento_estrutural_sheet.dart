@@ -40,7 +40,7 @@ Future<T?> showIncluirElementoEstruturalSheet<T>({
     isScrollControlled: true,
     useSafeArea: false, 
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.42),
+    barrierColor: Colors.black.withValues(alpha: 0.42),
     builder: (context) => IncluirElementoEstruturalSheet(
       estruturaId: estruturaId,
       elementos: elementos,
@@ -251,7 +251,7 @@ class _IncluirElementoEstruturalSheetState
             child: Material(
               color: Colors.white,
               elevation: 6,
-              shadowColor: Colors.black.withOpacity(0.25),
+              shadowColor: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(22),
               clipBehavior: Clip.antiAlias,
               child: Padding(
@@ -432,7 +432,7 @@ class _StructureAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -441,7 +441,7 @@ class _StructureAvatar extends StatelessWidget {
           : Image.asset(
               'assets/images/obra.png',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -519,7 +519,7 @@ class _ElementoFilterField extends StatelessWidget {
                   'Elemento',
                   overflow: TextOverflow.ellipsis,
                   style: GoogleFonts.lato(
-                    color: AppColors.hintText.withOpacity(0.45),
+                    color: AppColors.hintText.withValues(alpha: 0.45),
                     fontSize: 12,
                     fontWeight: FontWeight.w400,
                   ),
@@ -550,7 +550,7 @@ class _ElementoSelectionCard extends StatelessWidget {
     return Material(
       color: const Color(0xFFFAFAFA),
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.25),
+      shadowColor: Colors.black.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -636,7 +636,7 @@ class _ElementoAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.broken_image_outlined,
                 color: AppColors.greyDarkest,
                 size: 28,

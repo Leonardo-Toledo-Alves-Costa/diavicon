@@ -89,7 +89,7 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
           ),
 
         // Ações Extras (injetadas por cada tela)
-        if (extraActions != null) ...extraActions!,
+        ...?extraActions,
 
         // Ícone de Menu Padrão (abre o endDrawer)
         if (showMenuButton)

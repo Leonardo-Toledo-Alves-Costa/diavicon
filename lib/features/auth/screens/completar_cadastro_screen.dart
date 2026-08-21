@@ -234,7 +234,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
                               color: Colors.white,
                               shape: BoxShape.circle,
                               boxShadow: [
-                                BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8),
+                                BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8),
                               ],
                             ),
                             child: const Icon(Icons.camera_alt, size: 20, color: AppColors.primary),

@@ -121,14 +121,13 @@ class ElementoRepository {
 
   // --- TIPOS DE ELEMENTO ---
   
-  Future<List<String>> buscarTiposElemento(String? empresaId) async {
-    if (empresaId == null) return []; // Se não tem empresa logada, não busca nada
-    
+  Future<List<String>> buscarTiposElemento(List<String> empresasIds) async {
+    //if (empresasIds == null) return []; // Se não tem empresa logada, não busca nada
     try {
       final response = await _client
           .from('tipos_elemento')
           .select('nome')
-          .eq('empresa_id', empresaId) 
+          .inFilter('empresa_id', empresasIds) 
           .order('nome', ascending: true);
           
       return (response as List).map((e) => e['nome'] as String).toList();
@@ -142,7 +141,7 @@ class ElementoRepository {
       await _client.from('tipos_elemento').insert({
         'nome': nome,
         'formato_marcacao': formato,
-        if (empresaId != null) 'empresa_id': empresaId,
+        'empresa_id': ?empresaId,
       });
     } catch (e) {
       throw Exception('Falha ao criar Tipo de Elemento: $e');
@@ -151,13 +150,13 @@ class ElementoRepository {
 
   // --- TIPOLOGIAS ESTRUTURAIS ---
   
-  Future<List<String>> buscarTipologiasElemento(String? empresaId) async {
-    if (empresaId == null) return [];
+  Future<List<String>> buscarTipologiasElemento(List<String>empresasIds) async {
+    //if (empresasIds == null) return [];
     try {
       final response = await _client
           .from('tipologias_elemento')
           .select('nome')
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', empresasIds) 
           .order('nome', ascending: true);
       
       return (response as List).map((e) => e['nome'] as String).toList();
@@ -179,13 +178,13 @@ class ElementoRepository {
 
   // --- REVESTIMENTOS ---
   
-  Future<List<String>> buscarRevestimentosElemento(String? empresaId) async {
-    if (empresaId == null) return [];
+  Future<List<String>> buscarRevestimentosElemento(List<String> empresasIds) async {
+    //if (empresasIds == null) return [];
     try {
       final response = await _client
           .from('revestimentos_elemento')
           .select('nome')
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', empresasIds) 
           .order('nome', ascending: true);
       
       return (response as List).map((e) => e['nome'] as String).toList();

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/elementos/providers/info_planejamento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/itens_contratados_modal.dart';
@@ -9,6 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pdfx/pdfx.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
+import 'package:diavicon/core/widgets/confirmar_exclusao_dialog.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
@@ -42,6 +44,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
 
   double _tamanhoFonteNome = 12.0;
   String? _empresaSelecionadaId;
+  bool _operacaoMarcacaoEmAndamento = false;
 
   @override
   void initState() {
@@ -53,7 +56,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _carregarPreferenciasPlanta() async {
     try {
       final resp = await Supabase.instance.client
-          .from('plantas') 
+          .from('plantas')
           .select('mostrar_nomes, tamanho_fonte_nomes')
           .eq('id', widget.plantaId)
           .maybeSingle();
@@ -75,7 +78,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _salvarPreferenciasPlanta() async {
     try {
       await Supabase.instance.client
-          .from('plantas') 
+          .from('plantas')
           .update({
             'mostrar_nomes': _visualizarNomeElementos,
             'tamanho_fonte_nomes': _tamanhoFonteNome,
@@ -87,10 +90,11 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 
   void _abrirSeletorElementosParaPosicionar() async {
+    if (_operacaoMarcacaoEmAndamento) return;
     final elementoEscolhido = await showModalBottomSheet<ElementoModel>(
       context: context,
       isScrollControlled: true,
-      useSafeArea: false, 
+      useSafeArea: false,
       backgroundColor: Colors.transparent,
       builder: (context) =>
           MarcarElementoPlanejamentoModal(estruturaId: widget.estruturaId),
@@ -124,6 +128,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
       plantaId: widget.plantaId,
       estruturaId: widget.estruturaId,
       nomeElemento: elemento.nome,
+      capturarImagem: true,
       inicial: MarcacaoPlanta(
         x: 0.5,
         y: 0.5,
@@ -138,56 +143,174 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
 
     if (resultado == null) return;
 
+    await _persistirMarcacao(elemento, resultado, edicao: false);
+  }
+
+  Future<void> _editarMarcacao(ElementoModel elemento) async {
+    final resultado = await showMarcacaoPlantaPopup(
+      context,
+      arquivoUrl: widget.plantaUrl,
+      plantaId: widget.plantaId,
+      estruturaId: widget.estruturaId,
+      nomeElemento: elemento.nome,
+      capturarImagem: true,
+      inicial: MarcacaoPlanta(
+        x: elemento.posicaoX!,
+        y: elemento.posicaoY!,
+        plantaId: widget.plantaId,
+        tipoMarcacao: elemento.tipoMarcacao ?? 'Retângulo',
+        largura: elemento.marcacaoLargura ?? 0.12,
+        altura: elemento.marcacaoAltura ?? 0.06,
+        rotacao: elemento.marcacaoRotacao ?? 0.0,
+        cor: elemento.marcacaoCor ?? '#FF9800',
+        nomeX: elemento.marcacaoNomeX ?? elemento.posicaoX!,
+        nomeY: elemento.marcacaoNomeY ?? (elemento.posicaoY! - 0.06),
+      ),
+    );
+
+    if (resultado == null) return;
+    await _persistirMarcacao(elemento, resultado, edicao: true);
+  }
+
+  Future<void> _persistirMarcacao(
+    ElementoModel elemento,
+    MarcacaoPlanta resultado, {
+    required bool edicao,
+  }) async {
+    if (_operacaoMarcacaoEmAndamento) return;
+    setState(() => _operacaoMarcacaoEmAndamento = true);
+
+    final repo = ref.read(elementoRepositoryProvider);
+    Uint8List? imagemAnterior;
+    var imagemEnviada = false;
     try {
-      final elementoAtualizado = ElementoModel(
-        id: elemento.id,
-        estruturaId: elemento.estruturaId,
-        nome: elemento.nome,
-        tipo: elemento.tipo,
-        local: elemento.local,
-        tipologiaEstrutural: elemento.tipologiaEstrutural,
-        revestimento: elemento.revestimento,
-        latitude: elemento.latitude,
-        longitude: elemento.longitude,
+      final imagemBytes = resultado.thumbnailBytes;
+      if (imagemBytes == null || imagemBytes.isEmpty) {
+        throw Exception('A imagem da marcação não foi gerada.');
+      }
+
+      if (edicao &&
+          elemento.marcacaoImagemUrl != null &&
+          elemento.marcacaoImagemUrl!.isNotEmpty) {
+        imagemAnterior = await repo.baixarImagemMarcacao(elemento.id);
+      }
+
+      final imagemUrl = await repo.uploadImagemMarcacao(
+        elementoId: elemento.id,
+        bytes: imagemBytes,
+      );
+      imagemEnviada = true;
+
+      final elementoAtualizado = elemento.copyWith(
         posicaoX: resultado.x,
         posicaoY: resultado.y,
-        posicaoZ: elemento.posicaoZ,
         plantaId: widget.plantaId,
         tipoMarcacao: resultado.tipoMarcacao,
         marcacaoLargura: resultado.largura,
         marcacaoAltura: resultado.altura,
         marcacaoRotacao: resultado.rotacao,
-        dimensoes: elemento.dimensoes,
-        secao: elemento.secao,
-        microclima: elemento.microclima,
-        caa: elemento.caa,
-        fotos: elemento.fotos,
-        observacoes: elemento.observacoes,
-        ativo: elemento.ativo,
-        criadoEm: elemento.criadoEm,
         marcacaoCor: resultado.cor,
         marcacaoNomeX: resultado.nomeX,
         marcacaoNomeY: resultado.nomeY,
+        marcacaoImagemUrl: imagemUrl,
       );
 
-      await ref
-          .read(elementoRepositoryProvider)
-          .atualizarElemento(elementoAtualizado);
+      await repo.atualizarElemento(elementoAtualizado);
       if (!mounted) return;
 
       ref.invalidate(todosElementosPorEstruturaProvider(widget.estruturaId));
       ref.invalidate(elementosPorEstruturaProvider(widget.estruturaId));
 
       ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            edicao
+                ? 'Marcação atualizada com sucesso.'
+                : 'Elemento posicionado com sucesso na planta!',
+          ),
+        ),
+      );
+    } catch (e) {
+      if (imagemEnviada) {
+        try {
+          if (imagemAnterior != null) {
+            await repo.uploadImagemMarcacao(
+              elementoId: elemento.id,
+              bytes: imagemAnterior,
+            );
+          } else if (elemento.marcacaoImagemUrl == null ||
+              elemento.marcacaoImagemUrl!.isEmpty) {
+            await repo.removerImagemMarcacao(elemento.id);
+          }
+        } catch (rollbackError) {
+          debugPrint('Erro ao restaurar imagem da marcação: $rollbackError');
+        }
+      }
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Erro ao salvar marcação: $e')));
+    } finally {
+      if (mounted) setState(() => _operacaoMarcacaoEmAndamento = false);
+    }
+  }
+
+  Future<void> _abrirAcoesMarcacao(ElementoModel elemento) async {
+    if (_operacaoMarcacaoEmAndamento) return;
+    final acao = await showModalBottomSheet<_AcaoMarcacao>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AcoesMarcacaoSheet(elemento: elemento),
+    );
+
+    if (!mounted || acao == null) return;
+    switch (acao) {
+      case _AcaoMarcacao.editar:
+        await _editarMarcacao(elemento);
+        break;
+      case _AcaoMarcacao.remover:
+        await _confirmarRemocaoMarcacao(elemento);
+        break;
+    }
+  }
+
+  Future<void> _confirmarRemocaoMarcacao(ElementoModel elemento) async {
+    final confirmou = await showConfirmarExclusaoDialog(
+      context: context,
+      titulo: 'Remover marcação?',
+      mensagem:
+          'O elemento continuará cadastrado e poderá ser marcado novamente nesta ou em outra planta.',
+    );
+    if (confirmou != true || !mounted || _operacaoMarcacaoEmAndamento) return;
+
+    setState(() => _operacaoMarcacaoEmAndamento = true);
+    final repo = ref.read(elementoRepositoryProvider);
+    try {
+      await repo.removerMarcacao(elemento.id);
+
+      ref.invalidate(todosElementosPorEstruturaProvider(widget.estruturaId));
+      ref.invalidate(elementosPorEstruturaProvider(widget.estruturaId));
+
+      try {
+        await repo.removerImagemMarcacao(elemento.id);
+      } catch (storageError) {
+        debugPrint('Erro ao limpar imagem removida: $storageError');
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Elemento posicionado com sucesso na planta!'),
+          content: Text('Marcação removida. O elemento continua cadastrado.'),
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Erro ao salvar posição: $e')));
+      ).showSnackBar(SnackBar(content: Text('Erro ao remover marcação: $e')));
+    } finally {
+      if (mounted) setState(() => _operacaoMarcacaoEmAndamento = false);
     }
   }
 
@@ -470,6 +593,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
               plantaId: widget.plantaId,
               mostrarNomes: _visualizarNomeElementos,
               tamanhoFonteNome: _tamanhoFonteNome,
+              onElementoTap: _abrirAcoesMarcacao,
             ),
           ),
         ),
@@ -620,7 +744,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 padding: const EdgeInsets.all(24.0),
                 child: Row(
                   children: [
-                    // Quantitativos Contratados 
+                    // Quantitativos Contratados
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -639,6 +763,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                             empresaId: empSelecionada['id'],
                             empresaNome: empSelecionada['nome'],
                             empresaFotoUrl: empSelecionada['foto_url'],
+                            estruturaId: widget.estruturaId,
                           );
                         },
                         child: Container(
@@ -688,7 +813,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                     ),
                     const SizedBox(width: 12),
 
-                    // Regiões de Ensaio 
+                    // Regiões de Ensaio
                     Expanded(
                       child: GestureDetector(
                         onTap: () {
@@ -801,6 +926,104 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 }
 
+enum _AcaoMarcacao { editar, remover }
+
+class _AcoesMarcacaoSheet extends StatelessWidget {
+  const _AcoesMarcacaoSheet({required this.elemento});
+
+  final ElementoModel elemento;
+
+  @override
+  Widget build(BuildContext context) {
+    final detalhes = [
+      elemento.tipo,
+      elemento.local,
+    ].where((valor) => valor?.trim().isNotEmpty ?? false).join(' • ');
+
+    return Material(
+      color: Colors.white,
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 12, 20, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD9D9D9),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  elemento.nome ?? 'Elemento sem nome',
+                  style: GoogleFonts.lato(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
+                    color: const Color(0xFF3E3E3D),
+                  ),
+                ),
+              ),
+              if (detalhes.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    detalhes,
+                    style: GoogleFonts.lato(
+                      fontSize: 14,
+                      color: const Color(0xFF686868),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFFFFF3E0),
+                  child: Icon(Icons.edit_outlined, color: AppColors.primary),
+                ),
+                title: const Text('Editar marcação'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).pop(_AcaoMarcacao.editar),
+              ),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundColor: AppColors.error.withOpacity(0.1),
+                  child: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
+                ),
+                title: const Text(
+                  'Remover da planta',
+                  style: TextStyle(color: AppColors.error),
+                ),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => Navigator.of(context).pop(_AcaoMarcacao.remover),
+              ),
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Cancelar'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
   const _VisualizadorPlantaPlanejamento({
     required this.arquivoUrl,
@@ -808,6 +1031,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
     required this.plantaId,
     required this.mostrarNomes,
     required this.tamanhoFonteNome,
+    this.onElementoTap,
     this.empresaIdParaRegioes,
   });
 
@@ -816,6 +1040,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
   final String plantaId;
   final bool mostrarNomes;
   final double tamanhoFonteNome;
+  final ValueChanged<ElementoModel>? onElementoTap;
   final String? empresaIdParaRegioes;
 
   @override
@@ -1015,14 +1240,27 @@ class _VisualizadorPlantaPlanejamentoState
                                   : Colors.orange;
 
                               final pino = Positioned(
-                                left: cx - (wPino / 2),
-                                top: cy - (hPino / 2),
-                                child: PinoDinamico(
-                                  tipoMarcacao: el.tipoMarcacao ?? 'Retângulo',
-                                  largura: wPino,
-                                  altura: hPino,
-                                  rotacao: el.marcacaoRotacao ?? 0.0,
-                                  corBase: corVizinho,
+                                left: cx - (math.max(wPino, 44.0) / 2),
+                                top: cy - (math.max(hPino, 44.0) / 2),
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.translucent,
+                                  onTap: widget.onElementoTap == null
+                                      ? null
+                                      : () => widget.onElementoTap!(el),
+                                  child: SizedBox(
+                                    width: math.max(wPino, 44.0),
+                                    height: math.max(hPino, 44.0),
+                                    child: Center(
+                                      child: PinoDinamico(
+                                        tipoMarcacao:
+                                            el.tipoMarcacao ?? 'Retângulo',
+                                        largura: wPino,
+                                        altura: hPino,
+                                        rotacao: el.marcacaoRotacao ?? 0.0,
+                                        corBase: corVizinho,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               );
 
@@ -1042,21 +1280,28 @@ class _VisualizadorPlantaPlanejamentoState
                                 nomeVizinho = Positioned(
                                   left: nx * w,
                                   top: ny * h,
-                                  child: IgnorePointer(
-                                    child: FractionalTranslation(
-                                      translation: const Offset(-0.5, -0.5),
-                                      child: Text(
-                                        el.nome!,
-                                        style: TextStyle(
-                                          color: corVizinho,
-                                          fontSize: widget.tamanhoFonteNome,
-                                          fontWeight: FontWeight.bold,
-                                          shadows: const [
-                                            Shadow(
-                                              color: Colors.white,
-                                              blurRadius: 4,
-                                            ),
-                                          ],
+                                  child: FractionalTranslation(
+                                    translation: const Offset(-0.5, -0.5),
+                                    child: GestureDetector(
+                                      behavior: HitTestBehavior.translucent,
+                                      onTap: widget.onElementoTap == null
+                                          ? null
+                                          : () => widget.onElementoTap!(el),
+                                      child: Padding(
+                                        padding: const EdgeInsets.all(8),
+                                        child: Text(
+                                          el.nome!,
+                                          style: TextStyle(
+                                            color: corVizinho,
+                                            fontSize: widget.tamanhoFonteNome,
+                                            fontWeight: FontWeight.bold,
+                                            shadows: const [
+                                              Shadow(
+                                                color: Colors.white,
+                                                blurRadius: 4,
+                                              ),
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ),

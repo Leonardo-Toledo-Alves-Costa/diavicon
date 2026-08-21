@@ -311,6 +311,7 @@ final routerProvider = Provider<GoRouter>((ref) {
             tipo: _stringExtra(extra, 'tipo'),
             local: _stringExtra(extra, 'local'),
             imageUrl: _stringExtra(extra, 'imageUrl'),
+            marcacaoImagemUrl: _stringExtra(extra, 'marcacaoImagemUrl'),
           );
         },
         routes: [
@@ -325,6 +326,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 initialTipoElemento: _elementoTipo(extra),
                 initialTipologiaEstrutural: _elementoTipologia(extra),
                 initialLocalElemento: _stringExtra(extra, 'local'),
+                initialMarcacaoImagemUrl: _stringExtra(
+                  extra,
+                  'marcacaoImagemUrl',
+                ),
                 onOpenRelatorios: () =>
                     context.push('$basePath/relatorios', extra: extra),
               );

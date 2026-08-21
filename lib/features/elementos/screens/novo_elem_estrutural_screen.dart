@@ -319,6 +319,7 @@ class _NovoElemEstruturalScreenState
       plantaId: idPlanta,
       inicial: _marcacaoPlanta,
       nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null,
+      capturarImagem: true,
     );
 
     if (resultado == null || !mounted) return;
@@ -383,7 +384,7 @@ class _NovoElemEstruturalScreenState
       urlsDeFotos = [urlPublica];
     }
 
-    await repo.criarElemento(
+    final elementoCriado = await repo.criarElemento(
       ElementoModel(
         id: '',
         nome: draft.nome.isEmpty ? null : draft.nome,
@@ -406,6 +407,28 @@ class _NovoElemEstruturalScreenState
       ),
       estruturaId,
     );
+
+    final marcacao = draft.marcacao;
+    if (marcacao == null) return;
+
+    try {
+      final imagemBytes = marcacao.thumbnailBytes;
+      if (imagemBytes == null || imagemBytes.isEmpty) {
+        throw Exception('A imagem da marcação não foi gerada.');
+      }
+      final imagemUrl = await repo.uploadImagemMarcacao(
+        elementoId: elementoCriado.id,
+        bytes: imagemBytes,
+      );
+      await repo.atualizarElemento(
+        elementoCriado.copyWith(marcacaoImagemUrl: imagemUrl),
+      );
+    } catch (e) {
+      try {
+        await repo.excluirElemento(elementoCriado.id);
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   List<String> _getOptionsList(EstruturalDropdownField field) {

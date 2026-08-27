@@ -5,15 +5,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
+import '../utils/risco_gut_calculo.dart';
+import 'analise_geral_inspecao_screen.dart';
 import 'inspecao_visual_local_screen.dart';
 import 'registro_inspecao_screen.dart';
 
 final visaoGeralProvider = FutureProvider.family.autoDispose<Map<String, dynamic>, String>((ref, inspecaoGeralId) async {
   final supabase = Supabase.instance.client;
-  final res = await supabase.from('ponto_inspecao_visual').select('''id, id_local, estruturas_locais (nome), id_elemento, ponto_inspecao_visual_anomalia (risco_maj)''').eq('id_ponto_geral', inspecaoGeralId);
+  final res = await supabase.from('ponto_inspecao_visual').select('''id, id_local, estruturas_locais (nome), id_elemento, ponto_inspecao_visual_anomalia (risco_maj, area_afetada, anomalias(gravidade_valor, urgencia_valor, tendencia_valor))''').eq('id_ponto_geral', inspecaoGeralId);
 
   final List<dynamic> pontos = res;
-  int totalGut = 0;
+  double totalGut = 0;
   final Set<String> locaisUnicos = {};
   final Set<String> elementosUnicos = {};
   final Map<String, Map<String, dynamic>> agrupamentoLocais = {};
@@ -21,18 +23,25 @@ final visaoGeralProvider = FutureProvider.family.autoDispose<Map<String, dynamic
   for (var ponto in pontos) {
     if (ponto['id_local'] != null) locaisUnicos.add(ponto['id_local']);
     if (ponto['id_elemento'] != null) elementosUnicos.add(ponto['id_elemento']);
-    
-    int gutPonto = 0;
+
+    double gutPonto = 0;
     final anomalias = ponto['ponto_inspecao_visual_anomalia'] as List? ?? [];
     for (var a in anomalias) {
-      gutPonto += (a['risco_maj'] as num?)?.toInt() ?? 0;
+      final anomaliaCatalogo = a['anomalias'] as Map<String, dynamic>?;
+      gutPonto += calcularPontuacaoRiscoGut(
+        gravidadeValor: anomaliaCatalogo?['gravidade_valor'],
+        urgenciaValor: anomaliaCatalogo?['urgencia_valor'],
+        tendenciaValor: anomaliaCatalogo?['tendencia_valor'],
+        majoracao: a['risco_maj'],
+        areaAfetada: a['area_afetada'],
+      );
     }
     totalGut += gutPonto;
 
     final localId = ponto['id_local'];
     if (localId != null) {
       final localNome = ponto['estruturas_locais']?['nome'] ?? 'Local Desconhecido';
-      if (!agrupamentoLocais.containsKey(localId)) agrupamentoLocais[localId] = {'id': localId, 'nome': localNome, 'registros': 0, 'gut': 0};
+      if (!agrupamentoLocais.containsKey(localId)) agrupamentoLocais[localId] = {'id': localId, 'nome': localNome, 'registros': 0, 'gut': 0.0};
       agrupamentoLocais[localId]!['registros'] += 1;
       agrupamentoLocais[localId]!['gut'] += gutPonto;
     }
@@ -74,7 +83,39 @@ class _VisaoGeralInspecaoScreenState extends ConsumerState<VisaoGeralInspecaoScr
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: const CustomAppBar(title: 'Inspeção Visual\nVisão Geral', showBackButton: true),
+      //appBar: const CustomAppBar(title: 'Inspeção Visual\nVisão Geral', showBackButton: true),
+      appBar: CustomAppBar(
+        title: 'Painel',
+        showBackButton: true,
+        showMenuButton: false,
+        titleWidget: const Column(
+          children: [
+            //Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Visão geral', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
+        extraActions: [
+          IconButton(
+            icon: const Icon(Icons.insights, color: Colors.white),
+            tooltip: 'Análise Geral',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => AnaliseGeralInspecaoScreen(
+                  projetoId: widget.projetoId,
+                  estruturaId: widget.estruturaId,
+                  inspecaoGeralId: widget.inspecaoGeralId,
+                  inspecaoGeralNome: widget.inspecaoGeralNome,
+                  projetoNome: widget.projetoNome,
+                  estruturaNome: widget.estruturaNome,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+      
       body: asyncDados.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Erro ao carregar dados: $e')),
@@ -98,7 +139,7 @@ class _VisaoGeralInspecaoScreenState extends ConsumerState<VisaoGeralInspecaoScr
                     _buildMiniCard('Registros', dados['total_registros'].toString().padLeft(2, '0')),
                     _buildMiniCard('Locais', dados['total_locais'].toString().padLeft(2, '0')),
                     _buildMiniCard('Elementos', dados['total_elementos'].toString().padLeft(2, '0')),
-                    _buildMiniCardGUT(dados['gut_total'].toString()),
+                    _buildMiniCardGUT((dados['gut_total'] as double).toStringAsFixed(2)),
                   ],
                 ),
                 const SizedBox(height: 16),
@@ -137,7 +178,7 @@ class _VisaoGeralInspecaoScreenState extends ConsumerState<VisaoGeralInspecaoScr
                     },
                     child: Container(
                       margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4))]),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(local['nome'], style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), const SizedBox(height: 4), Text('${local['registros']} registros', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500)), const SizedBox(height: 4), Text('Pontuação G.U.T ${local['gut']}', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade400))]),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(local['nome'], style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), const SizedBox(height: 4), Text('${local['registros']} registros', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade500)), const SizedBox(height: 4), Text('Pontuação G.U.T ${(local['gut'] as double).toStringAsFixed(2)}', style: GoogleFonts.lato(fontSize: 12, color: const Color(0xFFFFA726)))]),  //const Color(0xFFFFA726)
                     ),
                   );
                 }),

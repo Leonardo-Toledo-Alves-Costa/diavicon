@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
+import 'anomalias_screen.dart';
 import 'campo_itens_screen.dart';
 
 class CamposMenuScreen extends StatelessWidget {
@@ -17,7 +17,13 @@ class CamposMenuScreen extends StatelessWidget {
         title: 'Empresa',
         showBackButton: true,
         showMenuButton: false,
-        titleWidget: Text('Campos', style: TextStyle(fontSize: 14, color: Colors.white70)),
+        titleWidget: Column(
+          children: [
+            Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Campos personalizáveis', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
@@ -25,14 +31,8 @@ class CamposMenuScreen extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Cabeçalho da Seção
-            Row(
-              children: [
-                const Icon(Icons.check_box_outline_blank, color: AppColors.primary, size: 20),
-                const SizedBox(width: 12),
-                Text('Cadastros técnicos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.grey[800])),
-              ],
-            ),
-            const Divider(height: 32, thickness: 1, color: Colors.black12),
+            
+            const SizedBox(height: 20),
 
             // GRUPO ESTRUTURA
             _buildCategoryTitle('ESTRUTURA'),
@@ -44,15 +44,21 @@ class CamposMenuScreen extends StatelessWidget {
             // GRUPO LOCAL
             _buildCategoryTitle('LOCAL'),
             _buildMenuItem(context, 'Condições do local', 'condicoes_local', Icons.wb_sunny_outlined),
-            _buildMenuItem(context, 'Tipologia do local', 'tipologia_local', Icons.place_outlined),
+            _buildMenuItem(context, 'Tipologia do local', 'tipologias_local', Icons.place_outlined),
             const SizedBox(height: 24),
 
             // GRUPO ELEMENTO
             _buildCategoryTitle('ELEMENTO'),
             _buildMenuItem(context, 'Tipos de elemento', 'tipos_elemento', Icons.foundation),
             _buildMenuItem(context, 'Tipologias de elemento', 'tipologias_elemento', Icons.account_tree),
-            _buildMenuItem(context, 'Sistemas habitacionais', 'sistemas_habitacionais', Icons.home_work_outlined),
-            _buildMenuItem(context, 'Revestimento de elemento', 'revestimento_elemento', Icons.layers_outlined),
+            _buildMenuItem(context, 'Sistemas', 'sistemas_habitacionais', Icons.home_work_outlined),
+            _buildMenuItem(context, 'Revestimento de elemento', 'revestimentos_elemento', Icons.layers_outlined),
+            const SizedBox(height: 24),
+
+            //ANOMALIAS
+            _buildCategoryTitle('INSPEÇÃO VISUAL E GUT'),
+            _buildMenuItem(context, 'Anomalias e manifestações patológicas', 'anomalias', Icons.report_outlined),
+            
             
             const SizedBox(height: 40),
           ],
@@ -77,17 +83,19 @@ class CamposMenuScreen extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => CampoItensScreen(
-              empresaId: empresaId,
-              tableName: tableName,
-              displayTitle: title,
-            ),
+            builder: (_) => tableName == 'anomalias'
+                ? AnomaliasScreen(empresaId: empresaId)
+                : CampoItensScreen(
+                    empresaId: empresaId,
+                    tableName: tableName,
+                    displayTitle: title,
+                  ),
           ),
         );
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 14),
-        child: Row(
+        child:Row(
           children: [
             Icon(icon, size: 20, color: Colors.grey[400]),
             const SizedBox(width: 16),

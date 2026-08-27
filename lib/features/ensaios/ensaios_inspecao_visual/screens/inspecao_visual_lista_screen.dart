@@ -101,7 +101,7 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
           mainAxisSize: MainAxisSize.min,
           children: [
             Text('Projeto', style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500)),
-            Text('Ensaio', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -229,8 +229,8 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
                                 children: [
                                   Text(insp.nome, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
                                   const SizedBox(height: 4),
-                                  Text('$projetoNomeUI • $estruturaNomeUI', style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFFFFA726), fontWeight: FontWeight.bold)),
-                                  const SizedBox(height: 4),
+                                  //Text('$projetoNomeUI • $estruturaNomeUI', style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFFFFA726), fontWeight: FontWeight.bold)),
+                                  //const SizedBox(height: 4),
                                   Text('${insp.tipo} - ${insp.totalRegistros} registros', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
                                   const SizedBox(height: 8),
                                   Text(insp.locaisAtendidos.isEmpty ? 'Nenhum local registrado' : insp.locaisAtendidos.join(' | '), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade400)),

@@ -22,18 +22,6 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
 
-  final List<String> _defaultTipologias = [
-    'Área Comum',
-    'Fachada',
-    'Cobertura',
-    'Subsolo',
-  ];
-  final List<String> _defaultCondicoes = [
-    'Externo coberto',
-    'Externo descoberto',
-    'Interno',
-  ];
-
   String? _tipologiaSelecionada;
   String? _condicaoSelecionada;
   bool _isLoading = false;
@@ -120,15 +108,13 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
     final tipologiasAsync = ref.watch(tipologiasLocalProvider);
     final condicoesAsync = ref.watch(condicoesLocalProvider);
 
-    List<String> tipologiaOptions = {
-      ..._defaultTipologias,
-      ...(tipologiasAsync.value ?? []),
-    }.toList();
-    
-    List<String> condicoesOptions = {
-      ..._defaultCondicoes,
-      ...(condicoesAsync.value ?? []),
-    }.toList();
+    List<String> tipologiaOptions = List<String>.from(
+      tipologiasAsync.value ?? [],
+    );
+
+    List<String> condicoesOptions = List<String>.from(
+      condicoesAsync.value ?? [],
+    );
 
     if (_tipologiaSelecionada != null && !tipologiaOptions.contains(_tipologiaSelecionada!)) {
       tipologiaOptions.add(_tipologiaSelecionada!);

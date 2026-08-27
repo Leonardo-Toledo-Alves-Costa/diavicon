@@ -290,7 +290,14 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       appBar: const CustomAppBar(
         title: 'Painel',
         showBackButton: true,
-        titleWidget: Text('Informações', style: TextStyle(fontSize: 14, color: Colors.white70)),
+        showMenuButton: false,
+        titleWidget: Column(
+          children: [
+            Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Informações', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
+import '../../feed_educacao/screens/criar_post_screen.dart';
 
 class MainScreen extends StatelessWidget {
   final Widget child;
@@ -68,6 +69,7 @@ class MainScreen extends StatelessWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
+
                       _buildNavItem(
                         context,
                         Icons.folder_open,
@@ -75,7 +77,9 @@ class MainScreen extends StatelessWidget {
                         '/projetos',
                         location,
                       ),
+
                       const SizedBox(width: spaceBetweenPairs),
+
                       _buildNavItem(
                         context,
                         Icons.layers_outlined,
@@ -94,6 +98,7 @@ class MainScreen extends StatelessWidget {
                         '/minha-empresa',
                         location,
                       ),
+
                       const SizedBox(width: spaceBetweenPairs),
                       _buildNavItem(
                         context,
@@ -101,30 +106,28 @@ class MainScreen extends StatelessWidget {
                         'Educação',
                         '/educacao',
                         location,
-                        isDisabled: true,
                       ),
+
                     ],
                   ),
                 ),
               ),
             ),
 
-            // O BOTÃO DE +
+            // O BOTÃO DE + (AÇÕES RÁPIDAS)
             Positioned(
               left: (size.width / 2) - (fabSize / 2),
               bottom: fabBottomOffset,
               child: Builder(
                 builder: (context) {
-                  // 👇 Define automaticamente se o botão deve estar desativado na tela atual
+                  // Define se o botão deve estar desativado nas telas que não possuem ação rápida
                   final bool isFabDisabled =
                       location.startsWith('/minha-empresa') ||
-                      location.startsWith('/educacao') ||
                       location.startsWith('/estruturas');
 
                   return GestureDetector(
                     onTap: () {
                       if (isFabDisabled) {
-                        // 👇 Mostra o alerta e bloqueia o clique
                         DiaviconAlerts.show(
                           context,
                           'Em desenvolvimento',
@@ -134,7 +137,7 @@ class MainScreen extends StatelessWidget {
                         return;
                       }
 
-                      // Ações normais para as telas ativas
+                      // Ação para a tela de Projetos
                       if (location.startsWith('/projetos')) {
                         showDiaviconModal(
                           context: context,
@@ -142,10 +145,21 @@ class MainScreen extends StatelessWidget {
                           height: 540,
                           body: const NewProjectBody(),
                         );
+                        return;
+                      }
+
+                      // Ação para a tela de Educação (Abre a tela de Criar Post)
+                      if (location.startsWith('/educacao')) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const CriarPostScreen(),
+                          ),
+                        );
+                        return;
                       }
                     },
                     child: Opacity(
-                      // 👇 Aplica o efeito "apagado" (cinza) se estiver desativado
                       opacity: isFabDisabled ? 0.4 : 1.0,
                       child: Container(
                         width: fabSize,
@@ -173,7 +187,6 @@ class MainScreen extends StatelessWidget {
                               Icons.add,
                               color: Colors.white,
                               size: plusIconSize,
-                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
@@ -195,13 +208,12 @@ class MainScreen extends StatelessWidget {
     String label,
     String route,
     String location, {
-    bool isDisabled = false, // 👈 Novo parâmetro
+    bool isDisabled = false,
   }) {
     final bool isSelected = location.startsWith(route) && !isDisabled;
     return InkWell(
       onTap: () {
         if (isDisabled) {
-          // 👇 Mostra o aviso se estiver desativado
           DiaviconAlerts.show(
             context,
             'Em desenvolvimento',
@@ -209,12 +221,11 @@ class MainScreen extends StatelessWidget {
             isAviso: true,
           );
         } else {
-          // Navega normalmente se estiver ativo
           context.go(route);
         }
       },
       child: Opacity(
-        opacity: isDisabled ? 0.4 : 1.0, // 👇 Deixa o botão cinza clarinho
+        opacity: isDisabled ? 0.4 : 1.0,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -254,7 +265,7 @@ class MainScreen extends StatelessWidget {
   }
 }
 
-// O PINTOR DO CUCURUTO
+// O PINTOR DO CURVADO DA BARRA INFERIOR
 class BottomBarPainter extends CustomPainter {
   final double humpWidth;
   final double humpHeight;

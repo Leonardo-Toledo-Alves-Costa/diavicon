@@ -51,7 +51,7 @@ class PerfilDrawer extends ConsumerWidget {
     final fotoUrl = usuario?.fotoUrl;
     final titulo = usuario?.tituloPrincipal ?? '';
     final empresaNome = empresa?.nome ?? '';
-    final empresaId =empresa?.id ?? '';
+    final empresaId = usuario?.empresaId ?? '';
 
     return Drawer(
       backgroundColor: const Color(0xFFEFEFEF),

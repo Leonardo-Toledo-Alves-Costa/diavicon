@@ -148,38 +148,38 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 20),// ---> aqui é o inicio do cadastro
 
-                // Column(
-                //   children: [
-                //     const Text(
-                //       'AINDA NÃO POSSUI UMA CONTA?',
-                //       style: TextStyle(
-                //         fontSize: 10,
-                //         fontWeight: FontWeight.bold,
-                //         color: Colors.grey,
-                //         letterSpacing: 0.8,
-                //         fontFamily: 'Lato',
-                //       ),
-                //     ),
-                //     // GestureDetector(
-                //     //   onTap: () => context.push('/register'),
-                //     //   child: const Padding(
-                //     //     padding: EdgeInsets.symmetric(vertical: 4),
-                //     //     child: Text(
-                //     //       'CADASTRE-SE',
-                //     //       style: TextStyle(
-                //     //         color: AppColors.primary,
-                //     //         fontWeight: FontWeight.w900,
-                //     //         fontSize: 15,
-                //     //         fontFamily: 'Lato',
-                //     //       ),
-                //     //     ),
-                //     //   ),
-                //     // ),
-                //   ],
-                // ),
-              ],
+                 Column(
+                   children: [
+                     const Text(
+                       'AINDA NÃO POSSUI UMA CONTA?',
+                       style: TextStyle(
+                         fontSize: 10,
+                         fontWeight: FontWeight.bold,
+                         color: Colors.grey,
+                         letterSpacing: 0.8,
+                         fontFamily: 'Lato',
+                       ),
+                     ),
+                      GestureDetector(
+                        onTap: () => context.push('/register'),
+                        child: const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 4),
+                          child: Text(
+                            'CADASTRE-SE',
+                            style: TextStyle(
+                              color: AppColors.primary,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 15,
+                              fontFamily: 'Lato',
+                            ),
+                          ),
+                        ),
+                      ),
+                   ],
+                 ),
+              ],// ---> aqui é o fim do cadastro
             ),
           ),
         ),

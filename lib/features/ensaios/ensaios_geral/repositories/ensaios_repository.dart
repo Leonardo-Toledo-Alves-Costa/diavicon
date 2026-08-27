@@ -18,6 +18,9 @@ class EnsaiosRepository {
     }
   }
 
+  /// Vincula um ensaio contratado a uma região. A região só guarda o
+  /// desenho/marcação na planta — o quantitativo contratado é sempre
+  /// armazenado em `ensaios_contratados`, nunca na região.
   Future<void> salvarEnsaioNaRegiao({
     required String estruturaId,
     required String empresaId,
@@ -31,29 +34,17 @@ class EnsaiosRepository {
       throw Exception('Tipo de ensaio não encontrado no banco: $nomeEnsaio');
     }
 
-    final tipoResp = await _supabase
-        .from('tipos_ensaio')
-        .select('icone_path')
-        .eq('id', tipoEnsaioId)
-        .maybeSingle();
-
-    final iconePath =
-        tipoResp?['icone_path']?.toString() ??
-        'assets/images/ensaios/default.png';
-
     final contratoExistente = await _supabase
         .from('ensaios_contratados')
-        .select('id, quantidade')
-        .eq('estrutura_id', estruturaId)
-        .eq('empresa_id', empresaId)
+        .select('id')
+        .eq('regiao_id', regiaoId)
         .eq('tipo_ensaio_id', tipoEnsaioId)
         .maybeSingle();
 
     if (contratoExistente != null) {
-      final qtdAtual = (contratoExistente['quantidade'] as num?)?.toInt() ?? 0;
       await _supabase
           .from('ensaios_contratados')
-          .update({'quantidade': qtdAtual + quantidade})
+          .update({'quantidade': quantidade})
           .eq('id', contratoExistente['id']);
     } else {
       await _supabase.from('ensaios_contratados').insert({
@@ -64,41 +55,6 @@ class EnsaiosRepository {
         'regiao_id': regiaoId,
       });
     }
-
-    final regiaoResp = await _supabase
-        .from('regioes_ensaio')
-        .select('ensaios')
-        .eq('id', regiaoId)
-        .maybeSingle();
-
-    final listaAtual = <Map<String, dynamic>>[];
-    final raw = regiaoResp?['ensaios'];
-
-    if (raw is List) {
-      for (final item in raw) {
-        if (item is Map) {
-          listaAtual.add(Map<String, dynamic>.from(item));
-        }
-      }
-    }
-
-    final index = listaAtual.indexWhere((item) => item['nome'] == nomeEnsaio);
-
-    if (index >= 0) {
-      listaAtual[index]['qtd'] = quantidade;
-      listaAtual[index]['icone'] = iconePath;
-    } else {
-      listaAtual.add({
-        'nome': nomeEnsaio,
-        'icone': iconePath,
-        'qtd': quantidade,
-      });
-    }
-
-    await _supabase
-        .from('regioes_ensaio')
-        .update({'ensaios': listaAtual, 'qtd_ensaios': listaAtual.length})
-        .eq('id', regiaoId);
   }
 
   Future<List<ResumoEnsaioModel>> getResumoEnsaiosEstrutura({

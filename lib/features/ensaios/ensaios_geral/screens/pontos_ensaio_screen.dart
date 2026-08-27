@@ -20,6 +20,7 @@ class PontosEnsaioScreen extends ConsumerStatefulWidget {
   final String estruturaId;
   final String iconeEnsaio;
   final String tipoEnsaioId;
+  final String? elementoId;
 
   const PontosEnsaioScreen({
     super.key,
@@ -27,6 +28,7 @@ class PontosEnsaioScreen extends ConsumerStatefulWidget {
     required this.estruturaId,
     required this.iconeEnsaio,
     required this.tipoEnsaioId,
+    this.elementoId,
   });
 
   @override
@@ -49,6 +51,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
         projetoId: widget.projetoId,
         estruturaId: widget.estruturaId,
         tipoEnsaioId: widget.tipoEnsaioId,
+        elementoId: widget.elementoId,
       )));
     });
   }
@@ -97,6 +100,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
         projetoId: widget.projetoId,
         estruturaId: widget.estruturaId,
         tipoEnsaioId: widget.tipoEnsaioId,
+        elementoId: widget.elementoId,
       )),
     );
 
@@ -279,6 +283,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                 projetoId: widget.projetoId,
                 estruturaId: widget.estruturaId,
                 tipoEnsaioId: widget.tipoEnsaioId,
+                elementoId: widget.elementoId,
               )));
               // Aguarda o provedor terminar a requisição para esconder o loading
               try {
@@ -286,6 +291,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                   projetoId: widget.projetoId,
                   estruturaId: widget.estruturaId,
                   tipoEnsaioId: widget.tipoEnsaioId,
+                  elementoId: widget.elementoId,
                 )).future);
               } catch (_) {}
             },
@@ -511,6 +517,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                                       projetoId: widget.projetoId,
                                       estruturaId: widget.estruturaId,
                                       tipoEnsaioId: widget.tipoEnsaioId,
+                                      elementoId: widget.elementoId,
                                     )),
                                   );
                                 } else {

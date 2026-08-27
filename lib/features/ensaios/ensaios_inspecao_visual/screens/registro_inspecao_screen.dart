@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
+import '../../../empresa/providers/campos_personalizaveis_provider.dart';
+import '../utils/risco_gut_calculo.dart';
 
 // TODO: Ajuste os imports abaixo para o caminho correto dos seus arquivos no projeto
 import '../widgets/novo_local_modal.dart';
@@ -73,20 +75,42 @@ final plantaProvider = FutureProvider.family.autoDispose<Map<String, dynamic>?, 
 });
 
 final tiposElementoProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  const String diaviconEmpresaId = '96b9a6b9-32d0-453e-9f69-74a2691ac5cc';
   final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser!.id;
-  final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
   
   try {
-    var query = supabase.from('tipos_elemento').select('id, nome');
-    // Filtro de empresa ignorado por falta da coluna. Se a coluna existir, pode usar o filtro.
-    final res = await query.order('nome');
-    return List<Map<String, dynamic>>.from(res);
+    final userId = supabase.auth.currentUser?.id;
+    if (userId == null) return [];
+
+    // Busca a empresa do usuário logado
+    final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+    final String? empresaId = userRes?['empresa_id']?.toString();
+
+    // Como a tabela tipos_elemento pode ou não ter empresa_id no seu banco, fazemos a query segura:
+    var query = supabase.from('tipos_elemento').select('*');
+    final response = await query.order('nome', ascending: true);
+
+    // Filtra aplicando a regra de negócio (Padrão Diavicon ou da própria empresa)
+    var lista = List<Map<String, dynamic>>.from(response);
+    
+    lista = lista.where((item) {
+      final itemEmpresaId = item['empresa_id']?.toString();
+      // É padrão se não tiver empresa_id ou se pertencer à Diavicon
+      final bool isPadrao =  itemEmpresaId == diaviconEmpresaId;
+      // Pertence à empresa logada
+      final bool daEmpresa = empresaId != null && itemEmpresaId == empresaId;
+
+      return isPadrao || daEmpresa;
+    }).toList();
+
+    return lista;
+  } on PostgrestException catch (e) {
+    throw Exception('Erro ao carregar tipos de elemento: ${e.message}');
   } catch (e) {
-    final res = await supabase.from('tipos_elemento').select('id, nome').order('nome');
-    return List<Map<String, dynamic>>.from(res);
+    throw Exception('Erro inesperado: $e');
   }
 });
+
 
 final elementosProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, ({String estruturaId, String? tipoNome})>((ref, params) async {
   if (params.tipoNome == null) return [];
@@ -94,10 +118,57 @@ final elementosProvider = FutureProvider.family.autoDispose<List<Map<String, dyn
   return List<Map<String, dynamic>>.from(res);
 });
 
-final catalogoAnomaliasProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final res = await Supabase.instance.client.from('anomalias').select('id, nome, descricao, risco_tipo, risco_valor, gravidade_valor').order('nome');
+final sistemasHabitacionaisProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  if (userId == null) return [];
+
+  final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+  final empresaId = userRes?['empresa_id']?.toString();
+  if (empresaId == null) return [];
+
+  final res = await supabase
+      .from('sistemas_habitacionais')
+      .select('id, nome')
+      .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID])
+      .order('nome');
   return List<Map<String, dynamic>>.from(res);
 });
+
+final catalogoAnomaliasProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+
+  String? empresaId;
+  if (userId != null) {
+    final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+    empresaId = userRes?['empresa_id']?.toString();
+  }
+
+  var query = supabase
+      .from('anomalias')
+      .select(
+        'id, nome, descricao, risco_tipo, risco_valor, gravidade_valor, urgencia_valor, tendencia_valor, sistema_construtivo, empresa_id',
+      );
+
+  final res = empresaId != null
+      ? await query.inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]).order('nome')
+      : await query.eq('empresa_id', DIAVICON_EMPRESA_ID).order('nome');
+
+  return List<Map<String, dynamic>>.from(res);
+});
+
+/// Pontuação de risco de uma anomalia já adicionada ao ponto (usa a chave
+/// local `area`, diferente da coluna `area_afetada` do banco).
+double _calcularPontuacaoRisco(Map<String, dynamic> anomalia) {
+  return calcularPontuacaoRiscoGut(
+    gravidadeValor: anomalia['gravidade_valor'],
+    urgenciaValor: anomalia['urgencia_valor'],
+    tendenciaValor: anomalia['tendencia_valor'],
+    majoracao: anomalia['risco_maj'],
+    areaAfetada: anomalia['area'],
+  );
+}
 
 // ==========================================
 // TELA PRINCIPAL
@@ -127,6 +198,7 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
   final _descCtrl = TextEditingController();
 
   String? _localSelecionadoId;
+  String? _sistemaSelecionadoId;
   String? _tipoElementoSelecionadoNome;
   String? _elementoSelecionadoId;
 
@@ -135,6 +207,10 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
   
   MarcacaoPlantaData? _marcacaoPlanta;
   String? _plantaIdVinculada;
+  // URL do foto_marcacao já salvo no banco (edição): se o usuário não reabrir
+  // o modal "Marcar" pra gerar uma imagem nova, reaproveitamos essa em vez de
+  // gravar null e perder a imagem que já existia.
+  String? _fotoMarcacaoExistente;
   final List<FotoGaleriaItem> _fotosGaleria = [];
   final List<Map<String, dynamic>> _anomaliasSelecionadas = [];
 
@@ -152,18 +228,20 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     try {
       final db = Supabase.instance.client;
       
-      final resPonto = await db.from('ponto_inspecao_visual').select('''*, tipos_elemento(nome)''').eq('id', widget.pontoInspecaoId!).single();
+      final resPonto = await db.from('ponto_inspecao_visual').select('''*, tipos_elemento(nome, sistemas_id)''').eq('id', widget.pontoInspecaoId!).single();
 
       _nomeCtrl.text = resPonto['registro'] ?? '';
       _descCtrl.text = resPonto['descricao'] ?? '';
       _localSelecionadoId = resPonto['id_local'];
       _elementoSelecionadoId = resPonto['id_elemento'];
       _tipoElementoSelecionadoNome = resPonto['tipos_elemento']?['nome'];
+      _sistemaSelecionadoId = resPonto['tipos_elemento']?['sistemas_id'];
 
       final resRegiao = await db.from('ponto_inspecao_regiao').select().eq('ponto_id', widget.pontoInspecaoId!).maybeSingle();
       if (resRegiao != null) {
         _plantaIdVinculada = resRegiao['planta_id'];
-        
+        _fotoMarcacaoExistente = resRegiao['foto_marcacao'];
+
         Color corBD = Colors.orange;
         if (resRegiao['cor_marcacao'] == '#2196f3') corBD = Colors.blue;
         if (resRegiao['cor_marcacao'] == '#f44336') corBD = Colors.red;
@@ -183,16 +261,23 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
         _fotosGaleria.add(FotoGaleriaItem(urlOriginal: f['foto_url'], descricao: f['descricao'] ?? ''));
       }
 
-      final resAnomalias = await db.from('ponto_inspecao_visual_anomalia').select('''*, anomalias(nome)''').eq('id_inspecao', widget.pontoInspecaoId!);
+      final resAnomalias = await db
+          .from('ponto_inspecao_visual_anomalia')
+          .select('''*, anomalias(nome, gravidade_valor, urgencia_valor, tendencia_valor)''')
+          .eq('id_inspecao', widget.pontoInspecaoId!);
       for (var a in resAnomalias) {
+        final anomaliaCatalogo = a['anomalias'] as Map<String, dynamic>?;
         _anomaliasSelecionadas.add({
           'id_anomalia': a['id_anomalia'],
-          'nome': a['anomalias']?['nome'] ?? 'Anomalia',
+          'nome': anomaliaCatalogo?['nome'] ?? 'Anomalia',
           'area': a['area_afetada']?.toString() ?? '0',
           'risco_tipo': a['risco_tipo'],
           'risco_valor': a['risco_valor'],
           'risco_descricao': a['risco_descricao'],
           'risco_maj': a['risco_maj']?.toString() ?? '0',
+          'gravidade_valor': anomaliaCatalogo?['gravidade_valor'],
+          'urgencia_valor': anomaliaCatalogo?['urgencia_valor'],
+          'tendencia_valor': anomaliaCatalogo?['tendencia_valor'],
         });
       }
 
@@ -254,9 +339,18 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
   }
 
   void _abrirFluxoNovaAnomalia() {
+    final sistemas = ref.read(sistemasHabitacionaisProvider).value ?? const [];
+    final sistemaNomeFiltro = _sistemaSelecionadoId == null
+        ? null
+        : sistemas.firstWhere(
+            (s) => s['id']?.toString() == _sistemaSelecionadoId,
+            orElse: () => const {},
+          )['nome']?.toString();
+
     showDialog(
       context: context,
       builder: (_) => ModalSelecionarAnomalia(
+        sistemaFiltro: sistemaNomeFiltro,
         onSelecionar: (anomaliaBase) {
           Navigator.pop(context);
           showDialog(
@@ -276,6 +370,26 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     );
   }
 
+  void _abrirEdicaoAnomalia(int index) {
+    final atual = _anomaliasSelecionadas[index];
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ModalDetalheAnomalia(
+        anomaliaBase: atual,
+        onSalvar: (dadosAtualizados) {
+          setState(() => _anomaliasSelecionadas[index] = dadosAtualizados);
+          Navigator.pop(context);
+        },
+        onApagar: () {
+          setState(() => _anomaliasSelecionadas.removeAt(index));
+          Navigator.pop(context);
+        },
+        onFechar: () => Navigator.pop(context),
+      ),
+    );
+  }
+
   Future<void> _salvarRegistroCompleto() async {
     if (_nomeCtrl.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha o nome do registro.', style: TextStyle(color: Colors.white)), backgroundColor: Colors.orange));
@@ -290,7 +404,16 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
 
       String? idTipoElemento;
       if (_tipoElementoSelecionadoNome != null) {
-        final resTipo = await supabase.from('tipos_elemento').select('id').eq('nome', _tipoElementoSelecionadoNome!).maybeSingle();
+        // O mesmo nome pode existir em mais de um sistema habitacional (ex:
+        // "Viga" cadastrada pela empresa e também como padrão Diavicon), então
+        // não dá pra confiar em .maybeSingle() só pelo nome — filtra pelo
+        // sistema selecionado quando houver, e sempre limita a 1 resultado
+        // pra nunca quebrar com "multiple rows returned".
+        var queryTipo = supabase.from('tipos_elemento').select('id').eq('nome', _tipoElementoSelecionadoNome!);
+        if (_sistemaSelecionadoId != null) {
+          queryTipo = queryTipo.eq('sistemas_id', _sistemaSelecionadoId!);
+        }
+        final resTipo = await queryTipo.limit(1).maybeSingle();
         if (resTipo != null) idTipoElemento = resTipo['id'] as String;
       }
 
@@ -320,7 +443,10 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
       }
 
       if (_marcacaoPlanta != null) {
-        String? urlFotoMarcacao;
+        // Se o usuário reabriu o modal "Marcar" e confirmou, temos uma nova
+        // captura pra subir; senão, reaproveita a URL já salva (edição sem
+        // remarcar não pode apagar a imagem que já existia).
+        String? urlFotoMarcacao = _fotoMarcacaoExistente;
         if (_marcacaoPlanta!.fotoMarcacaoGerada != null) {
            final fileName = 'marcacoes/${DateTime.now().millisecondsSinceEpoch}.png';
            await supabase.storage.from('projetos').upload(fileName, _marcacaoPlanta!.fotoMarcacaoGerada!);
@@ -383,13 +509,27 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     if (_carregandoEdicao) return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primary)));
 
     final locaisAsync = ref.watch(locaisProvider(widget.estruturaId));
+    final sistemasAsync = ref.watch(sistemasHabitacionaisProvider);
     final tiposAsync = ref.watch(tiposElementoProvider);
     final elementosAsync = ref.watch(elementosProvider((estruturaId: widget.estruturaId, tipoNome: _tipoElementoSelecionadoNome)));
     final plantaAsync = ref.watch(plantaProvider(_localSelecionadoId));
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: CustomAppBar(title: widget.pontoInspecaoId != null ? 'Inspeção Visual\nEdição' : 'Inspeção Visual\nRegistro', showBackButton: true),
+     
+      appBar:  CustomAppBar(
+        title: 'Painel',
+        showBackButton: true,
+        showMenuButton: false,
+        titleWidget: Column(
+          children: [
+            //Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text( widget.pontoInspecaoId != null ? 'Edição' : 'Registro',style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
+      ),
+      
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
         child: Column(
@@ -448,6 +588,38 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
             Row(
               children: [
                 Expanded(
+                  child: Text('Sistema Habitacional', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600)),
+                ),
+                if (_sistemaSelecionadoId != null)
+                  GestureDetector(
+                    onTap: () => setState(() {
+                      _sistemaSelecionadoId = null;
+                      _tipoElementoSelecionadoNome = null;
+                      _elementoSelecionadoId = null;
+                    }),
+                    child: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            sistemasAsync.when(
+              loading: () => const LinearProgressIndicator(color: AppColors.primary),
+              error: (e, _) => const Text('Erro ao carregar sistemas'),
+              data: (sistemas) => _buildDropdown(
+                value: _sistemaSelecionadoId,
+                items: sistemas.map((s) => DropdownMenuItem(value: s['id'].toString(), child: Text(s['nome'].toString(), overflow: TextOverflow.ellipsis))).toList(),
+                onChanged: (val) => setState(() {
+                  _sistemaSelecionadoId = val;
+                  _tipoElementoSelecionadoNome = null;
+                  _elementoSelecionadoId = null;
+                }),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            Row(
+              children: [
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -456,14 +628,19 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
                       tiposAsync.when(
                         loading: () => const LinearProgressIndicator(color: AppColors.primary),
                         error: (e, _) => const Text('Erro ao carregar'),
-                        data: (tipos) => _buildDropdown(
-                          value: _tipoElementoSelecionadoNome,
-                          items: tipos.map((t) => DropdownMenuItem(value: t['nome'].toString(), child: Text(t['nome'].toString(), overflow: TextOverflow.ellipsis))).toList(),
-                          onChanged: (val) => setState(() {
-                            _tipoElementoSelecionadoNome = val;
-                            _elementoSelecionadoId = null; 
-                          }),
-                        ),
+                        data: (tipos) {
+                          final tiposFiltrados = _sistemaSelecionadoId == null
+                              ? tipos
+                              : tipos.where((t) => t['sistemas_id']?.toString() == _sistemaSelecionadoId).toList();
+                          return _buildDropdown(
+                            value: _tipoElementoSelecionadoNome,
+                            items: tiposFiltrados.map((t) => DropdownMenuItem(value: t['nome'].toString(), child: Text(t['nome'].toString(), overflow: TextOverflow.ellipsis))).toList(),
+                            onChanged: (val) => setState(() {
+                              _tipoElementoSelecionadoNome = val;
+                              _elementoSelecionadoId = null;
+                            }),
+                          );
+                        },
                       ),
                     ],
                   ),
@@ -498,52 +675,56 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
               ],
             ),
             
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _buildTextButtonAdd('Novo Tipo', () async {
-                        // AQUI CHAMAMOS O MODAL NATIVO NOVO TIPO ELEMENTO[cite: 14]
-                        final res = await showDialog(
-                          context: context,
-                          builder: (_) => const NovoTipoElementoModal(),
-                        );
-                        if (res != null && res is String) {
-                          ref.invalidate(tiposElementoProvider);
-                          setState(() { _tipoElementoSelecionadoNome = res; _elementoSelecionadoId = null; });
-                        }
-                      }),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _tipoElementoSelecionadoNome == null 
-                          ? const SizedBox.shrink() 
-                          : _buildTextButtonAdd('Novo Elemento', () async {
-                              // AQUI CHAMAMOS O NOVO MODAL INTERNO DO ELEMENTO ESTRUTURAL
-                              final res = await showDialog(
-                                context: context,
-                                builder: (_) => ModalNovoElementoEstrutural(
-                                  estruturaId: widget.estruturaId,
-                                  tipoElemento: _tipoElementoSelecionadoNome!,
-                                  localId: _localSelecionadoId,
-                                )
-                              );
-                              if (res != null && res is String) {
-                                ref.invalidate(elementosProvider((estruturaId: widget.estruturaId, tipoNome: _tipoElementoSelecionadoNome)));
-                                setState(() => _elementoSelecionadoId = res);
-                              }
-                            }),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+           // Padding(
+            //  padding: const EdgeInsets.only(top: 8.0),
+           //  
+          //    child: Row(
+         //       children: [
+         //         Expanded(
+          //          child: Align(
+            //          alignment: Alignment.centerLeft,
+            //          child: _buildTextButtonAdd('Novo Tipo', () async {
+           //             // AQUI CHAMAMOS O MODAL NATIVO NOVO TIPO ELEMENTO[cite: 14]
+          //              final res = await showDialog(
+           //               context: context,
+           //               builder: (_) => const NovoTipoElementoModal(),
+          //              );
+          //              if (res != null && res is String) {
+         //                 ref.invalidate(tiposElementoProvider);
+         //                 setState(() { _tipoElementoSelecionadoNome = res; _elementoSelecionadoId = null; });
+         //               }
+        //              }),
+        //            ),
+        //          ),
+             //     const SizedBox(width: 12),
+            //      Expanded(
+           //         child: Align(
+          //            alignment: Alignment.centerLeft,
+         //             child: _tipoElementoSelecionadoNome == null 
+        //                  ? const SizedBox.shrink() 
+       //                   : _buildTextButtonAdd('Novo Elemento', () async {
+      //                       // AQUI CHAMAMOS O NOVO MODAL INTERNO DO ELEMENTO ESTRUTURAL
+                  //            final res = await showDialog(
+                //                context: context,
+              //                  builder: (_) => ModalNovoElementoEstrutural(
+            //                      estruturaId: widget.estruturaId,
+          //                        tipoElemento: _tipoElementoSelecionadoNome!,
+        //                          localId: _localSelecionadoId,
+      //                          )
+    //                          );
+  //                            
+//
+                         //     if (res != null && res is String) {
+                        //        ref.invalidate(elementosProvider((estruturaId: widget.estruturaId, tipoNome: _tipoElementoSelecionadoNome)));
+                       //         setState(() => _elementoSelecionadoId = res);
+                      //        }
+                     //       }),
+                   //// ),
+                 // ),
+               // ],
+             // ),
+           // ),
+
             const SizedBox(height: 24),
 
             Container(
@@ -579,32 +760,49 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
                                 height: 160,
                                 decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade300)),
                                 clipBehavior: Clip.hardEdge,
-                                child: Stack(
-                                  alignment: Alignment.center,
-                                  children: [
-                                    if (_marcacaoPlanta?.fotoMarcacaoGerada != null)
-                                      Image.file(_marcacaoPlanta!.fotoMarcacaoGerada!, fit: BoxFit.cover, width: double.infinity)
-                                    else ...[
-                                      Image.network(plantaData['arquivo_url'], fit: BoxFit.contain, width: double.infinity, errorBuilder: (c,e,s) => const Center(child: Icon(Icons.broken_image, color: Colors.grey))),
-                                      if (_marcacaoPlanta != null)
-                                        LayoutBuilder(
-                                          builder: (context, constraints) {
-                                            return Positioned(
-                                              left: _marcacaoPlanta!.posicao.dx * constraints.maxWidth - (_marcacaoPlanta!.largura * 500),
-                                              top: _marcacaoPlanta!.posicao.dy * constraints.maxHeight - (_marcacaoPlanta!.altura * 500),
-                                              child: Transform.rotate(
-                                                angle: _marcacaoPlanta!.rotacao,
-                                                child: Container(
-                                                  width: _marcacaoPlanta!.largura * 1000, height: _marcacaoPlanta!.altura * 1000,
-                                                  decoration: BoxDecoration(color: _marcacaoPlanta!.cor.withValues(alpha: 0.6), shape: _marcacaoPlanta!.formato == 'Círculo' ? BoxShape.circle : BoxShape.rectangle, border: Border.all(color: Colors.white, width: 2)),
-                                                ),
+                                child: _marcacaoPlanta?.fotoMarcacaoGerada != null
+                                    ? Image.file(_marcacaoPlanta!.fotoMarcacaoGerada!, fit: BoxFit.cover, width: double.infinity)
+                                    : LayoutBuilder(
+                                        builder: (context, constraints) {
+                                          // Mesma lógica de proporção (área quadrada = renderSize)
+                                          // usada em ModalMarcacaoPlantaApp, pra a marcação
+                                          // aparecer no mesmo lugar aqui e lá.
+                                          final renderSize = constraints.maxWidth < constraints.maxHeight
+                                              ? constraints.maxWidth
+                                              : constraints.maxHeight;
+                                          return Center(
+                                            child: SizedBox(
+                                              width: renderSize,
+                                              height: renderSize,
+                                              child: Stack(
+                                                alignment: Alignment.center,
+                                                children: [
+                                                  Image.network(
+                                                    plantaData['arquivo_url'],
+                                                    fit: BoxFit.contain,
+                                                    width: renderSize,
+                                                    height: renderSize,
+                                                    errorBuilder: (c, e, s) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
+                                                  ),
+                                                  if (_marcacaoPlanta != null)
+                                                    Positioned(
+                                                      left: (_marcacaoPlanta!.posicao.dx * renderSize) - ((_marcacaoPlanta!.largura * renderSize) / 2),
+                                                      top: (_marcacaoPlanta!.posicao.dy * renderSize) - ((_marcacaoPlanta!.altura * renderSize) / 2),
+                                                      child: Transform.rotate(
+                                                        angle: _marcacaoPlanta!.rotacao,
+                                                        child: Container(
+                                                          width: _marcacaoPlanta!.largura * renderSize,
+                                                          height: _marcacaoPlanta!.altura * renderSize,
+                                                          decoration: BoxDecoration(color: _marcacaoPlanta!.cor.withValues(alpha: 0.6), shape: _marcacaoPlanta!.formato == 'Círculo' ? BoxShape.circle : BoxShape.rectangle, border: Border.all(color: Colors.white, width: 2)),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                ],
                                               ),
-                                            );
-                                          },
-                                        ),
-                                    ]
-                                  ],
-                                ),
+                                            ),
+                                          );
+                                        },
+                                      ),
                               ),
                               const SizedBox(height: 12),
                               Align(
@@ -682,11 +880,16 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
             if (_anomaliasSelecionadas.isEmpty)
               const Center(child: Padding(padding: EdgeInsets.all(16.0), child: Text('Nenhuma anomalia inserida.', style: TextStyle(color: Colors.grey)))),
               
-            ..._anomaliasSelecionadas.map((anomalia) {
+            ..._anomaliasSelecionadas.asMap().entries.map((entry) {
+              final index = entry.key;
+              final anomalia = entry.value;
               Color corRisco = anomalia['risco_valor'].toString().toLowerCase() == 'alto' ? Colors.red : Colors.orange;
               Color bgRisco = anomalia['risco_valor'].toString().toLowerCase() == 'alto' ? Colors.red.shade50 : Colors.orange.shade50;
+              final pontuacao = _calcularPontuacaoRisco(anomalia);
 
-              return Container(
+              return GestureDetector(
+                onTap: () => _abrirEdicaoAnomalia(index),
+                child: Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
@@ -714,7 +917,7 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
                             const SizedBox(width: 4),
                             Text('G.U.T', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
                             const SizedBox(width: 8),
-                            Text('${anomalia['risco_maj'] ?? '-'}', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
+                            Text(pontuacao.toStringAsFixed(2), style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -722,6 +925,7 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
                       ],
                     ),
                   ],
+                ),
                 ),
               );
             }),
@@ -907,11 +1111,15 @@ class _ModalEdicaoFotoState extends State<ModalEdicaoFoto> {
 // ==========================================
 class ModalSelecionarAnomalia extends ConsumerWidget {
   final Function(Map<String, dynamic>) onSelecionar;
-  const ModalSelecionarAnomalia({super.key, required this.onSelecionar});
+  final String? sistemaFiltro;
+  const ModalSelecionarAnomalia({super.key, required this.onSelecionar, this.sistemaFiltro});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final anomaliasAsync = ref.watch(catalogoAnomaliasProvider);
+    final anomaliasAsync = ref.watch(catalogoAnomaliasProvider).whenData((lista) {
+      if (sistemaFiltro == null) return lista;
+      return lista.where((a) => a['sistema_construtivo'] == sistemaFiltro).toList();
+    });
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
@@ -961,7 +1169,8 @@ class ModalDetalheAnomalia extends StatefulWidget {
   final Map<String, dynamic> anomaliaBase;
   final Function(Map<String, dynamic>) onSalvar;
   final VoidCallback onApagar;
-  const ModalDetalheAnomalia({super.key, required this.anomaliaBase, required this.onSalvar, required this.onApagar});
+  final VoidCallback? onFechar;
+  const ModalDetalheAnomalia({super.key, required this.anomaliaBase, required this.onSalvar, required this.onApagar, this.onFechar});
   @override
   State<ModalDetalheAnomalia> createState() => _ModalDetalheAnomaliaState();
 }
@@ -978,8 +1187,9 @@ class _ModalDetalheAnomaliaState extends State<ModalDetalheAnomalia> {
     super.initState();
     _tipoRisco = widget.anomaliaBase['risco_tipo'] ?? 'Humano';
     _classeRisco = widget.anomaliaBase['risco_valor'] ?? 'Alto';
-    _majCtrl.text = widget.anomaliaBase['risco_major']?.toString() ?? '00';
-    _descCtrl.text = widget.anomaliaBase['descricao'] ?? '';
+    _areaCtrl.text = widget.anomaliaBase['area']?.toString() ?? '';
+    _majCtrl.text = widget.anomaliaBase['risco_maj']?.toString() ?? '0';
+    _descCtrl.text = (widget.anomaliaBase['risco_descricao'] ?? widget.anomaliaBase['descricao'])?.toString() ?? '';
   }
 
   @override
@@ -993,9 +1203,14 @@ class _ModalDetalheAnomaliaState extends State<ModalDetalheAnomalia> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Detalhe da Anomalia', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), GestureDetector(onTap: widget.onApagar, child: const Icon(Icons.close, color: Colors.grey))]),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Detalhe da Anomalia', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), GestureDetector(onTap: widget.onFechar ?? widget.onApagar, child: const Icon(Icons.close, color: Colors.grey))]),
             const SizedBox(height: 16),
             Text(widget.anomaliaBase['nome'], style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
+            const SizedBox(height: 4),
+            Text(
+              'Gravidade ${widget.anomaliaBase['gravidade_valor'] ?? '-'} · Urgência ${widget.anomaliaBase['urgencia_valor'] ?? '-'} · Tendência ${widget.anomaliaBase['tendencia_valor'] ?? '-'}',
+              style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600),
+            ),
             const SizedBox(height: 24),
             Row(children: [Expanded(flex: 2, child: Text('Área Afetada (%)', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600))), Expanded(flex: 1, child: TextField(controller: _areaCtrl, keyboardType: TextInputType.number, textAlign: TextAlign.center, decoration: InputDecoration(hintText: '00', border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)), contentPadding: const EdgeInsets.symmetric(vertical: 8))))]),
             const SizedBox(height: 16),
@@ -1022,7 +1237,18 @@ class _ModalDetalheAnomaliaState extends State<ModalDetalheAnomalia> {
                 ElevatedButton(
                   onPressed: () {
                     if (_areaCtrl.text.isEmpty) return;
-                    widget.onSalvar({'id_anomalia': widget.anomaliaBase['id'], 'nome': widget.anomaliaBase['nome'], 'area': _areaCtrl.text, 'risco_tipo': _tipoRisco, 'risco_valor': _classeRisco, 'risco_maj': _majCtrl.text, 'risco_descricao': _descCtrl.text});
+                    widget.onSalvar({
+                      'id_anomalia': widget.anomaliaBase['id_anomalia'] ?? widget.anomaliaBase['id'],
+                      'nome': widget.anomaliaBase['nome'],
+                      'area': _areaCtrl.text,
+                      'risco_tipo': _tipoRisco,
+                      'risco_valor': _classeRisco,
+                      'risco_maj': _majCtrl.text,
+                      'risco_descricao': _descCtrl.text,
+                      'gravidade_valor': widget.anomaliaBase['gravidade_valor'],
+                      'urgencia_valor': widget.anomaliaBase['urgencia_valor'],
+                      'tendencia_valor': widget.anomaliaBase['tendencia_valor'],
+                    });
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFA726), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0),
                   child: const Text('Salvar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -1038,6 +1264,9 @@ class _ModalDetalheAnomaliaState extends State<ModalDetalheAnomalia> {
 
 // ==========================================
 // MODAL DE MARCAÇÃO DA PLANTA
+// ==========================================
+// ==========================================
+// MODAL DE MARCAÇÃO DA PLANTA (CORRIGIDO)
 // ==========================================
 class ModalMarcacaoPlantaApp extends StatefulWidget {
   final MarcacaoPlantaData? dadosIniciais;
@@ -1059,6 +1288,13 @@ class _ModalMarcacaoPlantaAppState extends State<ModalMarcacaoPlantaApp> {
 
   Future<void> _salvarMarcacao() async {
     try {
+      // Garante que a planta (Image.network) já terminou de carregar/pintar
+      // antes de capturar o RepaintBoundary — senão a captura pode sair em
+      // branco (imagem ainda carregando) mesmo com a marcação posicionada.
+      if (mounted) await precacheImage(NetworkImage(widget.imageUrl), context);
+      await WidgetsBinding.instance.endOfFrame;
+      if (!mounted) return;
+
       RenderRepaintBoundary? boundary = _boundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
       if (boundary != null) {
         ui.Image image = await boundary.toImage(pixelRatio: 2.0);
@@ -1102,34 +1338,44 @@ class _ModalMarcacaoPlantaAppState extends State<ModalMarcacaoPlantaApp> {
               color: const Color(0xFFF0F0F0),
               child: LayoutBuilder(
                 builder: (context, constraints) {
+                  // Definimos a área base proporcional (quadrada responsiva ao container)
+                  double renderSize = constraints.maxWidth < constraints.maxHeight ? constraints.maxWidth : constraints.maxHeight;
+
                   return InteractiveViewer(
                     minScale: 0.5, maxScale: 5.0,
                     child: Center(
                       child: SizedBox(
-                        width: constraints.maxWidth,
-                        height: constraints.maxWidth, 
+                        width: renderSize,
+                        height: renderSize, 
                         child: RepaintBoundary(
                           key: _boundaryKey,
                           child: Stack(
                             alignment: Alignment.center,
                             children: [
-                              Image.network(widget.imageUrl, fit: BoxFit.contain, width: constraints.maxWidth, height: constraints.maxWidth, errorBuilder: (c,e,s) => const Center(child: Text('Erro ao carregar planta'))),
+                              Image.network(widget.imageUrl, fit: BoxFit.contain, width: renderSize, height: renderSize, errorBuilder: (c,e,s) => const Center(child: Text('Erro ao carregar planta'))),
                               Positioned(
-                                left: _dados.posicao.dx * constraints.maxWidth - (_dados.largura * 500),
-                                top: _dados.posicao.dy * constraints.maxWidth - (_dados.altura * 500),
+                                // Correção proporcional baseada no renderSize real da tela
+                                left: (_dados.posicao.dx * renderSize) - ((_dados.largura * renderSize) / 2),
+                                top: (_dados.posicao.dy * renderSize) - ((_dados.altura * renderSize) / 2),
                                 child: GestureDetector(
                                   onPanUpdate: (details) {
                                     setState(() {
-                                      double newX = _dados.posicao.dx + (details.delta.dx / constraints.maxWidth);
-                                      double newY = _dados.posicao.dy + (details.delta.dy / constraints.maxWidth);
+                                      double newX = _dados.posicao.dx + (details.delta.dx / renderSize);
+                                      double newY = _dados.posicao.dy + (details.delta.dy / renderSize);
                                       _dados.posicao = Offset(newX.clamp(0.0, 1.0), newY.clamp(0.0, 1.0));
                                     });
                                   },
                                   child: Transform.rotate(
                                     angle: _dados.rotacao,
                                     child: Container(
-                                      width: _dados.largura * 1000, height: _dados.altura * 1000,
-                                      decoration: BoxDecoration(color: _dados.cor.withValues(alpha: 0.5), shape: _dados.formato == 'Círculo' ? BoxShape.circle : BoxShape.rectangle, border: Border.all(color: Colors.white, width: 2)),
+                                      // Proporção correta em relação ao tamanho da área da planta
+                                      width: _dados.largura * renderSize, 
+                                      height: _dados.altura * renderSize,
+                                      decoration: BoxDecoration(
+                                        color: _dados.cor.withValues(alpha: 0.5), 
+                                        shape: _dados.formato == 'Círculo' ? BoxShape.circle : BoxShape.rectangle, 
+                                        border: Border.all(color: Colors.white, width: 2)
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -1171,8 +1417,8 @@ class _ModalMarcacaoPlantaAppState extends State<ModalMarcacaoPlantaApp> {
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Largura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)), Slider(value: _dados.largura, min: 0.01, max: 0.2, onChanged: (v) => setState(() => _dados.largura = v), activeColor: Colors.orange)])),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Altura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)), Slider(value: _dados.altura, min: 0.01, max: 0.2, onChanged: (v) => setState(() => _dados.altura = v), activeColor: Colors.orange)])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Largura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)), Slider(value: _dados.largura, min: 0.02, max: 0.3, onChanged: (v) => setState(() => _dados.largura = v), activeColor: Colors.orange)])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Altura', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)), Slider(value: _dados.altura, min: 0.02, max: 0.3, onChanged: (v) => setState(() => _dados.altura = v), activeColor: Colors.orange)])),
                   ],
                 ),
                 Row(

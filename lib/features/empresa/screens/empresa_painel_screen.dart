@@ -5,6 +5,7 @@ import '../providers/empresa_profile_provider.dart';
 import 'empresa_informacoes_screen.dart'; // Tela do formulário
 import 'painel_servicos_screen.dart';
 import 'campos_menu_screen.dart';
+import 'colaboradores_empresa.dart';
 
 class EmpresaPainelScreen extends StatelessWidget {
   final EmpresaDetalheModel empresa;
@@ -15,12 +16,14 @@ class EmpresaPainelScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final location = (empresa.cidade != null && empresa.estado != null)
         ? '${empresa.cidade}, ${empresa.estado}' : 'Localização indisponível';
+    final empresaId = empresa.id;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
       appBar: const CustomAppBar(
         title: 'Painel',
         showBackButton: true,
+        showMenuButton: false,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -69,7 +72,9 @@ class EmpresaPainelScreen extends StatelessWidget {
                   icon: Icons.people_outline,
                   title: 'Colaboradores\ncadastrados',
                   //badgeCount: '12', // Substitua pelos dados reais futuramente
-                  onTap: () {},
+                  onTap: () {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ColaboradoresEmpresaScreen(empresaId: empresaId)));
+                  },
                 ),
                 _PainelCard(
                   icon: Icons.store_outlined,

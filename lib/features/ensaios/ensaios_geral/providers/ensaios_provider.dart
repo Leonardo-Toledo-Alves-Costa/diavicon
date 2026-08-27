@@ -7,11 +7,14 @@ class ResumoEnsaiosParams {
   final String projetoId;
   final String estruturaId;
   final String? tipoEnsaioId;
+  final String? elementoId;
+  
 
   const ResumoEnsaiosParams({
     required this.projetoId,
     required this.estruturaId,
     this.tipoEnsaioId,
+    this.elementoId,
   });
 
   @override
@@ -74,6 +77,8 @@ final resumoEnsaiosProvider = FutureProvider.family
             )
             .eq('projeto_id', params.projetoId)
             .eq('estrutura_id', params.estruturaId);
+
+       
 
         if (params.tipoEnsaioId != null) {
           queryExecutados = queryExecutados.eq(

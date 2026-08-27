@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; 
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
@@ -12,11 +13,137 @@ import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../ensaios/ensaios_geral/providers/ensaios_provider.dart';
 import '../../ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart';
 import '../../ensaios/ensaios_geral/widgets/novo_ponto_ensaio_modal.dart';
-//imports de ensaios
 import '../../ensaios/ensaios_geral/widgets/selecionar_tipo_ensaio_modal.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
 import 'elemento_form_screen.dart';
+
+// =========================================================================
+// PROVIDER DE PROGRESSO (Mapeamento de Realizados vs Contratados por Região)
+// =========================================================================
+typedef ProgressoEnsaiosParams = ({String elementoId, String estruturaId, String? projetoId});
+
+class ProgressoEnsaio {
+  final String tipoId;
+  final String nome;
+  final String elementoId;
+  final int contratados;
+  final int realizados;
+
+  ProgressoEnsaio({
+    required this.tipoId,
+    required this.nome,
+    required this.elementoId,
+    required this.contratados,
+    required this.realizados,
+  });
+}
+
+final progressoEnsaiosProvider = FutureProvider.family.autoDispose<List<ProgressoEnsaio>, ProgressoEnsaiosParams>((ref, params) async {
+  final supabase = Supabase.instance.client;
+
+  try {
+    // 1. Busca TODAS as regiões vinculadas a este elemento específico
+    final resRegioes = await supabase
+        .from('regioes_ensaio')
+        .select('id')
+        .eq('elemento_id', params.elementoId);
+
+    // Extrai apenas os IDs das regiões para usarmos como filtro
+    final List<String> regioesIds = resRegioes.map((r) => r['id'].toString()).toList();
+
+    List<Map<String, dynamic>> resContratados = [];
+
+    // 2. Busca os ensaios contratados atrelados a essas regiões (usando inFilter)
+    if (regioesIds.isNotEmpty) {
+      final res = await supabase
+          .from('ensaios_contratados')
+          .select('tipo_ensaio_id, quantidade, tipos_ensaio(id, nome)')
+          .inFilter('regiao_id', regioesIds);
+          
+      resContratados = List<Map<String, dynamic>>.from(res);
+    }
+
+    // 3. Busca os ensaios já realizados fisicamente no elemento
+    final pontosRealizados = await ref.watch(ensaiosDoElementoProvider(params.elementoId).future);
+
+    final map = <String, ProgressoEnsaio>{};
+
+    // 4. Agrupa e soma as quantidades contratadas
+    for (var row in resContratados) {
+      final tipoId = row['tipo_ensaio_id']?.toString() ?? '';
+      if (tipoId.isEmpty) continue;
+
+      final qtdContratada = (row['quantidade'] as num?)?.toInt() ?? 0;
+      final nome = (row['tipos_ensaio'] != null && row['tipos_ensaio'] is Map)
+          ? row['tipos_ensaio']['nome']?.toString() ?? 'Desconhecido'
+          : 'Desconhecido';
+
+      if (map.containsKey(tipoId)) {
+        map[tipoId] = ProgressoEnsaio(
+          tipoId: tipoId,
+          nome: map[tipoId]!.nome,
+          elementoId: params.elementoId,
+          contratados: map[tipoId]!.contratados + qtdContratada,
+          realizados: map[tipoId]!.realizados, 
+        );
+      } else {
+        map[tipoId] = ProgressoEnsaio(
+          tipoId: tipoId,
+          nome: nome,
+          elementoId: params.elementoId,
+          contratados: qtdContratada,
+          realizados: 0,
+        );
+      }
+    }
+
+    // 5. Agrupa e soma os ensaios que já foram realizados
+    for (var ponto in pontosRealizados) {
+      final tipoEnsaio = ponto['tipos_ensaio'];
+      if (tipoEnsaio == null) continue;
+
+      final tipoId = tipoEnsaio['id']?.toString() ?? '';
+      final nome = tipoEnsaio['nome']?.toString() ?? 'Desconhecido';
+      if (tipoId.isEmpty) continue;
+
+      if (map.containsKey(tipoId)) {
+        map[tipoId] = ProgressoEnsaio(
+          tipoId: tipoId,
+          nome: map[tipoId]!.nome,
+          elementoId: params.elementoId,
+          contratados: map[tipoId]!.contratados,
+          realizados: map[tipoId]!.realizados + 1,
+        );
+      } else {
+        // Exibe também os ensaios que foram realizados "avulsos" (sem contrato na região)
+        map[tipoId] = ProgressoEnsaio(
+          tipoId: tipoId,
+          nome: nome,
+          elementoId: params.elementoId,
+          contratados: 0,
+          realizados: 1,
+        );
+      }
+    }
+
+    // Ordenação alfabética para exibição dos gráficos
+    final lista = map.values.toList();
+    lista.sort((a, b) => a.nome.compareTo(b.nome)); 
+    return lista;
+
+  } on PostgrestException catch (e) {
+    throw Exception('Erro no banco de dados ao buscar progresso: ${e.message}');
+  } on AuthException catch (e) {
+    throw Exception('Erro de autenticação: ${e.message}');
+  } catch (e) {
+    throw Exception('Erro inesperado: $e');
+  }
+});
+
+// =========================================================================
+// TELA PRINCIPAL
+// =========================================================================
 
 class ElementosHomeScreen extends ConsumerStatefulWidget {
   const ElementosHomeScreen({
@@ -48,9 +175,9 @@ class ElementosHomeScreen extends ConsumerStatefulWidget {
   final String? imageUrl;
   final String? marcacaoImagemUrl;
 
+
   @override
-  ConsumerState<ElementosHomeScreen> createState() =>
-      _ElementosHomeScreenState();
+  ConsumerState<ElementosHomeScreen> createState() => _ElementosHomeScreenState();
 }
 
 class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
@@ -111,6 +238,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
           estruturaId: widget.estruturaId!,
           tipoEnsaioNome: ensaioEscolhido['nome'],
           tipoEnsaioId: realTipoId,
+          //elementoId: widget.elementoId,
         ),
       );
     }
@@ -184,12 +312,6 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     }
   }
 
-  void _openRelatorios() {
-    final basePath = _basePath;
-    if (basePath == null) return;
-    context.push('$basePath/relatorios', extra: _routeExtra);
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -223,12 +345,6 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                   'Esta funcionalidade estará disponível em breve!',
                   isAviso: true,
                 );
-                // Navigator.pop(context);
-                // if (widget.onOpenRelatorios != null) {
-                //   widget.onOpenRelatorios!();
-                // } else {
-                //   _openRelatorios();
-                // }
               },
             ),
           ),
@@ -299,23 +415,21 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                       local: _localAtual,
                     ),
                     const SizedBox(height: 18),
-                    const _ResumoStrip(),
+                    
+                    if (widget.elementoId != null && widget.estruturaId != null)
+                      _ResumoStrip(
+                        elementoId: widget.elementoId!,
+                        estruturaId: widget.estruturaId!,
+                        projetoId: widget.projetoId,
+                      ),
+                    
                     const SizedBox(height: 32),
 
                     _SectionHeader(onIncluirElemento: _openNovoEnsaioModal),
-
                     const SizedBox(height: 16),
-                    SizedBox(
-                      width: 220,
-                      // child: CompactSearchBar(
-                      //   hintText: 'Ensaio',
-                      //   onChanged: widget.onSearchChanged,
-                      // ),
-                    ),
+                    
+                    const SizedBox(width: 220), 
 
-                    // const SizedBox(height: 24),
-
-                    // const SizedBox(height: 24),
                     Consumer(
                       builder: (context, ref, child) {
                         if (widget.elementoId == null) {
@@ -364,16 +478,11 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                               if (!ensaiosAgrupados.containsKey(tipoId)) {
                                 ensaiosAgrupados[tipoId] = {
                                   'id': tipoId,
-                                  'nome':
-                                      tipoEnsaio['nome'] ??
-                                      'Ensaio Desconhecido',
-                                  'icone':
-                                      tipoEnsaio['icone_path'] ??
-                                      'assets/images/ensaios/carbonatacao.png',
+                                  'nome': tipoEnsaio['nome'] ?? 'Ensaio Desconhecido',
+                                  'icone': tipoEnsaio['icone_path'] ?? 'assets/images/ensaios/carbonatacao.png',
                                   'quantidade': 0,
                                 };
                               }
-                              // Soma +1 ponto a este tipo de ensaio
                               ensaiosAgrupados[tipoId]!['quantidade'] += 1;
                             }
 
@@ -385,18 +494,14 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                                   child: _EnsaioCard(
                                     iconAsset: grupo['icone'],
                                     title: grupo['nome'],
-                                    subtitle:
-                                        '${grupo['quantidade']} ponto(s) neste elemento',
+                                    subtitle: '${grupo['quantidade']} ponto(s) neste elemento',
                                     detail: 'Ver todos os pontos na estrutura',
                                     statusText: 'Acessar',
                                     statusColor: AppColors.primary,
-                                    statusBgColor: AppColors.primary
-                                        .withValues(alpha: 0.1),
-                                    mockAvatar: false, // Desliga o avatar falso
+                                    statusBgColor: AppColors.primary.withValues(alpha: 0.1),
+                                    mockAvatar: false,
                                     onTap: () {
-                                      // 👇 3. ROTA PARA A TELA GERAL DE PONTOS (Protótipo image_73209d)
-                                      if (widget.projetoId == null ||
-                                          widget.estruturaId == null) {
+                                      if (widget.projetoId == null || widget.estruturaId == null) {
                                         return;
                                       }
 
@@ -406,19 +511,15 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                                           builder: (context) =>
                                               PontosEnsaioScreen(
                                                 projetoId: widget.projetoId!,
-                                                estruturaId:
-                                                    widget.estruturaId!,
+                                                estruturaId: widget.estruturaId!,
                                                 iconeEnsaio: grupo['icone'],
                                                 tipoEnsaioId: grupo['id'],
+                                                elementoId: widget.elementoId,
                                               ),
                                         ),
                                       ).then((_) {
-                                        // Atualiza a lista ao voltar
-                                        ref.refresh(
-                                          ensaiosDoElementoProvider(
-                                            widget.elementoId!,
-                                          ),
-                                        );
+                                        ref.refresh(ensaiosDoElementoProvider(widget.elementoId!));
+                                        ref.refresh(progressoEnsaiosProvider((elementoId: widget.elementoId!, estruturaId: widget.estruturaId!, projetoId: widget.projetoId)));
                                       });
                                     },
                                   ),
@@ -429,8 +530,6 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                         );
                       },
                     ),
-                    // const SizedBox(height: 16),
-                    // const SizedBox(height: 16),
                   ],
                 ),
               ),
@@ -443,7 +542,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTES DE UI MANTIDOS
+// COMPONENTES DE UI
 // ─────────────────────────────────────────────────────────────────────────────
 
 class _ElementoHero extends StatelessWidget {
@@ -454,7 +553,6 @@ class _ElementoHero extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const double heroHeight = 280;
-
     final String? urlLocal = imageUrl;
 
     if (urlLocal != null && urlLocal.isNotEmpty) {
@@ -535,45 +633,62 @@ class _ElementoHeader extends StatelessWidget {
   }
 }
 
-class _ResumoStrip extends StatelessWidget {
-  const _ResumoStrip();
+class _ResumoStrip extends ConsumerWidget {
+  final String elementoId;
+  final String estruturaId;
+  final String? projetoId;
+
+  const _ResumoStrip({
+    required this.elementoId,
+    required this.estruturaId,
+    this.projetoId,
+  });
 
   @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      clipBehavior: Clip.none,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        // children: const [
-        //   SizedBox(
-        //     width: 95,
-        //     child: _ResumoCard(
-        //       title: 'Frente de carbonatação',
-        //       count: '01/04',
-        //       borderColor: AppColors.primary,
-        //     ),
-        //   ),
-        //   SizedBox(width: 12),
-        //   SizedBox(
-        //     width: 95,
-        //     child: _ResumoCard(
-        //       title: 'Potencial de corrosão',
-        //       count: '02/02',
-        //       borderColor: Color(0xFF20A862),
-        //     ),
-        //   ),
-        //   SizedBox(width: 12),
-        //   SizedBox(
-        //     width: 95,
-        //     child: _ResumoCard(
-        //       title: 'Resistividade elet. sup.',
-        //       count: '03/04',
-        //       borderColor: AppColors.primary,
-        //     ),
-        //   ),
-        // ],
-      ),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final params = (elementoId: elementoId, estruturaId: estruturaId, projetoId: projetoId);
+    final progressoAsync = ref.watch(progressoEnsaiosProvider(params));
+
+    return progressoAsync.when(
+      loading: () => const SizedBox(height: 100, child: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Text('Erro ao carregar gráficos: $e', style: const TextStyle(color: Colors.red)),
+      data: (progressos) {
+        // Se a lista estiver vazia (sem contratos vinculados à região do elemento E sem ensaios realizados), a UI é ocultada
+        if (progressos.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Progresso dos ensaios',
+              style: GoogleFonts.lato(
+                color: const Color(0xFF263238), 
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              clipBehavior: Clip.none,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: progressos.map((prog) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 12.0),
+                    child: _ResumoCard(
+                      title: prog.nome,
+                      realizados: prog.realizados,
+                      contratados: prog.contratados,
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -581,62 +696,80 @@ class _ResumoStrip extends StatelessWidget {
 class _ResumoCard extends StatelessWidget {
   const _ResumoCard({
     required this.title,
-    required this.count,
-    required this.borderColor,
+    required this.realizados,
+    required this.contratados,
   });
 
   final String title;
-  final String count;
-  final Color borderColor;
+  final int realizados;
+  final int contratados;
 
   @override
   Widget build(BuildContext context) {
+    final isComplete = realizados >= contratados && contratados > 0;
+    final double progressValue = contratados == 0 ? 1.0 : (realizados / contratados).clamp(0.0, 1.0);
+    final Color progressColor = isComplete ? const Color(0xFF20A862) : const Color(0xFFE87B1D);
+
     return Container(
+      width: 115,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(10),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
-            blurRadius: 8,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Container(
-        height: 70,
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: borderColor, width: 1.2),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
-              title,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: GoogleFonts.lato(
-                color: const Color(0xFF4A4A4A),
-                fontSize: 11,
-                fontWeight: FontWeight.bold,
-                height: 1.1,
-              ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 52,
+            width: 52,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                CircularProgressIndicator(
+                  value: progressValue,
+                  strokeWidth: 5.5,
+                  backgroundColor: Colors.grey.shade200,
+                  valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                  strokeCap: StrokeCap.round,
+                ),
+                Center(
+                  child: isComplete
+                      ? Icon(Icons.check, color: progressColor, size: 28)
+                      : Text(
+                          '$realizados/$contratados',
+                          style: GoogleFonts.lato(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: const Color(0xFF333333),
+                          ),
+                        ),
+                ),
+              ],
             ),
-            const SizedBox(height: 6),
-            Text(
-              count,
-              style: GoogleFonts.lato(
-                color: const Color(0xFF757575),
-                fontSize: 13,
-                fontWeight: FontWeight.w400,
-                height: 1,
-              ),
+          ),
+          const SizedBox(height: 14),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.lato(
+              color: const Color(0xFF4A4A4A),
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              height: 1.2,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -789,41 +922,6 @@ class _EnsaioCard extends StatelessWidget {
                                   color: statusColor,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w800,
-                                ),
-                              ),
-                            ),
-
-                          if (statusText != null && mockAvatar)
-                            const SizedBox(width: 12),
-
-                          if (mockAvatar)
-                            Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white,
-                                border: Border.all(
-                                  color: Colors.grey.shade200,
-                                  width: 1.5,
-                                ),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.08),
-                                    blurRadius: 4,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ClipOval(
-                                child: Image.network(
-                                  'https://ui-avatars.com/api/?name=Asimov&background=random&size=100',
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (_, _, _) => const Icon(
-                                    Icons.business,
-                                    size: 16,
-                                    color: Colors.grey,
-                                  ),
                                 ),
                               ),
                             ),

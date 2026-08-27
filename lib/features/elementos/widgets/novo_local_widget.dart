@@ -22,19 +22,6 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
   final _nomeController = TextEditingController();
   final _descricaoController = TextEditingController();
 
-  // Opções padrão como ponto de partida
-  final List<String> _defaultTipologias = [
-    'Área Comum',
-    'Fachada',
-    'Cobertura',
-    'Subsolo',
-  ];
-  final List<String> _defaultCondicoes = [
-    'Externo coberto',
-    'Externo descoberto',
-    'Interno',
-  ];
-
   String? _tipologiaSelecionada;
   String? _condicaoSelecionada;
 
@@ -121,15 +108,12 @@ class _NovoLocalModalState extends ConsumerState<NovoLocalModal> {
     final tipologiasAsync = ref.watch(tipologiasLocalProvider);
     final condicoesAsync = ref.watch(condicoesLocalProvider);
 
-    //  Mescla os valores padrão com os valores que vieram do banco
-    List<String> tipologiaOptions = {
-      ..._defaultTipologias,
-      ...(tipologiasAsync.value ?? []),
-    }.toList();
-    List<String> condicoesOptions = {
-      ..._defaultCondicoes,
-      ...(condicoesAsync.value ?? []),
-    }.toList();
+    List<String> tipologiaOptions = List<String>.from(
+      tipologiasAsync.value ?? [],
+    );
+    List<String> condicoesOptions = List<String>.from(
+      condicoesAsync.value ?? [],
+    );
 
     // Garante que a opção que você acabou de criar esteja na lista para o Dropdown não quebrar
     if (_tipologiaSelecionada != null &&

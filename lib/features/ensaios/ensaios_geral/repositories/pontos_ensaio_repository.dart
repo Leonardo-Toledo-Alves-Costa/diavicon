@@ -9,10 +9,11 @@ class PontosEnsaioRepository {
     required String projetoId,
     required String estruturaId,
     required String tipoEnsaioId,
+    String? elementoId,
   }) async {
     try {
       // 1. Busca os pontos de ensaio cruzando com os elementos
-      final response = await _supabase
+      var query = _supabase
           .from('pontos_ensaios_geral')
           .select('''
             id,
@@ -33,6 +34,13 @@ class PontosEnsaioRepository {
           .eq('projeto_id', projetoId)
           .eq('tipo_ensaio_id', tipoEnsaioId)
           .eq('elementos_estruturais.estrutura_id', estruturaId);
+
+          // 2. Aplica o filtro de elemento dinamicamente
+      if (elementoId != null && elementoId.isNotEmpty) {
+        query = query.eq('elemento_estrutural_id', elementoId);
+      }
+
+      final response = await query;
 
       final List data = response as List;
       if (data.isEmpty) return [];

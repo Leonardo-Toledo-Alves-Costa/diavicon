@@ -1,3 +1,5 @@
+import '../utils/risco_gut_calculo.dart';
+
 class PontoInspecaoVisualModel {
   final String id;
   final String registro;
@@ -9,7 +11,7 @@ class PontoInspecaoVisualModel {
   // Agregações para a UI
   final String? capaUrl;
   final int qtdFotos;
-  final int gutTotal;
+  final double gutTotal;
   final List<String> tags; // Ex: ['Pilar', 'Corrosão']
 
   PontoInspecaoVisualModel({
@@ -21,22 +23,28 @@ class PontoInspecaoVisualModel {
     this.tipoElementoId,
     this.capaUrl,
     this.qtdFotos = 0,
-    this.gutTotal = 0,
+    this.gutTotal = 0.0,
     this.tags = const [],
   });
 
   factory PontoInspecaoVisualModel.fromMap(Map<String, dynamic> map) {
     // Cálculo do GUT e extração de Tags via Inner Joins do Supabase
-    int gut = 0;
+    double gut = 0.0;
     List<String> extraTags = [];
-    
+
     final anomalias = map['ponto_inspecao_visual_anomalia'] as List? ?? [];
     for (var a in anomalias) {
-      double risco = (a['risco_maj'] as num?)?.toDouble() ?? 0.0;
-      gut += risco.toInt();
-      if (a['anomalias'] != null && a['anomalias']['nome'] != null) {
+      final anomaliaCatalogo = a['anomalias'] as Map<String, dynamic>?;
+      gut += calcularPontuacaoRiscoGut(
+        gravidadeValor: anomaliaCatalogo?['gravidade_valor'],
+        urgenciaValor: anomaliaCatalogo?['urgencia_valor'],
+        tendenciaValor: anomaliaCatalogo?['tendencia_valor'],
+        majoracao: a['risco_maj'],
+        areaAfetada: a['area_afetada'],
+      );
+      if (anomaliaCatalogo != null && anomaliaCatalogo['nome'] != null) {
          // Exemplo simplificado de extração de tag
-         if (!extraTags.contains('Corrosão') && a['anomalias']['nome'].toString().toLowerCase().contains('corrosão')) {
+         if (!extraTags.contains('Corrosão') && anomaliaCatalogo['nome'].toString().toLowerCase().contains('corrosão')) {
            extraTags.add('Corrosão');
          }
       }

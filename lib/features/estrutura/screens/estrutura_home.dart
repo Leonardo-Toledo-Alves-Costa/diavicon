@@ -1,6 +1,10 @@
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/core/widgets/item_filter_field.dart';
 import 'package:diavicon/core/widgets/local_search_dropdown.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/screens/elemento_form_screen.dart';
+import 'package:diavicon/features/empresa/providers/campos_personalizaveis_provider.dart';
+import 'package:diavicon/features/empresa/providers/sistema_provider.dart';
 import 'package:diavicon/features/ensaios/ensaios_geral/screens/estrutura_ensaios_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -39,6 +43,29 @@ class EstruturaHomeScreen extends ConsumerStatefulWidget {
 
 class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
   String? _localFiltro;
+  String? _sistemaFiltro;
+  String? _tipoFiltro;
+
+  void _handleSistemaFiltroChanged(String? novoSistema) {
+    setState(() {
+      _sistemaFiltro = novoSistema;
+
+      final empresaId = ref.read(currentUserProvider)?.empresaId;
+      if (novoSistema != null && _tipoFiltro != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido =
+            tipos?.any(
+              (t) => t.nome == _tipoFiltro && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _tipoFiltro = null;
+        }
+      }
+    });
+  }
 
   void _openElemento(
     BuildContext context, {
@@ -169,7 +196,11 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
     }
   }
 
-  Widget _buildElementosList(BuildContext context, WidgetRef ref) {
+  Widget _buildElementosList(
+    BuildContext context,
+    WidgetRef ref,
+    Set<String>? tiposPermitidosPorSistema,
+  ) {
     final elementosAsync = ref.watch(
       elementosPorEstruturaProvider(widget.estrutura.id),
     );
@@ -189,9 +220,23 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         ),
       ),
       data: (elementos) {
-        final elementosFiltrados = _localFiltro == null
+        var elementosFiltrados = _localFiltro == null
             ? elementos
             : elementos.where((el) => el.local == _localFiltro).toList();
+
+        if (_tipoFiltro != null) {
+          elementosFiltrados = elementosFiltrados
+              .where((el) => el.tipo == _tipoFiltro)
+              .toList();
+        } else if (tiposPermitidosPorSistema != null) {
+          elementosFiltrados = elementosFiltrados
+              .where(
+                (el) =>
+                    el.tipo != null &&
+                    tiposPermitidosPorSistema.contains(el.tipo),
+              )
+              .toList();
+        }
 
         if (elementosFiltrados.isEmpty) {
           return const Padding(
@@ -252,6 +297,39 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
           orElse: () => widget.estrutura,
         ) ??
         widget.estrutura;
+
+    final empresaId = ref.watch(currentUserProvider)?.empresaId;
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId));
+    final tiposElementoAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
+    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+        .where(
+          (t) => _sistemaFiltro == null || t.sistemaId == _sistemaFiltro,
+        )
+        .toList();
+
+    Set<String>? tiposPermitidosPorSistema;
+    if (_sistemaFiltro != null) {
+      final tiposList = tiposElementoAsync?.value;
+      if (tiposList != null) {
+        tiposPermitidosPorSistema = tiposList
+            .where((t) => t.sistemaId == _sistemaFiltro)
+            .map((t) => t.nome)
+            .toSet();
+      }
+    }
+
+    String? labelParaSistemaId(String? id) {
+      if (id == null) return null;
+      for (final item in sistemasAsync?.value ?? const <CampoItemModel>[]) {
+        if (item.id == id) return item.nome;
+      }
+      return null;
+    }
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -431,7 +509,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     Row(
                       children: [
                         Expanded(
-                          flex: 6,
                           child: SizedBox(
                             height: 36,
                             child: LocalSearchDropdown(
@@ -445,7 +522,6 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                             ),
                           ),
                         ),
-
                         if (_localFiltro != null) ...[
                           const SizedBox(width: 4),
                           IconButton(
@@ -460,38 +536,69 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                             constraints: const BoxConstraints(),
                           ),
                         ],
+                      ],
+                    ),
+                    const SizedBox(height: 10),
 
-                        const Spacer(flex: 1),
-
+                    Row(
+                      children: [
                         Expanded(
-                          flex: 3,
-                          child: GestureDetector(
-                            onTap: () {},
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'Todos',
-                                  style: TextStyle(
-                                    fontSize: 14,
-                                    color: AppColors.textDark,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                SizedBox(width: 4),
-                                Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: AppColors.textDark,
-                                ),
-                              ],
-                            ),
+                          child: ItemFilterField(
+                            hintText: 'Sistema',
+                            selectedLabel: labelParaSistemaId(_sistemaFiltro),
+                            isLoading: sistemasAsync?.isLoading ?? false,
+                            onClear: () => _handleSistemaFiltroChanged(null),
+                            onTap: () async {
+                              final itens =
+                                  (sistemasAsync?.value ?? const <CampoItemModel>[])
+                                      .map((s) => (value: s.id, label: s.nome))
+                                      .toList();
+                              final resultado = await showItemFilterPickerSheet(
+                                context: context,
+                                titulo: 'Sistema Habitacional',
+                                items: itens,
+                                valorSelecionado: _sistemaFiltro,
+                              );
+                              if (resultado == null) return;
+                              _handleSistemaFiltroChanged(
+                                resultado == kLimparFiltroValue
+                                    ? null
+                                    : resultado,
+                              );
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 9),
+                        Expanded(
+                          child: ItemFilterField(
+                            hintText: 'Elemento',
+                            selectedLabel: _tipoFiltro,
+                            isLoading: tiposElementoAsync?.isLoading ?? false,
+                            onClear: () => setState(() => _tipoFiltro = null),
+                            onTap: () async {
+                              final itens = tiposDoSistema
+                                  .map((t) => (value: t.nome, label: t.nome))
+                                  .toList();
+                              final resultado = await showItemFilterPickerSheet(
+                                context: context,
+                                titulo: 'Tipo de Elemento Estrutural',
+                                items: itens,
+                                valorSelecionado: _tipoFiltro,
+                              );
+                              if (resultado == null) return;
+                              setState(() {
+                                _tipoFiltro = resultado == kLimparFiltroValue
+                                    ? null
+                                    : resultado;
+                              });
+                            },
                           ),
                         ),
                       ],
                     ),
                     const SizedBox(height: 24),
 
-                    _buildElementosList(context, ref),
+                    _buildElementosList(context, ref, tiposPermitidosPorSistema),
                   ],
                 ),
               ),

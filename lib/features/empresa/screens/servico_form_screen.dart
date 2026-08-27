@@ -86,6 +86,85 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
     }
   }
 
+  // =======================================================================
+  // NOVOS MÉTODOS PARA REMOÇÃO DE FOTOS DA GALERIA
+  // =======================================================================
+
+  /// Remove uma foto recém-adicionada que ainda está apenas no estado local.
+  void _removerNovaFotoGaleria(int index) {
+    setState(() {
+      _novasFotosGaleria.removeAt(index);
+    });
+  }
+
+  /// Remove uma foto que já foi salva no banco de dados (tabela empresa_servicos_galeria).
+  Future<void> _removerFotoAntigaGaleria(String idFoto) async {
+    // Solicita confirmação do usuário antes de deletar um dado permanente
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Remover foto da galeria?'),
+        content: const Text('Esta ação apagará a foto permanentemente. Deseja continuar?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Remover', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true) return;
+
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Realiza a exclusão do registro na tabela correspondente do Supabase
+      await supabase.from('empresa_servicos_galeria').delete().eq('id', idFoto);
+
+      // Invalida o provedor para forçar uma nova busca e atualizar a interface automaticamente
+      if (widget.servico != null) {
+        ref.invalidate(servicoGaleriaProvider(widget.servico!.id));
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Foto removida com sucesso!'), backgroundColor: Colors.green),
+        );
+      }
+    } on PostgrestException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro no banco de dados ao remover foto: ${e.message}'), backgroundColor: Colors.red),
+        );
+      }
+    } on AuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro de autenticação ao remover foto: ${e.message}'), backgroundColor: Colors.red),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro inesperado ao remover foto: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  // =======================================================================
+
   Future<void> _salvar() async {
     if (_nomeCtrl.text.isEmpty || _categoriaSelecionada == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha o Nome e a Categoria.'), backgroundColor: Colors.orange));
@@ -96,11 +175,9 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
 
     try {
       final supabase = Supabase.instance.client;
-      //String? servicoId = widget.servico?.id;
       String? fotoPrincipalUrl = widget.servico?.fotoPrincipal;
       String? servicoIdTemp = widget.servico?.id;
       
-
       // 1. DADOS DO SERVIÇO
       final dadosServico = {
         'empresa_id': widget.empresaId,
@@ -160,6 +237,8 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
       }
     } on PostgrestException catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro no banco: ${e.message}'), backgroundColor: Colors.red));
+    } on AuthException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro de autenticação: ${e.message}'), backgroundColor: Colors.red));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro inesperado: $e'), backgroundColor: Colors.red));
     } finally {
@@ -185,7 +264,14 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
       appBar: CustomAppBar(
         title: 'Empresa',
         showBackButton: true,
-        titleWidget: Text(widget.servico == null ? 'Novo Serviço' : 'Editar Serviço', style: const TextStyle(fontSize: 14, color: Colors.white70)),
+        showMenuButton: false,
+        titleWidget: Column(
+          children: [
+            const Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            const Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            const Text('Edição', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24),
@@ -267,33 +353,50 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Fotos que já estão no banco (se modo edição)
                   if (galeriaAntigaAsync != null)
                     galeriaAntigaAsync.when(
                       data: (fotos) => Row(
-                        children: fotos.map((f) => _buildGaleriaImg(NetworkImage(f.fotoUrl))).toList(),
+                        children: fotos.map((f) => _buildGaleriaImg(
+                          provider: NetworkImage(f.fotoUrl),
+                          onRemove: () => _removerFotoAntigaGaleria(f.id), // Passa a função de remover com o ID correto
+                        )).toList(),
                       ),
-                      loading: () => const CircularProgressIndicator(),
+                      loading: () => const Padding(
+                        padding: EdgeInsets.only(right: 16.0),
+                        child: Center(child: CircularProgressIndicator()),
+                      ),
                       error: (_, __) => const SizedBox(),
                     ),
                   
-                  // Novas fotos selecionadas (ainda não salvas)
-                  ..._novasFotosGaleria.map((file) => _buildGaleriaImg(FileImage(file))),
+                  // Novas fotos selecionadas (ainda não salvas) mapeando o índice para remoção
+                  ..._novasFotosGaleria.asMap().entries.map((entry) {
+                    final int index = entry.key;
+                    final File file = entry.value;
+                    return _buildGaleriaImg(
+                      provider: FileImage(file),
+                      onRemove: () => _removerNovaFotoGaleria(index),
+                    );
+                  }),
                   
                   // Botão Adicionar Foto
-                  GestureDetector(
-                    onTap: _adicionarFotoGaleria,
-                    child: Container(
-                      height: 80, width: 80,
-                      decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
-                      child: const Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.camera_alt_outlined, color: Colors.grey),
-                          SizedBox(height: 4),
-                          Text('Adicionar foto', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                        ],
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: GestureDetector(
+                      onTap: _adicionarFotoGaleria,
+                      child: Container(
+                        height: 80, width: 80,
+                        decoration: BoxDecoration(border: Border.all(color: Colors.grey), borderRadius: BorderRadius.circular(8)),
+                        child: const Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.camera_alt_outlined, color: Colors.grey),
+                            SizedBox(height: 4),
+                            Text('Adicionar foto', style: TextStyle(fontSize: 10, color: Colors.grey)),
+                          ],
+                        ),
                       ),
                     ),
                   )
@@ -345,14 +448,46 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
     );
   }
 
-  Widget _buildGaleriaImg(ImageProvider provider) {
-    return Container(
-      margin: const EdgeInsets.only(right: 8),
-      height: 80, width: 80,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(8),
-        image: DecorationImage(image: provider, fit: BoxFit.cover),
-      ),
+  // =======================================================================
+  // WIDGET ATUALIZADO PARA EXIBIR A IMAGEM COM O BOTÃO DE REMOÇÃO
+  // =======================================================================
+  Widget _buildGaleriaImg({required ImageProvider provider, required VoidCallback onRemove}) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          margin: const EdgeInsets.only(right: 12, top: 8), 
+          height: 80, width: 80,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade300),
+            image: DecorationImage(image: provider, fit: BoxFit.cover),
+          ),
+        ),
+        // Botão de remoção (X) ancorado no topo direito do container da imagem
+        Positioned(
+          top: 0,
+          right: 4,
+          child: GestureDetector(
+            onTap: onRemove,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.redAccent,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.2),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  )
+                ],
+              ),
+              child: const Icon(Icons.close, size: 14, color: Colors.white),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

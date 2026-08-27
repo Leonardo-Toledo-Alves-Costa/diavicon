@@ -22,7 +22,7 @@ class PontoInspecaoRepository {
           *,
           tipos_elemento (nome),
           ponto_inspecao_visual_galeria (foto_url),
-          ponto_inspecao_visual_anomalia (risco_maj, anomalias(nome))
+          ponto_inspecao_visual_anomalia (risco_maj, area_afetada, anomalias(nome, gravidade_valor, urgencia_valor, tendencia_valor))
         ''')
         .eq('id_local', idLocal)
         .order('criado_em', ascending: false);

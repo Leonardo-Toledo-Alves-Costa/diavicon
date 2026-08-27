@@ -198,11 +198,7 @@ class ElementoRepository {
 
   // --- TIPOS DE ELEMENTO ---
 
-  Future<List<String>> buscarTiposElemento(String? empresaId) async {
-    if (empresaId == null)
-      return []; // Se não tem empresa logada, não busca nada
-
-  
+ 
   Future<List<String>> buscarTiposElemento(List<String> empresasIds) async {
     //if (empresasIds == null) return []; // Se não tem empresa logada, não busca nada
     try {

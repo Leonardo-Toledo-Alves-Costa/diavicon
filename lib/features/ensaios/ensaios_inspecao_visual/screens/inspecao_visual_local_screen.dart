@@ -5,18 +5,21 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
+import '../../../empresa/providers/campos_personalizaveis_provider.dart';
+import '../utils/risco_gut_calculo.dart';
+import 'inspecao_analise_screen.dart';
 import 'registro_inspecao_screen.dart';
 
 // Provider dos Registros do Local
 final pontosLocalProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, ({String inspecaoGeralId, String localId})>((ref, params) async {
   final supabase = Supabase.instance.client;
-  
+
   final res = await supabase.from('ponto_inspecao_visual').select('''
-    id, registro, descricao, 
-    tipos_elemento (nome), 
+    id, registro, descricao,
+    tipos_elemento (id, nome, sistemas_id),
     elementos_estruturais (nome),
     ponto_inspecao_visual_galeria (foto_url),
-    ponto_inspecao_visual_anomalia (risco_maj, anomalias(nome))
+    ponto_inspecao_visual_anomalia (risco_maj, area_afetada, anomalias(nome, gravidade_valor, urgencia_valor, tendencia_valor))
   ''')
   .eq('id_ponto_geral', params.inspecaoGeralId)
   .eq('id_local', params.localId)
@@ -25,17 +28,39 @@ final pontosLocalProvider = FutureProvider.family.autoDispose<List<Map<String, d
   return List<Map<String, dynamic>>.from(res);
 });
 
-// Provider dos Tipos de Elemento (Filtrados por Empresa)
+// Provider dos Tipos de Elemento (empresa do usuário + padrão Diavicon)
 final tiposElementoProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser!.id;
-  final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
-  
-  var query = supabase.from('tipos_elemento').select('id, nome');
-  if (userRes != null && userRes['empresa_id'] != null) {
-    query = query.eq('empresa_id', userRes['empresa_id']);
+  final userId = supabase.auth.currentUser?.id;
+
+  String? empresaId;
+  if (userId != null) {
+    final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+    empresaId = userRes?['empresa_id']?.toString();
   }
-  final res = await query.order('nome');
+
+  var query = supabase.from('tipos_elemento').select('id, nome, sistemas_id');
+  final res = empresaId != null
+      ? await query.inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]).order('nome')
+      : await query.eq('empresa_id', DIAVICON_EMPRESA_ID).order('nome');
+  return List<Map<String, dynamic>>.from(res);
+});
+
+// Provider dos Sistemas Habitacionais (empresa do usuário + padrão Diavicon)
+final sistemasHabitacionaisProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  if (userId == null) return [];
+
+  final userRes = await supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
+  final empresaId = userRes?['empresa_id']?.toString();
+  if (empresaId == null) return [];
+
+  final res = await supabase
+      .from('sistemas_habitacionais')
+      .select('id, nome')
+      .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID])
+      .order('nome');
   return List<Map<String, dynamic>>.from(res);
 });
 
@@ -65,22 +90,65 @@ class InspecaoVisualLocalScreen extends ConsumerStatefulWidget {
   ConsumerState<InspecaoVisualLocalScreen> createState() => _InspecaoVisualLocalScreenState();
 }
 
+/// A relação `tipos_elemento` embutida no ponto às vezes vem como Map
+/// (relação para-um) e às vezes o Supabase pode devolver como List — essa
+/// função normaliza os dois formatos pra evitar erro de cast/comparação.
+Map<String, dynamic>? _extrairTipoElemento(dynamic raw) {
+  if (raw is Map<String, dynamic>) return raw;
+  if (raw is List && raw.isNotEmpty && raw.first is Map<String, dynamic>) {
+    return raw.first as Map<String, dynamic>;
+  }
+  return null;
+}
+
 class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalScreen> {
-  String? _filtroTipoElementoNome; // Estado do Dropdown de filtro
+  // Filtra por ID (não por nome): o mesmo nome de tipo pode existir em mais
+  // de um sistema habitacional (ex: "Viga" cadastrada pela empresa e também
+  // como padrão Diavicon), então comparar só pelo nome é ambíguo.
+  String? _filtroTipoElementoId;
+  String? _filtroSistemaId;
 
   @override
   Widget build(BuildContext context) {
     final asyncPontos = ref.watch(pontosLocalProvider((inspecaoGeralId: widget.inspecaoGeralId, localId: widget.localId)));
     final asyncTipos = ref.watch(tiposElementoProvider);
+    final asyncSistemas = ref.watch(sistemasHabitacionaisProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
-      appBar: const CustomAppBar(title: 'Inspeção Visual\nLocal', showBackButton: true),
+      appBar: CustomAppBar(
+        title: 'Painel',
+        showBackButton: true,
+        showMenuButton: false,
+        titleWidget: const Column(
+          children: [
+            //Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Local', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
+        extraActions: [
+          IconButton(
+            icon: const Icon(Icons.insights, color: Colors.white),
+            tooltip: 'Análise por Local',
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => InspecaoVisualAnaliseScreen(
+                  localId: widget.localId,
+                  localNome: widget.localNome,
+                  projetoId: widget.projetoId,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: asyncPontos.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
         error: (e, _) => Center(child: Text('Erro: $e')),
         data: (pontosData) {
-          int gutTotal = 0;
+          double gutTotal = 0;
           final Set<String> elementosUnicos = {};
 
           for (var p in pontosData) {
@@ -89,14 +157,29 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
             }
             final anomalias = p['ponto_inspecao_visual_anomalia'] as List? ?? [];
             for (var a in anomalias) {
-              gutTotal += (a['risco_maj'] as num?)?.toInt() ?? 0;
+              final anomaliaCatalogo = a['anomalias'] as Map<String, dynamic>?;
+              gutTotal += calcularPontuacaoRiscoGut(
+                gravidadeValor: anomaliaCatalogo?['gravidade_valor'],
+                urgenciaValor: anomaliaCatalogo?['urgencia_valor'],
+                tendenciaValor: anomaliaCatalogo?['tendencia_valor'],
+                majoracao: a['risco_maj'],
+                areaAfetada: a['area_afetada'],
+              );
             }
           }
 
-          // APLICA O FILTRO DA LISTA BASEADO NO DROPDOWN DE ELEMENTOS
+          // APLICA O FILTRO DA LISTA BASEADO NO SISTEMA E NO TIPO DE ELEMENTO
           final pontosVisiveis = pontosData.where((p) {
-            if (_filtroTipoElementoNome == null || _filtroTipoElementoNome == 'Todos') return true;
-            return p['tipos_elemento'] != null && p['tipos_elemento']['nome'] == _filtroTipoElementoNome;
+            final tipoElemento = _extrairTipoElemento(p['tipos_elemento']);
+
+            if (_filtroSistemaId != null) {
+              if (tipoElemento == null || tipoElemento['sistemas_id']?.toString() != _filtroSistemaId) {
+                return false;
+              }
+            }
+
+            if (_filtroTipoElementoId == null) return true;
+            return tipoElemento != null && tipoElemento['id']?.toString() == _filtroTipoElementoId;
           }).toList();
 
           return Column(
@@ -126,10 +209,47 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
                       children: [
                         _buildMiniCard('Registros', pontosData.length.toString().padLeft(2, '0')),
                         _buildMiniCard('Elementos', elementosUnicos.length.toString().padLeft(2, '0')),
-                        _buildMiniCardGUT(gutTotal.toString()),
+                        _buildMiniCardGUT(gutTotal.toStringAsFixed(2)),
                       ],
                     ),
                     const SizedBox(height: 24),
+
+                    // DROPDOWN DE SISTEMA HABITACIONAL
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            height: 48, padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(color: Colors.white, border: Border.all(color: Colors.grey.shade300), borderRadius: BorderRadius.circular(24)),
+                            child: DropdownButtonHideUnderline(
+                              child: asyncSistemas.when(
+                                loading: () => const Center(child: CircularProgressIndicator()),
+                                error: (_, _) => const Text('Erro'),
+                                data: (sistemas) {
+                                  final items = [
+                                    const DropdownMenuItem(value: 'Todos', child: Text('Todos os Sistemas')),
+                                    ...sistemas.map((s) => DropdownMenuItem(value: s['id'].toString(), child: Text(s['nome'].toString(), overflow: TextOverflow.ellipsis))),
+                                  ];
+                                  return DropdownButton<String>(
+                                    isExpanded: true,
+                                    hint: Text('Sistema', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
+                                    value: _filtroSistemaId,
+                                    items: items,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        _filtroSistemaId = val == 'Todos' ? null : val;
+                                        _filtroTipoElementoId = null;
+                                      });
+                                    },
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
 
                     // DROPDOWN DE FILTRO E BOTÃO NOVO
                     Row(
@@ -143,19 +263,25 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
                                 loading: () => const Center(child: CircularProgressIndicator()),
                                 error: (_, _) => const Text('Erro'),
                                 data: (tipos) {
-                                  // Adiciona a opção "Todos" no topo
+                                  final tiposFiltrados = _filtroSistemaId == null
+                                      ? tipos
+                                      : tipos.where((t) => t['sistemas_id']?.toString() == _filtroSistemaId).toList();
+                                  // Adiciona a opção "Todos" no topo. Valor = id (não nome),
+                                  // já que o mesmo nome pode existir em mais de um sistema.
                                   final items = [
                                     const DropdownMenuItem(value: 'Todos', child: Text('Todos os Elementos')),
-                                    ...tipos.map((t) => DropdownMenuItem(value: t['nome'].toString(), child: Text(t['nome'].toString(), overflow: TextOverflow.ellipsis)))
+                                    ...tiposFiltrados.map((t) => DropdownMenuItem(value: t['id'].toString(), child: Text(t['nome'].toString(), overflow: TextOverflow.ellipsis)))
                                   ];
+                                  final valorValido = _filtroTipoElementoId != null &&
+                                      tiposFiltrados.any((t) => t['id'].toString() == _filtroTipoElementoId);
                                   return DropdownButton<String>(
                                     isExpanded: true,
                                     hint: Text('Elementos', style: TextStyle(color: Colors.grey.shade400, fontSize: 13)),
-                                    value: _filtroTipoElementoNome,
+                                    value: valorValido ? _filtroTipoElementoId : null,
                                     items: items,
                                     onChanged: (val) {
                                       setState(() {
-                                        _filtroTipoElementoNome = val == 'Todos' ? null : val;
+                                        _filtroTipoElementoId = val == 'Todos' ? null : val;
                                       });
                                     },
                                   );
@@ -196,13 +322,21 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
                     
                     final galeria = p['ponto_inspecao_visual_galeria'] as List? ?? [];
                     final capaUrl = galeria.isNotEmpty ? galeria.first['foto_url'] : null;
-                    
+                    final tipoElementoCard = _extrairTipoElemento(p['tipos_elemento']);
+
                     final anomalias = p['ponto_inspecao_visual_anomalia'] as List? ?? [];
-                    int gutCard = 0;
+                    double gutCard = 0;
                     List<String> tagsAnomalia = [];
                     for (var a in anomalias) {
-                      gutCard += (a['risco_maj'] as num?)?.toInt() ?? 0;
-                      if (a['anomalias'] != null) tagsAnomalia.add(a['anomalias']['nome']);
+                      final anomaliaCatalogo = a['anomalias'] as Map<String, dynamic>?;
+                      gutCard += calcularPontuacaoRiscoGut(
+                        gravidadeValor: anomaliaCatalogo?['gravidade_valor'],
+                        urgenciaValor: anomaliaCatalogo?['urgencia_valor'],
+                        tendenciaValor: anomaliaCatalogo?['tendencia_valor'],
+                        majoracao: a['risco_maj'],
+                        areaAfetada: a['area_afetada'],
+                      );
+                      if (anomaliaCatalogo != null) tagsAnomalia.add(anomaliaCatalogo['nome']);
                     }
 
                     return GestureDetector(
@@ -235,8 +369,8 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      if (p['tipos_elemento'] != null)
-                                        Container(margin: const EdgeInsets.only(right: 6), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)), child: Text(p['tipos_elemento']['nome'] ?? '', style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                                      if (tipoElementoCard != null)
+                                        Container(margin: const EdgeInsets.only(right: 6), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)), child: Text(tipoElementoCard['nome'] ?? '', style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
                                       if (p['elementos_estruturais'] != null)
                                         Container(margin: const EdgeInsets.only(right: 6), padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)), child: Text(p['elementos_estruturais']['nome'] ?? '', style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
                                     ],
@@ -244,15 +378,20 @@ class _InspecaoVisualLocalScreenState extends ConsumerState<InspecaoVisualLocalS
                                   const SizedBox(height: 8),
                                   Row(
                                     children: [
-                                      Text('+ ${galeria.length} fotos', style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
-                                      const Spacer(),
                                       if (tagsAnomalia.isNotEmpty)
                                         Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)), child: Text(tagsAnomalia.first, style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.red))),
-                                      const SizedBox(width: 4),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Text('+ ${galeria.length} fotos', style: GoogleFonts.lato(fontSize: 11, color: Colors.grey.shade600)),
+                                      const Spacer(),
                                       Container(
                                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                                         decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(12)),
-                                        child: Row(children: [const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 10), const SizedBox(width: 2), Text('G.U.T $gutCard', style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade800))]),
+                                        child: Row(children: [const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 10), const SizedBox(width: 2), Text('G.U.T ${gutCard.toStringAsFixed(2)}', style: GoogleFonts.lato(fontSize: 9, fontWeight: FontWeight.bold, color: Colors.grey.shade800))]),  //GoogleFonts.lato(fontSize: 11, color: const Color(0xFFFFA726), fontWeight: FontWeight.bold)),
                                       ),
                                     ],
                                   ),

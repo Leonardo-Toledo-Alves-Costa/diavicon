@@ -49,8 +49,16 @@ class _PontoInspecaoDetalheScreenState extends ConsumerState<PontoInspecaoDetalh
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: const CustomAppBar(
-        title: 'Inspeção Visual\nRegistro',
+        title: 'Painel',
         showBackButton: true,
+        showMenuButton: false,
+        titleWidget: Column(
+          children: [
+            //Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
+            Text('Registro', style: TextStyle(fontSize: 14, color: Colors.white)),
+          ],
+        ),
       ),
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

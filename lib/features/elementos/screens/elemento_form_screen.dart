@@ -14,6 +14,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
+import '../../empresa/providers/campos_personalizaveis_provider.dart';
+import '../../empresa/providers/sistema_provider.dart';
 import '../../estrutura/providers/local_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
 import '../models/elemento_model.dart';
@@ -44,23 +46,16 @@ class ElementoFormScreen extends ConsumerStatefulWidget {
 class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
   final _nomeController = TextEditingController();
 
+  String? _sistemaHabitacional;
   String? _tipoElemento;
   String? _tipologiaEstrutural;
   String? _localElemento;
   String? _revestimento;
 
-  final List<String> _tipoElementoOptions = ['Pilar', 'Viga', 'Laje'];
-  final List<String> _tipologiaOptions = [
-    'Concreto armado',
-    'Metalica',
-    'Mista',
-  ];
-  final List<String> _localOptions = ['Interno', 'Externo', 'Cobertura'];
-  final List<String> _revestimentoOptions = [
-    'Pintura',
-    'Argamassa',
-    'Ceramica',
-  ];
+  final List<String> _tipoElementoOptions = [];
+  final List<String> _tipologiaOptions = [];
+  final List<String> _localOptions = [];
+  final List<String> _revestimentoOptions = [];
 
   File? _novaImagemBanner;
   String? _marcacaoImagemUrl;
@@ -299,6 +294,28 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     }
   }
 
+  void _handleSistemaHabitacionalChanged(String? novoSistema) {
+    setState(() {
+      _sistemaHabitacional = novoSistema;
+
+      final empresaId = ref.read(loggedUserCompanyIdProvider).value;
+      if (novoSistema != null && _tipoElemento != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido =
+            tipos?.any(
+              (t) => t.nome == _tipoElemento && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _isDirty = true;
+          _tipoElemento = null;
+        }
+      }
+    });
+  }
+
   Future<void> _handleAddOption(ElementoInfoDropdownField field) async {
     String? newOption;
 
@@ -437,13 +454,27 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       locaisPorEstruturaProvider(widget.estruturaId),
     );
 
+    final empresaId = usuarioEmpresaIdAsync.value;
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId));
+    final tiposElementoAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
     List<String> locaisFinais = List.from(_localOptions);
 
+    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+        .where(
+          (t) => _sistemaHabitacional == null || t.sistemaId == _sistemaHabitacional,
+        )
+        .map((t) => t.nome);
+    tiposFinais = {...tiposFinais, ...tiposDoSistema}.toList();
+
     opcoesFormulario.whenData((opcoes) {
-      tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
       tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
       revestimentosFinais = {
         ...revestimentosFinais,
@@ -536,6 +567,32 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                     hint: 'ABC Corp.',
                     controller: _nomeController,
                     enabled: canEdit,
+                  ),
+                  const SizedBox(height: 18),
+
+                  IgnorePointer(
+                    ignoring: !canEdit,
+                    child: CustomDropdownWithAdd<String>(
+                      label: 'Sistema Habitacional',
+                      hint: 'Selecione',
+                      value: _sistemaHabitacional,
+                      items: (sistemasAsync?.value ?? const <CampoItemModel>[])
+                          .map(
+                            (s) => DropdownMenuItem<String>(
+                              value: s.id,
+                              child: Text(
+                                s.nome,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: canEdit
+                          ? _handleSistemaHabitacionalChanged
+                          : null,
+                      onAddPressed: () {},
+                      isAddEnabled: false,
+                    ),
                   ),
                   const SizedBox(height: 18),
 

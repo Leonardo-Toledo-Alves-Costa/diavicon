@@ -6,7 +6,10 @@ import '../repositories/pontos_ensaio_repository.dart';
 // ==============================================================
 // 1. Provedor da Lista Principal de Pontos de Ensaio
 // ==============================================================
-typedef PontosFiltroArgs = ({String projetoId, String estruturaId, String tipoEnsaioId});
+typedef PontosFiltroArgs = ({String projetoId, 
+                            String estruturaId, 
+                            String tipoEnsaioId,
+                            String? elementoId, });
 
 final pontosEnsaioProvider = FutureProvider.family.autoDispose<List<PontoEnsaioModel>, PontosFiltroArgs>((ref, args) async {
   final supabase = Supabase.instance.client;
@@ -16,6 +19,7 @@ final pontosEnsaioProvider = FutureProvider.family.autoDispose<List<PontoEnsaioM
     projetoId: args.projetoId,
     estruturaId: args.estruturaId,
     tipoEnsaioId: args.tipoEnsaioId,
+    elementoId: args.elementoId,
   );
 });
 

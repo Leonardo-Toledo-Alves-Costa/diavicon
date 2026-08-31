@@ -83,10 +83,11 @@ class NotificacoesScreen extends ConsumerWidget {
   Widget _buildCard(BuildContext context, Map<String, dynamic> notificacao, NotificacoesController controller, {required bool isNova}) {
     final tipo = notificacao['tipo'];
     final dados = notificacao['dados_extras'] ?? {};
-    
+    final isConvite = tipo == 'convite_projeto' || tipo == 'convite_cliente';
+
     //  InkWell para marcar como lida ao clicar (se for um aviso simples)
     return InkWell(
-      onTap: isNova && tipo != 'convite_projeto' ? () => controller.marcarComoLida(notificacao['id']) : null,
+      onTap: isNova && !isConvite ? () => controller.marcarComoLida(notificacao['id']) : null,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
@@ -94,10 +95,10 @@ class NotificacoesScreen extends ConsumerWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
-          border: isNova ? Border.all(color: AppColors.primary.withOpacity(0.3), width: 1) : null,
+          border: isNova ? Border.all(color: AppColors.primary.withValues(alpha: 0.3), width: 1) : null,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.02),
+              color: Colors.black.withValues(alpha: 0.02),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -124,8 +125,8 @@ class NotificacoesScreen extends ConsumerWidget {
               backgroundImage: (dados['foto_url'] != null && dados['foto_url'].toString().startsWith('http')) 
                   ? NetworkImage(dados['foto_url']) 
                   : null,
-              child: (dados['foto_url'] == null || !dados['foto_url'].toString().startsWith('http')) 
-                  ? Icon(tipo == 'convite_projeto' ? Icons.business : Icons.notifications, color: Colors.grey) 
+              child: (dados['foto_url'] == null || !dados['foto_url'].toString().startsWith('http'))
+                  ? Icon(isConvite ? Icons.business : Icons.notifications, color: Colors.grey)
                   : null,
             ),
             const SizedBox(width: 16),
@@ -187,7 +188,55 @@ class NotificacoesScreen extends ConsumerWidget {
                         ),
                       ],
                     )
-                  ]
+                  ],
+
+                  // 🔥 Renderização específica para os convites de cliente
+                  if (tipo == 'convite_cliente' && isNova) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        TextButton(
+                          onPressed: () async {
+                            try {
+                              await controller.recusarConviteCliente(
+                                projetoId: dados['projeto_id'],
+                                notificacaoId: notificacao['id'],
+                              );
+                              if (!context.mounted) return;
+                              DiaviconAlerts.show(context, 'Convite Recusado', 'O convite foi removido.');
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              DiaviconAlerts.show(context, 'Erro', 'Não foi possível recusar: $e', isErro: true);
+                            }
+                          },
+                          child: const Text('Recusar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                          ),
+                          onPressed: () async {
+                            try {
+                              await controller.aceitarConviteCliente(
+                                projetoId: dados['projeto_id'],
+                                notificacaoId: notificacao['id'],
+                              );
+                              if (!context.mounted) return;
+                              DiaviconAlerts.show(context, 'Sucesso!', 'Sua empresa agora é cliente do projeto.');
+                            } catch (e) {
+                              if (!context.mounted) return;
+                              DiaviconAlerts.show(context, 'Erro', 'Falha ao aceitar convite: $e', isErro: true);
+                            }
+                          },
+                          child: const Text('Aceitar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

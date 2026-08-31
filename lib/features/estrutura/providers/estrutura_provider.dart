@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repositories/estrutura_repository.dart';
 import '../models/estrutura_model.dart';
+import '../../projetos/models/projeto_model.dart';
 
 
 
@@ -117,11 +118,17 @@ final minhasEstruturasProvider = StreamProvider.autoDispose.family<List<Estrutur
       });
 });
 
-// --- PROVIDER: ESTRUTURAS DA ABA PRINCIPAL (Onde a empresa logada é a Proprietária) ---
+// --- PROVIDER: ESTRUTURAS DA ABA PRINCIPAL (aba "Estruturas"/monitor) ---
+// Lista as estruturas que a empresa logada GERENCIA (empresa_gestora_id) —
+// diferente de "proprietaria_id", que é quem é dona da estrutura (ver
+// funcionalidade de trocar propriedade). O monitoramento é por gestão.
+// Só entram aqui as estruturas marcadas como `monitorada = true` (consome
+// um token do plano — ver tokens_estrutura_provider.dart) — isso também
+// habilita as funcionalidades futuras de monitoramento.
 final estruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
   final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
-  
+
   if (userId == null) return Stream.value([]);
 
   return supabase
@@ -135,10 +142,10 @@ final estruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<Estrutu
             .eq('id', userId)
             .maybeSingle();
         final minhaEmpresaId = usuarioData?['empresa_id'];
-        
+
         if (minhaEmpresaId == null) return [];
 
-        // 2. Busca APENAS as estruturas onde minha empresa é a proprietária
+        // 2. Busca APENAS as estruturas onde minha empresa é a gestora
         final response = await supabase
             .from('estruturas')
             .select('''
@@ -148,9 +155,50 @@ final estruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<Estrutu
               tipos_estrutura(nome),
               tipologias_estrutura(nome)
             ''')
-            .eq('proprietaria_id', minhaEmpresaId) 
+            .eq('empresa_gestora_id', minhaEmpresaId)
+            .eq('monitorada', true)
             .order('criado_em', ascending: false);
 
         return response.map((item) => EstruturaModel.fromJson(item)).toList();
       });
+});
+
+// --- PROVIDER: CONTADORES DINÂMICOS DO PREVIEW DA ESTRUTURA ---
+typedef EstruturaEstatisticas = ({int elementos, int ensaios, int projetos});
+
+final estruturaEstatisticasProvider = FutureProvider.autoDispose.family<EstruturaEstatisticas, String>((ref, estruturaId) async {
+  final supabase = Supabase.instance.client;
+
+  final results = await Future.wait([
+    supabase.from('elementos_estruturais').select('id').eq('estrutura_id', estruturaId).count(CountOption.exact),
+    supabase.from('pontos_ensaios_geral').select('id').eq('estrutura_id', estruturaId).count(CountOption.exact),
+    supabase.from('projeto_estruturas').select('estrutura_id').eq('estrutura_id', estruturaId).count(CountOption.exact),
+  ]);
+
+  return (
+    elementos: results[0].count,
+    ensaios: results[1].count,
+    projetos: results[2].count,
+  );
+});
+
+// --- PROVIDER: PROJETOS EM QUE A ESTRUTURA ESTÁ SENDO TRABALHADA ---
+final projetosPorEstruturaProvider = FutureProvider.autoDispose.family<List<ProjetoModel>, String>((ref, estruturaId) async {
+  final supabase = Supabase.instance.client;
+
+  final response = await supabase
+      .from('projeto_estruturas')
+      .select('''
+        projetos(
+          *,
+          prioridade:prioridade_id(nome),
+          status_projeto:status_id(nome)
+        )
+      ''')
+      .eq('estrutura_id', estruturaId);
+
+  return (response as List)
+      .where((item) => item['projetos'] != null)
+      .map((item) => ProjetoModel.fromMap(item['projetos']))
+      .toList();
 });

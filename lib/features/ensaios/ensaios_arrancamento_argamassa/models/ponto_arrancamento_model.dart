@@ -61,6 +61,7 @@ class PontoArrancamentoModel {
       'umidade': umidade,
       'idade_revestimento': idadeRevestimento,
       'cola_utilizada': colaUtilizada,
+      'tipo_substrato': tipoSubstrato,
     };
   }
 
@@ -79,6 +80,7 @@ class PontoArrancamentoModel {
       umidade: map['umidade'] as String?,
       idadeRevestimento: map['idade_revestimento'] as String?,
       colaUtilizada: map['cola_utilizada'] as String?,
+      tipoSubstrato: map['tipo_substrato'],
       leituras: leituras,
     );
   }

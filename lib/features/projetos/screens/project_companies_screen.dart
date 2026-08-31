@@ -282,11 +282,11 @@ class ProjectCompaniesScreen extends ConsumerWidget {
       corTextoBadge = const Color(0xFF31A04C);
     } else if (emp['is_minha_empresa'] == true) {
       labelStatus = 'Sua Empresa';
-      corFundoBadge = AppColors.primary.withOpacity(0.15);
+      corFundoBadge = AppColors.primary.withValues(alpha: 0.15);
       corTextoBadge = AppColors.primary;
     } else if (emp['status_vinculo'] == 'pendente') {
       labelStatus = 'Convidada';
-      corFundoBadge = AppColors.primary.withOpacity(0.15); 
+      corFundoBadge = AppColors.primary.withValues(alpha: 0.15); 
       corTextoBadge = AppColors.primary; 
     } else if (emp['status_vinculo'] == 'recusado' || emp['status_vinculo'] == 'removida') {
       labelStatus = 'Removida';
@@ -313,10 +313,10 @@ class ProjectCompaniesScreen extends ConsumerWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: emp['is_minha_empresa'] == true ? Border.all(color: AppColors.primary.withOpacity(0.4), width: 1.5) : null, 
+            border: emp['is_minha_empresa'] == true ? Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 1.5) : null, 
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.05),
+                color: Colors.black.withValues(alpha: 0.05),
                 blurRadius: 10,
                 offset: const Offset(0, 4),
               ),

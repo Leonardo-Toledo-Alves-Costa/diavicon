@@ -20,16 +20,23 @@ final opcoesFormularioElementoProvider = FutureProvider.autoDispose<OpcoesFormul
   //  Pega a empresa do usuário logado direto do seu provider de auth!
   final user = ref.watch(currentUserProvider); 
   final minhaEmpresaId = user?.empresaId;
+  const diaviconId = '96b9a6b9-32d0-453e-9f69-74a2691ac5cc';
+
+  // Monta a lista com as empresas permitidas
+  final empresasIds = <String>[
+    if (minhaEmpresaId != null) minhaEmpresaId,
+    diaviconId,
+  ];
 
   final resultados = await Future.wait([
-    repo.buscarTiposElemento(minhaEmpresaId),
-    repo.buscarTipologiasElemento(minhaEmpresaId),
-    repo.buscarRevestimentosElemento(minhaEmpresaId),
+    repo.buscarTiposElemento(empresasIds),
+    repo.buscarTipologiasElemento(empresasIds),
+    repo.buscarRevestimentosElemento(empresasIds),
   ]);
 
   return OpcoesFormularioElemento(
-    tipos: resultados[0] as List<String>,
-    tipologias: resultados[1] as List<String>,
-    revestimentos: resultados[2] as List<String>,
+    tipos: resultados[0],
+    tipologias: resultados[1],
+    revestimentos: resultados[2],
   );
 });

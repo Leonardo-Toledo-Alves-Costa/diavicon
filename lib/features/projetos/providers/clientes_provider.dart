@@ -57,7 +57,7 @@ final buscarTodasEmpresasProvider = FutureProvider.autoDispose.family<List<Map<S
   final supabase = Supabase.instance.client;
   final data = await supabase
       .from('empresas')
-      .select('id, nome, cnpj, criado_em')
+      .select('id, nome, cnpj, foto_url, criado_em')
       .or('nome.ilike.%$termoBusca%,cnpj.ilike.%$termoBusca%')
       .limit(20);
   return List<Map<String, dynamic>>.from(data);

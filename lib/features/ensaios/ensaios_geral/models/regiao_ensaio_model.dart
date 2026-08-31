@@ -18,8 +18,6 @@ class RegiaoEnsaioModel {
 
   final String? elementoNome;
   final String? elementoTipo;
-  final int qtdEnsaios;
-  final List<Map<String, dynamic>> ensaios;
 
   RegiaoEnsaioModel({
     required this.id,
@@ -38,17 +36,10 @@ class RegiaoEnsaioModel {
     this.descricao,
     this.elementoNome,
     this.elementoTipo,
-    this.qtdEnsaios = 0,
-    this.ensaios = const [],
   });
 
   factory RegiaoEnsaioModel.fromMap(Map<String, dynamic> map) {
     final elementoData = map['elementos_estruturais'] as Map<String, dynamic>?;
-    final ensaiosBanco = (map['ensaios'] is List)
-        ? (map['ensaios'] as List)
-              .map((e) => Map<String, dynamic>.from(e as Map))
-              .toList()
-        : <Map<String, dynamic>>[];
     return RegiaoEnsaioModel(
       id: map['id'] ?? '',
       plantaId: map['planta_id'] ?? '',
@@ -68,8 +59,6 @@ class RegiaoEnsaioModel {
       descricao: map['descricao'],
       elementoNome: elementoData?['nome'],
       elementoTipo: elementoData?['tipo'],
-      qtdEnsaios: (map['qtd_ensaios'] as num?)?.toInt() ?? ensaiosBanco.length,
-      ensaios: ensaiosBanco,
     );
   }
 }

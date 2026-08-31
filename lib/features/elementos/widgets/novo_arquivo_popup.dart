@@ -282,7 +282,7 @@ class _NomeField extends StatelessWidget {
         isDense: true,
         hintText: 'Nome',
         hintStyle: GoogleFonts.lato(
-          color: const Color(0xFF626365).withOpacity(0.87),
+          color: const Color(0xFF626365).withValues(alpha: 0.87),
           fontSize: 18,
           fontWeight: FontWeight.w300,
         ),
@@ -362,7 +362,7 @@ class _AddLocalButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3A57E8).withOpacity(0.30),
+            color: const Color(0xFF3A57E8).withValues(alpha: 0.30),
             blurRadius: 2,
             offset: const Offset(0, 2),
           ),
@@ -405,7 +405,7 @@ class _ArquivoAnexadoCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.25),
+            color: Colors.black.withValues(alpha: 0.25),
             blurRadius: 4,
             offset: const Offset(0, 4),
           ),
@@ -464,7 +464,7 @@ class _SalvarButton extends StatelessWidget {
             ? const []
             : [
                 BoxShadow(
-                  color: const Color(0xFF3A57E8).withOpacity(0.30),
+                  color: const Color(0xFF3A57E8).withValues(alpha: 0.30),
                   blurRadius: 2,
                   offset: const Offset(0, 2),
                 ),
@@ -474,7 +474,7 @@ class _SalvarButton extends StatelessWidget {
         onPressed: onPressed,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.primary,
-          disabledBackgroundColor: AppColors.primary.withOpacity(0.5),
+          disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
           foregroundColor: Colors.white,
           disabledForegroundColor: Colors.white,
           elevation: 0,
@@ -513,7 +513,7 @@ class _CloseButton extends StatelessWidget {
         splashRadius: 18,
         icon: Icon(
           Icons.close,
-          color: const Color(0xFF626365).withOpacity(0.40),
+          color: const Color(0xFF626365).withValues(alpha: 0.40),
           size: 24,
         ),
       ),
@@ -534,7 +534,7 @@ class _EmptyLocalButton extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           color: AppColors.greyVeryLight,
-          border: Border.all(color: AppColors.error.withOpacity(0.5)),
+          border: Border.all(color: AppColors.error.withValues(alpha: 0.5)),
           borderRadius: BorderRadius.circular(8),
         ),
         alignment: Alignment.centerLeft,

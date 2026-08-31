@@ -29,7 +29,7 @@ class BuildTabelaExpansion extends ConsumerWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
+            color: Colors.black.withValues(alpha: 0.04),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -141,7 +141,7 @@ class BuildTabelaExpansion extends ConsumerWidget {
                 if (nomeTabela == 'tipos_elemento') {
                   await showDialog<String>(
                     context: context,
-                    barrierColor: Colors.black.withOpacity(0.42),
+                    barrierColor: Colors.black.withValues(alpha: 0.42),
                     builder: (context) => const NovoTipoElementoModal(),
                   );
                 } else {
@@ -239,8 +239,9 @@ class BuildTabelaExpansion extends ConsumerWidget {
                         onChanged: isLoading
                             ? null
                             : (val) {
-                                if (val != null)
+                                if (val != null) {
                                   setStateModal(() => formatoSelecionado = val);
+                                }
                               },
                       ),
                     ),

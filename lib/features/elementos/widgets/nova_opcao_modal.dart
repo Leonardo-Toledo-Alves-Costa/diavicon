@@ -16,7 +16,7 @@ Future<String?> showNovaOpcaoModal(
 }) {
   return showDialog<String>(
     context: context,
-    barrierColor: Colors.black.withOpacity(0.42),
+    barrierColor: Colors.black.withValues(alpha: 0.42),
     builder: (_) => NovaOpcaoModal(
       titulo: titulo, 
       label: label, 

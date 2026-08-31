@@ -94,7 +94,7 @@ class _CentralRelatoriosScreenState extends State<CentralRelatoriosScreen> {
                   Expanded(
                     child: ListView.separated(
                       itemCount: _relatorios.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 12),
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
                       itemBuilder: (context, index) {
                         final relatorio = _relatorios[index];
                         return _buildRelatorioCard(context, relatorio);

@@ -18,7 +18,7 @@ class _NovaEstruturaModalBodyState extends ConsumerState<NovaEstruturaModalBody>
   final _nomeController = TextEditingController();
   File? _imagemSelecionada;
   final ImagePickerService _imagePickerService = ImagePickerService();
-  bool _estaSalvando = false;
+  final bool _estaSalvando = false;
 
   @override
   void dispose() {
@@ -89,7 +89,7 @@ class _NovaEstruturaModalBodyState extends ConsumerState<NovaEstruturaModalBody>
                       color: Colors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),

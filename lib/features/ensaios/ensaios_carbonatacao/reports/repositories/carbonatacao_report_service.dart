@@ -248,8 +248,9 @@ class CarbonatacaoReportService {
       //if (percentualVida > 100) percentualVida = 100;
       
       String condicao = "Irrelevante";
-      if (vidaUtilResidual == 0) condicao = "Despassivado";
-      else if (vidaUtilResidual < 5) condicao = "Risco Alto";
+      if (vidaUtilResidual == 0) {
+        condicao = "Despassivado";
+      } else if (vidaUtilResidual < 5) condicao = "Risco Alto";
       else if (vidaUtilResidual < 15) condicao = "Risco Moderado";
       else if (vidaUtilResidual < 30) condicao = "Risco Baixo";
 
@@ -474,7 +475,7 @@ class CarbonatacaoReportService {
       }
 
       // Função auxiliar para gerar configuração do gráfico de Barras Flutuantes
-      Map<String, dynamic> _buildEstatisticaConfig(
+      Map<String, dynamic> buildEstatisticaConfig(
           List<String> labels,
           Map<String, List<double>> mapCob,
           Map<String, List<double>> mapFrente,
@@ -828,7 +829,7 @@ class CarbonatacaoReportService {
       
       // 5. Gráfico Locais
       List<String> labelsLocal = mapCobLocal.keys.where((k) => mapCobLocal[k]!.isNotEmpty || mapFrenteLocal[k]!.isNotEmpty).toList();
-      String base64BoxplotLocal = await _gerarGraficoQuickChart(_buildEstatisticaConfig(labelsLocal, mapCobLocal, mapFrenteLocal),
+      String base64BoxplotLocal = await _gerarGraficoQuickChart(buildEstatisticaConfig(labelsLocal, mapCobLocal, mapFrenteLocal),
         version: '2');
 
       pageGeral = pageGeral.replaceAll('<canvas id="chartFrenteCarbon" height="220"></canvas>', '<img src="$base64FrenteCob" style="width: 100%; max-height: 220px; object-fit: contain;">');
@@ -967,7 +968,7 @@ class CarbonatacaoReportService {
         currentHeader = currentHeader.replaceAll('{{logo_url}}', base64Logo);
         
         // 5. Injeta TUDO no HTML Final, forçando a quebra de página APÓS O RODAPÉ deste ponto
-        htmlFinal += currentHeader + currentPageInd + footer + '\n<div style="page-break-after: always;"></div>\n';
+        htmlFinal += '$currentHeader$currentPageInd$footer\n<div style="page-break-after: always;"></div>\n';
       }
     }
 
@@ -1158,7 +1159,7 @@ class CarbonatacaoReportService {
         currentHeader = currentHeader.replaceAll('{{subtitulo_pagina}}', 'Galeria');
         currentHeader = currentHeader.replaceAll('{{logo_url}}', base64Logo);
 
-        htmlFinal += currentHeader + pageGaleria + '\n<div style="page-break-after: always;"></div>\n';
+        htmlFinal += '$currentHeader$pageGaleria\n<div style="page-break-after: always;"></div>\n';
       }
     }
     

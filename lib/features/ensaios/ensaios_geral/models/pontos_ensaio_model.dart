@@ -15,6 +15,7 @@ class PontoEnsaioModel {
   final String textoRisco;
   final String corFundoRisco;
   final String corTextoRisco;
+  final DateTime criadoEm; // <-- NOVO CAMPO
 
   PontoEnsaioModel({
     required this.id,
@@ -29,6 +30,8 @@ class PontoEnsaioModel {
     required this.textoRisco,
     required this.corFundoRisco,
     required this.corTextoRisco,
+    required this.criadoEm, // <-- NOVO CAMPO NO CONSTRUTOR
+    
   });
 
   factory PontoEnsaioModel.fromJson(Map<String, dynamic> json) {
@@ -57,6 +60,7 @@ class PontoEnsaioModel {
       // 👇 AQUI A MÁGICA ACONTECE: Lendo as novas colunas do banco
       textoRisco: json['valor_resultado'] ?? 'Pendente',
       corFundoRisco: json['cor_resultado'] ?? '#E0E0E0', // Cinza padrão se for nulo
+      criadoEm: json['criado_em'],
       
       // Lógica dinâmica para a cor da fonte: 
       // Se tiver resultado (não for nulo e não for pendente), a fonte fica Branca.

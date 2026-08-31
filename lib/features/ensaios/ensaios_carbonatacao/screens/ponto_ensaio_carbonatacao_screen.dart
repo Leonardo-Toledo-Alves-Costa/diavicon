@@ -13,6 +13,7 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 import '../models/ponto_carbonatacao_completo_model.dart';
 import '../repositories/carbonatacao_repository.dart';
@@ -155,14 +156,18 @@ class _PontoEnsaioCarbonatacaoScreenState
         _carbIdExistente = carbResp['id'] as String;
         _nomePontoCtrl.text = carbResp['nome_ponto'] ?? widget.pontoNome;
 
-        if (carbResp['cob_arm_p'] != null)
+        if (carbResp['cob_arm_p'] != null) {
           _cobArmPCtrl.text = carbResp['cob_arm_p'].toString();
-        if (carbResp['bit_arm_p'] != null)
+        }
+        if (carbResp['bit_arm_p'] != null) {
           _bitArmPCtrl.text = carbResp['bit_arm_p'].toString();
-        if (carbResp['cob_arm_s'] != null)
+        }
+        if (carbResp['cob_arm_s'] != null) {
           _cobArmSCtrl.text = carbResp['cob_arm_s'].toString();
-        if (carbResp['bit_arm_s'] != null)
+        }
+        if (carbResp['bit_arm_s'] != null) {
           _bitArmSCtrl.text = carbResp['bit_arm_s'].toString();
+        }
 
         if (_carbIdExistente != null) {
           final frentesResp = await supabase
@@ -186,27 +191,30 @@ class _PontoEnsaioCarbonatacaoScreenState
 
           for (var foto in (fotosResp as List)) {
             if (foto['referencia'] == '1') _urlFotoQuebra = foto['imagem_url'];
-            if (foto['referencia'] == '2')
+            if (foto['referencia'] == '2') {
               _urlFotoAspersao = foto['imagem_url'];
+            }
           }
         }
       }
     } on PostgrestException catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro ao carregar dados: ${e.message}'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Erro inesperado: $e'),
             backgroundColor: Colors.red,
           ),
         );
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -333,7 +341,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                       final repo = ref.read(carbonatacaoRepositoryProvider);
                       await repo.deletarFrente(frenteParaRemover.id!);
                     } catch (e) {
-                      if (context.mounted)
+                      if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
@@ -342,6 +350,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                             backgroundColor: Colors.red,
                           ),
                         );
+                      }
                       setState(() => _isLoading = false);
                       return;
                     }
@@ -425,15 +434,23 @@ class _PontoEnsaioCarbonatacaoScreenState
           _pontoGeralIdAtual = resultados['pontoGeralId'];
           _carbIdExistente = resultados['carbId'];
 
-          if (resultados['urlFotoQuebra'] != null)
+          if (resultados['urlFotoQuebra'] != null) {
             _urlFotoQuebra = resultados['urlFotoQuebra'];
-          if (resultados['urlFotoAspersao'] != null)
+          }
+          if (resultados['urlFotoAspersao'] != null) {
             _urlFotoAspersao = resultados['urlFotoAspersao'];
+          }
 
           _fotoQuebraLocal = null;
           _fotoAspersaoLocal = null;
           _hasChanges = false;
         });
+        // <-- INVALIDE O PROVIDER AQUI PARA RECARREGAR A TELA ANTERIOR -->
+      // Caso sua tela de pontos geral use este provider específico (ajuste se usar outro nome):
+      try {
+        ref.invalidate(resumoEnsaiosProvider);
+      } catch(_) {}
+
 
         ref.invalidate(resumoEnsaiosProvider);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -528,6 +545,8 @@ class _PontoEnsaioCarbonatacaoScreenState
       );
     }
 
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         systemNavigationBarColor: Colors.white,
@@ -607,17 +626,18 @@ class _PontoEnsaioCarbonatacaoScreenState
             const Spacer(),
             const Divider(),
 
-            Center(
-              child: IconButton(
-                iconSize: 30,
-                color: Colors.red.shade800,
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _deletarPonto();
-                },
+            if (permissoes.canDelete)
+              Center(
+                child: IconButton(
+                  iconSize: 30,
+                  color: Colors.red.shade800,
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _deletarPonto();
+                  },
+                ),
               ),
-            ),
           ],
         ),
 
@@ -651,6 +671,29 @@ class _PontoEnsaioCarbonatacaoScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!permissoes.canEdit)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              AbsorbPointer(
+                absorbing: !permissoes.canEdit,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -678,14 +721,15 @@ class _PontoEnsaioCarbonatacaoScreenState
                             ),
                           ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      _isEditingName ? Icons.check : Icons.edit_square,
-                      color: const Color(0xFF3E3E3D),
+                  if (permissoes.canEdit)
+                    IconButton(
+                      icon: Icon(
+                        _isEditingName ? Icons.check : Icons.edit_square,
+                        color: const Color(0xFF3E3E3D),
+                      ),
+                      onPressed: () =>
+                          setState(() => _isEditingName = !_isEditingName),
                     ),
-                    onPressed: () =>
-                        setState(() => _isEditingName = !_isEditingName),
-                  ),
                 ],
               ),
               Text(
@@ -805,7 +849,7 @@ class _PontoEnsaioCarbonatacaoScreenState
                                 borderRadius: BorderRadius.circular(16),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: Colors.black.withOpacity(0.05),
+                                    color: Colors.black.withValues(alpha: 0.05),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -870,9 +914,12 @@ class _PontoEnsaioCarbonatacaoScreenState
                   ],
                 ),
               ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 48),
 
-              if (_hasChanges)
+              if (_hasChanges && permissoes.canEdit)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

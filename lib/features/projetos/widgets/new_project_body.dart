@@ -10,8 +10,9 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 
 import '../providers/projeto_form_provider.dart';
-import '../providers/projetos_provider.dart'; 
+import '../providers/projetos_provider.dart';
 import '../providers/clientes_provider.dart';
+import '../providers/notificacoes_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
 class NewProjectBody extends ConsumerStatefulWidget {
@@ -97,7 +98,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     try {
       final repo = ref.read(projetoRepositoryProvider);
 
-      await repo.createProject(
+      final novoProjetoId = await repo.createProject(
         nome: _nomeController.text.trim(),
         empresaGestoraId: user.empresaId!,
         usuarioId: user.id,
@@ -106,17 +107,33 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
         emailNovoCliente: formState.emailNovoCliente,
         nomeNovoCliente: formState.clienteNome,
         imagemProjeto: formState.imagemProjeto,
-        fotoNovoCliente: formState.clienteFotoUrl != null 
-            ? File(formState.clienteFotoUrl!) 
+        fotoNovoCliente: formState.clienteFotoUrl != null
+            ? File(formState.clienteFotoUrl!)
             : null,
       );
 
+      // Cliente já cadastrado (não é convite por e-mail): o projeto já
+      // nasceu com o vínculo 'pendente' — falta só disparar a notificação
+      // pros admins da empresa cliente aceitarem.
+      String avisoConvite = '';
+      if (!formState.isNovoCliente && formState.clienteId != null) {
+        try {
+          await ref.read(notificacoesControllerProvider).enviarNotificacaoConviteCliente(
+                projetoId: novoProjetoId,
+                empresaClienteId: formState.clienteId!,
+                nomeProjeto: _nomeController.text.trim(),
+              );
+        } catch (e) {
+          avisoConvite = ' Porém não foi possível notificar o cliente: ${e.toString().replaceAll('Exception: ', '')}';
+        }
+      }
+
       ref.invalidate(projetoFormProvider);
-      ref.invalidate(filteredProjectsProvider); 
+      ref.invalidate(filteredProjectsProvider);
 
       if (mounted) {
         Navigator.pop(context);
-        _showSnackBar('Projeto criado com sucesso!');
+        _showSnackBar('Projeto criado com sucesso!$avisoConvite', isError: avisoConvite.isNotEmpty);
       }
     } catch (e) {
       if (mounted) {
@@ -195,7 +212,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                       color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
                       ],
                     ),
                     child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),

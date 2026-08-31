@@ -95,7 +95,7 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
-            onPressed: () { setState(() { _corSelecionada = '#${corTemp.value.toRadixString(16).substring(2).toUpperCase()}'; if (!_coresSalvas.contains(_corSelecionada)) _coresSalvas.add(_corSelecionada); }); Navigator.pop(context); },
+            onPressed: () { setState(() { _corSelecionada = '#${corTemp.toARGB32().toRadixString(16).substring(2).toUpperCase()}'; if (!_coresSalvas.contains(_corSelecionada)) _coresSalvas.add(_corSelecionada); }); Navigator.pop(context); },
             child: const Text('Salvar', style: AppTextStyles.corpoDestaqueBranco),
           ),
         ],
@@ -175,7 +175,7 @@ class _SelecionarLocalRegiaoModalState extends ConsumerState<SelecionarLocalRegi
                                           child: Stack(
                                             alignment: Alignment.center,
                                             children: [
-                                              PinoDinamico(tipoMarcacao: _tipoMarcacao, largura: _largura * w, altura: _altura * h, rotacao: _rotacao, corBase: _hexToColor(_corSelecionada).withOpacity(0.85), mostrarNumero: false), // 🔥 E aqui
+                                              PinoDinamico(tipoMarcacao: _tipoMarcacao, largura: _largura * w, altura: _altura * h, rotacao: _rotacao, corBase: _hexToColor(_corSelecionada).withValues(alpha: 0.85), mostrarNumero: false), // 🔥 E aqui
                                               Text(widget.proximoNumero.toString(), style: GoogleFonts.lato(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold, shadows: const [Shadow(color: Colors.black45, blurRadius: 2)])),
                                             ],
                                           ),

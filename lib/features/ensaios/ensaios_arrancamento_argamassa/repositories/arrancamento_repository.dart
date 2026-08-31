@@ -13,14 +13,12 @@ class ArrancamentoRepository {
 
   ArrancamentoRepository(this._supabase);
 
-  /// Realiza o upload da imagem de forma segura e exibe logs em caso de erro de permissão (RLS)
   Future<String?> uploadImagem(File file, String folder) async {
     try {
       final fileExt = file.path.split('.').last;
       final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
       final fullPath = 'ensaios/$folder/$fileName';
 
-      // Usando o método .upload() nativo para File, ideal para iOS/Android
       await _supabase.storage.from('projetos').upload(
         fullPath,
         file,
@@ -32,7 +30,7 @@ class ArrancamentoRepository {
       return publicUrl;
       
     } on StorageException catch (e) {
-      debugPrint('Erro de Storage (Verifique as políticas RLS no Supabase): ${e.message}');
+      debugPrint('Erro de Storage: ${e.message}');
       return null;
     } catch (e) {
       debugPrint('Erro desconhecido no upload: $e');
@@ -100,12 +98,30 @@ class ArrancamentoRepository {
     }
   }
 
+  // NOVO MÉTODO PARA ATUALIZAR APENAS RESULTADOS DO ENSAIO
+  Future<void> atualizarResultadoGeral(String pontoGeralId, double mediaVal) async {
+    try {
+      final tagTexto = mediaVal > 0 ? '${mediaVal.toStringAsFixed(2)} MPa' : 'Pendente';
+      final tagCor = mediaVal >= 0.30 ? '#4CAF50' : (mediaVal > 0 ? '#F44336' : '#9E9E9E');
+
+      await _supabase.from('pontos_ensaios_geral').update({
+        'valor_resultado': tagTexto,
+        'cor_resultado': tagCor,
+      }).eq('id', pontoGeralId);
+    } on PostgrestException catch (e) {
+      throw Exception('Erro ao atualizar resultado geral no Supabase: ${e.message}');
+    } catch (e) {
+      throw Exception('Erro inesperado: $e');
+    }
+  }
+
   Future<Map<String, dynamic>> salvarArrancamentoCompleto({
     required PontoArrancamentoModel dados,
     required String projetoId,
     required String elementoId,
     required String tipoEnsaioId,
     required String pontoNome,
+   //required String estruturaId,
     File? fotoRegiao,
     File? fotoColagem,
   }) async {
@@ -113,7 +129,6 @@ class ArrancamentoRepository {
       String? urlRegiao = dados.imagemRegiao;
       String? urlColagem = dados.imagemColagem;
 
-      // Executa o upload e atualiza as variáveis se a foto não for nula
       if (fotoRegiao != null) {
         final u = await uploadImagem(fotoRegiao, 'arrancamento');
         if (u != null) urlRegiao = u;
@@ -129,23 +144,47 @@ class ArrancamentoRepository {
       final tagTexto = mediaVal > 0 ? '${mediaVal.toStringAsFixed(2)} MPa' : 'Pendente';
       final tagCor = mediaVal >= 0.30 ? '#4CAF50' : (mediaVal > 0 ? '#F44336' : '#9E9E9E');
 
+      final userId = _supabase.auth.currentUser?.id; 
+      // 1. Busca a estrutura_id a partir do elementoId fornecido na tabela elementos_estruturais
+
+        
+              
+      
+
       // 1. Salva na tabela geral
       if (pontoGeralId.isEmpty) {
-        // Atenção: Removido 'tipo_ensaio_id' caso a tabela pontos_ensaios_geral não possua essa coluna, 
-        // ou inclua de volta se ela existir no seu banco.
+
+        // 1. Busca a empresa_id do usuário logado
+      final String? userId = _supabase.auth.currentUser?.id;
+      final elementoResponse = await _supabase
+        .from('elementos_estruturais')
+        .select('estrutura_id')
+        .eq('id', elementoId)
+        .single();
+
+    final String? estruturaId = elementoResponse['estrutura_id'] as String?;
+
+    if (estruturaId == null) {
+      throw Exception('Nenhuma estrutura vinculada a este elemento foi encontrada.');
+    }
+      
         final resGeral = await _supabase.from('pontos_ensaios_geral').insert({
           'nome_ponto': pontoNome,
-          'tipo_ensaio': 'Arrancamento em Argamassa', // Preenchendo a coluna tipo_ensaio texto
+          'tipo_ensaio': 'Arrancamento em Argamassa', 
+          'tipo_ensaio_id': tipoEnsaioId, 
           'elemento_estrutural_id': elementoId,
           'projeto_id': projetoId,
           'valor_resultado': tagTexto,
           'cor_resultado': tagCor,
+          'criado_por': userId, 
+          'estrutura_id': estruturaId,
         }).select('id').single();
 
         pontoGeralId = resGeral['id'] as String;
       } else {
         await _supabase.from('pontos_ensaios_geral').update({
           'nome_ponto': pontoNome,
+          'tipo_ensaio_id': tipoEnsaioId, 
           'valor_resultado': tagTexto,
           'cor_resultado': tagCor,
         }).eq('id', pontoGeralId);
@@ -159,11 +198,11 @@ class ArrancamentoRepository {
         'imagem_regiao': urlRegiao,
         'imagem_colagem': urlColagem,
         'norma': dados.norma,
-        'eqp_utilizado': dados.eqpUtilizado, // Se for UUID no DB, precisa tratar
         'temperatura': dados.temperatura,
         'umidade': dados.umidade,
         'idade_revestimento': dados.idadeRevestimento,
         'cola_utilizada': dados.colaUtilizada,
+        'tipo_substrato': dados.tipoSubstrato, // <-- CORREÇÃO: ADICIONADO PARA GRAVAR O TIPO DE SUBSTRATO NO BANCO
       };
 
       if (arrancamentoId.isEmpty) {
@@ -196,7 +235,6 @@ class ArrancamentoRepository {
   Future<void> deletarPontoCompleto(String pontoGeralId, String? arrancamentoId) async {
     try {
       if (arrancamentoId != null && arrancamentoId.isNotEmpty) {
-        // 1. Busca todas as leituras para deletar as rupturas filhas
         final leituras = await _supabase
             .from('ponto_ensaio_arrancamento_leitura')
             .select('id')
@@ -209,20 +247,17 @@ class ArrancamentoRepository {
               .eq('id_ponto_leitura', l['id']);
         }
 
-        // 2. Deleta as leituras
         await _supabase
             .from('ponto_ensaio_arrancamento_leitura')
             .delete()
             .eq('id_ponto_arrancamento', arrancamentoId);
 
-        // 3. Deleta o cabeçalho de arrancamento
         await _supabase
             .from('ponto_ensaio_arrancamento')
             .delete()
             .eq('id', arrancamentoId);
       }
 
-      // 4. Por fim, deleta o ponto geral
       await _supabase.from('pontos_ensaios_geral').delete().eq('id', pontoGeralId);
     } on PostgrestException catch (e) {
       throw Exception('Erro ao excluir ponto completo: ${e.message}');
@@ -248,7 +283,6 @@ class ArrancamentoRepository {
         if (u != null) urlRuptura = u;
       }
 
-      // Verifique a nomenclatura exata da coluna no Supabase. O schema passado tem 'imgem_ruptura' escrito errado.
       final payload = {
         'id_ponto_arrancamento': idArrancamento,
         'nome': leitura.nome,
@@ -276,7 +310,6 @@ class ArrancamentoRepository {
             .eq('id', leituraId);
       }
 
-      // 3. Atualização das porcentagens de ruptura
       await _supabase
           .from('ponto_ensaio_arrancamento_ruptura')
           .delete()

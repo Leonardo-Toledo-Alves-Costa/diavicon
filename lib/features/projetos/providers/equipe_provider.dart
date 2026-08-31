@@ -168,3 +168,5 @@ class EquipeController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
   }
 }
+
+

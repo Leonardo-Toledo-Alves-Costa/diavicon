@@ -122,4 +122,41 @@ class EstruturaRepository {
       throw Exception('Falha ao atualizar estrutura: $e');
     }
   }
+
+  /// Transfere a propriedade da estrutura pra outra empresa. Quem pode
+  /// chamar isso é decidido na UI (só a empresa atualmente proprietária).
+  Future<void> transferirPropriedade({
+    required String estruturaId,
+    required String novaProprietariaId,
+  }) async {
+    try {
+      await _client
+          .from('estruturas')
+          .update({'proprietaria_id': novaProprietariaId})
+          .eq('id', estruturaId);
+    } catch (e) {
+      throw Exception('Falha ao transferir propriedade: $e');
+    }
+  }
+
+  /// Busca as estruturas vinculadas a um projeto cuja empresa gestora seja a
+  /// [empresaId] informada — usado antes de excluir um projeto, pra saber
+  /// quais estruturas oferecer pra excluir junto (só aquelas que a empresa
+  /// do usuário realmente gerencia).
+  Future<List<EstruturaModel>> buscarEstruturasGerenciadasDoProjeto(String projetoId, String empresaId) async {
+    final todas = await buscarEstruturasPorProjeto(projetoId);
+    return todas.where((e) => e.empresaGestoraId == empresaId).toList();
+  }
+
+  /// Exclui a estrutura. Com a migration de `ON DELETE CASCADE` aplicada,
+  /// isso já limpa em cadeia os elementos estruturais dela e todos os
+  /// ensaios/leituras/galerias vinculados a esses elementos, além dos
+  /// vínculos com projetos (`projeto_estruturas`), locais e plantas.
+  Future<void> excluirEstrutura(String estruturaId) async {
+    try {
+      await _client.from('estruturas').delete().eq('id', estruturaId);
+    } catch (e) {
+      throw Exception('Falha ao excluir estrutura: $e');
+    }
+  }
 }

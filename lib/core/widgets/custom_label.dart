@@ -31,7 +31,7 @@ class CustomLabel extends StatelessWidget {
             padding: const EdgeInsets.all(12),
             margin: const EdgeInsets.symmetric(horizontal: 24),
             decoration: BoxDecoration(
-              color: AppColors.textDark.withOpacity(0.9),
+              color: AppColors.textDark.withValues(alpha: 0.9),
               borderRadius: BorderRadius.circular(8),
             ),
             textStyle: const TextStyle(color: Colors.white, fontSize: 12),

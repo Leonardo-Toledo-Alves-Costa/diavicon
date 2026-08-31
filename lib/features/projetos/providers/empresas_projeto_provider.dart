@@ -70,29 +70,23 @@ final minhaEmpresaProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
   return empResp;
 });
 
-// Busca as empresas que já colaboram no projeto (para poder transferir a gestão)
+// Busca todas as empresas que participam do projeto: a gestora + as
+// colaboradoras já aceitas + a empresa cliente (quando vinculada 'ativo') —
+// usado tanto em TrocarGestoraBody (filtrando fora a gestora atual) quanto
+// no fluxo de transferir a propriedade de uma estrutura (filtrando fora a
+// proprietária atual).
 final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
-  
-  final response = await supabase
-      .from('projeto_empresas_colaboradoras')
-      .select('empresas:empresa_id(id, nome, foto_url, enderecos(cidade, estado))')
-      .eq('projeto_id', projetoId)
-      .eq('status', 'aceito');
 
-  final List data = response as List;
-  
-  return data.map((item) {
-    final emp = item['empresas'] as Map<String, dynamic>;
-    
+  Map<String, dynamic> mapearEmpresa(Map<String, dynamic> emp) {
     final enderecoData = emp['enderecos'];
     Map? endereco;
     if (enderecoData is List && enderecoData.isNotEmpty) {
-       endereco = enderecoData.first;
+      endereco = enderecoData.first;
     } else if (enderecoData is Map) {
-       endereco = enderecoData;
+      endereco = enderecoData;
     }
-    
+
     return {
       'id': emp['id'],
       'nome': emp['nome'] ?? 'Sem Nome',
@@ -100,7 +94,41 @@ final projetoEmpresasIntegrantesProvider = FutureProvider.family.autoDispose<Lis
       'cidade': endereco != null ? endereco['cidade'] : null,
       'estado': endereco != null ? endereco['estado'] : null,
     };
-  }).toList();
+  }
+
+  final colaboradoras = await supabase
+      .from('projeto_empresas_colaboradoras')
+      .select('empresas:empresa_id(id, nome, foto_url, enderecos(cidade, estado))')
+      .eq('projeto_id', projetoId)
+      .eq('status', 'aceito');
+
+  final projeto = await supabase
+      .from('projetos')
+      .select('''
+        empresa_cliente_id,
+        status_vinculo_cliente,
+        empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(id, nome, foto_url, enderecos(cidade, estado)),
+        empresa_gestora:empresas!projetos_empresa_gestora_id_fkey(id, nome, foto_url, enderecos(cidade, estado))
+      ''')
+      .eq('id', projetoId)
+      .maybeSingle();
+
+  final lista = colaboradoras.map((item) => mapearEmpresa(item['empresas'] as Map<String, dynamic>)).toList();
+
+  void adicionarSeNovo(Map<String, dynamic> empresaMapeada) {
+    final jaNaLista = lista.any((e) => e['id'] == empresaMapeada['id']);
+    if (!jaNaLista) lista.add(empresaMapeada);
+  }
+
+  if (projeto != null && projeto['empresa_gestora'] != null) {
+    adicionarSeNovo(mapearEmpresa(projeto['empresa_gestora'] as Map<String, dynamic>));
+  }
+
+  if (projeto != null && projeto['status_vinculo_cliente'] == 'ativo' && projeto['empresa_cliente'] != null) {
+    adicionarSeNovo(mapearEmpresa(projeto['empresa_cliente'] as Map<String, dynamic>));
+  }
+
+  return lista;
 });
 
 // =========================================================================
@@ -126,13 +154,9 @@ final buscarEmpresaPorCnpjProvider = FutureProvider.autoDispose.family<Map<Strin
 
     var response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjFormatado).maybeSingle();
 
-    if (response == null) {
-      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjLimpo).maybeSingle();
-    }
+    response ??= await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', cnpjLimpo).maybeSingle();
 
-    if (response == null) {
-      response = await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', filtroTrimmed).maybeSingle();
-    }
+    response ??= await supabase.from('empresas').select('id, nome, cnpj, foto_url, enderecos(cidade, estado)').eq('cnpj', filtroTrimmed).maybeSingle();
 
     return response;
     
@@ -171,21 +195,17 @@ class EmpresasProjetoController {
         .eq('cnpj', cnpjFormatado)
         .maybeSingle();
 
-    if (empresa == null) {
-      empresa = await _supabase
+    empresa ??= await _supabase
           .from('empresas')
           .select('id, nome, foto_url, enderecos(cidade, estado)')
           .eq('cnpj', cnpjLimpo)
           .maybeSingle();
-    }
 
-    if (empresa == null) {
-      empresa = await _supabase
+    empresa ??= await _supabase
           .from('empresas')
           .select('id, nome, foto_url, enderecos(cidade, estado)')
           .eq('cnpj', filtroTrimmed)
           .maybeSingle();
-    }
 
     if (empresa == null) {
       throw Exception('Nenhuma empresa encontrada com este CNPJ.');

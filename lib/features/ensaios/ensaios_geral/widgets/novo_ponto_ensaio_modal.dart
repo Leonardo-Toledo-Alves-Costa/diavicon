@@ -31,7 +31,10 @@ class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
 
 class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   final TextEditingController _nomeController = TextEditingController();
+  
+  // Controle de estado para os dropdowns em cascata
   String? _selectedLocal;
+  String? _selectedTipoElemento;
   String? _selectedElementoId;
 
   @override
@@ -45,6 +48,7 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Preencha o nome do ponto e selecione o elemento.'),
+          backgroundColor: Colors.orange,
         ),
       );
       return;
@@ -57,7 +61,7 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
 
     if (elementosEncontrados.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Erro interno: Elemento não encontrado.')),
+        const SnackBar(content: Text('Erro interno: Elemento não encontrado.'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -75,8 +79,7 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
       tipoElemento: elementoSelecionado['tipo']?.toString() ?? '-',
       local: _selectedLocal ?? 'Não informado',
       elementoId: _selectedElementoId!,
-      pontoGeralId:
-          '', // 👈 Enviando string vazia (ou nula se você aceitar) pois é um NOVO ponto
+      pontoGeralId: '', // Ponto novo = ID Vazio
       tipoEnsaioId: widget.tipoEnsaioId,
     );
 
@@ -87,10 +90,10 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
       );
       ref.invalidate(pontosEnsaioProvider);
     } else {
-      // Caso a rota retorne null, exibe a mensagem de que não está implementado
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Formulário não implementado para este ensaio.'),
+          backgroundColor: Colors.red,
         ),
       );
     }
@@ -157,36 +160,35 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                 if (elementos.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(16.0),
-                    child: Text(
-                      'Nenhum elemento cadastrado nesta estrutura. Crie um elemento primeiro.',
-                    ),
+                    child: Text('Nenhum elemento cadastrado nesta estrutura. Crie um elemento primeiro.'),
                   );
                 }
 
-                final locaisSet = elementos
-                    .map((e) => e['local']?.toString().trim() ?? 'Sem local')
-                    .where((l) => l.isNotEmpty)
-                    .toSet();
+                // 1. Extração de Locais
+                final locaisSet = elementos.map((e) => e['local']?.toString().trim() ?? 'Sem local').where((l) => l.isNotEmpty).toSet();
                 final locaisList = locaisSet.toList()..sort();
 
-                final elementosFiltrados = _selectedLocal == null
+                // 2. Filtrar Elementos pelo Local Selecionado
+                final elementosDoLocal = _selectedLocal == null
                     ? <Map<String, dynamic>>[]
-                    : elementos
-                          .where(
-                            (e) =>
-                                (e['local']?.toString().trim() ??
-                                    'Sem local') ==
-                                _selectedLocal,
-                          )
-                          .toList();
+                    : elementos.where((e) => (e['local']?.toString().trim() ?? 'Sem local') == _selectedLocal).toList();
 
-                if (_selectedElementoId != null) {
-                  final existeNoFiltro = elementosFiltrados.any(
-                    (e) => e['id'].toString() == _selectedElementoId,
-                  );
-                  if (!existeNoFiltro) {
-                    _selectedElementoId = null;
-                  }
+                // 3. Extração de Tipos de Elemento (baseado no Local)
+                final tiposSet = elementosDoLocal.map((e) => e['tipo']?.toString().trim() ?? 'Sem tipo').where((t) => t.isNotEmpty).toSet();
+                final tiposList = tiposSet.toList()..sort();
+
+                // 4. Filtrar Elementos Finais (Local + Tipo)
+                final elementosFinais = _selectedTipoElemento == null
+                    ? <Map<String, dynamic>>[]
+                    : elementosDoLocal.where((e) => (e['tipo']?.toString().trim() ?? 'Sem tipo') == _selectedTipoElemento).toList();
+
+                // Regras de reset em caso de exclusão/edição externa que invalide a seleção atual
+                if (_selectedTipoElemento != null && !tiposList.contains(_selectedTipoElemento)) {
+                  _selectedTipoElemento = null;
+                  _selectedElementoId = null;
+                }
+                if (_selectedElementoId != null && !elementosFinais.any((e) => e['id'].toString() == _selectedElementoId)) {
+                  _selectedElementoId = null;
                 }
 
                 return Column(
@@ -194,10 +196,7 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                   children: [
                     Text(
                       'Nome do ponto',
-                      style: GoogleFonts.lato(
-                        fontSize: 14,
-                        color: const Color(0xFF888888),
-                      ),
+                      style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888)),
                     ),
                     const SizedBox(height: 6),
                     TextField(
@@ -205,38 +204,18 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                       decoration: InputDecoration(
                         hintText: 'Nome',
                         hintStyle: const TextStyle(color: Color(0xFFBDBDBD)),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD9D9D9),
-                          ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: Color(0xFFD9D9D9),
-                          ),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.primary,
-                          ),
-                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
+                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
+                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
                       ),
                     ),
                     const SizedBox(height: 16),
 
+                    // DROPDOWN 1: LOCAL
                     Text(
                       'Local',
-                      style: GoogleFonts.lato(
-                        fontSize: 14,
-                        color: const Color(0xFF888888),
-                      ),
+                      style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888)),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -245,37 +224,26 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0xFFD9D9D9),
-                              ),
+                              border: Border.all(color: const Color(0xFFD9D9D9)),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedLocal,
-                                hint: const Text(
-                                  'Selecione',
-                                  style: TextStyle(color: Color(0xFFBDBDBD)),
-                                ),
-                                icon: const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Color(0xFF686868),
-                                ),
+                                hint: const Text('Selecione', style: TextStyle(color: Color(0xFFBDBDBD))),
+                                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF686868)),
                                 items: locaisList.map((local) {
                                   return DropdownMenuItem<String>(
                                     value: local,
-                                    child: Text(
-                                      local,
-                                      style: const TextStyle(
-                                        color: Color(0xFF3E3E3D),
-                                      ),
-                                    ),
+                                    child: Text(local, style: const TextStyle(color: Color(0xFF3E3E3D))),
                                   );
                                 }).toList(),
                                 onChanged: (val) {
                                   setState(() {
                                     _selectedLocal = val;
+                                    // Reseta a cascata
+                                    _selectedTipoElemento = null;
                                     _selectedElementoId = null;
                                   });
                                 },
@@ -288,18 +256,15 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                           onPressed: () async {
                             final novoLocal = await showDialog<LocalModel>(
                               context: context,
-                              barrierColor: Colors.black.withOpacity(0.42),
-                              builder: (_) => NovoLocalModal(
-                                estruturaId: widget.estruturaId,
-                              ),
+                              barrierColor: Colors.black.withValues(alpha: 0.42),
+                              builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
                             );
 
                             if (novoLocal != null) {
                               setState(() {
-                                // Seleciona automaticamente o local recém-criado
                                 _selectedLocal = novoLocal.nome;
-                                _selectedElementoId =
-                                    null; // Limpa o elemento pois mudamos de local
+                                _selectedTipoElemento = null;
+                                _selectedElementoId = null; 
                               });
                             }
                           },
@@ -308,12 +273,50 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                     ),
                     const SizedBox(height: 16),
 
+                    // DROPDOWN 2: TIPO DE ELEMENTO (NOVO)
+                    Text(
+                      'Tipo de Elemento',
+                      style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888)),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: const Color(0xFFD9D9D9)),
+                        borderRadius: BorderRadius.circular(8),
+                        color: _selectedLocal == null ? Colors.grey.shade100 : Colors.white,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedTipoElemento,
+                          hint: const Text('Selecione', style: TextStyle(color: Color(0xFFBDBDBD))),
+                          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF686868)),
+                          disabledHint: const Text('Selecione um local', style: TextStyle(color: Color(0xFFBDBDBD))),
+                          items: _selectedLocal == null
+                              ? null
+                              : tiposList.map((tipo) {
+                                  return DropdownMenuItem<String>(
+                                    value: tipo,
+                                    child: Text(tipo, style: const TextStyle(color: Color(0xFF3E3E3D))),
+                                  );
+                                }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedTipoElemento = val;
+                              // Reseta o elemento final
+                              _selectedElementoId = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // DROPDOWN 3: ELEMENTO ESTRUTURAL FINAL
                     Text(
                       'Elemento Estrutural',
-                      style: GoogleFonts.lato(
-                        fontSize: 14,
-                        color: const Color(0xFF888888),
-                      ),
+                      style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888)),
                     ),
                     const SizedBox(height: 6),
                     Row(
@@ -322,46 +325,26 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 16),
                             decoration: BoxDecoration(
-                              border: Border.all(
-                                color: const Color(0xFFD9D9D9),
-                              ),
+                              border: Border.all(color: const Color(0xFFD9D9D9)),
                               borderRadius: BorderRadius.circular(8),
-                              color: _selectedLocal == null
-                                  ? Colors.grey.shade100
-                                  : Colors.white,
+                              color: _selectedTipoElemento == null ? Colors.grey.shade100 : Colors.white,
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 isExpanded: true,
                                 value: _selectedElementoId,
-                                hint: const Text(
-                                  'Selecione',
-                                  style: TextStyle(color: Color(0xFFBDBDBD)),
-                                ),
-                                icon: const Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: Color(0xFF686868),
-                                ),
-                                disabledHint: const Text(
-                                  'Selecione um local',
-                                  style: TextStyle(color: Color(0xFFBDBDBD)),
-                                ),
-                                items: _selectedLocal == null
+                                hint: const Text('Selecione', style: TextStyle(color: Color(0xFFBDBDBD))),
+                                icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF686868)),
+                                disabledHint: const Text('Selecione um tipo de elemento', style: TextStyle(color: Color(0xFFBDBDBD))),
+                                items: _selectedTipoElemento == null
                                     ? null
-                                    : elementosFiltrados.map((el) {
+                                    : elementosFinais.map((el) {
                                         return DropdownMenuItem<String>(
                                           value: el['id'].toString(),
-                                          child: Text(
-                                            el['nome'] ?? 'Sem nome',
-                                            style: const TextStyle(
-                                              color: Color(0xFF3E3E3D),
-                                            ),
-                                          ),
+                                          child: Text(el['nome'] ?? 'Sem nome', style: const TextStyle(color: Color(0xFF3E3E3D))),
                                         );
                                       }).toList(),
-                                onChanged: (val) {
-                                  setState(() => _selectedElementoId = val);
-                                },
+                                onChanged: (val) => setState(() => _selectedElementoId = val),
                               ),
                             ),
                           ),
@@ -374,15 +357,11 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                               MaterialPageRoute(
                                 builder: (_) => NovoElemEstruturalScreen(
                                   estruturaId: widget.estruturaId,
-                                  initialLocalElemento:
-                                      _selectedLocal, // Passa o local atual para facilitar
+                                  initialLocalElemento: _selectedLocal,
                                 ),
                               ),
                             );
-                            // Atualiza o provedor para que o novo elemento apareça na lista imediatamente!
-                            ref.invalidate(
-                              elementosEstruturaProvider(widget.estruturaId),
-                            );
+                            ref.invalidate(elementosEstruturaProvider(widget.estruturaId));
                           },
                         ),
                       ],
@@ -395,22 +374,11 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFFFFA726),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 40,
-                            vertical: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(24),
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                           elevation: 0,
                         ),
-                        child: Text(
-                          'Salvar',
-                          style: GoogleFonts.lato(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        child: Text('Salvar', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold)),
                       ),
                     ),
                     const SizedBox(height: 24),
@@ -433,13 +401,7 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
         decoration: BoxDecoration(
           color: const Color(0xFFFFA726),
           shape: BoxShape.circle,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 4, offset: const Offset(0, 2))],
         ),
         child: const Icon(Icons.add, color: Colors.white, size: 24),
       ),

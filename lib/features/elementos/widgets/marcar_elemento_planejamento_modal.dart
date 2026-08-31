@@ -37,7 +37,7 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
             child: Material(
               color: Colors.white,
               elevation: 6,
-              shadowColor: Colors.black.withOpacity(0.25),
+              shadowColor: Colors.black.withValues(alpha: 0.25),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
               clipBehavior: Clip.antiAlias,
               child: Padding(
@@ -73,7 +73,7 @@ class MarcarElementoPlanejamentoModal extends ConsumerWidget {
                           return ListView.separated(
                             padding: EdgeInsets.zero,
                             itemCount: naoPosicionados.length,
-                            separatorBuilder: (_, __) => const SizedBox(height: 14),
+                            separatorBuilder: (_, _) => const SizedBox(height: 14),
                             itemBuilder: (context, index) {
                               final el = naoPosicionados[index];
                               return _ElementoCard(
@@ -236,7 +236,7 @@ class _StructureAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -245,7 +245,7 @@ class _StructureAvatar extends StatelessWidget {
           : Image.asset(
               'assets/images/obra.png',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -265,7 +265,7 @@ class _FilterRow extends StatelessWidget {
         const SizedBox(width: 9),
         Expanded(
           flex: 6, 
-          child: SizedBox(height: 36, child: DecoratedBox(decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.inputBorder), borderRadius: BorderRadius.circular(22)), child: Padding(padding: const EdgeInsets.only(left: 14, right: 10), child: Row(children: [Expanded(child: Text('Elemento', overflow: TextOverflow.ellipsis, style: GoogleFonts.lato(color: AppColors.hintText.withOpacity(0.45), fontSize: 12, fontWeight: FontWeight.w400))), const Icon(Icons.tune, color: AppColors.primary, size: 19)])))),
+          child: SizedBox(height: 36, child: DecoratedBox(decoration: BoxDecoration(color: Colors.white, border: Border.all(color: AppColors.inputBorder), borderRadius: BorderRadius.circular(22)), child: Padding(padding: const EdgeInsets.only(left: 14, right: 10), child: Row(children: [Expanded(child: Text('Elemento', overflow: TextOverflow.ellipsis, style: GoogleFonts.lato(color: AppColors.hintText.withValues(alpha: 0.45), fontSize: 12, fontWeight: FontWeight.w400))), const Icon(Icons.tune, color: AppColors.primary, size: 19)])))),
         ),
       ],
     );
@@ -285,7 +285,7 @@ class _ElementoCard extends StatelessWidget {
     return Material(
       color: Colors.white,
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.15),
+      shadowColor: Colors.black.withValues(alpha: 0.15),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -296,7 +296,7 @@ class _ElementoCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 15, 12),
             child: Row(
               children: [
-                Container(width: 54, height: 54, decoration: const BoxDecoration(color: Color(0xFFE6E7E8), shape: BoxShape.circle), clipBehavior: Clip.antiAlias, child: imgUrl != null ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_,__,___)=> const Icon(Icons.broken_image_outlined, color: AppColors.greyDarkest)) : const Icon(Icons.business_outlined, color: AppColors.greyDarkest, size: 28)),
+                Container(width: 54, height: 54, decoration: const BoxDecoration(color: Color(0xFFE6E7E8), shape: BoxShape.circle), clipBehavior: Clip.antiAlias, child: imgUrl != null ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_,_,_)=> const Icon(Icons.broken_image_outlined, color: AppColors.greyDarkest)) : const Icon(Icons.business_outlined, color: AppColors.greyDarkest, size: 28)),
                 const SizedBox(width: 15),
                 Expanded(
                   child: Column(

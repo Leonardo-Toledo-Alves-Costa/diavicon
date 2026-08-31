@@ -13,16 +13,32 @@ class ResistividadeRepository {
     required String projetoId,
     required String elementoId,
     required String tipoEnsaioId,
+    //required String estruturaId,
     File? fotoElementoNova,
     File? fotoRealizandoNova,
     File? fotoGridNova,
     File? fotoGridComPontosNova, // Foto gerada no app
+
+    // 1. Busca a estrutura_id a partir do elementoId fornecido na tabela elementos_estruturais
+      
   }) async {
     try {
       String pontoGeralId = dados.idGeral ?? '';
 
       // 1. Inserir ou Atualizar em `pontos_ensaios_geral`
       if (pontoGeralId.isEmpty) {
+          final elementoResponse = await _supabase
+          .from('elementos_estruturais')
+          .select('estrutura_id')
+          .eq('id', elementoId)
+          .single();
+
+          final String? estruturaId = elementoResponse['estrutura_id'] as String?;
+
+          if (estruturaId == null) {
+            throw Exception('Nenhuma estrutura vinculada a este elemento foi encontrada.');
+          }
+
         final geralResp = await _supabase.from('pontos_ensaios_geral').insert({
           'projeto_id': projetoId,
           'elemento_estrutural_id': elementoId,
@@ -33,6 +49,7 @@ class ResistividadeRepository {
           'criado_em': dados.criadoEm,              // 👈 Novo
           'valor_resultado': dados.resultado,       // 👈 Novo
           'cor_resultado': dados.resultadoCor,      // 👈 Novo
+          'estrutura_id': estruturaId,
         }).select('id').single();
         pontoGeralId = geralResp['id'] as String;
       } else {

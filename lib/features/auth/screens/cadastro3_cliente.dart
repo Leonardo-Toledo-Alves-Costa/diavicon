@@ -53,7 +53,7 @@ class _Cadastro3ClienteState extends ConsumerState<Cadastro3Cliente> {
                           borderRadius: BorderRadius.circular(30),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
+                              color: Colors.black.withValues(alpha: 0.05),
                               blurRadius: 24,
                               offset: const Offset(0, 10),
                             ),

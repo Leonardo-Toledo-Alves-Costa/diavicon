@@ -84,23 +84,44 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
     } else if (widget.regiao != null) {
       _elementoSelecionadoId = widget.regiao!.elementoId;
     }
-    if (widget.regiao != null && widget.regiao!.ensaios.isNotEmpty) {
-      _ensaiosAdicionados
-        ..clear()
-        ..addAll(
-          widget.regiao!.ensaios.map((ensaio) {
-            return {
-              'id':
-                  ensaio['tipo_ensaio_id'] ??
-                  ensaio['id'] ??
-                  DateTime.now().millisecondsSinceEpoch.toString(),
-              'tipoEnsaioId': ensaio['tipo_ensaio_id'],
-              'nome': ensaio['nome'] ?? '',
-              'icone': ensaio['icone'] ?? 'assets/images/ensaios/default.png',
-              'qtd': (ensaio['quantidade'] as num?)?.toInt() ?? 1,
-            };
-          }),
-        );
+    _carregarEnsaiosContratados();
+  }
+
+  /// Carrega os ensaios já contratados para esta região direto de
+  /// `ensaios_contratados` (fonte oficial dos quantitativos). A região em
+  /// si guarda apenas o desenho/marcação na planta, não os quantitativos.
+  Future<void> _carregarEnsaiosContratados() async {
+    final regiao = widget.regiao;
+    if (regiao == null) return;
+
+    try {
+      final supabase = Supabase.instance.client;
+      final resp = await supabase
+          .from('ensaios_contratados')
+          .select('tipo_ensaio_id, quantidade, tipos_ensaio(nome, icone_path)')
+          .eq('regiao_id', regiao.id);
+
+      final carregados = (resp as List).map((item) {
+        final tipoEnsaio = item['tipos_ensaio'] as Map<String, dynamic>?;
+        return {
+          'id': item['tipo_ensaio_id'],
+          'tipoEnsaioId': item['tipo_ensaio_id'],
+          'nome': tipoEnsaio?['nome'] ?? 'Ensaio',
+          'icone':
+              tipoEnsaio?['icone_path'] ?? 'assets/images/ensaios/default.png',
+          'qtd': (item['quantidade'] as num?)?.toInt() ?? 1,
+        };
+      }).toList();
+
+      if (mounted) {
+        setState(() {
+          _ensaiosAdicionados
+            ..clear()
+            ..addAll(carregados);
+        });
+      }
+    } catch (e) {
+      debugPrint('Erro ao carregar ensaios contratados da região: $e');
     }
   }
 
@@ -174,57 +195,8 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
     try {
       final supabase = Supabase.instance.client;
 
-      final novaListaEnsaios = _ensaiosAdicionados.map((e) {
-        return {
-          'tipo_ensaio_id': e['tipoEnsaioId'],
-          'nome': e['nome'],
-          'icone': e['icone'],
-          'quantidade': (e['qtd'] as num?)?.toInt() ?? 1,
-        };
-      }).toList();
-
-      List<Map<String, dynamic>> listaFinalEnsaios = List.from(
-        novaListaEnsaios,
-      );
-
-      if (widget.regiao != null) {
-        final regiaoAtual = await supabase
-            .from('regioes_ensaio')
-            .select('ensaios')
-            .eq('id', widget.regiao!.id)
-            .maybeSingle();
-
-        final atual = regiaoAtual?['ensaios'];
-
-        if (atual is List) {
-          final listaAtual = atual
-              .map((item) => Map<String, dynamic>.from(item as Map))
-              .toList();
-
-          final idsAtuais = listaAtual.map((e) => e['tipo_ensaio_id']).toSet();
-
-          for (final item in novaListaEnsaios) {
-            final tipoId = item['tipo_ensaio_id'];
-            final existe = idsAtuais.contains(tipoId);
-
-            if (existe) {
-              final index = listaAtual.indexWhere(
-                (e) => e['tipo_ensaio_id'] == tipoId,
-              );
-
-              if (index >= 0) {
-                listaAtual[index]['quantidade'] =
-                    (item['quantidade'] as num?)?.toInt() ?? 1;
-              }
-            } else {
-              listaAtual.add(item);
-            }
-          }
-
-          listaFinalEnsaios = listaAtual;
-        }
-      }
-
+      // A região guarda só o desenho/marcação na planta. Os quantitativos
+      // contratados vivem em `ensaios_contratados`, nunca aqui.
       final dados = {
         'planta_id': widget.plantaId,
         'empresa_id': widget.empresaId,
@@ -239,8 +211,6 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
         'tamanho_marcacao': 30.0,
         'cor_marcacao': widget.corMarcacao,
         'descricao': _descricaoController.text.trim(),
-        'ensaios': listaFinalEnsaios,
-        'qtd_ensaios': listaFinalEnsaios.length,
       };
 
       Map<String, dynamic>? regiaoSalva;
@@ -274,48 +244,66 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
         throw Exception('Estrutura sem projeto associado.');
       }
 
-      for (final ensaio in _ensaiosAdicionados) {
-        final tipoEnsaioId = ensaio['tipoEnsaioId'];
+      // Sincroniza `ensaios_contratados` desta região com o estado atual da
+      // aba "Ensaios": insere os novos, atualiza a quantidade dos que já
+      // existiam e remove os que foram retirados da lista.
+      final existentes = await supabase
+          .from('ensaios_contratados')
+          .select('id, tipo_ensaio_id, quantidade')
+          .eq('regiao_id', regiaoId);
 
+      final existentesPorTipo = <String, Map<String, dynamic>>{
+        for (final e in (existentes as List))
+          e['tipo_ensaio_id'].toString(): Map<String, dynamic>.from(e),
+      };
+
+      final tiposAtuais = <String>{};
+
+      for (final ensaio in _ensaiosAdicionados) {
+        final tipoEnsaioId = ensaio['tipoEnsaioId']?.toString();
         if (tipoEnsaioId == null) continue;
 
-        final existentes = await supabase
-            .from('ensaios_contratados')
-            .select('id, quantidade')
-            .eq('estrutura_id', widget.estruturaId)
-            .eq('empresa_id', widget.empresaId)
-            .eq('tipo_ensaio_id', tipoEnsaioId);
+        tiposAtuais.add(tipoEnsaioId);
+        final qtd = (ensaio['qtd'] as num?)?.toInt() ?? 1;
+        final existente = existentesPorTipo[tipoEnsaioId];
 
-        if ((existentes as List).isNotEmpty) {
-          final item = existentes.first;
-
-          await supabase
-              .from('ensaios_contratados')
-              .update({
-                'quantidade':
-                    ((item['quantidade'] as num?)?.toInt() ?? 0) +
-                    (ensaio['qtd'] as int),
-                'regiao_id': regiaoId,
-                'projeto_id': projetoId,
-              })
-              .eq('id', item['id']);
+        if (existente != null) {
+          if (((existente['quantidade'] as num?)?.toInt() ?? 0) != qtd) {
+            await supabase
+                .from('ensaios_contratados')
+                .update({'quantidade': qtd})
+                .eq('id', existente['id']);
+          }
         } else {
           await supabase.from('ensaios_contratados').insert({
             'projeto_id': projetoId,
             'estrutura_id': widget.estruturaId,
             'empresa_id': widget.empresaId,
             'tipo_ensaio_id': tipoEnsaioId,
-            'quantidade': ensaio['qtd'],
+            'quantidade': qtd,
             'regiao_id': regiaoId,
           });
         }
       }
 
-      ref.invalidate(
-        regioesEnsaioProvider(
-          RegioesFiltro(plantaId: widget.plantaId, empresaId: widget.empresaId),
-        ),
+      final idsParaRemover = existentesPorTipo.entries
+          .where((entry) => !tiposAtuais.contains(entry.key))
+          .map((entry) => entry.value['id'])
+          .toList();
+
+      if (idsParaRemover.isNotEmpty) {
+        await supabase
+            .from('ensaios_contratados')
+            .delete()
+            .inFilter('id', idsParaRemover);
+      }
+
+      final filtroRegioes = RegioesFiltro(
+        plantaId: widget.plantaId,
+        empresaId: widget.empresaId,
       );
+      ref.invalidate(regioesEnsaioProvider(filtroRegioes));
+      ref.invalidate(quantidadeEnsaiosPorRegiaoProvider(filtroRegioes));
 
       if (!mounted) return;
 
@@ -369,11 +357,12 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
           .delete()
           .eq('id', widget.regiao!.id);
       if (!mounted) return;
-      ref.invalidate(
-        regioesEnsaioProvider(
-          RegioesFiltro(plantaId: widget.plantaId, empresaId: widget.empresaId),
-        ),
+      final filtroRegioes = RegioesFiltro(
+        plantaId: widget.plantaId,
+        empresaId: widget.empresaId,
       );
+      ref.invalidate(regioesEnsaioProvider(filtroRegioes));
+      ref.invalidate(quantidadeEnsaiosPorRegiaoProvider(filtroRegioes));
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Região removida!'),

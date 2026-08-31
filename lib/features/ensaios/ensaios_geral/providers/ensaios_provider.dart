@@ -7,11 +7,14 @@ class ResumoEnsaiosParams {
   final String projetoId;
   final String estruturaId;
   final String? tipoEnsaioId;
+  final String? elementoId;
+  
 
   const ResumoEnsaiosParams({
     required this.projetoId,
     required this.estruturaId,
     this.tipoEnsaioId,
+    this.elementoId,
   });
 
   @override
@@ -70,10 +73,12 @@ final resumoEnsaiosProvider = FutureProvider.family
         var queryExecutados = supabase
             .from('pontos_ensaios_geral')
             .select(
-              'tipo_ensaio_id, projeto_id, elementos_estruturais!inner(estrutura_id)',
+              'tipo_ensaio_id, projeto_id, estrutura_id',
             )
             .eq('projeto_id', params.projetoId)
-            .eq('elementos_estruturais.estrutura_id', params.estruturaId);
+            .eq('estrutura_id', params.estruturaId);
+
+       
 
         if (params.tipoEnsaioId != null) {
           queryExecutados = queryExecutados.eq(

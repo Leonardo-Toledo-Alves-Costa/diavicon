@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../auth/providers/auth_provider.dart';
+import '../../empresa/providers/campos_personalizaveis_provider.dart';
 
 final _supabase = Supabase.instance.client;
 
@@ -15,7 +16,7 @@ final conjuntosEstruturaisProvider =
       return Supabase.instance.client
           .from('conjuntos_estruturais')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .eq('empresa_id', empresaId) // Conjunto Estrutural é informação individual da empresa, sem padrão Diavicon
           .order('nome');
     });
 
@@ -27,7 +28,7 @@ final utilizacoesEstruturaProvider =
       return Supabase.instance.client
           .from('utilizacoes_estrutura')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -39,7 +40,7 @@ final tiposEstruturaProvider =
       return Supabase.instance.client
           .from('tipos_estrutura')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -51,7 +52,7 @@ final tipologiasEstruturaProvider =
       return Supabase.instance.client
           .from('tipologias_estrutura')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId) // 👇 Filtro aplicado
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -126,15 +127,16 @@ final estruturaDropdownsControllerProvider = Provider((ref) {
 final tiposElementoStreamProvider =
     StreamProvider.autoDispose<List<Map<String, dynamic>>>((ref) {
       final empresaId = ref.watch(currentUserProvider)?.empresaId;
-      if (empresaId == null)
+      if (empresaId == null) {
         return Stream.value(
           [],
         ); // Retorna lista vazia se não tiver empresa logada
+      }
 
       return Supabase.instance.client
           .from('tipos_elemento')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -146,7 +148,7 @@ final tipologiasElementoStreamProvider =
       return Supabase.instance.client
           .from('tipologias_elemento')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -158,7 +160,7 @@ final revestimentosElementoStreamProvider =
       return Supabase.instance.client
           .from('revestimentos_elemento')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -171,7 +173,7 @@ final tipologiasLocalStreamProvider =
       return Supabase.instance.client
           .from('tipologias_local')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });
 
@@ -183,6 +185,6 @@ final condicoesLocalStreamProvider =
       return Supabase.instance.client
           .from('condicoes_local')
           .stream(primaryKey: ['id'])
-          .eq('empresa_id', empresaId)
+          .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID]) // 👇 Filtro aplicado
           .order('nome');
     });

@@ -8,7 +8,7 @@ import 'package:diavicon/features/auth/screens/empresa_cadastro_screen.dart';
 import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
 import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
-import 'package:diavicon/features/empresa/screens/empresa_screen.dart';
+import 'package:diavicon/features/empresa/screens/zz_empresa_screen.dart';
 import 'package:diavicon/features/home/screens/perfil_Minha_Conta.dart';
 import 'package:diavicon/features/home/screens/perfil_Screen.dart';
 import 'package:diavicon/features/home/screens/perfil_central_ajuda.dart';
@@ -35,12 +35,17 @@ import '../../features/auth/screens/cadastro2_empresa.dart';
 import '../../features/auth/screens/cadastro3_empresa.dart';
 
 // ── Elementos Estruturais ─────────────────────────────────────────────────────
-import '../../features/elementos/screens/elementos_screen.dart';
 
 import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
 import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
+
+
+// ── feed empresas produtos ─────────────────────────────────────────────────────
+import '../../features/empresas_servicos/screens/empresas_screen.dart';
+
+import '../../features/feed_educacao/screens/feed_screen.dart';
 
 Map<String, dynamic> _routeExtra(Object? extra) {
   if (extra is Map<String, dynamic>) return extra;
@@ -381,8 +386,9 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/educacao',
             builder: (context, state) =>
-                const Scaffold(body: Center(child: Text('Educação'))),
+                const EducacaoFeedScreen(),
           ),
+
           GoRoute(
             path: '/notificacoes',
             builder: (context, state) => const NotificacoesScreen(),

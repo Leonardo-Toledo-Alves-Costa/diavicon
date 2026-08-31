@@ -562,7 +562,7 @@ class _MarcacaoPlantaPopupState extends State<MarcacaoPlantaPopup> {
                             SizedBox(
                               height: 48,
                               child: DropdownButtonFormField<String>(
-                                value: _tipoMarcacaoSelecionado,
+                                initialValue: _tipoMarcacaoSelecionado,
                                 decoration: InputDecoration(
                                   contentPadding: const EdgeInsets.symmetric(
                                     horizontal: 16,

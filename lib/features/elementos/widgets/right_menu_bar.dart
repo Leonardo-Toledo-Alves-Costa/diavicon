@@ -125,7 +125,7 @@ class _RightMenuPanel extends StatelessWidget {
         borderRadius: const BorderRadius.horizontal(left: Radius.circular(24)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.26),
+            color: Colors.black.withValues(alpha: 0.26),
             blurRadius: 4,
             offset: const Offset(-2, 3),
           ),
@@ -199,7 +199,7 @@ class _RightMenuButton extends StatelessWidget {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.25),
+                  color: Colors.black.withValues(alpha: 0.25),
                   blurRadius: 4,
                   offset: const Offset(0, 4),
                 ),

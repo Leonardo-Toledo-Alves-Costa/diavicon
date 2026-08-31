@@ -233,3 +233,52 @@ class EquipeController {
     _ref.invalidate(projectDetailProvider(projetoId));
   }
 }
+
+// ==========================================
+// PROVIDER DE VALIDAÇÃO DE PLANO (QTD USERS)
+// ==========================================
+typedef PlanLimitInfo = ({int cadastrados, int permitidos});
+
+final planLimitByProjectProvider = FutureProvider.autoDispose.family<PlanLimitInfo, String>((ref, projetoId) async {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+  
+  if (userId == null) return (cadastrados: 0, permitidos: 0);
+
+  try {
+    // 1. Descobre a empresa do usuário logado e as regras do plano dela
+    final userResp = await supabase
+        .from('usuarios')
+        .select('empresa_id, empresas(planos(qtd_user))')
+        .eq('id', userId)
+        .maybeSingle();
+
+    final empresaId = userResp?['empresa_id'];
+    
+    int permitidos = 0;
+    final empresasData = userResp?['empresas'];
+    if (empresasData != null && empresasData is Map) {
+        final planosData = empresasData['planos'];
+        if (planosData != null && planosData is Map) {
+            permitidos = (planosData['qtd_user'] as num?)?.toInt() ?? 0;
+        }
+    }
+
+    if (empresaId == null) {
+      return (cadastrados: 0, permitidos: permitidos);
+    }
+
+    // 2. Conta todos os colaboradores ativos vinculados à sua empresa
+    final countRes = await supabase
+        .from('usuarios')
+        .select('id')
+        .eq('empresa_id', empresaId)
+        .eq('ativo', true);
+
+    final cadastrados = (countRes as List).length;
+
+    return (cadastrados: cadastrados, permitidos: permitidos);
+  } on PostgrestException catch (e) {
+    throw Exception('Erro ao buscar limite do plano: ${e.message}');
+  }
+});

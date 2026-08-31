@@ -80,7 +80,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
               'Projeto',
               style: GoogleFonts.lato(
                 fontSize: 11,
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
                 fontWeight: FontWeight.w500,
                 letterSpacing: 0.5,
               ),
@@ -221,7 +221,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
             //  Overlay visual de bloqueio enquanto o arquivo sobe pro Storage
             if (isSubmitting)
               Container(
-                color: Colors.black.withOpacity(0.3),
+                color: Colors.black.withValues(alpha: 0.3),
                 child: const Center(
                   child: Card(
                     child: Padding(
@@ -255,7 +255,7 @@ class _BuscaMock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD9D9D9).withOpacity(0.62)),
+        border: Border.all(color: const Color(0xFFD9D9D9).withValues(alpha: 0.62)),
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Row(
@@ -291,7 +291,7 @@ class _NovoButton extends StatelessWidget {
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF3A57E8).withOpacity(0.30),
+            color: const Color(0xFF3A57E8).withValues(alpha: 0.30),
             blurRadius: 2,
             offset: const Offset(0, 2),
           ),

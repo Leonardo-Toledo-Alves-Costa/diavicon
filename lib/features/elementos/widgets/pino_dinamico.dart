@@ -29,7 +29,7 @@ class PinoDinamico extends StatelessWidget {
           height: altura,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: Colors.orange.withOpacity(0.85),
+            color: Colors.orange.withValues(alpha: 0.85),
             shape: (isCirculo || isPonto) ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: (!isCirculo && !isPonto) ? BorderRadius.circular(4) : null,
             border: Border.all(color: Colors.white, width: 1.5),
@@ -44,7 +44,7 @@ class PinoDinamico extends StatelessWidget {
           const SizedBox(width: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            decoration: BoxDecoration(color: Colors.white.withOpacity(0.75), borderRadius: BorderRadius.circular(4)),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.75), borderRadius: BorderRadius.circular(4)),
             child: Text(nomeElemento!, style: const TextStyle(color: Colors.red, fontSize: 13, fontWeight: FontWeight.bold)),
           ),
         ]

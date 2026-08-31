@@ -16,6 +16,7 @@ import 'package:go_router/go_router.dart';
 import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart'; // 🔥 Nova importação adicionada
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/utils/formatters/formatters_cadastro.dart';
@@ -32,6 +33,31 @@ const _escolaridades = <String>[
   'Mestrado',
   'Doutorado',
 ];
+
+// 🔥 Provider do serviço de storage adicionado diretamente neste arquivo
+final storageServiceProvider = Provider<StorageService>((ref) {
+  return StorageService(Supabase.instance.client);
+});
+
+class StorageService {
+  final SupabaseClient _supabase;
+
+  StorageService(this._supabase);
+
+  Future<String?> uploadFotoPerfil(String usuarioId, File foto) async {
+    final extensao = foto.path.split('.').last;
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final caminhoStorage = 'perfis/$usuarioId-$timestamp.$extensao';
+
+    await _supabase.storage.from('avatars').upload(
+      caminhoStorage, 
+      foto,
+      fileOptions: const FileOptions(upsert: true), 
+    );
+
+    return _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
+  }
+}
 
 class PerfilScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosCadastro;
@@ -64,9 +90,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
   String? _escolaridade;
 
-  
-
-  // 🔥 Controlos de estado para a API de CEP (Agora independentes)
   bool _cepBuscado = false;
   bool _cidadeBloqueada = false;
   bool _ruaBloqueada = false; 
@@ -79,34 +102,34 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     super.initState();
     _cepCtrl.addListener(_ouvinteCep);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-    final usuario = ref.read(currentUserProvider);
-    final endereco = await ref.read(enderecoControllerProvider.notifier).buscarEndereco(usuario?.enderecoId ?? '');
-    if (usuario != null) {
-      _preencherCampos(usuario, endereco);
-    }
-  });
+      final usuario = ref.read(currentUserProvider);
+      final endereco = await ref.read(enderecoControllerProvider.notifier).buscarEndereco(usuario?.enderecoId ?? '');
+      if (usuario != null) {
+        _preencherCampos(usuario, endereco);
+      }
+    });
   }
 
   void _preencherCampos(UsuarioModel usuario, EnderecoModel? endereco) {
-  _nomeCtrl.text = usuario.nome ?? '';
-  _sobrenomeCtrl.text = usuario.sobrenome ?? '';
-  _telefoneCtrl.text = usuario.celular ?? '';
-  _linkedinCtrl.text = usuario.linkedin ?? '';
-  _instagramCtrl.text = usuario.instagram ?? '';
-  _formacaoCtrl.text = usuario.tituloPrincipal ?? '';
-  _escolaridade = usuario.escolaridade;
-  if (endereco != null) {
-    _cepCtrl.text = endereco.cep;
-    _cidadeCtrl.text = endereco.cidade;
-    _ruaCtrl.text = endereco.endereco;
-    _bairroCtrl.text = endereco.bairro;
-    _numeroCtrl.text = endereco.numero;
-    _complementoCtrl.text = endereco.complemento ?? '';
-    _estadoCtrl.text = endereco.estado;
-    _paisCtrl.text = endereco.pais;
+    _nomeCtrl.text = usuario.nome ?? '';
+    _sobrenomeCtrl.text = usuario.sobrenome ?? '';
+    _telefoneCtrl.text = usuario.celular ?? '';
+    _linkedinCtrl.text = usuario.linkedin ?? '';
+    _instagramCtrl.text = usuario.instagram ?? '';
+    _formacaoCtrl.text = usuario.tituloPrincipal ?? '';
+    _escolaridade = usuario.escolaridade;
+    if (endereco != null) {
+      _cepCtrl.text = endereco.cep;
+      _cidadeCtrl.text = endereco.cidade;
+      _ruaCtrl.text = endereco.endereco;
+      _bairroCtrl.text = endereco.bairro;
+      _numeroCtrl.text = endereco.numero;
+      _complementoCtrl.text = endereco.complemento ?? '';
+      _estadoCtrl.text = endereco.estado;
+      _paisCtrl.text = endereco.pais;
+    }
+    setState(() {});
   }
-  setState(() {});
-}
 
   @override
   void dispose() {
@@ -205,7 +228,6 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
           _paisCtrl.text = 'Brasil';
 
           _cepBuscado = true;
-          // 🔥 A inteligência entra aqui: só bloqueia se tiver vindo preenchido da API!
           _cidadeBloqueada = localidade.isNotEmpty;
           _ruaBloqueada = logradouro.isNotEmpty;
           _bairroBloqueado = bairro.isNotEmpty;
@@ -262,76 +284,105 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     }
   } 
 
+  // 🔥 Função de salvar completamente atualizada com o fluxo de upload e tratamento de erros
   void _salvar() async {
-  if (!_formKey.currentState!.validate()) return;
+    if (!_formKey.currentState!.validate()) return;
 
-  final usuarioAtual = ref.read(currentUserProvider);
-  final enderecoAtual = ref.read(enderecoControllerProvider);
-  if (usuarioAtual == null) return;
+    final usuarioAtual = ref.read(currentUserProvider);
+    final enderecoAtual = ref.read(enderecoControllerProvider);
+    if (usuarioAtual == null) return;
 
-  String? enderecoId = usuarioAtual.enderecoId;
+    String? enderecoId = usuarioAtual.enderecoId;
 
-  if (enderecoId != null && enderecoId.isNotEmpty) {
-    await ref.read(enderecoControllerProvider.notifier).atualizarEndereco(
-      enderecoId,
-      EnderecoModel(
-        id: enderecoAtual?.id ?? enderecoId,
-        cep: _cepCtrl.text.trim(),
-        cidade: _cidadeCtrl.text.trim(),
-        endereco: _ruaCtrl.text.trim(),
-        bairro: _bairroCtrl.text.trim(),
-        numero: _numeroCtrl.text.trim(),
-        complemento: _complementoCtrl.text.trim(),
-        estado: _estadoCtrl.text.trim(),
-        pais: _paisCtrl.text.trim(),
-      ),
-    );
-  } else {
-    final novoEndereco = await ref.read(enderecoControllerProvider.notifier).salvarEndereco({
-      'cep': _cepCtrl.text.trim(),
-      'cidade': _cidadeCtrl.text.trim(),
-      'rua': _ruaCtrl.text.trim(),
-      'bairro': _bairroCtrl.text.trim(),
-      'numero': _numeroCtrl.text.trim(),
-      'complemento': _complementoCtrl.text.trim(),
-      'estado': _estadoCtrl.text.trim(),
-      'pais': _paisCtrl.text.trim(),
-    });
+    try {
+      if (enderecoId != null && enderecoId.isNotEmpty) {
+        await ref.read(enderecoControllerProvider.notifier).atualizarEndereco(
+          enderecoId,
+          EnderecoModel(
+            id: enderecoAtual?.id ?? enderecoId,
+            cep: _cepCtrl.text.trim(),
+            cidade: _cidadeCtrl.text.trim(),
+            endereco: _ruaCtrl.text.trim(),
+            bairro: _bairroCtrl.text.trim(),
+            numero: _numeroCtrl.text.trim(),
+            complemento: _complementoCtrl.text.trim(),
+            estado: _estadoCtrl.text.trim(),
+            pais: _paisCtrl.text.trim(),
+          ),
+        );
+      } else {
+        final novoEndereco = await ref.read(enderecoControllerProvider.notifier).salvarEndereco({
+          'cep': _cepCtrl.text.trim(),
+          'cidade': _cidadeCtrl.text.trim(),
+          'rua': _ruaCtrl.text.trim(),
+          'bairro': _bairroCtrl.text.trim(),
+          'numero': _numeroCtrl.text.trim(),
+          'complemento': _complementoCtrl.text.trim(),
+          'estado': _estadoCtrl.text.trim(),
+          'pais': _paisCtrl.text.trim(),
+        });
 
-    enderecoId = novoEndereco?.id;
+        enderecoId = novoEndereco?.id;
+      }
+
+      String? urlFotoAtualizada = usuarioAtual.fotoUrl;
+
+      // Chama o provedor de storage que criamos acima
+      if (_foto != null) {
+        _mostrarAviso('Salvando perfil e fazendo upload da foto...', const Color(0xFF3E3E3D));
+        
+        final storageService = ref.read(storageServiceProvider);
+        final file = File(_foto!.path);
+        
+        final novaUrl = await storageService.uploadFotoPerfil(usuarioAtual.id, file);
+        if (novaUrl != null) {
+          urlFotoAtualizada = novaUrl;
+        }
+      }
+
+      final usuarioAtualizado = UsuarioModel(
+        id: usuarioAtual.id,
+        nome: _nomeCtrl.text.trim(),
+        sobrenome: _sobrenomeCtrl.text.trim(),
+        email: usuarioAtual.email,
+        celular: _telefoneCtrl.text.trim(),
+        cargo: usuarioAtual.cargo,
+        empresaId: usuarioAtual.empresaId,
+        setorId: usuarioAtual.setorId,
+        ativo: usuarioAtual.ativo,
+        tituloPrincipal: _formacaoCtrl.text.trim(),
+        escolaridade: _escolaridade,
+        fotoUrl: urlFotoAtualizada, 
+        linkedin: _linkedinCtrl.text.trim(),
+        instagram: _instagramCtrl.text.trim(),
+        criadoEm: usuarioAtual.criadoEm,
+        isAdminEmpresa: usuarioAtual.isAdminEmpresa,
+        enderecoId: enderecoId,
+      );
+
+      await ref.read(authRepositoryProvider).salvarPerfil(usuarioAtualizado);
+      ref.read(currentUserProvider.notifier).setUser(usuarioAtualizado);
+
+      if (mounted) {
+        _mostrarAviso('Perfil atualizado com sucesso!', Colors.green);
+        context.go('/projetos');
+      }
+
+    } on AuthException catch (e) {
+      _mostrarAviso('Erro de autenticação: ${e.message}', Colors.red);
+    } on PostgrestException catch (e) {
+      _mostrarAviso('Erro ao salvar no banco de dados: ${e.message}', Colors.red);
+    } on StorageException catch (e) {
+      _mostrarAviso('Erro ao enviar imagem para o Storage: ${e.message}', Colors.red);
+    } catch (e) {
+      _mostrarAviso('Erro inesperado ao salvar o perfil: $e', Colors.red);
+    }
   }
-
-  final usuarioAtualizado = UsuarioModel(
-    id: usuarioAtual.id,
-    nome: _nomeCtrl.text.trim(),
-    sobrenome: _sobrenomeCtrl.text.trim(),
-    email: usuarioAtual.email,
-    celular: _telefoneCtrl.text.trim(),
-    cargo: usuarioAtual.cargo,
-    empresaId: usuarioAtual.empresaId,
-    setorId: usuarioAtual.setorId,
-    ativo: usuarioAtual.ativo,
-    tituloPrincipal: _formacaoCtrl.text.trim(),
-    escolaridade: _escolaridade,
-    fotoUrl: usuarioAtual.fotoUrl,
-    linkedin: _linkedinCtrl.text.trim(),
-    instagram: _instagramCtrl.text.trim(),
-    criadoEm: usuarioAtual.criadoEm,
-    isAdminEmpresa: usuarioAtual.isAdminEmpresa,
-    enderecoId: enderecoId,
-  );
-
-  await ref.read(authRepositoryProvider).salvarPerfil(usuarioAtualizado);
-  ref.read(currentUserProvider.notifier).setUser(usuarioAtualizado);
-
-  if (mounted) {
-    context.go('/projetos');
-  }
-}
 
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
+    final usuario = ref.watch(currentUserProvider); 
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
@@ -373,6 +424,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                               const SizedBox(height: 14),
                               _AvatarPicker(
                                 foto: _foto,
+                                fotoUrlAtual: usuario?.fotoUrl,
                                 onTap: _selecionarFoto,
                               ),
                             ],
@@ -650,12 +702,24 @@ class _SectionCard extends StatelessWidget {
 
 class _AvatarPicker extends StatelessWidget {
   final XFile? foto;
+  final String? fotoUrlAtual; 
   final VoidCallback onTap;
 
-  const _AvatarPicker({required this.foto, required this.onTap});
+  const _AvatarPicker({
+    required this.foto, 
+    this.fotoUrlAtual, 
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    ImageProvider? imageProvider;
+    if (foto != null) {
+      imageProvider = FileImage(File(foto!.path));
+    } else if (fotoUrlAtual != null && fotoUrlAtual!.isNotEmpty) {
+      imageProvider = NetworkImage(fotoUrlAtual!);
+    }
+
     return GestureDetector(
       onTap: onTap,
       child: Stack(
@@ -664,8 +728,8 @@ class _AvatarPicker extends StatelessWidget {
           CircleAvatar(
             radius: 56,
             backgroundColor: Colors.grey.shade200,
-            backgroundImage: foto != null ? FileImage(File(foto!.path)) : null,
-            child: foto == null
+            backgroundImage: imageProvider, 
+            child: imageProvider == null
                 ? Icon(Icons.person, size: 52, color: Colors.grey.shade400)
                 : null,
           ),
@@ -701,7 +765,7 @@ class _DropdownEscolaridade extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,

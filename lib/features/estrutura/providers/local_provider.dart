@@ -3,7 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../repositories/local_repository.dart';
 import '../models/local_model.dart';
 
-import '../../auth/providers/auth_provider.dart'; 
+import '../../auth/providers/auth_provider.dart';
+import '../../empresa/providers/campos_personalizaveis_provider.dart';
 
 final localRepositoryProvider = Provider<LocalRepository>((ref) {
   return LocalRepository(Supabase.instance.client);
@@ -24,7 +25,7 @@ final tipologiasLocalProvider = StreamProvider.autoDispose<List<String>>((ref) {
   return supabase
       .from('tipologias_local')
       .stream(primaryKey: ['id'])
-      .eq('empresa_id', empresaId)
+      .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID])
       .order('nome', ascending: true)
       .map((lista) => lista.map((e) => e['nome'] as String).toList());
 });
@@ -39,7 +40,7 @@ final condicoesLocalProvider = StreamProvider.autoDispose<List<String>>((ref) {
   return supabase
       .from('condicoes_local')
       .stream(primaryKey: ['id'])
-      .eq('empresa_id', empresaId)
+      .inFilter('empresa_id', [empresaId, DIAVICON_EMPRESA_ID])
       .order('nome', ascending: true)
       .map((lista) => lista.map((e) => e['nome'] as String).toList());
 });

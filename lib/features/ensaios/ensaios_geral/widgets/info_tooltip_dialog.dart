@@ -63,7 +63,7 @@ class InfoTooltipDialog extends StatelessWidget {
               const SizedBox(height: 12),
               ClipRRect(
                 borderRadius: BorderRadius.circular(8),
-                child: Image.asset(imagemAsset!, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const SizedBox.shrink()),
+                child: Image.asset(imagemAsset!, fit: BoxFit.contain, errorBuilder: (_, _, _) => const SizedBox.shrink()),
               ),
             ],
             if (tabelaOuWidgetCustom != null) ...[

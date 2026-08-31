@@ -28,7 +28,7 @@ class AuthController extends StateNotifier<bool> {
       if ((event == AuthChangeEvent.signedIn || event == AuthChangeEvent.initialSession) && session?.user != null) {
         try {
           final repo = _ref.read(authRepositoryProvider);
-          final perfil = await repo.getUsuarioPerfil(session!.user!.id);
+          final perfil = await repo.getUsuarioPerfil(session!.user.id);
           
           if (perfil != null) {
             _ref.read(currentUserProvider.notifier).setUser(perfil);
@@ -113,8 +113,7 @@ class AuthController extends StateNotifier<bool> {
         serverClientId: webClientId,
       );
 
-      final googleUser = await googleSignIn.authenticate();
-      if (googleUser == null) return; 
+      final googleUser = await googleSignIn.authenticate(); 
 
       final emailDoGoogle = googleUser.email;
 
@@ -138,7 +137,7 @@ class AuthController extends StateNotifier<bool> {
         return; 
       }
 
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
 
       final clientAuth = await googleUser.authorizationClient.authorizeScopes(['email', 'profile']);

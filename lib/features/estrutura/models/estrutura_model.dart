@@ -30,6 +30,7 @@ class EstruturaModel {
   final String? tipologiaId;
 
   final String? proprietariaId;
+  final bool monitorada;
 
   // calculo idade
   String get idadeCalculada {
@@ -64,6 +65,7 @@ class EstruturaModel {
     this.tipoId,
     this.tipologiaId,
     this.proprietariaId,
+    this.monitorada = false,
     this.conjuntoNome,
     this.tipoNome,
     this.tipologiaNome,
@@ -102,6 +104,7 @@ class EstruturaModel {
       tipoId: json['tipo_id'] as String?,
       tipologiaId: json['tipologia_id'] as String?,
       proprietariaId: json['proprietaria_id'] as String?,
+      monitorada: json['monitorada'] as bool? ?? false,
       conjuntoNome: conjuntoData?['nome'],
       utilizacaoNome: utilizacaoData?['nome'],
       tipoNome: tipoData?['nome'],
@@ -134,6 +137,7 @@ class EstruturaModel {
     String? tipoId,
     String? tipologiaId,
     String? proprietariaId,
+    bool? monitorada,
     String? conjuntoNome,
     String? tipoNome,
     String? tipologiaNome,
@@ -164,6 +168,7 @@ class EstruturaModel {
       tipoId: tipoId ?? this.tipoId,
       tipologiaId: tipologiaId ?? this.tipologiaId,
       proprietariaId: proprietariaId ?? this.proprietariaId,
+      monitorada: monitorada ?? this.monitorada,
       conjuntoNome: conjuntoNome ?? this.conjuntoNome,
       tipoNome: tipoNome ?? this.tipoNome,
       tipologiaNome: tipologiaNome ?? this.tipologiaNome,
@@ -195,6 +200,7 @@ class EstruturaModel {
       'tipo_id': tipoId,
       'tipologia_id': tipologiaId,
       'proprietaria_id': proprietariaId,
+      'monitorada': monitorada,
     };
 
     if (id.isNotEmpty) {

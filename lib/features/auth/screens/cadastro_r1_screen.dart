@@ -524,7 +524,7 @@ class _DropdownEscolaridade extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       isExpanded: true,
       icon: const Icon(
         Icons.keyboard_arrow_down_rounded,

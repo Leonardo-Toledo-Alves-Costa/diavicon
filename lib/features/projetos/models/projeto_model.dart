@@ -10,7 +10,8 @@ class ProjetoModel {
   final String? empresaClienteId;
   final String? statusVinculoCliente;
   final String? clienteNome;
-  
+  final String? clienteFotoUrl;
+
   // Atributos para facilitar a UI (Preenchidos via Joins na query)
   final double progresso;
   final String imageUrl;
@@ -35,7 +36,8 @@ class ProjetoModel {
     this.statusBadge = BadgeStatus.emAndamento,
     this.empresaClienteId,
     this.statusVinculoCliente,
-    this.clienteNome, 
+    this.clienteNome,
+    this.clienteFotoUrl,
     required this.criadoEm,
     this.equipeFotos = const [],
     this.empresaFotoUrl, 
@@ -79,6 +81,7 @@ class ProjetoModel {
       empresaFotoUrl: empresaData?['foto_url'],
       statusVinculoCliente: map['status_vinculo_cliente'],
       clienteNome: clienteData?['nome'] ?? 'Cliente não definido',
+      clienteFotoUrl: clienteData?['foto_url'],
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : DateTime.now(),
     );
   }

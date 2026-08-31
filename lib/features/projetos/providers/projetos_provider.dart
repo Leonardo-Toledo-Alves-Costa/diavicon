@@ -58,7 +58,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
           prioridade(nome),
           status_projeto(nome),
           empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
-          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome, foto_url),
           projeto_equipe_interna(
             empresa_id, 
             usuarios(foto_url)
@@ -109,7 +109,7 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
           prioridade(nome),
           status_projeto(nome),
           empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
-          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome, foto_url),
           projeto_equipe_interna(
             empresa_id,
             usuarios(foto_url)
@@ -138,10 +138,12 @@ final filteredProjectsProvider = FutureProvider.autoDispose<List<ProjetoModel>>(
 
     bool matchStatus = true;
     if (statusFiltro != 'Todos') {
-      if (statusFiltro == 'Em andamento')
+      if (statusFiltro == 'Em andamento') {
         matchStatus = p.statusBadge == BadgeStatus.emAndamento;
-      if (statusFiltro == 'Concluído')
+      }
+      if (statusFiltro == 'Concluído') {
         matchStatus = p.statusBadge == BadgeStatus.concluido;
+      }
     }
 
     return matchBusca && matchStatus;
@@ -188,7 +190,7 @@ final projectDetailProvider = FutureProvider.autoDispose.family<ProjetoModel, St
           prioridade(nome),
           status_projeto(nome),
           empresas!projetos_empresa_gestora_id_fkey(nome, foto_url),
-          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome),
+          empresa_cliente:empresas!projetos_empresa_cliente_id_fkey(nome, foto_url),
           projeto_equipe_interna(
             empresa_id,
             usuarios(foto_url)

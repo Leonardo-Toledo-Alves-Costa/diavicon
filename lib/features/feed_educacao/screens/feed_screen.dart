@@ -6,51 +6,54 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../home/screens/perfil_drawer.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/ads_banner_placeholder.dart';
+import '../../planos/providers/empresa_plano_atual_provider.dart';
 import '../providers/feed_provider.dart';
 import '../models/feed_post_model.dart';
 import 'criar_post_screen.dart';
 import '../widgets/feed_header_widget.dart';
 
-class EducacaoFeedScreen extends ConsumerWidget {
+class EducacaoFeedScreen extends ConsumerStatefulWidget {
   const EducacaoFeedScreen({super.key});
-  
-
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<EducacaoFeedScreen> createState() => _EducacaoFeedScreenState();
+}
+
+// Mesma lista (e mesmos rótulos) usada em CriarPostScreen ao salvar a tag do
+// post — o filtro precisa comparar com esses valores exatos, não com um
+// vocabulário próprio, senão nunca dá match.
+const List<String> _categoriasFiltro = ['Todos', 'Ebooks', 'Artigos', 'Associações', 'Produto', 'Equipamento', 'Campo'];
+
+class _EducacaoFeedScreenState extends ConsumerState<EducacaoFeedScreen> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  bool _filtrosExpandidos = false;
+
+  // Lógica combinada de Filtro por Tag + Pesquisa por Texto/Empresa/Usuário
+  bool _passaNosFiltros(FeedPostModel p, String tagFiltro, String termoPesquisa) {
+    // 1. Validação da Tag — compara com o valor exato salvo pelo post
+    // (case-insensitive), sem tentar reescrever o rótulo em outra palavra.
+    if (tagFiltro != 'todos' && p.tag.toLowerCase() != tagFiltro) return false;
+
+    // 2. Validação da Pesquisa (Texto, Nome da Empresa ou Nome do Usuário)
+    if (termoPesquisa.isEmpty) return true;
+
+    final textoPost = p.texto.toLowerCase();
+    final nomeEmpresa = p.empresaNome.toLowerCase();
+    final nomeUsuario = p.usuarioNome.toLowerCase();
+    final tagPost = p.tag.toLowerCase();
+
+    return textoPost.contains(termoPesquisa) ||
+           nomeEmpresa.contains(termoPesquisa) ||
+           nomeUsuario.contains(termoPesquisa) ||
+           tagPost.contains(termoPesquisa);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final controller = ref.watch(educacaoFeedControllerProvider);
-    final isAdminAsync = ref.watch(isUserAdminProvider); 
     final topPadding = MediaQuery.of(context).padding.top;
-    final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-    // Lógica combinada de Filtro por Tag + Pesquisa por Texto/Empresa/Usuário
-    bool passaNosFiltros(FeedPostModel p, String tagFiltro, String termoPesquisa) {
-      // 1. Validação da Tag
-      bool passaTag = true;
-      if (tagFiltro != 'todos') {
-        if (tagFiltro == 'ebooks' && p.tag != 'ebook') passaTag = false;
-        else if (tagFiltro == 'artigos' && p.tag != 'artigo acadêmico') passaTag = false;
-        else if (tagFiltro == 'associações' && p.tag != 'associação') passaTag = false;
-        else if (tagFiltro == 'produto' && p.tag != 'produto') passaTag = false;
-        else if (tagFiltro == 'equipamento' && p.tag != 'equipamento') passaTag = false;
-        else if (tagFiltro == 'campo' && p.tag != 'direto do campo') passaTag = false;
-      }
-
-      if (!passaTag) return false;
-
-      // 2. Validação da Pesquisa (Texto, Nome da Empresa ou Nome do Usuário)
-      if (termoPesquisa.isEmpty) return true;
-
-      final textoPost = p.texto.toLowerCase();
-      final nomeEmpresa = p.empresaNome.toLowerCase();
-      final nomeUsuario = p.usuarioNome.toLowerCase();
-      final tagPost = p.tag.toLowerCase();
-
-      return textoPost.contains(termoPesquisa) ||
-             nomeEmpresa.contains(termoPesquisa) ||
-             nomeUsuario.contains(termoPesquisa) ||
-             tagPost.contains(termoPesquisa);
-    }
+    final mostrarAds = ref.watch(empresaPlanoAtualProvider).value?.ads == true;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -69,7 +72,7 @@ class EducacaoFeedScreen extends ConsumerWidget {
 
           // BARRA DE PESQUISA
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 0),
             child: TextField(
               onChanged: (valor) => controller.setPesquisa(valor),
               decoration: InputDecoration(
@@ -95,20 +98,40 @@ class EducacaoFeedScreen extends ConsumerWidget {
             ),
           ),
 
-          // FILTRO HORIZONTAL DE TAGS
+          // FILTRO DE TAGS — condensado: só mostra a categoria selecionada
+          // até o usuário tocar pra expandir e ver todas as opções.
           ValueListenableBuilder<String>(
             valueListenable: controller.filtro,
             builder: (context, filtroAtual, _) {
+              if (!_filtrosExpandidos) {
+                final labelAtual = _categoriasFiltro.firstWhere(
+                  (c) => c.toLowerCase() == filtroAtual,
+                  orElse: () => 'Todos',
+                );
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
+                  child: _CategoryChip(
+                    label: labelAtual,
+                    isSelected: true,
+                    trailingIcon: Icons.expand_more,
+                    onTap: () => setState(() => _filtrosExpandidos = true),
+                  ),
+                );
+              }
+
               return SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 0),
                 child: Row(
-                  children: ['Todos', 'Ebooks', 'Artigos', 'Associações','Produto','Equipamento','Campo'].map((tag) {
+                  children: _categoriasFiltro.map((tag) {
                     final tagLower = tag.toLowerCase();
                     return _CategoryChip(
-                      label: tag, 
+                      label: tag,
                       isSelected: filtroAtual == tagLower,
-                      onTap: () => controller.setFiltro(tagLower),
+                      onTap: () {
+                        controller.setFiltro(tagLower);
+                        setState(() => _filtrosExpandidos = false);
+                      },
                     );
                   }).toList(),
                 ),
@@ -128,7 +151,7 @@ class EducacaoFeedScreen extends ConsumerWidget {
                     loading: () => const Center(child: CircularProgressIndicator(color: Color(0xFFE87B1D))),
                     error: (err, _) => Center(child: Text('Erro: $err')),
                     data: (posts) {
-                      final postsFiltrados = posts.where((p) => passaNosFiltros(p, controller.filtro.value, controller.pesquisa.value)).toList();
+                      final postsFiltrados = posts.where((p) => _passaNosFiltros(p, controller.filtro.value, controller.pesquisa.value)).toList();
 
                       if (postsFiltrados.isEmpty) {
                         return Center(
@@ -143,11 +166,22 @@ class EducacaoFeedScreen extends ConsumerWidget {
                         );
                       }
                       
+                      // A cada 6 posts insere um banner de anúncio, só
+                      // quando o plano da empresa tem `ads == true`.
+                      final numBanners = mostrarAds ? postsFiltrados.length ~/ 6 : 0;
+
                       return ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
+                        padding: const EdgeInsets.fromLTRB(10, 0, 10, 80),
                         physics: const AlwaysScrollableScrollPhysics(),
-                        itemCount: postsFiltrados.length,
-                        itemBuilder: (context, index) => FeedPostCard(post: postsFiltrados[index], controller: controller),
+                        itemCount: postsFiltrados.length + numBanners,
+                        itemBuilder: (context, index) {
+                          if (mostrarAds && index % 7 == 6) {
+                            return const AdsBannerPlaceholder();
+                          }
+                          final bannersAntes = mostrarAds ? index ~/ 7 : 0;
+                          final post = postsFiltrados[index - bannersAntes];
+                          return FeedPostCard(post: post, controller: controller);
+                        },
                       );
                     },
                   );
@@ -464,7 +498,8 @@ class _CategoryChip extends StatelessWidget {
   final String label;
   final bool isSelected;
   final VoidCallback onTap;
-  const _CategoryChip({required this.label, required this.isSelected, required this.onTap});
+  final IconData? trailingIcon;
+  const _CategoryChip({required this.label, required this.isSelected, required this.onTap, this.trailingIcon});
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -472,7 +507,16 @@ class _CategoryChip extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Chip(
-          label: Text(label, style: TextStyle(color: isSelected ? Colors.black87 : Colors.grey.shade600, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)), 
+          label: trailingIcon == null
+              ? Text(label, style: TextStyle(color: isSelected ? Colors.black87 : Colors.grey.shade600, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal))
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(label, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                    const SizedBox(width: 4),
+                    Icon(trailingIcon, size: 16, color: Colors.black54),
+                  ],
+                ),
           backgroundColor: isSelected ? Colors.grey.shade200 : Colors.white,
           side: isSelected ? BorderSide.none : BorderSide(color: Colors.grey.shade300),
         ),

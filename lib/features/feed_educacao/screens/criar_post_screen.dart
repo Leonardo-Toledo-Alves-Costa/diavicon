@@ -24,16 +24,16 @@ class _CriarPostScreenState extends ConsumerState<CriarPostScreen> {
   final _nomeAnexoController = TextEditingController(); 
   final _urlAnexoController = TextEditingController();  
   
-  String _tagSelecionada = 'artigo acadêmico';
+  static const List<String> _tagsDisponiveis = [
+    'Ebooks', 'Artigos', 'Associações', 'Produto', 'Equipamento', 'Campo'
+  ];
+
+  String _tagSelecionada = _tagsDisponiveis.first;
   bool _isPatrocinado = false;
-  
+
   // Novas listas para controle de fotos mistas (Nuvem x Local)
   List<String> _fotosAtuais = [];
   List<XFile> _novasFotos = [];
-
-  final List<String> _tagsDisponiveis = [
-   'Ebooks', 'Artigos', 'Associações','Produto','Equipamento','Campo'
-  ];
 
   bool get _isEdicao => widget.postParaEditar != null;
   int get _totalFotos => _fotosAtuais.length + _novasFotos.length;

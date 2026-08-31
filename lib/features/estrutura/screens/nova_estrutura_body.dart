@@ -30,6 +30,8 @@ import '../services/image_picker_service.dart';
 //importações de outra features
 import '../../auth/providers/auth_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
+import '../../planos/planos_mensagens.dart';
+import '../../planos/providers/tokens_estrutura_provider.dart';
 
 class NovaEstruturaScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -77,6 +79,7 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   String? _utilizacaoSelecionada;
   String? _tipoEstruturaSelecionado;
   String? _tipologiaSelecionada;
+  bool _monitorada = false;
 
   @override
   void initState() {
@@ -259,9 +262,11 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
       final user = ref.read(currentUserProvider);
       final projeto = ref.read(projectDetailProvider(widget.projetoId)).value;
       
-      //O dono da estrutura é o Cliente da Obra.
-      // Caso não encontre, a dona temporária é a própria empresa logada.
-      final donoId = projeto?.empresaClienteId ?? user?.empresaId;
+      // O dono da estrutura é o Cliente da Obra — mas só quando o vínculo já
+      // está 'ativo' (cliente aceitou); um convite ainda 'pendente' não deve
+      // tornar a empresa convidada dona antes mesmo dela aceitar participar.
+      // Caso não haja cliente ativo, a dona temporária é a própria gestora.
+      final donoId = (projeto?.statusVinculoCliente == 'ativo' ? projeto?.empresaClienteId : null) ?? user?.empresaId;
       final gestoraId = user?.empresaId;
 
       String? imageUrlFinal;
@@ -295,9 +300,10 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
         // Automações Críticas de Banco de Dados
         criadoEm: DateTime.now(), 
         userId: user?.id, 
-        projetoId: widget.projetoId, 
+        projetoId: widget.projetoId,
         proprietariaId: donoId,
-        empresaGestoraId: gestoraId, 
+        empresaGestoraId: gestoraId,
+        monitorada: _monitorada,
       );
 
       final estruturaCriada = await ref.read(estruturaRepositoryProvider).criarEstrutura(novaEstrutura, widget.projetoId);
@@ -330,6 +336,61 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _alternarMonitorada(bool novoValor, TokensEstruturaInfo? info) {
+    if (novoValor && (info == null || info.disponivel <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sem tokens de monitoramento disponíveis. $kMensagemContatoVendas'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    setState(() => _monitorada = novoValor);
+  }
+
+  Widget _buildSeletorMonitorada() {
+    final tokensAsync = ref.watch(tokensEstruturaInfoProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text('Monitorar esta estrutura', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark, fontSize: 14)),
+              ),
+              Switch(
+                value: _monitorada,
+                activeThumbColor: AppColors.primary,
+                onChanged: (val) => _alternarMonitorada(val, tokensAsync.value),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Estruturas monitoradas aparecem na aba Estruturas e habilitam funcionalidades de acompanhamento.',
+            style: TextStyle(fontSize: 11, color: AppColors.hintText),
+          ),
+          const SizedBox(height: 8),
+          tokensAsync.when(
+            loading: () => const Text('Carregando tokens disponíveis...', style: TextStyle(fontSize: 11, color: AppColors.hintText)),
+            error: (_, _) => const SizedBox.shrink(),
+            data: (info) => Text(
+              '${info.disponivel} de ${info.limite} token(s) de monitoramento disponíveis.',
+              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: info.disponivel > 0 ? AppColors.primary : AppColors.error),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // --- CONSTRUÇÃO DA INTERFACE VISUAL ---
@@ -682,6 +743,9 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   latitude: latAtual,
                   longitude: longAtual,
                 ),
+                const SizedBox(height: 24),
+
+                _buildSeletorMonitorada(),
                 const SizedBox(height: 40),
 
                 Center(

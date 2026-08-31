@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../providers/empresa_profile_provider.dart';
+import '../../planos/screens/meu_plano_screen.dart';
 import 'empresa_informacoes_screen.dart'; // Tela do formulário
 import 'painel_servicos_screen.dart';
 import 'campos_menu_screen.dart';
@@ -47,6 +48,7 @@ class EmpresaPainelScreen extends StatelessWidget {
                 child: Text(empresa.descricao!, textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: Colors.grey[700])),
               ),
             const SizedBox(height: 4),
+            Text(empresa.cnpj , style: TextStyle(fontSize: 12, color: Colors.grey[500])),
             Text(location, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
             
             const SizedBox(height: 32),
@@ -111,7 +113,25 @@ class EmpresaPainelScreen extends StatelessWidget {
               ],
             ),
             
-            const SizedBox(height: 24),
+            const SizedBox(height: 12),
+            // Meu Plano
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const MeuPlanoScreen()));
+                },
+                icon: const Icon(Icons.workspace_premium_outlined, color: Colors.black87),
+                label: const Text('Meu Plano', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+                style: OutlinedButton.styleFrom(
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: Colors.black12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
             // Preferências
             SizedBox(
               width: double.infinity,

@@ -21,9 +21,10 @@ class EmpresaDetalheModel {
   final String? emailContato;
   final String? whatsapp;
   final String? ramoAtuacao;
+  final String cnpj;
 
   EmpresaDetalheModel({
-    required this.id, required this.nome, this.descricao, this.fotoUrl, this.fotoCapa, this.sobre, this.ramoAtuacao,
+    required this.id, required this.nome, required this.cnpj, this.descricao, this.fotoUrl, this.fotoCapa, this.sobre, this.ramoAtuacao,
     this.cidade, this.estado, this.linkedin, this.instagram, this.youtube,
     this.site, this.emailContato, this.whatsapp,
   });
@@ -107,6 +108,7 @@ final empresaDetalheProvider = FutureProvider.family.autoDispose<EmpresaDetalheM
       emailContato: response['email_contato'],
       whatsapp: response['whatsapp'],
       ramoAtuacao: response['ramo_atuacao'],
+      cnpj: response['cnpj'],
     );
   } on PostgrestException catch (e) {
     throw Exception('Erro ao carregar empresa: ${e.message}');

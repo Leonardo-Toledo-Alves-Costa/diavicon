@@ -7,13 +7,16 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
+import '../../../core/widgets/confirmar_exclusao_dialog.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../ensaios/ensaios_geral/providers/ensaios_provider.dart';
 import '../../ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart';
 import '../../ensaios/ensaios_geral/widgets/novo_ponto_ensaio_modal.dart';
 import '../../ensaios/ensaios_geral/widgets/selecionar_tipo_ensaio_modal.dart';
+import '../../projetos/providers/projetos_provider.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
 import 'elemento_form_screen.dart';
@@ -226,7 +229,11 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
         return;
       }
 
-      showModalBottomSheet(
+      // Precisa aguardar: o modal empurra a tela de coleta do ensaio por
+      // cima de si mesmo (Navigator.push dentro do NovoPontoEnsaioModal),
+      // então só sabemos que o fluxo terminou quando essa cadeia inteira
+      // fecha e devolve o controle aqui.
+      await showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.white,
@@ -241,6 +248,18 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
           //elementoId: widget.elementoId,
         ),
       );
+
+      // Sem isso, o card do ensaio recém-criado (ou uma nova leitura
+      // salva nele) só aparecia em "Ensaios Realizados" depois de sair e
+      // voltar pra tela — o provider ficava com o valor antigo em cache.
+      if (mounted && widget.elementoId != null && widget.estruturaId != null) {
+        ref.invalidate(ensaiosDoElementoProvider(widget.elementoId!));
+        ref.invalidate(progressoEnsaiosProvider((
+          elementoId: widget.elementoId!,
+          estruturaId: widget.estruturaId!,
+          projetoId: widget.projetoId,
+        )));
+      }
     }
   }
 
@@ -312,6 +331,37 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     }
   }
 
+  Future<void> _excluirElemento() async {
+    if (widget.elementoId == null) return;
+
+    final confirmar = await showConfirmarExclusaoDialog(
+      context: context,
+      titulo: 'Excluir Elemento',
+      mensagem: 'Deseja realmente excluir "${_tituloAtual ?? 'este elemento'}" e todos os ensaios vinculados a ele? Esta ação não poderá ser desfeita.',
+    );
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await ref.read(elementoRepositoryProvider).excluirElemento(widget.elementoId!);
+      if (widget.estruturaId != null) {
+        ref.invalidate(elementosPorEstruturaProvider(widget.estruturaId!));
+        ref.invalidate(todosElementosPorEstruturaProvider(widget.estruturaId!));
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Elemento excluído com sucesso!'), backgroundColor: Colors.green),
+        );
+        Navigator.pop(context);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir elemento: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -363,6 +413,30 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
               },
             ),
           ),
+          if (widget.projetoId != null && widget.elementoId != null)
+            Consumer(
+              builder: (context, ref, _) {
+                final isAdminEmpresa = ref.watch(currentUserProvider)?.isAdminEmpresa == true;
+                if (!isAdminEmpresa) return const SizedBox.shrink();
+
+                final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId!));
+                final empresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
+                final podeExcluir = projetoAsync.value != null &&
+                    empresaIdAsync.value != null &&
+                    projetoAsync.value!.empresaGestoraId == empresaIdAsync.value;
+
+                if (!podeExcluir) return const SizedBox.shrink();
+
+                return DiaviconMenuItem(
+                  icon: Icons.delete_outline,
+                  label: 'Excluir',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _excluirElemento();
+                  },
+                );
+              },
+            ),
         ],
       ),
 

@@ -14,6 +14,7 @@ import '../models/ensaios_routes_map.dart';
 import '../providers/pontos_ensaio_provider.dart';
 import '../widgets/novo_ponto_ensaio_modal.dart';
 import 'central_relatorios_screen.dart';
+import '../../ensaios_prova_carga/widgets/novo_ensaio_prova_carga_modal.dart';
 
 class PontosEnsaioScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -72,6 +73,22 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
     String estruturaId,
     String tipoEnsaioNome,
   ) {
+    // A prova de carga estática não se vincula a um elemento estrutural
+    // (usa Local + Planta), então tem seu próprio modal de criação.
+    if (tipoEnsaioNome.toLowerCase().contains('prova de carga')) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => NovoEnsaioProvaCargaModal(
+          estruturaId: estruturaId,
+          projetoId: widget.projetoId,
+          tipoEnsaioId: widget.tipoEnsaioId,
+        ),
+      );
+      return;
+    }
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,

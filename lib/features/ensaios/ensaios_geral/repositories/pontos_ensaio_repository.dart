@@ -13,17 +13,22 @@ class PontosEnsaioRepository {
   }) async {
     try {
       // 1. Busca os pontos de ensaio cruzando com os elementos
+      // Left join: ensaios como a prova de carga estática não se vinculam a
+      // um elemento_estrutural (elemento_estrutural_id fica nulo), então um
+      // inner join aqui os excluiria da lista. Filtramos por estrutura_id
+      // diretamente em pontos_ensaios_geral (coluna já preenchida por todos
+      // os ensaios) em vez de via elementos_estruturais.
       var query = _supabase
           .from('pontos_ensaios_geral')
           .select('''
             id,
             nome_ponto,
             criado_por,
-            criado_em, 
+            criado_em,
             valor_resultado,
             cor_resultado,
-            tipo_ensaio_id, 
-            elementos_estruturais!inner (
+            tipo_ensaio_id,
+            elementos_estruturais (
               id,
               nome,
               tipo,
@@ -33,7 +38,7 @@ class PontosEnsaioRepository {
           ''') // <-- 'criado_em' adicionado
           .eq('projeto_id', projetoId)
           .eq('tipo_ensaio_id', tipoEnsaioId)
-          .eq('elementos_estruturais.estrutura_id', estruturaId);
+          .eq('estrutura_id', estruturaId);
 
           // 2. Aplica o filtro de elemento dinamicamente
       if (elementoId != null && elementoId.isNotEmpty) {
@@ -68,10 +73,10 @@ class PontosEnsaioRepository {
 
       // 3. Montar a lista final
       return data.map((row) {
-        final el = row['elementos_estruturais'] as Map<String, dynamic>;
+        final el = row['elementos_estruturais'] as Map<String, dynamic>?;
         final String criadoPor = row['criado_por']?.toString() ?? '';
 
-        final List? arrayFotos = el['fotos'] as List?;
+        final List? arrayFotos = el?['fotos'] as List?;
         final String fotoElemento = (arrayFotos != null && arrayFotos.isNotEmpty)
             ? arrayFotos.first.toString()
             : 'https://via.placeholder.com/150';
@@ -94,10 +99,10 @@ class PontosEnsaioRepository {
         return PontoEnsaioModel(
           id: row['id'].toString(),
           nome: row['nome_ponto'] ?? 'Ponto sem nome',
-          elementoId: el['id'].toString(),
-          elementoNome: el['nome'] ?? 'Elemento Desconhecido',
-          tipoElemento: el['tipo'] ?? '-',
-          local: el['local'] ?? 'Não informado',
+          elementoId: el?['id']?.toString() ?? '',
+          elementoNome: el?['nome'] ?? row['nome_ponto'] ?? 'Ponto sem nome',
+          tipoElemento: el?['tipo'] ?? '-',
+          local: el?['local'] ?? 'Não informado',
           fotoElementoUrl: fotoElemento,
           avatarEmpresaUrl: logosEmpresas[criadoPor] != null && logosEmpresas[criadoPor]!.isNotEmpty
               ? logosEmpresas[criadoPor]!

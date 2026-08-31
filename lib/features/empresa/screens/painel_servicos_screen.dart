@@ -3,6 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
+import '../../../core/widgets/diavicon_alerts.dart';
+import '../../planos/planos_mensagens.dart';
+import '../../planos/providers/armazenamento_provider.dart';
+import '../../planos/providers/empresa_plano_atual_provider.dart';
 import '../providers/painel_servicos_provider.dart';
 import 'servico_form_screen.dart';
 
@@ -21,6 +25,7 @@ class PainelServicosScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final servicosAsync = ref.watch(painelServicosListProvider(empresaId));
+    final planoAsync = ref.watch(empresaPlanoAtualProvider);
     final categorias = ['Todos', 'Produto', 'Serviço', 'Equipamento'];
 
     return Scaffold(
@@ -39,7 +44,28 @@ class PainelServicosScreen extends ConsumerWidget {
       ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: AppColors.primary,
-        onPressed: () {
+        onPressed: () async {
+          if (planoAsync.value?.servicos == false) {
+            DiaviconAlerts.show(
+              context,
+              'Recurso do seu plano',
+              'Seu plano atual não permite cadastrar serviços ou produtos. $kMensagemContatoVendas',
+              isAviso: true,
+            );
+            return;
+          }
+          if (!await podeAdicionarArquivo(ref)) {
+            if (context.mounted) {
+              DiaviconAlerts.show(
+                context,
+                'Armazenamento esgotado',
+                'Sua empresa atingiu o limite de armazenamento do plano atual. $kMensagemContatoVendas',
+                isAviso: true,
+              );
+            }
+            return;
+          }
+          if (!context.mounted) return;
           // Navega para a tela de formulário no modo CRIAÇÃO (servico = null)
           Navigator.push(context, MaterialPageRoute(builder: (_) => ServicoFormScreen(empresaId: empresaId)));
         },

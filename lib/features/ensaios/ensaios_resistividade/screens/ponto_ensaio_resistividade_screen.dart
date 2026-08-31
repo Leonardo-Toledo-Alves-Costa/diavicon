@@ -16,6 +16,7 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 
 import '../models/ponto_resistividade_model.dart';
 import '../repositories/resistividade_repository.dart';
@@ -485,6 +486,8 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
   Widget build(BuildContext context) {
     if (_isInitializing) return const Scaffold(body: Center(child: CircularProgressIndicator()));
 
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
+
     return Scaffold(
       backgroundColor: Colors.white,
       endDrawer: MenuDrawerAppBar(
@@ -546,19 +549,20 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
             }),
             
             const Spacer(),
-            const Divider(), 
-            
-            
-            IconButton(
-            iconSize: 30,
-            color: Colors.red.shade800,
-            icon: const Icon(Icons.delete_outline),
-            onPressed: () {
-              Navigator.pop(context);
-              _deletarPonto();
-            },
-          ),
-              
+            const Divider(),
+
+
+            if (permissoes.canDelete)
+              IconButton(
+                iconSize: 30,
+                color: Colors.red.shade800,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deletarPonto();
+                },
+              ),
+
           ],
         ),
 
@@ -577,6 +581,29 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (!permissoes.canEdit)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            AbsorbPointer(
+              absorbing: !permissoes.canEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
             // --- HEADER ---
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -586,7 +613,8 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
                       ? TextField(controller: _nomePontoCtrl, style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold), onSubmitted: (_) => setState(() => _isEditingName = false))
                       : Text('${_nomePontoCtrl.text} - ${widget.elementoNome}', style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
-                IconButton(icon: Icon(_isEditingName ? Icons.check : Icons.edit_square), onPressed: () => setState(() => _isEditingName = !_isEditingName)),
+                if (permissoes.canEdit)
+                  IconButton(icon: Icon(_isEditingName ? Icons.check : Icons.edit_square), onPressed: () => setState(() => _isEditingName = !_isEditingName)),
               ],
             ),
             Text(widget.tipoElemento, style: GoogleFonts.lato(fontSize: 13, color: Colors.grey)),
@@ -718,11 +746,14 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
                 ),
               )
             ],
-            
+                ],
+              ),
+            ),
+
             const SizedBox(height: 48),
 
             // --- SALVAR ---
-            if (_hasChanges)
+            if (_hasChanges && permissoes.canEdit)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

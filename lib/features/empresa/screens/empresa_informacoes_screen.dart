@@ -29,7 +29,7 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
 
   // Categoria (Ramo de Atuação)
   String? _categoriaSelecionada;
-  final List<String> _categorias = ['Inspeção', 'Intervenção', 'Produtos', 'Equipamentos'];
+  final List<String> _categorias = ['Gestora de ativos','Proprietária de ativos','Inspeção', 'Intervenção', 'Produtos', 'Equipamentos'];
 
   // Controladores - Aba Sobre
   late TextEditingController _nomeCtrl;

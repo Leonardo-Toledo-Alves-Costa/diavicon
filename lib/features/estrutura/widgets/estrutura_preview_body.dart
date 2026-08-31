@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../models/estrutura_model.dart';
-import '../screens/estrutura_home.dart';
+import '../providers/estrutura_provider.dart';
+import '../screens/estrutura_projetos_screen.dart';
 
-class EstruturaPreviewBody extends StatelessWidget {
+class EstruturaPreviewBody extends ConsumerWidget {
   final EstruturaModel estrutura;
 
   const EstruturaPreviewBody({super.key, required this.estrutura});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final estatisticasAsync = ref.watch(estruturaEstatisticasProvider(estrutura.id));
+    final estatisticas = estatisticasAsync.value;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -65,26 +69,23 @@ class EstruturaPreviewBody extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildStatBox('22', 'Elementos\nCadastrados'),
-                  _buildStatBox('07', 'Projetos\nExecutados'),
-                  _buildStatBox('21', 'Ensaios\nRealizados'),
+                  _buildStatBox(estatisticas != null ? '${estatisticas.elementos}' : '—', 'Elementos\nCadastrados'),
+                  _buildStatBox(estatisticas != null ? '${estatisticas.projetos}' : '—', 'Projetos\nExecutados'),
+                  _buildStatBox(estatisticas != null ? '${estatisticas.ensaios}' : '—', 'Ensaios\nRealizados'),
                 ],
               ),
               const SizedBox(height: 32),
               Center(
                 child: SizedBox(
-                  width: 240, 
+                  width: 240,
                   child: CompactButton(
-                    text: 'Acessar Estrutura',
+                    text: 'Acessar Monitor da Estrutura',
                     onPressed: () {
-                      Navigator.pop(context); 
+                      Navigator.pop(context);
                       Navigator.push(
                         context,
                         MaterialPageRoute(
-                          builder: (context) => EstruturaHomeScreen(
-                            estrutura: estrutura,
-                            projetoId: '',
-                          ),
+                          builder: (context) => EstruturaProjetosScreen(estrutura: estrutura),
                         ),
                       );
                     },

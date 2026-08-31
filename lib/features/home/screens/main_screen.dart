@@ -3,21 +3,26 @@ import 'package:diavicon/core/widgets/rodape_seguro.dart';
 import 'package:diavicon/features/projetos/widgets/new_project_body.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../../feed_educacao/screens/criar_post_screen.dart';
+import '../../planos/planos_mensagens.dart';
+import '../../planos/providers/armazenamento_provider.dart';
+import '../../planos/providers/empresa_plano_atual_provider.dart';
 
-class MainScreen extends StatelessWidget {
+class MainScreen extends ConsumerWidget {
   final Widget child;
 
   const MainScreen({super.key, required this.child});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size;
     final String location = GoRouterState.of(context).uri.toString();
+    final planoAsync = ref.watch(empresaPlanoAtualProvider);
 
     // CONTROLE DE TAMANHOS
     const fabSize = 52.0;
@@ -86,7 +91,14 @@ class MainScreen extends StatelessWidget {
                         'Estruturas',
                         '/estruturas',
                         location,
-                        isDisabled: true,
+                        onBlocked: planoAsync.value?.monitor == false
+                            ? () => DiaviconAlerts.show(
+                                  context,
+                                  'Recurso do seu plano',
+                                  'Seu plano atual não inclui o monitoramento de estruturas. $kMensagemContatoVendas',
+                                  isAviso: true,
+                                )
+                            : null,
                       ),
 
                       const SizedBox(width: spaceBetweenCenter),
@@ -126,7 +138,7 @@ class MainScreen extends StatelessWidget {
                       location.startsWith('/estruturas');
 
                   return GestureDetector(
-                    onTap: () {
+                    onTap: () async {
                       if (isFabDisabled) {
                         DiaviconAlerts.show(
                           context,
@@ -150,12 +162,34 @@ class MainScreen extends StatelessWidget {
 
                       // Ação para a tela de Educação (Abre a tela de Criar Post)
                       if (location.startsWith('/educacao')) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const CriarPostScreen(),
-                          ),
-                        );
+                        if (planoAsync.value?.publicarFeedEdu == false) {
+                          DiaviconAlerts.show(
+                            context,
+                            'Recurso do seu plano',
+                            'Seu plano atual não permite publicar no feed educacional. $kMensagemContatoVendas',
+                            isAviso: true,
+                          );
+                          return;
+                        }
+                        if (!await podeAdicionarArquivo(ref)) {
+                          if (context.mounted) {
+                            DiaviconAlerts.show(
+                              context,
+                              'Armazenamento esgotado',
+                              'Sua empresa atingiu o limite de armazenamento do plano atual. $kMensagemContatoVendas',
+                              isAviso: true,
+                            );
+                          }
+                          return;
+                        }
+                        if (context.mounted) {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const CriarPostScreen(),
+                            ),
+                          );
+                        }
                         return;
                       }
                     },
@@ -209,20 +243,16 @@ class MainScreen extends StatelessWidget {
     String route,
     String location, {
     bool isDisabled = false,
+    VoidCallback? onBlocked,
   }) {
     final bool isSelected = location.startsWith(route) && !isDisabled;
     return InkWell(
       onTap: () {
-        if (isDisabled) {
-          DiaviconAlerts.show(
-            context,
-            'Em desenvolvimento',
-            'Esta funcionalidade estará disponível em breve!',
-            isAviso: true,
-          );
-        } else {
-          context.go(route);
+        if (onBlocked != null) {
+          onBlocked();
+          return;
         }
+        context.go(route);
       },
       child: Opacity(
         opacity: isDisabled ? 0.4 : 1.0,

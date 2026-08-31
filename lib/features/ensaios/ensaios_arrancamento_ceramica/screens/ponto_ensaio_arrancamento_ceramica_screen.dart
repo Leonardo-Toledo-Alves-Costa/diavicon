@@ -10,7 +10,8 @@ import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 
 // Providers e Repositórios locais
-import '../../ensaios_geral/providers/ensaios_provider.dart'; 
+import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 import '../models/ponto_arrancamento_ceramica_model.dart';
 import '../repositories/arrancamento_ceramica_repository.dart';
 import '../../ensaios_geral/widgets/info_tooltip_dialog.dart';
@@ -343,6 +344,7 @@ class _PontoEnsaioArrancamentoCeramicaScreenState extends ConsumerState<PontoEns
     final modelAtual = PontoArrancamentoCeramicaModel(leituras: _leituras);
     final totalPontos = _leituras.length;
     final bool atendeMinimo = totalPontos >= 12;
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -399,17 +401,18 @@ class _PontoEnsaioArrancamentoCeramicaScreenState extends ConsumerState<PontoEns
           ),
           const Spacer(),
           const Divider(),
-          Center(
-            child: IconButton(
-              iconSize: 30,
-              color: Colors.red.shade800,
-              icon: const Icon(Icons.delete_outline),
-              onPressed: () {
-                Navigator.pop(context);
-                _deletarPonto();
-              },
+          if (permissoes.canDelete)
+            Center(
+              child: IconButton(
+                iconSize: 30,
+                color: Colors.red.shade800,
+                icon: const Icon(Icons.delete_outline),
+                onPressed: () {
+                  Navigator.pop(context);
+                  _deletarPonto();
+                },
+              ),
             ),
-          ),
         ],
       ),
       appBar: const CustomAppBar(
@@ -427,6 +430,29 @@ class _PontoEnsaioArrancamentoCeramicaScreenState extends ConsumerState<PontoEns
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!permissoes.canEdit)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            AbsorbPointer(
+              absorbing: !permissoes.canEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -436,7 +462,8 @@ class _PontoEnsaioArrancamentoCeramicaScreenState extends ConsumerState<PontoEns
                     style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)),
                   ),
                 ),
-                IconButton(icon: const Icon(Icons.edit_square, color: Color(0xFF3E3E3D)), onPressed: () {}),
+                if (permissoes.canEdit)
+                  IconButton(icon: const Icon(Icons.edit_square, color: Color(0xFF3E3E3D)), onPressed: () {}),
               ],
             ),
             Text(widget.tipoElemento, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
@@ -627,8 +654,11 @@ class _PontoEnsaioArrancamentoCeramicaScreenState extends ConsumerState<PontoEns
               ],
             ),
             const SizedBox(height: 32),
+                ],
+              ),
+            ),
 
-            if (_hasChanges)
+            if (_hasChanges && permissoes.canEdit)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(

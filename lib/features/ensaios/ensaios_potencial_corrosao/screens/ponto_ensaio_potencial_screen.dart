@@ -11,6 +11,7 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 
 import '../models/ponto_potencial_model.dart';
 import '../repositories/potencial_repository.dart';
@@ -356,6 +357,8 @@ class _PontoEnsaioPotencialScreenState extends ConsumerState<PontoEnsaioPotencia
   Widget build(BuildContext context) {
     if (_isInitializing) return const Scaffold(backgroundColor: Colors.white, body: Center(child: CircularProgressIndicator()));
 
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
+
     return Scaffold(
       backgroundColor: Colors.white,
       endDrawer: MenuDrawerAppBar(
@@ -399,8 +402,9 @@ class _PontoEnsaioPotencialScreenState extends ConsumerState<PontoEnsaioPotencia
               )));
           }),
           const Spacer(),
-          const Divider(), 
-          IconButton(iconSize: 30, color: Colors.red.shade800, icon: const Icon(Icons.delete_outline), onPressed: () { Navigator.pop(context); }),
+          const Divider(),
+          if (permissoes.canDelete)
+            IconButton(iconSize: 30, color: Colors.red.shade800, icon: const Icon(Icons.delete_outline), onPressed: () { Navigator.pop(context); }),
         ],
       ),
       appBar: const CustomAppBar(
@@ -419,6 +423,29 @@ class _PontoEnsaioPotencialScreenState extends ConsumerState<PontoEnsaioPotencia
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!permissoes.canEdit)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            AbsorbPointer(
+              absorbing: !permissoes.canEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -427,7 +454,8 @@ class _PontoEnsaioPotencialScreenState extends ConsumerState<PontoEnsaioPotencia
                       ? TextField(controller: _nomeCtrl, style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold), onSubmitted: (_) => setState(() => _isEditingName = false))
                       : Text('${_nomeCtrl.text} - ${widget.elementoNome}', style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)))
                 ),
-                IconButton(icon: Icon(_isEditingName ? Icons.check : Icons.edit_square, color: const Color(0xFF3E3E3D)), onPressed: () => setState(() => _isEditingName = !_isEditingName)),
+                if (permissoes.canEdit)
+                  IconButton(icon: Icon(_isEditingName ? Icons.check : Icons.edit_square, color: const Color(0xFF3E3E3D)), onPressed: () => setState(() => _isEditingName = !_isEditingName)),
               ],
             ),
             Text(widget.tipoElemento, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
@@ -524,8 +552,11 @@ class _PontoEnsaioPotencialScreenState extends ConsumerState<PontoEnsaioPotencia
             _buildSecaoGridPotencial(),
 
             const SizedBox(height: 32),
+                ],
+              ),
+            ),
 
-            if (_hasChanges)
+            if (_hasChanges && permissoes.canEdit)
               ElevatedButton(
                 onPressed: _isLoading ? null : _salvarDadosGerais,
                 style: ElevatedButton.styleFrom(

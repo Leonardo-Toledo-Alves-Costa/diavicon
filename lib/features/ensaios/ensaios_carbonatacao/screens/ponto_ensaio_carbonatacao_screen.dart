@@ -13,6 +13,7 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 import '../models/ponto_carbonatacao_completo_model.dart';
 import '../repositories/carbonatacao_repository.dart';
@@ -544,6 +545,8 @@ class _PontoEnsaioCarbonatacaoScreenState
       );
     }
 
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
+
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light.copyWith(
         systemNavigationBarColor: Colors.white,
@@ -623,17 +626,18 @@ class _PontoEnsaioCarbonatacaoScreenState
             const Spacer(),
             const Divider(),
 
-            Center(
-              child: IconButton(
-                iconSize: 30,
-                color: Colors.red.shade800,
-                icon: const Icon(Icons.delete_outline),
-                onPressed: () {
-                  Navigator.pop(context);
-                  _deletarPonto();
-                },
+            if (permissoes.canDelete)
+              Center(
+                child: IconButton(
+                  iconSize: 30,
+                  color: Colors.red.shade800,
+                  icon: const Icon(Icons.delete_outline),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _deletarPonto();
+                  },
+                ),
               ),
-            ),
           ],
         ),
 
@@ -667,6 +671,29 @@ class _PontoEnsaioCarbonatacaoScreenState
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              if (!permissoes.canEdit)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                          style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              AbsorbPointer(
+                absorbing: !permissoes.canEdit,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -694,14 +721,15 @@ class _PontoEnsaioCarbonatacaoScreenState
                             ),
                           ),
                   ),
-                  IconButton(
-                    icon: Icon(
-                      _isEditingName ? Icons.check : Icons.edit_square,
-                      color: const Color(0xFF3E3E3D),
+                  if (permissoes.canEdit)
+                    IconButton(
+                      icon: Icon(
+                        _isEditingName ? Icons.check : Icons.edit_square,
+                        color: const Color(0xFF3E3E3D),
+                      ),
+                      onPressed: () =>
+                          setState(() => _isEditingName = !_isEditingName),
                     ),
-                    onPressed: () =>
-                        setState(() => _isEditingName = !_isEditingName),
-                  ),
                 ],
               ),
               Text(
@@ -886,9 +914,12 @@ class _PontoEnsaioCarbonatacaoScreenState
                   ],
                 ),
               ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 48),
 
-              if (_hasChanges)
+              if (_hasChanges && permissoes.canEdit)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(

@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_cropper/image_cropper.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/confirmar_exclusao_dialog.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/custom_button.dart';
+import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
@@ -17,9 +19,12 @@ import '../widgets/proprietario_vinculo_section.dart';
 import '../widgets/mapa_preview_widget.dart';
 import '../widgets/estrutura_home_header.dart';
 
-import '../../projetos/providers/projetos_provider.dart'; 
-import '../providers/estrutura_provider.dart'; 
-import '../providers/estruturas_dropdown_provider.dart'; 
+import '../../auth/providers/auth_provider.dart';
+import '../../planos/planos_mensagens.dart';
+import '../../planos/providers/tokens_estrutura_provider.dart';
+import '../../projetos/providers/projetos_provider.dart';
+import '../providers/estrutura_provider.dart';
+import '../providers/estruturas_dropdown_provider.dart';
 
 
 class EstruturaInformacaoScreen extends ConsumerStatefulWidget {
@@ -64,8 +69,9 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
   bool _isSaving = false;
   bool _isInitialized = false;
 
-  bool _isDirty = false; 
+  bool _isDirty = false;
   EstruturaModel? _estruturaSalva;
+  late String? _proprietariaIdAtual;
 
   bool _buscandoCep = false;
   bool _buscandoCoords = false;
@@ -87,12 +93,15 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
   String? _initialUtilizacao;
   String? _initialTipo;
   String? _initialTipologia;
+  bool _initialMonitorada = false;
+  bool _monitoradaAtual = false;
 
   String? _clean(String? val) => (val != null && val.trim().isNotEmpty) ? val : null;
 
   @override
   void initState() {
     super.initState();
+    _proprietariaIdAtual = widget.estrutura.proprietariaId;
     _preencherControladores(widget.estrutura);
     _adicionarListeners();
   }
@@ -133,6 +142,9 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     _utilizacaoSelecionada = _initialUtilizacao;
     _tipoSelecionado = _initialTipo;
     _tipologiaSelecionada = _initialTipologia;
+
+    _initialMonitorada = e.monitorada;
+    _monitoradaAtual = e.monitorada;
 
     _isInitialized = true;
   }
@@ -193,6 +205,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     if (_paisController.text != _initialPais) return true;
     if (_ufController.text != _initialUf) return true;
     if (_caaController.text != _initialCaa) return true;
+    if (_monitoradaAtual != _initialMonitorada) return true;
     return false;
   }
 
@@ -240,6 +253,36 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
       }
     } finally {
       if (mounted) setState(() => _buscandoCoords = false);
+    }
+  }
+
+  Future<void> _excluirEstrutura() async {
+    final confirmar = await showConfirmarExclusaoDialog(
+      context: context,
+      titulo: 'Excluir Estrutura',
+      mensagem: 'Deseja realmente excluir "${widget.estrutura.nome}" e todos os elementos estruturais e ensaios vinculados a ela? Esta ação não poderá ser desfeita.',
+    );
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await ref.read(estruturaRepositoryProvider).excluirEstrutura(widget.estrutura.id);
+      ref.invalidate(estruturasDoProjetoProvider(widget.projetoId));
+      ref.invalidate(projetoEstruturasProvider(widget.projetoId));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Estrutura excluída com sucesso!'), backgroundColor: Colors.green),
+        );
+        // Fecha esta tela e a home da estrutura (que não existe mais).
+        final navigator = Navigator.of(context);
+        navigator.pop();
+        if (navigator.canPop()) navigator.pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir estrutura: $e'), backgroundColor: AppColors.error),
+        );
+      }
     }
   }
 
@@ -366,6 +409,7 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         utilizacaoNome: _utilizacaoSelecionada ?? widget.estrutura.utilizacaoNome,
         tipoNome: _tipoSelecionado ?? widget.estrutura.tipoNome,
         tipologiaNome: _tipologiaSelecionada ?? widget.estrutura.tipologiaNome,
+        monitorada: _monitoradaAtual,
       );
 
       await repo.atualizarEstrutura(estruturaAtualizada);
@@ -411,6 +455,63 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
     }).toList();
   }
 
+  void _alternarMonitorada(bool novoValor, TokensEstruturaInfo? info) {
+    if (novoValor && (info == null || info.disponivel <= 0)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Sem tokens de monitoramento disponíveis. $kMensagemContatoVendas'), backgroundColor: Colors.red),
+      );
+      return;
+    }
+    setState(() => _monitoradaAtual = novoValor);
+  }
+
+  Widget _buildSeletorMonitorada(bool canEdit) {
+    final tokensAsync = ref.watch(tokensEstruturaInfoProvider);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF9F9F9),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Expanded(
+                child: Text('Monitorar esta estrutura', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark, fontSize: 14)),
+              ),
+              Switch(
+                value: _monitoradaAtual,
+                activeThumbColor: AppColors.primary,
+                onChanged: canEdit ? (val) => _alternarMonitorada(val, tokensAsync.value) : null,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Estruturas monitoradas aparecem na aba Estruturas e habilitam funcionalidades de acompanhamento.',
+            style: TextStyle(fontSize: 11, color: AppColors.hintText),
+          ),
+          if (canEdit) ...[
+            const SizedBox(height: 8),
+            tokensAsync.when(
+              loading: () => const Text('Carregando tokens disponíveis...', style: TextStyle(fontSize: 11, color: AppColors.hintText)),
+              error: (_, _) => const SizedBox.shrink(),
+              data: (info) => Text(
+                '${info.disponivel} de ${info.limite} token(s) de monitoramento disponíveis.',
+                style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: info.disponivel > 0 ? AppColors.primary : AppColors.error),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     double? latAtual = double.tryParse(_latController.text.trim());
@@ -438,6 +539,17 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         canEdit = (projeto.empresaGestoraId == empresaId);
       });
     });
+    final isAdminEmpresa = ref.watch(currentUserProvider)?.isAdminEmpresa == true;
+    final podeExcluir = isAdminEmpresa && canEdit;
+
+    // Só quem é a empresa proprietária atual pode transferir a propriedade
+    // (regra separada de canEdit — a gestora não tem esse direito por si só,
+    // a menos que também seja a proprietária). Estrutura legada sem
+    // proprietária definida cai pra gestora conseguir atribuir a primeira.
+    final podeTransferirPropriedade = usuarioEmpresaIdAsync.maybeWhen(
+      data: (empresaId) => _proprietariaIdAtual == null ? canEdit : _proprietariaIdAtual == empresaId,
+      orElse: () => false,
+    );
 
     return PopScope(
       canPop: !_hasChanges,
@@ -586,7 +698,16 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                       ],
                     ),
 
-                    ProprietarioVinculoSection(projetoId: widget.projetoId),
+                    ProprietarioVinculoSection(
+                      estruturaId: widget.estrutura.id,
+                      projetoId: widget.projetoId,
+                      proprietariaId: _proprietariaIdAtual,
+                      podeTransferir: podeTransferirPropriedade,
+                      onTransferido: (novaEmpresaId) => setState(() => _proprietariaIdAtual = novaEmpresaId),
+                    ),
+                    const SizedBox(height: 24),
+
+                    _buildSeletorMonitorada(canEdit),
                     const SizedBox(height: 24),
 
                     Column(
@@ -824,6 +945,21 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                                   longitude: longAtual,
                                 ),
                               ),
+
+                        if (podeExcluir) ...[
+                          const SizedBox(height: 32),
+                          const Divider(),
+                          const SizedBox(height: 16),
+                          CompactButton(
+                            text: 'Excluir Estrutura',
+                            icon: Icons.delete_outline,
+                            backgroundColor: Colors.white,
+                            foregroundColor: AppColors.error,
+                            borderColor: AppColors.error,
+                            elevation: 0,
+                            onPressed: _excluirEstrutura,
+                          ),
+                        ],
 
                         const SizedBox(height: 40),
                       ],

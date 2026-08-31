@@ -10,6 +10,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
 import '../../../empresa/providers/campos_personalizaveis_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 import '../utils/risco_gut_calculo.dart';
 
 // TODO: Ajuste os imports abaixo para o caminho correto dos seus arquivos no projeto
@@ -513,6 +514,7 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     final tiposAsync = ref.watch(tiposElementoProvider);
     final elementosAsync = ref.watch(elementosProvider((estruturaId: widget.estruturaId, tipoNome: _tipoElementoSelecionadoNome)));
     final plantaAsync = ref.watch(plantaProvider(_localSelecionadoId));
+    final permissoes = ref.watch(ensaioPermissoesProvider(widget.inspecaoGeralId)).value ?? EnsaioPermissoes.somenteVisualizar;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
@@ -535,6 +537,29 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!permissoes.canEdit)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            AbsorbPointer(
+              absorbing: !permissoes.canEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Text(widget.pontoInspecaoId != null ? 'Edição de Inspeção' : 'Registro de Inspeção', style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
             const SizedBox(height: 24),
 
@@ -930,19 +955,23 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
               );
             }),
             const SizedBox(height: 32),
-
-            ElevatedButton(
-              onPressed: _salvando ? null : _salvarRegistroCompleto,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFFFFA726),
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-                elevation: 0,
+                ],
               ),
-              child: _salvando 
-                ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                : Text(widget.pontoInspecaoId != null ? 'Atualizar Registro' : 'Salvar Registro Completo', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             ),
+
+            if (permissoes.canEdit)
+              ElevatedButton(
+                onPressed: _salvando ? null : _salvarRegistroCompleto,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFFFFA726),
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                  elevation: 0,
+                ),
+                child: _salvando
+                  ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : Text(widget.pontoInspecaoId != null ? 'Atualizar Registro' : 'Salvar Registro Completo', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              ),
           ],
         ),
       ),

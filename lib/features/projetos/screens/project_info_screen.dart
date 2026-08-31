@@ -7,18 +7,25 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_cropper/image_cropper.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/compact_button.dart';
+import '../../../core/widgets/confirmar_exclusao_dialog.dart';
 import '../../../core/widgets/custom_text_field.dart';
-import '../../../core/widgets/custom_dropdown.dart'; 
-import '../../../core/widgets/custom_button.dart'; 
+import '../../../core/widgets/custom_dropdown.dart';
+import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
-import '../../../core/widgets/status_badge.dart'; 
+import '../../../core/widgets/status_badge.dart';
 
 import '../../../core/widgets/custom_appbar.dart';
 
-import '../models/projeto_model.dart'; 
+import '../../auth/providers/auth_provider.dart';
+import '../../estrutura/models/estrutura_model.dart';
+import '../../estrutura/providers/estrutura_provider.dart';
+import '../models/projeto_model.dart';
 import '../providers/projetos_provider.dart';
 import '../providers/empresas_projeto_provider.dart';
-import '../widgets/trocar_gestora_modal.dart'; 
+import '../providers/notificacoes_provider.dart';
+import '../widgets/busca_cliente_modal.dart';
+import '../widgets/trocar_gestora_modal.dart';
 
 class ProjectInfoScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -213,6 +220,74 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         DiaviconAlerts.show(context, 'Erro ao salvar', e.toString().replaceAll('Exception: ', ''), isErro: true);
         setState(() => _isSaving = false);
       }
+    }
+  }
+
+  /// Exclui o projeto e, se a empresa do usuário for gestora de alguma
+  /// estrutura vinculada a ele, pergunta se quer excluir essa(s)
+  /// estrutura(s) também (e todos os elementos/ensaios dela).
+  Future<void> _excluirProjeto(ProjetoModel projeto) async {
+    final confirmar = await showConfirmarExclusaoDialog(
+      context: context,
+      titulo: 'Excluir Projeto',
+      mensagem: 'Deseja realmente excluir o projeto "${projeto.nome}"? Esta ação não poderá ser desfeita.',
+    );
+    if (confirmar != true || !mounted) return;
+
+    // Precisa buscar as estruturas vinculadas ANTES de excluir o projeto —
+    // o vínculo (projeto_estruturas) some junto quando o projeto for apagado.
+    final empresaId = ref.read(loggedUserCompanyIdProvider).value;
+    List<EstruturaModel> estruturasGerenciadas = [];
+    if (empresaId != null) {
+      try {
+        estruturasGerenciadas = await ref
+            .read(estruturaRepositoryProvider)
+            .buscarEstruturasGerenciadasDoProjeto(widget.projetoId, empresaId);
+      } catch (_) {
+        // Segue sem oferecer a exclusão em cascata da estrutura se essa busca falhar.
+      }
+    }
+
+    try {
+      await ref.read(projetoRepositoryProvider).excluirProjeto(widget.projetoId);
+    } catch (e) {
+      if (mounted) {
+        DiaviconAlerts.show(context, 'Erro', 'Falha ao excluir projeto: $e', isErro: true);
+      }
+      return;
+    }
+
+    ref.invalidate(filteredProjectsProvider);
+    ref.invalidate(projectDetailProvider(widget.projetoId));
+
+    if (!mounted) return;
+
+    if (estruturasGerenciadas.isNotEmpty) {
+      final nomes = estruturasGerenciadas.map((e) => e.nome).join(', ');
+      final confirmarEstrutura = await showConfirmarExclusaoDialog(
+        context: context,
+        titulo: 'Excluir estrutura também?',
+        mensagem: 'O projeto foi excluído. Sua empresa é a gestora de "$nomes" — deseja excluir também essa estrutura (e todos os elementos e ensaios vinculados a ela)?',
+      );
+
+      if (confirmarEstrutura == true && mounted) {
+        for (final estrutura in estruturasGerenciadas) {
+          try {
+            await ref.read(estruturaRepositoryProvider).excluirEstrutura(estrutura.id);
+          } catch (e) {
+            if (mounted) {
+              DiaviconAlerts.show(context, 'Erro', 'Falha ao excluir a estrutura "${estrutura.nome}": $e', isErro: true);
+            }
+          }
+        }
+      }
+    }
+
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Projeto excluído com sucesso!'), backgroundColor: Colors.green),
+      );
+      Navigator.of(context).pop();
     }
   }
 
@@ -443,7 +518,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                     subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este ponto focal do projeto.',
                   ),
                   const SizedBox(height: 16),
-                  _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit),
+                  _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit, projeto.clienteFotoUrl),
 
                   const SizedBox(height: 24),
                   const Divider(color: AppColors.inputBorder),
@@ -454,9 +529,24 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                     subtitle: 'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
                   ),
                   const SizedBox(height: 16),
-                  _buildGestoraCard(nomeGestora, canEdit, () => _abrirModalTrocaGestora(projeto)),
-                  
-                  const SizedBox(height: 40), 
+                  _buildGestoraCard(nomeGestora, projeto.empresaFotoUrl, canEdit, () => _abrirModalTrocaGestora(projeto)),
+
+                  if (canEdit && ref.watch(currentUserProvider)?.isAdminEmpresa == true) ...[
+                    const SizedBox(height: 24),
+                    const Divider(color: AppColors.inputBorder),
+                    const SizedBox(height: 24),
+                    CompactButton(
+                      text: 'Excluir Projeto',
+                      icon: Icons.delete_outline,
+                      backgroundColor: Colors.white,
+                      foregroundColor: AppColors.error,
+                      borderColor: AppColors.error,
+                      elevation: 0,
+                      onPressed: () => _excluirProjeto(projeto),
+                    ),
+                  ],
+
+                  const SizedBox(height: 40),
                 ],
               ),
             );
@@ -536,14 +626,17 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     );
   }
 
-  Widget _buildClienteCard(String nome, String status, bool canEdit) {
+  Widget _buildClienteCard(String nome, String status, bool canEdit, String? fotoUrl) {
     final bool isVinculado = status == 'Vinculado';
+    final bool isPendente = status == 'Pendente';
 
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 28,
-          backgroundImage: AssetImage('assets/images/user.png'), 
+          backgroundColor: AppColors.greyVeryLight,
+          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty) ? NetworkImage(fotoUrl) : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
         const SizedBox(width: 16),
         Expanded(
@@ -555,45 +648,111 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isVinculado ? const Color(0xFFE6F4EA) : const Color(0xFFFFE5E5), 
+                  color: isVinculado
+                      ? const Color(0xFFE6F4EA)
+                      : (isPendente ? const Color(0xFFFFF3E0) : const Color(0xFFFFE5E5)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   status,
                   style: TextStyle(
-                    color: isVinculado ? Colors.green.shade800 : AppColors.error, 
-                    fontWeight: FontWeight.bold, 
-                    fontSize: 10
+                    color: isVinculado ? Colors.green.shade800 : (isPendente ? Colors.orange.shade800 : AppColors.error),
+                    fontWeight: FontWeight.bold,
+                    fontSize: 10,
                   ),
                 ),
               ),
+              if (isPendente) ...[
+                const SizedBox(height: 4),
+                Text('Aguardando aceite do convite', style: GoogleFonts.lato(fontSize: 11, color: AppColors.greyMedium)),
+              ],
             ],
           ),
         ),
-        if (canEdit && !isVinculado)
+        if (canEdit && !isPendente)
           ElevatedButton(
             style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary, 
+              backgroundColor: AppColors.primary,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               elevation: 0,
             ),
-            onPressed: () {
-              DiaviconAlerts.show(context, 'Vincular Cliente', 'Abrirá o modal para buscar CNPJ do cliente.', isAviso: true);
-            },
-            child: Text('Vincular', style: GoogleFonts.lato(color: AppColors.white, fontWeight: FontWeight.bold)),
+            onPressed: () => _abrirBuscaClienteEConvidar(clienteAtualNome: isVinculado ? nome : null),
+            child: Text(isVinculado ? 'Trocar' : 'Vincular', style: GoogleFonts.lato(color: AppColors.white, fontWeight: FontWeight.bold)),
           ),
       ],
     );
   }
 
-  Widget _buildGestoraCard(String nome, bool canEdit, VoidCallback onTapEdit) {
+  /// [clienteAtualNome] só é informado quando já existe um cliente vinculado
+  /// ('ativo') — nesse caso confirma antes de desvincular o atual e só então
+  /// abre a busca pra convidar o novo.
+  void _abrirBuscaClienteEConvidar({String? clienteAtualNome}) {
+    if (clienteAtualNome != null) {
+      showDialog(
+        context: context,
+        builder: (ctxConfirma) => AlertDialog(
+          backgroundColor: AppColors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text('Trocar cliente proprietário', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
+          content: Text('$clienteAtualNome perderá o acesso a este projeto imediatamente. Deseja continuar e convidar outra empresa?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctxConfirma),
+              child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.pop(ctxConfirma);
+                try {
+                  await ref.read(notificacoesControllerProvider).removerClienteAtual(projetoId: widget.projetoId);
+                  ref.invalidate(projectDetailProvider(widget.projetoId));
+                  if (!mounted) return;
+                  _abrirBuscaClienteEConvidar();
+                } catch (e) {
+                  if (!mounted) return;
+                  DiaviconAlerts.show(context, 'Erro', e.toString().replaceAll('Exception: ', ''), isErro: true);
+                }
+              },
+              child: const Text('Continuar', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => BuscaClienteModal(
+        onSelecionado: (empresaId, nomeEmpresa) async {
+          try {
+            await ref.read(notificacoesControllerProvider).enviarConviteCliente(
+                  projetoId: widget.projetoId,
+                  empresaClienteId: empresaId,
+                );
+            ref.invalidate(projectDetailProvider(widget.projetoId));
+            if (!mounted) return;
+            DiaviconAlerts.show(context, 'Convite enviado!', '$nomeEmpresa vai receber uma notificação para aceitar ser cliente deste projeto.');
+          } catch (e) {
+            if (!mounted) return;
+            DiaviconAlerts.show(context, 'Erro', e.toString().replaceAll('Exception: ', ''), isErro: true);
+          }
+        },
+      ),
+    );
+  }
+
+  Widget _buildGestoraCard(String nome, String? fotoUrl, bool canEdit, VoidCallback onTapEdit) {
     return Row(
       children: [
-        const CircleAvatar(
+        CircleAvatar(
           radius: 28,
           backgroundColor: AppColors.white,
-          child: Icon(Icons.business, color: AppColors.greyMedium, size: 28), 
+          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty) ? NetworkImage(fotoUrl) : null,
+          child: (fotoUrl == null || fotoUrl.isEmpty)
+              ? const Icon(Icons.business, color: AppColors.greyMedium, size: 28)
+              : null,
         ),
         const SizedBox(width: 16),
         Expanded(

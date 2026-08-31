@@ -16,13 +16,17 @@ class HeatmapPainter extends CustomPainter {
   final double maxY;
   final double opacity;
   final int resolution; // Tamanho do "quadradinho" pintado. Menor = mais bonito, mas mais pesado (ex: 10)
+  /// Escala de cores customizada (valor -> cor). Se nulo, usa a escala
+  /// padrão calibrada para mV (potencial de corrosão).
+  final Color Function(double value)? colorMapper;
 
   HeatmapPainter({
     required this.points,
     required this.maxX,
     required this.maxY,
     required this.opacity,
-    this.resolution = 15, 
+    this.resolution = 15,
+    this.colorMapper,
   });
 
   @override
@@ -43,7 +47,7 @@ class HeatmapPainter extends CustomPainter {
         double val = _calcularIDW(realX, realY);
 
         // 2. Transforma o valor na cor correspondente da norma
-        paint.color = _getColorForValue(val).withValues(alpha: opacity);
+        paint.color = (colorMapper ?? _getColorForValue)(val).withValues(alpha: opacity);
 
         // 3. Desenha o quadradinho no ecrã
         canvas.drawRect(Rect.fromLTWH(i, j, resolution.toDouble(), resolution.toDouble()), paint);

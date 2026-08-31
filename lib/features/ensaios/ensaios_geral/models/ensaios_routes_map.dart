@@ -15,6 +15,10 @@ import '../../ensaios_arrancamento_ceramica/screens/analise_todos_arrancamento_c
 import '../../ensaios_potencial_corrosao/screens/ponto_ensaio_potencial_screen.dart';
 import '../../ensaios_potencial_corrosao/screens/analise_todos_potencial_screen.dart';
 
+import '../../ensaios_prova_carga/screens/ponto_ensaio_prova_carga_screen.dart';
+
+import '../../ensaios_esclerometria/screens/ponto_ensaio_esclerometria_screen.dart';
+
 class EnsaioRoutesMap {
   static Widget? getFormularioScreen({
     required String tipoEnsaio,
@@ -97,7 +101,26 @@ class EnsaioRoutesMap {
       );
     }
 
-    
+    // 6. Prova de Carga Estática — não se vincula a um elemento estrutural,
+    // então a tela carrega tudo sozinha a partir do pontoGeralId.
+    if (tipo.contains('prova de carga')) {
+      if (pontoGeralId.isEmpty) return null;
+      return PontoEnsaioProvaCargaScreen(pontoGeralId: pontoGeralId);
+    }
+
+    // 7. Esclerometria
+    if (tipo.contains('esclerometria')) {
+      return PontoEnsaioEsclerometriaScreen(
+        projetoId: projetoId,
+        pontoNome: pontoNome,
+        elementoNome: elementoNome,
+        tipoElemento: tipoElemento,
+        local: local,
+        elementoId: elementoId,
+        pontoGeralId: pontoGeralId,
+        tipoEnsaioId: tipoEnsaioId,
+      );
+    }
 
     return null;
   }

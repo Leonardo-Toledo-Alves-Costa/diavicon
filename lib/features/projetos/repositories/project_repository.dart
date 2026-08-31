@@ -74,8 +74,8 @@ class ProjectRepository {
     }
   }
 
-  /// CRIAÇÃO COMPLETA DO PROJETO
-  Future<void> createProject({
+  /// CRIAÇÃO COMPLETA DO PROJETO. Retorna o id do projeto criado.
+  Future<String> createProject({
     required String nome,
     required String empresaGestoraId,
     required String usuarioId,
@@ -116,13 +116,18 @@ class ProjectRepository {
         }
       }
 
-      // Cria o Projeto no Banco
+      // Cria o Projeto no Banco. Empresa já cadastrada como cliente NUNCA
+      // entra direto como 'ativo' — fica 'pendente' até aceitar o convite
+      // (a notificação em si é enviada por quem chama esta função, depois
+      // que o projeto já existe — ver NotificacoesController.enviarNotificacaoConviteCliente).
       final respostaProjeto = await _supabase.from('projetos').insert({
         'nome': nome,
         'empresa_gestora_id': empresaGestoraId,
         'empresa_cliente_id': isNovoCliente ? null : empresaClienteId,
-        'status_vinculo_cliente': isNovoCliente ? 'nao_vinculado' : 'ativo',
-        'image_url': imageUrl, 
+        'status_vinculo_cliente': isNovoCliente
+            ? 'nao_vinculado'
+            : (empresaClienteId != null ? 'pendente' : 'nao_vinculado'),
+        'image_url': imageUrl,
         'criado_por': usuarioId,
       }).select('id').single();
 
@@ -144,12 +149,13 @@ class ProjectRepository {
       // Garante a inserção do criador na equipe do projeto com sua respectiva empresa
       await _supabase.from('projeto_equipe_interna').insert({
         'projeto_id': novoProjetoId,
-        'usuario_id': usuarioId, 
-        'empresa_id': empresaGestoraId, 
-        'ativo': true, 
+        'usuario_id': usuarioId,
+        'empresa_id': empresaGestoraId,
+        'ativo': true,
         'is_gestor': true,
       });
 
+      return novoProjetoId;
     } catch (e) {
       throw Exception('Erro crítico ao salvar projeto no banco: $e');
     }
@@ -207,6 +213,19 @@ class ProjectRepository {
     } catch (e) {
       print('🚨 Erro ao atualizar projeto: $e');
       throw Exception('Não foi possível salvar as alterações do projeto.');
+    }
+  }
+
+  /// Exclui o projeto. Com a migration de `ON DELETE CASCADE` aplicada, isso
+  /// já limpa sozinho os vínculos com estruturas (`projeto_estruturas`),
+  /// equipe, convites e os pontos de ensaio "avulsos" com `projeto_id`
+  /// direto — mas NÃO apaga as estruturas vinculadas em si (isso é uma ação
+  /// separada e explícita, ver `EstruturaRepository.excluirEstrutura`).
+  Future<void> excluirProjeto(String projetoId) async {
+    try {
+      await _supabase.from('projetos').delete().eq('id', projetoId);
+    } catch (e) {
+      throw Exception('Falha ao excluir projeto: $e');
     }
   }
 }

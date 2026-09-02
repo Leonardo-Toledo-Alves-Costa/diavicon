@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/uuid_generator.dart';
 import '../models/usuario_model.dart';
 
 class AuthRepository {
@@ -27,7 +28,14 @@ class AuthRepository {
       password: password,
     );
 
-    if (response.user != null) {
+    final user = response.user;
+    if (user != null) {
+      if (response.session == null) {
+        throw Exception(
+          'Cadastro criado. Confirme seu e-mail antes de continuar.',
+        );
+      }
+
       String? fotoUrlPublica;
       final String? fotoPathLocal =
           dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
@@ -37,8 +45,7 @@ class AuthRepository {
           final arquivoFoto = File(fotoPathLocal);
           final extensao = fotoPathLocal.split('.').last;
           final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final caminhoStorage =
-              'usuarios/${response.user!.id}_$timestamp.$extensao';
+          final caminhoStorage = 'usuarios/${user.id}_$timestamp.$extensao';
 
           await _supabase.storage
               .from('avatars')
@@ -53,36 +60,29 @@ class AuthRepository {
           );
         }
       }
-      print(dadosCompletos);
-      final enderecoData = await _supabase
-          .from('enderecos')
-          .insert({
-            // Certifique-se que as chaves ('rua', 'cidade', etc) batem com o que vem do front
-            'endereco': dadosCompletos['rua'],
-            'cidade': dadosCompletos['cidade'],
-            'estado': dadosCompletos['estado'],
-            'cep': dadosCompletos['cep'],
-            'bairro': dadosCompletos['bairro'],
-            'numero': dadosCompletos['numero'],
-            'complemento':
-                dadosCompletos['complemento'], // Adicionei complemento que faltava
-            'pais': 'Brasil',
-          })
-          .select('id')
-          .single();
-
-      final String idEndereco = enderecoData['id'];
+      final String idEndereco = UuidGenerator.v4();
+      await _supabase.from('enderecos').insert({
+        'id': idEndereco,
+        // Certifique-se que as chaves ('rua', 'cidade', etc) batem com o que vem do front
+        'endereco': dadosCompletos['rua'],
+        'cidade': dadosCompletos['cidade'],
+        'estado': dadosCompletos['estado'],
+        'cep': dadosCompletos['cep'],
+        'bairro': dadosCompletos['bairro'],
+        'numero': dadosCompletos['numero'],
+        'complemento': dadosCompletos['complemento'],
+        'pais': 'Brasil',
+      });
 
       // Persiste a estrutura de dados de segurança na tabela pública de usuários
       await _supabase.from('usuarios').insert({
-        'id': response.user!.id,
+        'id': user.id,
         'nome': dadosCompletos['nome'],
         'sobrenome': dadosCompletos['sobrenome'],
         'email': email,
         'celular': dadosCompletos['telefone'],
         'perfil': dadosCompletos['perfil'],
         'foto_url': fotoUrlPublica,
-        'ativo': true,
         'endereco_id': idEndereco,
       });
     }
@@ -101,7 +101,10 @@ class AuthRepository {
   }
 
   Future<void> salvarPerfil(UsuarioModel usuario) async {
-    await _supabase.from('usuarios').upsert(usuario.toMap());
+    await _supabase
+        .from('usuarios')
+        .update(usuario.toMap())
+        .eq('id', usuario.id);
   }
 
   Future<void> signOut() async => await _supabase.auth.signOut();

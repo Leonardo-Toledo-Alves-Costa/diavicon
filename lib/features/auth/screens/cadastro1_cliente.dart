@@ -27,7 +27,7 @@ class _Cadastro1ClienteState extends State<Cadastro1Cliente> {
         'Mineiração',
         'Barragens',
         'Marinhas ou portuária',
-        'OAEs'
+        'OAEs',
         'Públicas',
         'Infraestrutura',
         'Saneamento',
@@ -75,7 +75,7 @@ class _Cadastro1ClienteState extends State<Cadastro1Cliente> {
         'Baixa complexidades, são estruturas convencionais e pequenas ou médio porte',
         'Média complexidade, são estruturas de grande porte, com vários ambientes e funções diferentes',
         'Estruturas de grande porte, mas convencionais',
-        'Alta complexidade, estruturas de grande porte com diversas especificidades construtivas'
+        'Alta complexidade, estruturas de grande porte com diversas especificidades construtivas',
         'Alta complexidade, sendo estruturas críticas cuja interdição/parada de um dia causa prejuízo financeiro significativo',
       ],
       ponto: [1, 2, 3, 3, 3],
@@ -89,7 +89,7 @@ class _Cadastro1ClienteState extends State<Cadastro1Cliente> {
         'Ainda não gerenciamos nossos ativos estruturais;',
         'Mantemos os registros de intervenções e inspeções realizadas devidamente armazenado e organizado;',
         'Temos gestão de inspeções periódicas para essa estrutura',
-        'Temos modelos de previsão para execução de intervenções/inspeções na estrutura'
+        'Temos modelos de previsão para execução de intervenções/inspeções na estrutura',
       ],
       ponto: [1, 2, 3, 3],
     ),
@@ -101,11 +101,11 @@ class _Cadastro1ClienteState extends State<Cadastro1Cliente> {
       opcoes: [
         'Já perdemos dados históricos de ativos nossos (relatórios, ensaios, RDO\'s, intervenções)',
         'As vezes não sabemos se a estrutura precisa ou não de uma intervenção/inspeção?',
-        'Já recebemos relatórios sobre nossos ativos que não revelaram nada para nós sobre a condição da estrutura'
+        'Já recebemos relatórios sobre nossos ativos que não revelaram nada para nós sobre a condição da estrutura',
         'As vezes esquecemos que já realizamos algum tipo de inspeção/inspeção na estrutura',
         'Temos atrasos críticos com empresas que realizam inspeções',
         'É tanto ativo estrutural que nem sabemos por onde começar a cadastrar ou monitorar',
-        'Fizemos intervenções ou inspeções quando não precisava'
+        'Fizemos intervenções ou inspeções quando não precisava',
       ],
       ponto: [1, 2, 2, 3, 3, 3, 3],
     ),

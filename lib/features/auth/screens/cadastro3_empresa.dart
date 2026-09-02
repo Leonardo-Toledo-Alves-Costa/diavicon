@@ -21,19 +21,21 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   bool _planoInicializado = false;
 
   int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) {
-
     int indicePlanoPadrao = 0;
 
-    if (pontos <= 19){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'starter');
+    if (pontos <= 19) {
+      indicePlanoPadrao = planos.indexWhere(
+        (plano) => plano.nome.toLowerCase() == 'starter',
+      );
+    } else if (pontos >= 20 && pontos < 30) {
+      indicePlanoPadrao = planos.indexWhere(
+        (plano) => plano.nome.toLowerCase() == 'basic',
+      );
+    } else if (pontos >= 30) {
+      indicePlanoPadrao = planos.indexWhere(
+        (plano) => plano.nome.toLowerCase() == 'professional',
+      );
     }
-    else if (pontos >=20 && pontos < 30){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'basic');
-    }
-    else if (pontos >=30){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'professional');
-    }
-
 
     if (indicePlanoPadrao != -1) {
       return indicePlanoPadrao;
@@ -126,6 +128,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': null,
     };
 
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
     context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
@@ -483,24 +486,19 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
 class _BeneficioItem extends StatelessWidget {
   final String texto;
 
-  const _BeneficioItem({
-    required this.texto,
-  });
+  const _BeneficioItem({required this.texto});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 8,
             height: 8,
-            margin: const EdgeInsets.only(
-              top: 6,
-            ),
+            margin: const EdgeInsets.only(top: 6),
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,

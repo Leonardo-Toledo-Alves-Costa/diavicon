@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../auth/repositories/auth_operations_repository.dart';
 
 // ==========================================
 // 1. MODELO DE DADOS
@@ -87,10 +88,12 @@ class EquipeActionNotifier extends Notifier<bool> {
 
     state = true;
     try {
-      await Supabase.instance.client
-          .from('usuarios')
-          .update({'is_admin': !user.isAdmin}) 
-          .eq('id', user.id);
+      await AuthOperationsRepository().execute('manage_collaborator', {
+        'operation': 'set_admin',
+        'empresa_id': empresaId,
+        'usuario_id': user.id,
+        'is_admin': !user.isAdmin,
+      });
           
       ref.invalidate(equipeEmpresaProvider((empresaId: empresaId)));
     } on PostgrestException catch (e) {
@@ -107,10 +110,11 @@ class EquipeActionNotifier extends Notifier<bool> {
     state = true;
     try {
       // Desvincula totalmente o usuário da empresa
-      await Supabase.instance.client
-          .from('usuarios')
-          .update({'empresa_id': null}) 
-          .eq('id', user.id);
+      await AuthOperationsRepository().execute('manage_collaborator', {
+        'operation': 'unlink',
+        'empresa_id': empresaId,
+        'usuario_id': user.id,
+      });
           
       ref.invalidate(equipeEmpresaProvider((empresaId: empresaId)));
       ref.invalidate(limitePlanoProvider((empresaId: empresaId)));
@@ -126,13 +130,11 @@ class EquipeActionNotifier extends Notifier<bool> {
 
     state = true;
     try {
-      await Supabase.instance.client
-          .from('usuarios')
-          .update({
-            'ativo': false, 
-            'is_admin': false // Remove admin ao desativar
-          })
-          .eq('id', user.id);
+      await AuthOperationsRepository().execute('manage_collaborator', {
+        'operation': 'deactivate',
+        'empresa_id': empresaId,
+        'usuario_id': user.id,
+      });
           
       ref.invalidate(equipeEmpresaProvider((empresaId: empresaId)));
       ref.invalidate(limitePlanoProvider((empresaId: empresaId)));
@@ -145,12 +147,14 @@ class EquipeActionNotifier extends Notifier<bool> {
 
   // NOVO MÉTOD0: Devolve o acesso ao usuário
   Future<void> reativarAcesso(String empresaId, ColaboradorModel user) async {
+    if (user.isMaster) return;
     state = true;
     try {
-      await Supabase.instance.client
-          .from('usuarios')
-          .update({'ativo': true})
-          .eq('id', user.id);
+      await AuthOperationsRepository().execute('manage_collaborator', {
+        'operation': 'reactivate',
+        'empresa_id': empresaId,
+        'usuario_id': user.id,
+      });
           
       ref.invalidate(equipeEmpresaProvider((empresaId: empresaId)));
       ref.invalidate(limitePlanoProvider((empresaId: empresaId)));

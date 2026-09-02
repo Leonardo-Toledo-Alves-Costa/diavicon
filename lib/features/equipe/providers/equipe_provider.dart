@@ -268,12 +268,11 @@ final planLimitByProjectProvider = FutureProvider.autoDispose.family<PlanLimitIn
       return (cadastrados: 0, permitidos: permitidos);
     }
 
-    // 2. Conta todos os colaboradores ativos vinculados à sua empresa
+    // 2. Conta todos os perfis vinculados à empresa, inclusive convites inativos
     final countRes = await supabase
         .from('usuarios')
         .select('id')
-        .eq('empresa_id', empresaId)
-        .eq('ativo', true);
+        .eq('empresa_id', empresaId);
 
     final cadastrados = (countRes as List).length;
 

@@ -33,6 +33,7 @@ import '../../features/auth/screens/cadastro0_empresa.dart';
 import '../../features/auth/screens/cadastro1_empresa.dart';
 import '../../features/auth/screens/cadastro2_empresa.dart';
 import '../../features/auth/screens/cadastro3_empresa.dart';
+import '../../features/auth/utils/cadastro_draft_utils.dart';
 
 // ── Elementos Estruturais ─────────────────────────────────────────────────────
 
@@ -40,7 +41,6 @@ import '../../features/home/screens/main_screen.dart';
 import '../../features/projetos/screens/projetos_screen.dart';
 import '../../features/projetos/screens/project_detail_screen.dart';
 import '../../features/auth/providers/auth_provider.dart';
-
 
 // ── feed empresas produtos ─────────────────────────────────────────────────────
 import '../../features/empresas_servicos/screens/empresas_screen.dart';
@@ -183,9 +183,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(
         path: '/perfis',
-        builder: (context, state) => const Scaffold(
-          body: SizedBox.shrink(),
-        ),
+        builder: (context, state) => const Scaffold(body: SizedBox.shrink()),
         routes: [
           GoRoute(
             path: 'perfil_dados',
@@ -288,8 +286,12 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/empresa/cadastro',
         builder: (context, state) {
-          // LÊ OS DADOS DA MEMÓRIA DO RIVERPOD 
-          final dadosSalvos = ref.read(rascunhoCadastroProvider);
+          // Usa o rascunho persistido durante a jornada; o extra é um fallback
+          // para o trial e para restauração após uma navegação direta.
+          final dadosSalvos = CadastroDraftUtils.resolve(
+            persisted: ref.read(rascunhoCadastroProvider),
+            routeExtra: state.extra,
+          );
           return EmpresaCadastroScreen(dadosUsuario: dadosSalvos);
         },
       ),
@@ -380,13 +382,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/minha-empresa',
-            builder: (context, state) =>
-                const EmpresaScreen(),
+            builder: (context, state) => const EmpresaScreen(),
           ),
           GoRoute(
             path: '/educacao',
-            builder: (context, state) =>
-                const EducacaoFeedScreen(),
+            builder: (context, state) => const EducacaoFeedScreen(),
           ),
 
           GoRoute(

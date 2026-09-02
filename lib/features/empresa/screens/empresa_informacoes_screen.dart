@@ -7,6 +7,7 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/utils/uuid_generator.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../providers/empresa_profile_provider.dart';
 
@@ -16,10 +17,12 @@ class EmpresaInformacoesScreen extends ConsumerStatefulWidget {
   const EmpresaInformacoesScreen({super.key, required this.empresa});
 
   @override
-  ConsumerState<EmpresaInformacoesScreen> createState() => _EmpresaInformacoesScreenState();
+  ConsumerState<EmpresaInformacoesScreen> createState() =>
+      _EmpresaInformacoesScreenState();
 }
 
-class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScreen> {
+class _EmpresaInformacoesScreenState
+    extends ConsumerState<EmpresaInformacoesScreen> {
   int _abaAtual = 0; // 0 = Sobre, 1 = Endereço, 2 = Redes Sociais
   bool _isLoading = false;
 
@@ -29,7 +32,14 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
 
   // Categoria (Ramo de Atuação)
   String? _categoriaSelecionada;
-  final List<String> _categorias = ['Gestora de ativos','Proprietária de ativos','Inspeção', 'Intervenção', 'Produtos', 'Equipamentos'];
+  final List<String> _categorias = [
+    'Gestora de ativos',
+    'Proprietária de ativos',
+    'Inspeção',
+    'Intervenção',
+    'Produtos',
+    'Equipamentos',
+  ];
 
   // Controladores - Aba Sobre
   late TextEditingController _nomeCtrl;
@@ -67,7 +77,7 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
 
     // Carrega a categoria atual salva no banco (mapeada no model)
     // Caso a propriedade se chame diferente no seu model, ajuste aqui
-    _categoriaSelecionada = widget.empresa.ramoAtuacao; 
+    _categoriaSelecionada = widget.empresa.ramoAtuacao;
 
     _carregarEnderecoDaEmpresa();
   }
@@ -86,7 +96,7 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
           setState(() {
             _cepCtrl.text = end['cep'] ?? '';
             _cidadeCtrl.text = end['cidade'] ?? '';
-            _ruaCtrl.text = end['endereco'] ?? ''; 
+            _ruaCtrl.text = end['endereco'] ?? '';
             _bairroCtrl.text = end['bairro'] ?? '';
             _estadoCtrl.text = end['estado'] ?? '';
             _paisCtrl.text = end['pais'] ?? '';
@@ -122,7 +132,9 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
   Future<void> _escolherFonteFoto(bool isCapa) async {
     final ImageSource? source = await showModalBottomSheet<ImageSource>(
       context: context,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
       builder: (BuildContext context) {
         return SafeArea(
           child: Column(
@@ -130,7 +142,10 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
             children: [
               const Padding(
                 padding: EdgeInsets.all(16.0),
-                child: Text('Selecionar Imagem', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Selecionar Imagem',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
               ),
               ListTile(
                 leading: const Icon(Icons.camera_alt, color: AppColors.primary),
@@ -138,7 +153,10 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
                 onTap: () => Navigator.pop(context, ImageSource.camera),
               ),
               ListTile(
-                leading: const Icon(Icons.photo_library, color: AppColors.primary),
+                leading: const Icon(
+                  Icons.photo_library,
+                  color: AppColors.primary,
+                ),
                 title: const Text('Galeria'),
                 onTap: () => Navigator.pop(context, ImageSource.gallery),
               ),
@@ -156,12 +174,17 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
   // Executa o corte (Cropper)
   Future<void> _processarFoto(bool isCapa, ImageSource source) async {
     final picker = ImagePicker();
-    final XFile? image = await picker.pickImage(source: source, imageQuality: 80);
+    final XFile? image = await picker.pickImage(
+      source: source,
+      imageQuality: 80,
+    );
 
     if (image != null) {
       final cropped = await ImageCropper().cropImage(
         sourcePath: image.path,
-        aspectRatio: isCapa ? const CropAspectRatio(ratioX: 16, ratioY: 9) : const CropAspectRatio(ratioX: 1, ratioY: 1),
+        aspectRatio: isCapa
+            ? const CropAspectRatio(ratioX: 16, ratioY: 9)
+            : const CropAspectRatio(ratioX: 1, ratioY: 1),
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Ajustar Imagem',
@@ -201,16 +224,30 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       // 1. Upload da Foto de Capa
       if (_fotoCapaLocal != null) {
         final ext = _fotoCapaLocal!.path.split('.').last;
-        final filePath = '${widget.empresa.id}/capa_${DateTime.now().millisecondsSinceEpoch}.$ext';
-        await supabase.storage.from('empresas').upload(filePath, _fotoCapaLocal!, fileOptions: const FileOptions(upsert: true));
+        final filePath =
+            '${widget.empresa.id}/capa_${DateTime.now().millisecondsSinceEpoch}.$ext';
+        await supabase.storage
+            .from('empresas')
+            .upload(
+              filePath,
+              _fotoCapaLocal!,
+              fileOptions: const FileOptions(upsert: true),
+            );
         novaUrlCapa = supabase.storage.from('empresas').getPublicUrl(filePath);
       }
 
       // 2. Upload da Logo
       if (_fotoLogoLocal != null) {
         final ext = _fotoLogoLocal!.path.split('.').last;
-        final filePath = '${widget.empresa.id}/logo_${DateTime.now().millisecondsSinceEpoch}.$ext';
-        await supabase.storage.from('empresas').upload(filePath, _fotoLogoLocal!, fileOptions: const FileOptions(upsert: true));
+        final filePath =
+            '${widget.empresa.id}/logo_${DateTime.now().millisecondsSinceEpoch}.$ext';
+        await supabase.storage
+            .from('empresas')
+            .upload(
+              filePath,
+              _fotoLogoLocal!,
+              fileOptions: const FileOptions(upsert: true),
+            );
         novaUrlLogo = supabase.storage.from('empresas').getPublicUrl(filePath);
       }
 
@@ -231,10 +268,17 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       if (novaUrlCapa != null) updateData['foto_capa'] = novaUrlCapa;
       if (novaUrlLogo != null) updateData['foto_url'] = novaUrlLogo;
 
-      await supabase.from('empresas').update(updateData).eq('id', widget.empresa.id);
+      await supabase
+          .from('empresas')
+          .update(updateData)
+          .eq('id', widget.empresa.id);
 
       // 4. Atualizar a tabela 'enderecos'
-      final empresaResponse = await supabase.from('empresas').select('endereco_id').eq('id', widget.empresa.id).single();
+      final empresaResponse = await supabase
+          .from('empresas')
+          .select('endereco_id')
+          .eq('id', widget.empresa.id)
+          .single();
       final enderecoId = empresaResponse['endereco_id'];
 
       final enderecoData = {
@@ -247,23 +291,56 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       };
 
       if (enderecoId != null) {
-        await supabase.from('enderecos').update(enderecoData).eq('id', enderecoId);
+        await supabase
+            .from('enderecos')
+            .update(enderecoData)
+            .eq('id', enderecoId);
       } else {
-        final novoEnd = await supabase.from('enderecos').insert(enderecoData).select('id').single();
-        await supabase.from('empresas').update({'endereco_id': novoEnd['id']}).eq('id', widget.empresa.id);
+        final novoEnderecoId = UuidGenerator.v4();
+        await supabase.from('enderecos').insert({
+          'id': novoEnderecoId,
+          ...enderecoData,
+        });
+        await supabase
+            .from('empresas')
+            .update({'endereco_id': novoEnderecoId})
+            .eq('id', widget.empresa.id);
       }
 
       if (mounted) {
         ref.invalidate(empresaDetalheProvider(widget.empresa.id));
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Informações salvas com sucesso!'), backgroundColor: Colors.green));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Informações salvas com sucesso!'),
+            backgroundColor: Colors.green,
+          ),
+        );
         Navigator.pop(context);
       }
     } on PostgrestException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro no banco de dados: ${e.message}'), backgroundColor: Colors.red));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro no banco de dados: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
     } on StorageException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro de Storage: ${e.message}'), backgroundColor: Colors.red));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro de Storage: ${e.message}'),
+            backgroundColor: Colors.red,
+          ),
+        );
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro inesperado: $e'), backgroundColor: Colors.red));
+      if (mounted)
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erro inesperado: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -274,14 +351,16 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
     ImageProvider? imgCapa;
     if (_fotoCapaLocal != null) {
       imgCapa = FileImage(_fotoCapaLocal!);
-    } else if (widget.empresa.fotoCapa != null && widget.empresa.fotoCapa!.isNotEmpty) {
+    } else if (widget.empresa.fotoCapa != null &&
+        widget.empresa.fotoCapa!.isNotEmpty) {
       imgCapa = NetworkImage(widget.empresa.fotoCapa!);
     }
 
     ImageProvider? imgLogo;
     if (_fotoLogoLocal != null) {
       imgLogo = FileImage(_fotoLogoLocal!);
-    } else if (widget.empresa.fotoUrl != null && widget.empresa.fotoUrl!.isNotEmpty) {
+    } else if (widget.empresa.fotoUrl != null &&
+        widget.empresa.fotoUrl!.isNotEmpty) {
       imgLogo = NetworkImage(widget.empresa.fotoUrl!);
     }
 
@@ -293,9 +372,22 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
         showMenuButton: false,
         titleWidget: Column(
           children: [
-            Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
-            Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-            Text('Informações', style: TextStyle(fontSize: 14, color: Colors.white)),
+            Text(
+              'Empresa',
+              style: TextStyle(fontSize: 12, color: Colors.white70),
+            ),
+            Text(
+              'Painel',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              'Informações',
+              style: TextStyle(fontSize: 14, color: Colors.white),
+            ),
           ],
         ),
       ),
@@ -304,51 +396,66 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ÁREA DE IMAGENS 
+            // ÁREA DE IMAGENS
             SizedBox(
-              height: 180, 
+              height: 180,
               child: Stack(
                 clipBehavior: Clip.none,
                 children: [
                   // Capa (Fundo)
                   Positioned(
-                    top: 0, left: 0, right: 0,
+                    top: 0,
+                    left: 0,
+                    right: 0,
                     height: 120,
                     child: GestureDetector(
                       onTap: () => _escolherFonteFoto(true),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.grey[300], 
+                          color: Colors.grey[300],
                           borderRadius: BorderRadius.circular(12),
-                          image: imgCapa != null ? DecorationImage(image: imgCapa, fit: BoxFit.cover) : null,
+                          image: imgCapa != null
+                              ? DecorationImage(
+                                  image: imgCapa,
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
                         ),
                       ),
                     ),
                   ),
-                  
+
                   // Botão Editar Capa
                   Positioned(
-                    top: 80, right: 8,
+                    top: 80,
+                    right: 8,
                     child: _buildEditIcon(() => _escolherFonteFoto(true)),
                   ),
-                  
+
                   // Logo / Avatar
                   Positioned(
-                    bottom: 0, left: 16,
+                    bottom: 0,
+                    left: 16,
                     child: GestureDetector(
                       onTap: () => _escolherFonteFoto(false),
                       child: Stack(
                         alignment: Alignment.bottomRight,
                         children: [
                           CircleAvatar(
-                            radius: 44, 
-                            backgroundColor: Colors.white, 
+                            radius: 44,
+                            backgroundColor: Colors.white,
                             child: CircleAvatar(
-                              radius: 40, 
-                              backgroundColor: Colors.grey[200], 
+                              radius: 40,
+                              backgroundColor: Colors.grey[200],
                               backgroundImage: imgLogo,
-                              child: imgLogo == null ? const Icon(Icons.business, size: 40, color: Colors.grey) : null,
-                            )
+                              child: imgLogo == null
+                                  ? const Icon(
+                                      Icons.business,
+                                      size: 40,
+                                      color: Colors.grey,
+                                    )
+                                  : null,
+                            ),
                           ),
                           _buildEditIcon(() => _escolherFonteFoto(false)),
                         ],
@@ -359,7 +466,7 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
               ),
             ),
             const SizedBox(height: 32),
-            
+
             _buildTextField('Nome da Empresa', _nomeCtrl),
 
             // 🔥 Caso queira manter a fidelidade visual do print exibindo o CNPJ, basta descomentar:
@@ -367,7 +474,6 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
             const SizedBox(height: 4),
             Text('CNPJ 90.336.515/0001-50', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
             */
-            
             const SizedBox(height: 16),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -380,27 +486,50 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
             const SizedBox(height: 24),
 
             if (_abaAtual == 0) ...[
-              // 🔥 Dropdown da Categoria 
+              // 🔥 Dropdown da Categoria
               Padding(
                 padding: const EdgeInsets.only(bottom: 16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Ramo de atuação', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                    const Text(
+                      'Ramo de atuação',
+                      style: TextStyle(color: Colors.grey, fontSize: 13),
+                    ),
                     const SizedBox(height: 4),
                     DropdownButtonFormField<String>(
                       value: _categoriaSelecionada,
                       decoration: InputDecoration(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black26)),
-                        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(color: Colors.black26),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                          borderSide: const BorderSide(
+                            color: AppColors.primary,
+                          ),
+                        ),
                       ),
-                      hint: const Text('Selecione', style: TextStyle(color: Colors.black54)),
-                      icon: const Icon(Icons.keyboard_arrow_down, color: Colors.black54),
+                      hint: const Text(
+                        'Selecione',
+                        style: TextStyle(color: Colors.black54),
+                      ),
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Colors.black54,
+                      ),
                       items: _categorias.map((String categoria) {
                         return DropdownMenuItem<String>(
                           value: categoria,
-                          child: Text(categoria, style: const TextStyle(fontSize: 14)),
+                          child: Text(
+                            categoria,
+                            style: const TextStyle(fontSize: 14),
+                          ),
                         );
                       }).toList(),
                       onChanged: (String? newValue) {
@@ -413,8 +542,18 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
                 ),
               ),
 
-              _buildTextField('Descrição (Breve)', _descricaoCtrl, maxLength: 80, maxLines: 2),
-              _buildTextField('Sobre a Empresa', _sobreCtrl, maxLength: 500, maxLines: 6),
+              _buildTextField(
+                'Descrição (Breve)',
+                _descricaoCtrl,
+                maxLength: 80,
+                maxLines: 2,
+              ),
+              _buildTextField(
+                'Sobre a Empresa',
+                _sobreCtrl,
+                maxLength: 500,
+                maxLines: 6,
+              ),
             ] else if (_abaAtual == 1) ...[
               _buildTextField('CEP', _cepCtrl),
               _buildTextField('Cidade', _cidadeCtrl),
@@ -437,15 +576,30 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
               height: 50,
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary, 
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24))
+                  backgroundColor: AppColors.primary,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(24),
+                  ),
                 ),
                 onPressed: _isLoading ? null : _salvar,
-                child: _isLoading 
-                  ? const SizedBox(height: 24, width: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                  : const Text('Salvar Informações', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                child: _isLoading
+                    ? const SizedBox(
+                        height: 24,
+                        width: 24,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : const Text(
+                        'Salvar Informações',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
               ),
-            )
+            ),
           ],
         ),
       ),
@@ -459,21 +613,26 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
-          color: isSelected ? AppColors.primary : Colors.transparent, 
-          borderRadius: BorderRadius.circular(20)
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
         ),
         child: Text(
-          title, 
+          title,
           style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey, 
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal
-          )
+            color: isSelected ? Colors.white : Colors.grey,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int? maxLength, int maxLines = 1}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    int? maxLength,
+    int maxLines = 1,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
@@ -486,9 +645,18 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
             maxLength: maxLength,
             maxLines: maxLines,
             decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black26)),
-              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary)),
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: Colors.black26),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(8),
+                borderSide: const BorderSide(color: AppColors.primary),
+              ),
             ),
           ),
         ],
@@ -502,12 +670,16 @@ class _EmpresaInformacoesScreenState extends ConsumerState<EmpresaInformacoesScr
       child: Container(
         padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: Colors.white, 
+          color: Colors.white,
           shape: BoxShape.circle,
           boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4)],
-          border: Border.all(color: Colors.grey[200]!)
+          border: Border.all(color: Colors.grey[200]!),
         ),
-        child: const Icon(Icons.edit_square, size: 16, color: Color(0xFF3E3E3D)),
+        child: const Icon(
+          Icons.edit_square,
+          size: 16,
+          color: Color(0xFF3E3E3D),
+        ),
       ),
     );
   }

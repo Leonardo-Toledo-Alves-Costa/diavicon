@@ -61,21 +61,17 @@ class UsuarioModel {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'nome': nome,
       'sobrenome': sobrenome,
       'email': email,
       'celular': celular,
       'cargo': cargo,
-      'empresa_id': empresaId,
       'setor_id': setorId,
-      'ativo': ativo ?? false,
       'titulo_principal': tituloPrincipal,
       'escolaridade': escolaridade,
       'foto_url': fotoUrl,
       'linkedin': linkedin,
       'instagram': instagram,
-      'is_admin_empresa': isAdminEmpresa ?? false, 
       'endereco_id': enderecoId, // Adicionei o campo enderecoId
     };
   }

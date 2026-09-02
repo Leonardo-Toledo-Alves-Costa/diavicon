@@ -14,6 +14,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/diavicon_alerts.dart';
+import '../repositories/auth_operations_repository.dart';
 
 class CompletarCadastroScreen extends ConsumerStatefulWidget {
   const CompletarCadastroScreen({super.key});
@@ -139,15 +140,12 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
         UserAttributes(password: _senhaController.text),
       );
 
-      // Salva Banco
-      await supabase.from('usuarios').update({
+      await AuthOperationsRepository().execute('complete_profile', {
         'nome': _nomeController.text.trim(),
         'sobrenome': _sobrenomeController.text.trim(),
-        'cargo': _cargoController.text.trim(),
         'celular': _celularController.text.trim(),
-        'foto_url': fotoUrl, 
-        'ativo': true, 
-      }).eq('id', user.id);
+        'foto_url': fotoUrl,
+      });
 
       // Atualiza Provider
       final repo = ref.read(authRepositoryProvider);

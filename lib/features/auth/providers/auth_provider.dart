@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -8,10 +10,24 @@ import '../controller/auth_controller.dart';
 // Provider do Repositório (Acesso ao Banco)
 final authRepositoryProvider = Provider((ref) => AuthRepository());
 
-//  O Provider agora se auto-inicializa e escuta o Supabase Auth
+enum AuthAccessStatus {
+  loading,
+  signedOut,
+  awaitingEmailConfirmation,
+  registrationPending,
+  invitePending,
+  active,
+  inactive,
+  unavailable,
+}
+
+final authAccessStatusProvider =
+    StateProvider<AuthAccessStatus>((ref) => AuthAccessStatus.loading);
+
+// O perfil e o estado de acesso são atualizados juntos a cada evento do Auth.
 final currentUserProvider = StateNotifierProvider<CurrentUserNotifier, UsuarioModel?>((ref) {
-  final notifier = CurrentUserNotifier();
-  notifier.sincronizarSessaoAtiva(); // Busca o perfil imediatamente se houver token
+  final notifier = CurrentUserNotifier(ref);
+  unawaited(notifier.sincronizarSessaoAtiva());
   return notifier;
 });
 
@@ -42,29 +58,96 @@ final bloqueioDeRotaProvider = StateProvider<bool>((ref) => false);
 
 // Notifier inteligente para mutação e sincronização do usuário autenticado
 class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
-  CurrentUserNotifier() : super(null);
+  final Ref _ref;
+  StreamSubscription<AuthState>? _authSubscription;
+  int _syncGeneration = 0;
 
-  void setUser(UsuarioModel user) => state = user;
-  void clearUser() => state = null;
+  CurrentUserNotifier(this._ref) : super(null) {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      unawaited(sincronizarSessaoAtiva());
+    });
+  }
 
-  //  Método que salva o app-onboarding de usuários pré-cadastrados/convidados
+  void setUser(UsuarioModel user) {
+    _syncGeneration++;
+    state = user;
+    _ref.read(authAccessStatusProvider.notifier).state =
+        user.ativo == true
+            ? AuthAccessStatus.active
+            : user.convitePendente == true
+                ? AuthAccessStatus.invitePending
+                : AuthAccessStatus.inactive;
+  }
+
+  void clearUser({AuthAccessStatus status = AuthAccessStatus.signedOut}) {
+    _syncGeneration++;
+    state = null;
+    _ref.read(authAccessStatusProvider.notifier).state = status;
+  }
+
+  void setAccessStatus(AuthAccessStatus status) {
+    _ref.read(authAccessStatusProvider.notifier).state = status;
+  }
+
+  // Carrega somente a linha do próprio usuário; não há leitura por e-mail.
   Future<void> sincronizarSessaoAtiva() async {
+    final generation = ++_syncGeneration;
     final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      try {
-        // Busca os dados do perfil direto na sua tabela pública de usuários
-        final response = await Supabase.instance.client
-            .from('usuarios')
-            .select()
-            .eq('id', session.user.id)
-            .maybeSingle();
-
-        if (response != null) {
-          state = UsuarioModel.fromMap(response); // Popula o Riverpod em tempo real!
-        }
-      } catch (e) {
-        state = null; // Falha de consistência limpa o estado com segurança
-      }
+    if (session == null) {
+      state = null;
+      _ref.read(authAccessStatusProvider.notifier).state =
+          AuthAccessStatus.signedOut;
+      return;
     }
+
+    final user = session.user;
+    if (user.emailConfirmedAt == null) {
+      if (generation != _syncGeneration) return;
+      state = null;
+      _ref.read(authAccessStatusProvider.notifier).state =
+          AuthAccessStatus.awaitingEmailConfirmation;
+      return;
+    }
+
+    if (generation != _syncGeneration) return;
+    setAccessStatus(AuthAccessStatus.loading);
+    try {
+      final response = await Supabase.instance.client
+          .from('usuarios')
+          .select()
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (generation != _syncGeneration) return;
+      if (response == null) {
+        state = null;
+        _ref.read(authAccessStatusProvider.notifier).state =
+            AuthAccessStatus.registrationPending;
+        return;
+      }
+
+      final perfil = UsuarioModel.fromMap(response);
+      state = perfil;
+      final status = perfil.convitePendente == true
+          ? AuthAccessStatus.invitePending
+          : perfil.ativo == true
+              ? AuthAccessStatus.active
+              : AuthAccessStatus.inactive;
+      setAccessStatus(status);
+    } catch (_) {
+      // A falha de leitura não abre o shell nem mantém um perfil possivelmente
+      // desatualizado em memória.
+      if (generation != _syncGeneration) return;
+      state = null;
+      _ref.read(authAccessStatusProvider.notifier).state =
+          AuthAccessStatus.unavailable;
+    }
+  }
+
+  @override
+  void dispose() {
+    _syncGeneration++;
+    _authSubscription?.cancel();
+    super.dispose();
   }
 }

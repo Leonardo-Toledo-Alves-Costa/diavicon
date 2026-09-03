@@ -7,6 +7,7 @@ import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -35,12 +36,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authControllerProvider.notifier)
           .login(_emailController.text.trim(), _senhaController.text);
-      if (mounted) context.go('/projetos');
     } catch (e) {
       if (mounted) {
+        final message = authErrorMessage(
+          e,
+          fallback: 'Erro ao entrar. Verifique suas credenciais.',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao entrar. Verifique suas credenciais.'),
+          SnackBar(
+            content: Text(message),
           ),
         );
       }

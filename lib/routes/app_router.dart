@@ -28,6 +28,7 @@ import '../../features/auth/screens/cadastro_r2_screen.dart';
 import '../../features/auth/screens/cadastro_academico_screen.dart';
 import '../../features/auth/screens/recupera_senha_screen.dart';
 import '../../features/auth/screens/nova_senha_screen.dart';
+import '../../features/auth/screens/auth_gate_screens.dart';
 
 import '../../features/auth/screens/cadastro0_empresa.dart';
 import '../../features/auth/screens/cadastro1_empresa.dart';
@@ -83,6 +84,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   ref.listen(currentUserProvider, (previous, next) {
     routerAlarme.value = !routerAlarme.value;
   });
+  ref.listen(authAccessStatusProvider, (previous, next) {
+    routerAlarme.value = !routerAlarme.value;
+  });
 
   // Se o Supabase logar/deslogar, recarrega as rotas
   Supabase.instance.client.auth.onAuthStateChange.listen((_) {
@@ -105,34 +109,68 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       final path = state.uri.path;
       final usuario = ref.read(currentUserProvider);
-
-      final bool isLoggedIn = usuario != null;
-      final bool isAtivo = usuario?.ativo ?? false;
+      final accessStatus = ref.read(authAccessStatusProvider);
+      final bool isAtivo = accessStatus == AuthAccessStatus.active;
 
       print('====== [RASTREADOR DIRETRIZ] ======');
       print('• Tentando ir para: $path');
-      print('• Estado -> Logado: $isLoggedIn | Ativo: $isAtivo');
+      print('• Estado -> $accessStatus | Ativo: $isAtivo');
 
-      // --- Redirecionamento para usuários NÃO logados ---
-      if (!isLoggedIn) {
-        final bool isPublic =
-            path == '/' ||
-            path == '/login' ||
-            path.startsWith('/register') ||
-            path.startsWith('/empresa/') ||
-            path == '/completar-cadastro' ||
-            path == '/recuperar-senha' ||
-            path == '/nova-senha';
+      final isPublic = path == '/' ||
+          path == '/login' ||
+          path.startsWith('/register') ||
+          path == '/empresa/gate' ||
+          path == '/empresa/onboarding' ||
+          path == '/empresa/servicos' ||
+          path == '/empresa/planos' ||
+          path == '/recuperar-senha' ||
+          path == '/nova-senha' ||
+          path == '/confirmar-email' ||
+          path == '/auth-indisponivel';
 
-        if (!isPublic) {
-          print('❌ [BLOQUEIO] Rota privada sem login. Forçando: /login');
-          return '/login';
-        }
+      if (accessStatus == AuthAccessStatus.loading) {
+        return isPublic ? null : '/login';
+      }
+      if (accessStatus == AuthAccessStatus.signedOut) {
+        // The availability screen is only meaningful while a session still
+        // exists. If retry discovers that the session expired, fail closed
+        // and send the user back through the login flow.
+        if (!isPublic || path == '/auth-indisponivel') return '/login';
         return null;
       }
-
-      // --- Redirecionamento para usuários LOGADOS ---
-      if (isLoggedIn) {
+      if (accessStatus == AuthAccessStatus.awaitingEmailConfirmation) {
+        return path == '/confirmar-email' ? null : '/confirmar-email';
+      }
+      if (accessStatus == AuthAccessStatus.registrationPending) {
+        const registrationPaths = <String>{
+          '/register',
+          '/register/dados',
+          '/register/perfil',
+          '/register/academico',
+          '/register/retomar',
+          '/register/cliente/gate',
+          '/register/cliente/checkboxes',
+          '/register/cliente/planos',
+          '/register/cliente/welcome',
+          '/empresa/gate',
+          '/empresa/onboarding',
+          '/empresa/servicos',
+          '/empresa/planos',
+          '/empresa/cadastro',
+        };
+        final canResume = registrationPaths.contains(path);
+        return canResume ? null : '/register/retomar';
+      }
+      if (accessStatus == AuthAccessStatus.invitePending) {
+        return path == '/completar-cadastro' ? null : '/completar-cadastro';
+      }
+      if (accessStatus == AuthAccessStatus.inactive) {
+        return path == '/conta-inativa' ? null : '/conta-inativa';
+      }
+      if (accessStatus == AuthAccessStatus.unavailable) {
+        return path == '/auth-indisponivel' ? null : '/auth-indisponivel';
+      }
+      if (isAtivo && usuario != null) {
         // REGRA DO CONVIDADO (COM EXCEÇÃO DA TELA BEM-VINDA):
         // Se já tem empresa, não pode acessar os formulários de cadastro.
         // MAS a tela '/empresa/bemvinda' está liberada para o fluxo de finalização
@@ -154,19 +192,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           return null;
         }
 
-        // Se NÃO está ativo e não está na tela de completar cadastro, joga pra lá
-        if (!isAtivo && path != '/completar-cadastro') {
-          print(
-            '➡️ [DESVIO] Usuário inativo fora do fluxo. Indo para: /completar-cadastro',
-          );
-          return '/completar-cadastro';
-        }
-
         // Se ESTÁ ativo e tentar acessar telas iniciais, joga pra Projetos
         if (isAtivo &&
             (path == '/completar-cadastro' ||
                 path == '/' ||
                 path == '/login' ||
+                path == '/auth-indisponivel' ||
                 path.startsWith('/register'))) {
           print(
             '➡️ [DESVIO] Usuário ativo em tela de entrada. Indo para: /projetos',
@@ -227,8 +258,15 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: 'academico',
             builder: (context, state) => CadastroAcademicoScreen(
-              dadosCadastro: _routeExtra(state.extra),
+              dadosCadastro: CadastroDraftUtils.resolve(
+                persisted: ref.read(rascunhoCadastroProvider),
+                routeExtra: state.extra,
+              ),
             ),
+          ),
+          GoRoute(
+            path: 'retomar',
+            builder: (context, state) => const RegistrationPendingScreen(),
           ),
           GoRoute(
             path: 'cliente/gate',
@@ -272,6 +310,18 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/nova-senha',
         builder: (context, state) => const NovaSenhaScreen(),
+      ),
+      GoRoute(
+        path: '/confirmar-email',
+        builder: (context, state) => const EmailConfirmationScreen(),
+      ),
+      GoRoute(
+        path: '/conta-inativa',
+        builder: (context, state) => const InactiveAccountScreen(),
+      ),
+      GoRoute(
+        path: '/auth-indisponivel',
+        builder: (context, state) => const AuthUnavailableScreen(),
       ),
       GoRoute(
         path: '/empresa/servicos',

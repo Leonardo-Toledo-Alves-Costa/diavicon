@@ -1,6 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/providers/auth_provider.dart';
 
 // ==========================================
 // 1. MODELS
@@ -73,132 +72,73 @@ final feedFilterServicoProvider = NotifierProvider<FeedFilterServicoNotifier, St
 // ==========================================
 // 3. REGRAS DE NEGÓCIO E QUERIES
 // ==========================================
-int _calcularPesoDistancia(String? cid, String? est, String? userCid, String? userEst) {
-  if (cid == null || est == null || userCid == null || userEst == null) return 3;
-  if (cid.toLowerCase() == userCid.toLowerCase() && est.toLowerCase() == userEst.toLowerCase()) return 1;
-  if (est.toLowerCase() == userEst.toLowerCase()) return 2;
-  return 3;
-}
+int _asInt(dynamic value) => value is int ? value : int.tryParse('$value') ?? 0;
 
 final feedEmpresasProvider = FutureProvider.autoDispose<List<EmpresaFeedModel>>((ref) async {
   final search = ref.watch(feedSearchProvider).trim();
   final filter = ref.watch(feedFilterEmpresaProvider);
-  final user = ref.watch(currentUserProvider);
-  final supabase = Supabase.instance.client;
 
   try {
-    String? userCidade, userEstado;
-    
-    // 🔥 Uso seguro do maybeSingle() para bancos vazios
-    if (user?.enderecoId != null) {
-      final userEnd = await supabase
-          .from('enderecos')
-          .select('cidade, estado')
-          .eq('id', user!.enderecoId!)
-          .maybeSingle(); 
-          
-      userCidade = userEnd?['cidade'] as String?;
-      userEstado = userEnd?['estado'] as String?;
-    }
-
-    var query = supabase.from('empresas').select('*, enderecos(cidade, estado), empresa_servicos(id)');
-    
-    if (search.isNotEmpty) query = query.ilike('nome', '%$search%');
-    if (filter != null && filter != 'Todos') query = query.eq('ramo_atuacao', filter);
-
-    final response = await query;
-
-    // Se o banco estiver vazio, response será [], e o .map retornará uma lista vazia sem quebrar.
-    List<EmpresaFeedModel> empresas = response.map((e) {
-      final endereco = e['enderecos'] as Map<String, dynamic>?;
-      final servicos = e['empresa_servicos'] as List<dynamic>?;
+    final response = await Supabase.instance.client.rpc(
+      'list_public_companies',
+      params: {
+        'p_search': search.isEmpty ? null : search,
+        'p_ramo': filter == null || filter == 'Todos' ? null : filter,
+        'p_limit': 100,
+        'p_offset': 0,
+      },
+    );
+    return (response as List).whereType<Map>().map((raw) {
+      final e = Map<String, dynamic>.from(raw);
       return EmpresaFeedModel(
-        id: e['id'], 
-        nome: e['nome'] ?? 'Empresa sem nome', 
-        descricao: e['descricao'],
-        fotoUrl: e['foto_url'], 
-        fotoCapa: e['foto_capa'], 
-        ramoAtuacao: e['ramo_atuacao'],
-        cidade: endereco?['cidade'], 
-        estado: endereco?['estado'], 
-        qtdServicos: servicos?.length ?? 0,
+        id: e['empresa_id'].toString(),
+        nome: e['nome']?.toString() ?? 'Empresa sem nome',
+        descricao: e['descricao']?.toString(),
+        fotoUrl: e['foto_url']?.toString(),
+        fotoCapa: e['foto_capa']?.toString(),
+        ramoAtuacao: e['ramo_atuacao']?.toString(),
+        cidade: e['cidade']?.toString(),
+        estado: e['estado']?.toString(),
+        qtdServicos: _asInt(e['qtd_servicos']),
       );
     }).toList();
-
-    empresas.sort((a, b) {
-      int pesoA = _calcularPesoDistancia(a.cidade, a.estado, userCidade, userEstado);
-      int pesoB = _calcularPesoDistancia(b.cidade, b.estado, userCidade, userEstado);
-      if (pesoA != pesoB) return pesoA.compareTo(pesoB);
-      return a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
-    });
-    
-    return empresas;
-    
   } on PostgrestException catch (e) {
     throw Exception('Erro ao buscar empresas no banco de dados: ${e.message}');
-  } on AuthException catch (e) {
-    throw Exception('Sessão expirada: ${e.message}');
   }
 });
 
 final feedServicosProvider = FutureProvider.autoDispose<List<ServicoFeedModel>>((ref) async {
   final search = ref.watch(feedSearchProvider).trim();
   final filter = ref.watch(feedFilterServicoProvider);
-  final user = ref.watch(currentUserProvider);
-  final supabase = Supabase.instance.client;
 
   try {
-    String? userCidade, userEstado;
-    
-    // 🔥 Uso seguro do maybeSingle()
-    if (user?.enderecoId != null) {
-      final userEnd = await supabase
-          .from('enderecos')
-          .select('cidade, estado')
-          .eq('id', user!.enderecoId!)
-          .maybeSingle();
-          
-      userCidade = userEnd?['cidade'] as String?;
-      userEstado = userEnd?['estado'] as String?;
-    }
-
-    // A cláusula !inner garante que só traga serviços que tenham uma empresa vinculada
-    var query = supabase.from('empresa_servicos').select('*, empresas!inner(nome, foto_url, enderecos(cidade, estado))');
-    
-    if (search.isNotEmpty) query = query.ilike('nome', '%$search%');
-    if (filter != null && filter != 'Todos') query = query.eq('categoria', filter);
-
-    final response = await query;
-
-    List<ServicoFeedModel> servicos = response.map((e) {
-      final empresaData = e['empresas'] as Map<String, dynamic>? ?? {};
-      final endereco = empresaData['enderecos'] as Map<String, dynamic>?;
-      
+    final response = await Supabase.instance.client.rpc(
+      'list_public_company_services',
+      params: {
+        'p_empresa_id': null,
+        'p_search': search.isEmpty ? null : search,
+        'p_categoria': filter == null || filter == 'Todos' ? null : filter,
+        'p_limit': 100,
+        'p_offset': 0,
+      },
+    );
+    return (response as List).whereType<Map>().map((raw) {
+      final e = Map<String, dynamic>.from(raw);
       return ServicoFeedModel(
-        id: e['id'], 
-        nome: e['nome'] ?? 'Serviço sem nome', 
-        objetivo: e['objetivo'],
-        fotoPrincipal: e['foto_principal'], 
-        categoria: e['categoria'], 
-        linkAnexo: e['link_anexo'],
-        nomeAnexo: e['nome_anexo'],
-        descricao: e['descricao'],
-        empresaNome: empresaData['nome'] ?? 'Empresa desconhecida', 
-        empresaFotoUrl: empresaData['foto_url'],
-        cidade: endereco?['cidade'], 
-        estado: endereco?['estado'],
+        id: e['servico_id'].toString(),
+        nome: e['nome']?.toString() ?? 'Serviço sem nome',
+        objetivo: e['objetivo']?.toString(),
+        fotoPrincipal: e['foto_principal']?.toString(),
+        categoria: e['categoria']?.toString(),
+        linkAnexo: e['link_anexo']?.toString(),
+        nomeAnexo: e['nome_anexo']?.toString(),
+        descricao: e['descricao']?.toString(),
+        empresaNome: e['empresa_nome']?.toString() ?? 'Empresa desconhecida',
+        empresaFotoUrl: e['empresa_foto_url']?.toString(),
+        cidade: e['cidade']?.toString(),
+        estado: e['estado']?.toString(),
       );
     }).toList();
-
-    servicos.sort((a, b) {
-      int pesoA = _calcularPesoDistancia(a.cidade, a.estado, userCidade, userEstado);
-      int pesoB = _calcularPesoDistancia(b.cidade, b.estado, userCidade, userEstado);
-      if (pesoA != pesoB) return pesoA.compareTo(pesoB);
-      return a.nome.toLowerCase().compareTo(b.nome.toLowerCase());
-    });
-    
-    return servicos;
-    
   } on PostgrestException catch (e) {
     throw Exception('Erro ao buscar serviços/produtos: ${e.message}');
   }

@@ -1,4 +1,6 @@
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
+import 'package:diavicon/features/auth/utils/cadastro_draft_store.dart';
+import 'package:diavicon/features/auth/utils/auth_error_messages.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -49,6 +51,19 @@ class _CadastroAcademicoScreenState
     _motivoController.dispose();
     _lattesController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    final dados = widget.dadosCadastro;
+    _universidadeController.text = dados['formacao']?.toString() ?? '';
+    _motivoController.text = dados['motivo']?.toString() ?? '';
+    _lattesController.text = dados['lattes']?.toString() ?? '';
+    final servicos = dados['servicos'];
+    if (servicos is List) {
+      _selecionados.addAll(servicos.map((item) => item.toString()));
+    }
   }
 
   @override
@@ -460,15 +475,31 @@ class _CadastroAcademicoScreenState
       // Dados específicos desta tela final
       'formacao': _universidadeController.text, // ou o que for o caso
       'perfil': widget.dadosCadastro['perfil'], // 'Acadêmico' ou 'Empresa'
+      'servicos': _selecionados.toList(),
     };
 
     try {
-      //  Dispara o processo de salvamento (Auth -> Endereço -> Usuário)
-      await controller.registrar(
+      final draft = {...dadosParaSalvar, 'perfil_tipo': 'academico'};
+      await CadastroDraftStore().save(draft);
+      ref.read(rascunhoCadastroProvider.notifier).state = draft;
+
+      final cadastroIniciado = await controller.registrar(
         email: widget.dadosCadastro['email'],
         password: widget.dadosCadastro['senha'],
         dados: dadosParaSalvar,
       );
+      if (!cadastroIniciado) {
+        if (mounted) context.go('/confirmar-email');
+        return;
+      }
+
+      await ref.read(authRepositoryProvider).completeSelfRegistration(
+            profileType: 'academico',
+            dados: dadosParaSalvar,
+          );
+      await ref.read(currentUserProvider.notifier).sincronizarSessaoAtiva();
+      await CadastroDraftStore().clear();
+      ref.read(rascunhoCadastroProvider.notifier).state = {};
 
       // SE DEU CERTO: Navega para a Home
       if (mounted) {
@@ -485,7 +516,7 @@ class _CadastroAcademicoScreenState
     } catch (e) {
       // TRATAMENTO DE ERRO
       if (mounted) {
-        String erroMsg = 'Erro ao salvar dados.';
+        String erroMsg = authErrorMessage(e, fallback: 'Erro ao salvar dados.');
         if (e.toString().contains('429')) {
           erroMsg = 'Muitas tentativas. Aguarde 1h.';
         }

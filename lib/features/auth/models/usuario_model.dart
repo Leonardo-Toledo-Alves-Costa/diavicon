@@ -15,6 +15,8 @@ class UsuarioModel {
   final String? instagram;
   final DateTime? criadoEm;
   final bool? isAdminEmpresa;
+  final bool? isAdmin;
+  final bool? convitePendente;
   final String? enderecoId; // Adicionei o campo enderecoId 
 
   UsuarioModel({
@@ -34,6 +36,8 @@ class UsuarioModel {
     this.instagram,
     this.criadoEm,
     this.isAdminEmpresa,
+    this.isAdmin,
+    this.convitePendente,
     this.enderecoId, // Inicializei o campo enderecoId 
   });
 
@@ -55,6 +59,8 @@ class UsuarioModel {
       instagram: map['instagram'],
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
       isAdminEmpresa: map['is_admin_empresa'], 
+      isAdmin: map['is_admin'],
+      convitePendente: map['convite_pendente'],
       enderecoId: map['endereco_id'],
     );
   }

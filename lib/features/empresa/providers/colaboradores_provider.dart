@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../../auth/repositories/auth_operations_repository.dart';
 
 // ==========================================
@@ -27,12 +28,14 @@ class ColaboradorModel {
   });
 
   factory ColaboradorModel.fromMap(Map<String, dynamic> map) {
-    bool ativo = map['ativo'] ?? false;
-    
-    String statusAtual = ativo ? 'ativo' : 'inativo';
-    if (map['nome'] == null || map['nome'].toString().isEmpty) {
-      statusAtual = 'convidado';
-    }
+    final statusRecebido = map['status']?.toString();
+    final ativo = map['ativo'] == true;
+    final nomeAusente = map['nome'] == null || map['nome'].toString().isEmpty;
+    final statusAtual = statusRecebido == 'ativo' ||
+            statusRecebido == 'inativo' ||
+            statusRecebido == 'convidado'
+        ? statusRecebido!
+        : (nomeAusente ? 'convidado' : (ativo ? 'ativo' : 'inativo'));
 
     final nomeCompleto = '${map['nome'] ?? ''} ${map['sobrenome'] ?? ''}'.trim();
 
@@ -65,14 +68,30 @@ final limitePlanoProvider = FutureProvider.family.autoDispose<int, EmpresaParams
 });
 
 final equipeEmpresaProvider = FutureProvider.family.autoDispose<List<ColaboradorModel>, EmpresaParams>((ref, params) async {
-  final res = await Supabase.instance.client
-      .from('usuarios')
-      .select('*')
-      .eq('empresa_id', params.empresaId)
-      .order('is_admin_empresa', ascending: false) 
-      .order('nome', ascending: true);
+  final empresaAtualId = ref.watch(currentUserProvider)?.empresaId;
+  if (empresaAtualId == null || empresaAtualId != params.empresaId) {
+    return [];
+  }
 
-  return (res as List).map((e) => ColaboradorModel.fromMap(e)).toList();
+  try {
+    final data = await AuthOperationsRepository().execute(
+      'list_company_members_admin',
+      const {},
+    );
+    final membros = data['membros'];
+    if (membros is! List) {
+      throw Exception('Resposta inválida ao carregar colaboradores.');
+    }
+
+    return membros
+        .whereType<Map>()
+        .map((member) => ColaboradorModel.fromMap(
+              Map<String, dynamic>.from(member),
+            ))
+        .toList();
+  } on Exception catch (e) {
+    throw Exception('Erro ao carregar colaboradores: $e');
+  }
 });
 
 // ==========================================

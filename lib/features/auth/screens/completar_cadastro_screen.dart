@@ -15,6 +15,7 @@ import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/custom_button.dart';
 import '../../../../core/widgets/diavicon_alerts.dart';
 import '../repositories/auth_operations_repository.dart';
+import '../utils/auth_error_messages.dart';
 
 class CompletarCadastroScreen extends ConsumerStatefulWidget {
   const CompletarCadastroScreen({super.key});
@@ -164,7 +165,7 @@ class _CompletarCadastroScreenState extends ConsumerState<CompletarCadastroScree
 
     } catch (e) {
       if (!mounted) return;
-      DiaviconAlerts.show(context, 'Erro', e.toString().replaceAll('Exception: ', ''), isErro: true);
+      DiaviconAlerts.show(context, 'Erro', authErrorMessage(e), isErro: true);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

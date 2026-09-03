@@ -53,6 +53,7 @@ dependencies:
 
   flutter_html_to_pdf_plus: ^0.4.0
   path_provider: ^2.1.2
+  flutter_secure_storage: ^9.2.4
   open_filex: ^4.5.0
 
   # Navegação

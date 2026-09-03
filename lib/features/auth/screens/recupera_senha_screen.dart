@@ -7,6 +7,7 @@ import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class RecuperaSenhaScreen extends ConsumerStatefulWidget {
   const RecuperaSenhaScreen({super.key});
@@ -44,7 +45,7 @@ class _RecuperaSenhaScreenState extends ConsumerState<RecuperaSenhaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: ${e.toString()}'),
+          content: Text(authErrorMessage(e, fallback: 'Não foi possível enviar o link.')),
           backgroundColor: AppColors.error,
         ),
       );

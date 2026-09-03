@@ -98,13 +98,15 @@ final painelServicosListProvider = FutureProvider.family.autoDispose<List<Servic
 
 final servicoGaleriaProvider = FutureProvider.family.autoDispose<List<ServicoGaleriaModel>, String>((ref, servicoId) async {
   try {
-    final response = await Supabase.instance.client
-        .from('empresa_servicos_galeria')
-        .select('*')
-        .eq('servico_id', servicoId)
-        .order('criado_em', ascending: true);
+    final response = await Supabase.instance.client.rpc(
+      'list_public_service_gallery',
+      params: {'p_servico_id': servicoId},
+    );
         
-    return response.map((e) => ServicoGaleriaModel.fromMap(e)).toList();
+    return (response as List)
+        .whereType<Map>()
+        .map((e) => ServicoGaleriaModel.fromMap(Map<String, dynamic>.from(e)))
+        .toList();
   } on PostgrestException catch (e) {
     throw Exception('Erro ao carregar galeria: ${e.message}');
   }

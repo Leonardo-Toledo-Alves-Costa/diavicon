@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/repositories/auth_operations_repository.dart';
 
 // ==========================================
 // 1. MODELS
@@ -85,30 +86,31 @@ final empresaServicoSearchProvider = NotifierProvider<EmpresaServicoSearchNotifi
 // Busca os detalhes da Empresa
 final empresaDetalheProvider = FutureProvider.family.autoDispose<EmpresaDetalheModel, String>((ref, empresaId) async {
   try {
-    final response = await Supabase.instance.client
-        .from('empresas')
-        .select('*, enderecos(cidade, estado)')
-        .eq('id', empresaId)
-        .single();
-
-    final end = response['enderecos'] as Map<String, dynamic>?;
+    final response = await Supabase.instance.client.rpc(
+      'get_public_company',
+      params: {'p_empresa_id': empresaId},
+    );
+    if (response is! List || response.isEmpty) {
+      throw Exception('Empresa não encontrada ou inativa.');
+    }
+    final row = Map<String, dynamic>.from(response.first as Map);
     return EmpresaDetalheModel(
-      id: response['id'],
-      nome: response['nome'] ?? 'Empresa sem nome',
-      descricao: response['descricao'],
-      sobre: response['sobre'], // 🔥 N
-      fotoUrl: response['foto_url'],
-      fotoCapa: response['foto_capa'],
-      cidade: end?['cidade'],
-      estado: end?['estado'],
-      linkedin: response['linkedin'],
-      instagram: response['instagram'],
-      youtube: response['youtube'],
-      site: response['site'],
-      emailContato: response['email_contato'],
-      whatsapp: response['whatsapp'],
-      ramoAtuacao: response['ramo_atuacao'],
-      cnpj: response['cnpj'],
+      id: row['empresa_id'].toString(),
+      nome: row['nome']?.toString() ?? 'Empresa sem nome',
+      descricao: row['descricao']?.toString(),
+      sobre: row['sobre']?.toString(),
+      fotoUrl: row['foto_url']?.toString(),
+      fotoCapa: row['foto_capa']?.toString(),
+      cidade: row['cidade']?.toString(),
+      estado: row['estado']?.toString(),
+      linkedin: row['linkedin']?.toString(),
+      instagram: row['instagram']?.toString(),
+      youtube: row['youtube']?.toString(),
+      site: row['site']?.toString(),
+      emailContato: row['email_contato']?.toString(),
+      whatsapp: row['whatsapp']?.toString(),
+      ramoAtuacao: row['ramo_atuacao']?.toString(),
+      cnpj: row['cnpj']?.toString() ?? '',
     );
   } on PostgrestException catch (e) {
     throw Exception('Erro ao carregar empresa: ${e.message}');
@@ -117,22 +119,33 @@ final empresaDetalheProvider = FutureProvider.family.autoDispose<EmpresaDetalheM
 
 // Busca os colaboradores da Empresa
 final empresaColaboradoresProvider = FutureProvider.family.autoDispose<List<ColaboradorModel>, String>((ref, empresaId) async {
-  try {
-    final response = await Supabase.instance.client
-        .from('usuarios')
-        .select('id, nome, sobrenome, cargo, foto_url')
-        .eq('empresa_id', empresaId)
-        .eq('ativo', true);
+  final empresaAtualId = ref.watch(currentUserProvider)?.empresaId;
+  if (empresaAtualId == null || empresaAtualId != empresaId) {
+    return [];
+  }
 
-    return response.map((e) => ColaboradorModel(
-      id: e['id'],
-      nome: e['nome'] ?? '',
-      sobrenome: e['sobrenome'],
-      cargo: e['cargo'],
-      fotoUrl: e['foto_url'],
-    )).toList();
-  } on PostgrestException catch (e) {
-    throw Exception('Erro ao carregar colaboradores: ${e.message}');
+  try {
+    final data = await AuthOperationsRepository().execute(
+      'list_company_colleagues',
+      const {},
+    );
+    final colegas = data['colegas'];
+    if (colegas is! List) {
+      throw Exception('Resposta inválida ao carregar colaboradores.');
+    }
+
+    return colegas.whereType<Map>().map((colaborador) {
+      final map = Map<String, dynamic>.from(colaborador);
+      return ColaboradorModel(
+        id: map['id'].toString(),
+        nome: map['nome']?.toString() ?? '',
+        sobrenome: map['sobrenome']?.toString(),
+        cargo: map['cargo']?.toString(),
+        fotoUrl: map['foto_url']?.toString(),
+      );
+    }).toList();
+  } on Exception catch (e) {
+    throw Exception('Erro ao carregar colaboradores: $e');
   }
 });
 
@@ -141,33 +154,32 @@ final empresaProfileServicosProvider = FutureProvider.family.autoDispose<List<Se
   final busca = ref.watch(empresaServicoSearchProvider).trim();
   
   try {
-    var query = Supabase.instance.client
-        .from('empresa_servicos')
-        .select('*, empresas!inner(nome, foto_url, enderecos(cidade, estado))')
-        .eq('empresa_id', empresaId);
+    final response = await Supabase.instance.client.rpc(
+      'list_public_company_services',
+      params: {
+        'p_empresa_id': empresaId,
+        'p_search': busca.isEmpty ? null : busca,
+        'p_categoria': null,
+        'p_limit': 100,
+        'p_offset': 0,
+      },
+    );
 
-    if (busca.isNotEmpty) {
-      query = query.ilike('nome', '%$busca%');
-    }
-
-    final response = await query;
-
-    return response.map((e) {
-      final emp = e['empresas'] as Map<String, dynamic>;
-      final end = emp['enderecos'] as Map<String, dynamic>?;
+    return (response as List).whereType<Map>().map((raw) {
+      final e = Map<String, dynamic>.from(raw);
       return ServicoEmpresaModel(
-        id: e['id'],
-        nome: e['nome'] ?? 'Serviço',
-        objetivo: e['objetivo'],
-        fotoPrincipal: e['foto_principal'],
-        categoria: e['categoria'],
-        linkAnexo: e['link_anexo'],
-        nomeAnexo: e['nome_anexo'],
-        descricao: e['descricao'],
-        empresaNome: emp['nome'] ?? '',
-        empresaFotoUrl: emp['foto_url'],
-        cidade: end?['cidade'],
-        estado: end?['estado'],
+        id: e['servico_id'].toString(),
+        nome: e['nome']?.toString() ?? 'Serviço',
+        objetivo: e['objetivo']?.toString(),
+        fotoPrincipal: e['foto_principal']?.toString(),
+        categoria: e['categoria']?.toString(),
+        linkAnexo: e['link_anexo']?.toString(),
+        nomeAnexo: e['nome_anexo']?.toString(),
+        descricao: e['descricao']?.toString(),
+        empresaNome: e['empresa_nome']?.toString() ?? '',
+        empresaFotoUrl: e['empresa_foto_url']?.toString(),
+        cidade: e['cidade']?.toString(),
+        estado: e['estado']?.toString(),
       );
     }).toList();
   } on PostgrestException catch (e) {

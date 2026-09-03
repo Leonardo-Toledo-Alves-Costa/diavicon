@@ -10,6 +10,12 @@ entrypoint = "./functions/convidar-funcionario/index.ts"
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/convidar-funcionario/*.html" ]
 
+[auth]
+additional_redirect_urls = ["diavicon://login-callback", "diavicon://nova-senha"]
+
+[auth.email]
+enable_confirmations = true
+
 [functions.auth-operations]
 verify_jwt = true
 entrypoint = "./functions/auth-operations/index.ts"

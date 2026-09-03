@@ -35,6 +35,7 @@ class AuthService extends ChangeNotifier {
     await _supabase.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: 'diavicon://login-callback',
     );
   }
 

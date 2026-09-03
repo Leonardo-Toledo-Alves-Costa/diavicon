@@ -29,59 +29,71 @@ final contagemGeralColaboradoresProvider = FutureProvider.autoDispose.family<Lis
   return List<Map<String, dynamic>>.from(response);
 });
 
-//  Busca a equipe interna SÓ da empresa do usuário logado
+// Lista candidatos da empresa do usuário logado para o editor da equipe.
+// A autorização, o tenant e a exclusão do usuário atual são definidos no RPC.
 final colaboradoresProjetoProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
   final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser?.id;
-  if (userId == null) return [];
+  if (supabase.auth.currentUser == null) return [];
 
-  // Descobre qual é a empresa do usuário logado
-  final userResp = await supabase.from('usuarios').select('empresa_id').eq('id', userId).single();
-  final minhaEmpresaId = userResp['empresa_id'];
+  final response = await supabase.rpc(
+    'list_project_team_candidates',
+    params: {'p_projeto_id': projetoId},
+  );
 
-  // Busca TODOS os funcionários cadastrados na SUA empresa
-  final funcionarios = await supabase
-      .from('usuarios')
-      .select('id, nome, sobrenome, cargo, foto_url, is_admin_empresa')
-      .eq('empresa_id', minhaEmpresaId)
-      .eq('ativo', true);
-
-  // Busca quem tem registro na equipe interna DESTE projeto (Só da sua empresa)
-  final equipeProjeto = await supabase
-      .from('projeto_equipe_interna')
-      .select('usuario_id, ativo, is_gestor')
-      .eq('projeto_id', projetoId)
-      .eq('empresa_id', minhaEmpresaId); 
-
-  final mapaEquipe = {
-    for (var e in equipeProjeto) e['usuario_id']: e
-  };
-
-  // Cruza as informações e aplica a "Regra do Admin"
-  return funcionarios.map((func) {
-    final fId = func['id'];
-    final inEquipe = mapaEquipe[fId];
-    
-    final bool isAdmin = func['is_admin_empresa'] == true;
-    
-    //  Admin sempre faz parte da equipe da SUA empresa. Senão, puxa do banco (ou falso)
-    final bool isAtivo = isAdmin ? true : (inEquipe?['ativo'] ?? false);
-    final bool isGestor = isAdmin ? true : (inEquipe?['is_gestor'] ?? false);
-
+  return (response as List).whereType<Map>().map((row) {
+    final member = Map<String, dynamic>.from(row);
+    final usuarioId = member['usuario_id'];
     return {
-      'usuario_id': fId,
-      'empresa_id': minhaEmpresaId,
-      'ativo': isAtivo,
-      'is_gestor': isGestor,
-      'is_admin_empresa': isAdmin, 
-      'usuario': func,
+      'usuario_id': usuarioId,
+      'ativo': member['ativo'] == true,
+      'is_gestor': member['is_gestor'] == true,
+      'membro_obrigatorio': member['membro_obrigatorio'] == true,
+      'usuario': {
+        'id': usuarioId,
+        'nome': member['nome'],
+        'sobrenome': member['sobrenome'],
+        'cargo': member['cargo'],
+        'foto_url': member['foto_url'],
+        // The candidate RPC intentionally does not expose this field.
+        'titulo_principal': '',
+      },
     };
   }).toList();
 });
 
-// Mantém as fotos ativas filtradas para usar nos avatares redondos da tela
+// Leitura mínima para a visualização normal da equipe, inclusive para usuários
+// que não têm permissão para abrir o editor.
+final colaboradoresProjetoVisiveisProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
+  final supabase = Supabase.instance.client;
+  if (supabase.auth.currentUser == null) return [];
+
+  final response = await supabase.rpc(
+    'list_project_team_visible',
+    params: {'p_projeto_id': projetoId},
+  );
+
+  return (response as List).whereType<Map>().map((row) {
+    final member = Map<String, dynamic>.from(row);
+    final usuarioId = member['usuario_id'];
+    return {
+      'usuario_id': usuarioId,
+      'ativo': true,
+      'is_gestor': false,
+      'membro_obrigatorio': false,
+      'usuario': {
+        'id': usuarioId,
+        'nome': member['nome'],
+        'sobrenome': member['sobrenome'],
+        'cargo': member['cargo'],
+        'foto_url': member['foto_url'],
+      },
+    };
+  }).toList();
+});
+
+// Mantém as fotos ativas filtradas para usar nos avatares redondos da tela.
 final colaboradoresAtivosProjetoProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, projetoId) async {
-  final todosColaboradores = await ref.watch(colaboradoresProjetoProvider(projetoId).future);
+  final todosColaboradores = await ref.watch(colaboradoresProjetoVisiveisProvider(projetoId).future);
   return todosColaboradores.where((c) => c['ativo'] == true).toList();
 });
 
@@ -111,21 +123,13 @@ final gestaoProjetoProvider = FutureProvider.autoDispose.family<Map<String, dyna
 
 //  Verifica se o usuário logado tem permissão para editar a equipe
 final permissaoEdicaoEquipeProvider = FutureProvider.autoDispose.family<bool, String>((ref, projetoId) async {
-  final supabase = Supabase.instance.client;
-  final userId = supabase.auth.currentUser?.id;
-  if (userId == null) return false;
-
-  final userResp = await supabase.from('usuarios').select('is_admin_empresa').eq('id', userId).single();
-  if (userResp['is_admin_empresa'] == true) return true;
-
-  final equipeResp = await supabase
-      .from('projeto_equipe_interna')
-      .select('is_gestor')
-      .eq('projeto_id', projetoId)
-      .eq('usuario_id', userId)
-      .maybeSingle();
-
-  return equipeResp?['is_gestor'] == true;
+  if (Supabase.instance.client.auth.currentUser == null) return false;
+  try {
+    await ref.watch(colaboradoresProjetoProvider(projetoId).future);
+    return true;
+  } on Exception {
+    return false;
+  }
 });
 
 
@@ -176,36 +180,17 @@ class EquipeController {
     required String usuarioId, 
     required bool ativo,
   }) async {
-    // Checa se o usuário é Admin antes de tentar desligar ele
-    final userData = await _supabase.from('usuarios').select('empresa_id, is_admin_empresa').eq('id', usuarioId).single();
-    if (userData['is_admin_empresa'] == true && !ativo) {
-      throw Exception('Administradores da empresa não podem ser removidos do projeto.');
-    }
-
-    final existe = await _supabase
-        .from('projeto_equipe_interna')
-        .select('projeto_id') 
-        .eq('projeto_id', projetoId)
-        .eq('usuario_id', usuarioId)
-        .maybeSingle();
-
-    if (existe != null) {
-      await _supabase
-          .from('projeto_equipe_interna')
-          .update({'ativo': ativo})
-          .eq('projeto_id', projetoId)
-          .eq('usuario_id', usuarioId);
-    } else {
-      await _supabase.from('projeto_equipe_interna').insert({
-        'projeto_id': projetoId,
-        'usuario_id': usuarioId,
-        'empresa_id': userData['empresa_id'],
-        'ativo': ativo,
-        'is_gestor': false, 
-      });
-    }
+    await _supabase.rpc(
+      'set_project_member_status',
+      params: {
+        'p_projeto_id': projetoId,
+        'p_usuario_id': usuarioId,
+        'p_ativo': ativo,
+      },
+    );
 
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));       
+    _ref.invalidate(colaboradoresProjetoVisiveisProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId)); 
     _ref.invalidate(contagemGeralColaboradoresProvider(projetoId)); 
     
@@ -219,11 +204,14 @@ class EquipeController {
     required String usuarioId, 
     required bool isGestor, 
   }) async {
-    await _supabase
-        .from('projeto_equipe_interna')
-        .update({'is_gestor': isGestor}) 
-        .eq('projeto_id', projetoId)
-        .eq('usuario_id', usuarioId);
+    await _supabase.rpc(
+      'set_project_member_manager',
+      params: {
+        'p_projeto_id': projetoId,
+        'p_usuario_id': usuarioId,
+        'p_is_gestor': isGestor,
+      },
+    );
 
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));

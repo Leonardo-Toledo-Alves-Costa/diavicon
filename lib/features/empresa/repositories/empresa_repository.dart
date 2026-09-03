@@ -9,8 +9,20 @@ class EmpresaRepository {
 
   Future<String> salvarEmpresa({
     required Map<String, dynamic> dadosEmpresa,
+    required Map<String, dynamic> dadosUsuario,
     required String userId,
   }) async {
+    String? fotoUsuarioUrl;
+    final fotoUsuarioPath = dadosEmpresa['foto_usuario_path'];
+    if (fotoUsuarioPath is String &&
+        fotoUsuarioPath.isNotEmpty &&
+        await File(fotoUsuarioPath).exists()) {
+      final extensao = fotoUsuarioPath.split('.').last;
+      final caminho = 'usuarios/${userId}_${DateTime.now().millisecondsSinceEpoch}.$extensao';
+      await _supabase.storage.from('avatars').upload(caminho, File(fotoUsuarioPath));
+      fotoUsuarioUrl = _supabase.storage.from('avatars').getPublicUrl(caminho);
+    }
+
     // Faz o Upload da Foto para o Storage
     String? fotoUrlPublica;
     final String? fotoPathLocal = dadosEmpresa['fotoPath'];
@@ -36,16 +48,38 @@ class EmpresaRepository {
       }
     }
 
-    final result = await AuthOperationsRepository().execute('create_company', {
-      'dados_empresa': {
+    final result = await AuthOperationsRepository().execute('complete_self_registration', {
+      'perfil_tipo': 'empresa',
+      'perfil': {
+        'nome': dadosEmpresa['nome_pessoa'] ?? dadosEmpresa['nome_usuario'],
+        'sobrenome': dadosEmpresa['sobrenome'],
+        'celular': dadosEmpresa['telefone'] ?? dadosEmpresa['celular'],
+        'perfil': dadosEmpresa['perfil'] ?? 'empresa',
+        'cargo': dadosEmpresa['cargo'],
+        'titulo_principal': dadosEmpresa['nivel'],
+        'foto_url': fotoUsuarioUrl,
+      },
+      'endereco': {
+        // The root address is the person's address. Company address is sent
+        // separately below so the RPC never links both records to one row.
+        'endereco': dadosUsuario['rua'],
+        'cidade': dadosUsuario['cidade'],
+        'estado': dadosUsuario['estado'],
+        'cep': dadosUsuario['cep'],
+        'bairro': dadosUsuario['bairro'],
+        'numero': dadosUsuario['numero'],
+        'complemento': dadosUsuario['complemento'],
+        'pais': dadosUsuario['pais'] ?? 'Brasil',
+      },
+      'empresa': {
         'nome': dadosEmpresa['nome'],
         'cnpj': dadosEmpresa['cnpj'],
-        'plano_id': dadosEmpresa['plano_id'],
         'tamanho': dadosEmpresa['colaboradores'],
         'tipo': dadosEmpresa['tipo'],
         'foto_url': fotoUrlPublica,
         'site': dadosEmpresa['site'],
         'linkedin': dadosEmpresa['linkedin'],
+        'instagram': dadosEmpresa['instagram'],
         'rua': dadosEmpresa['rua'],
         'cidade': dadosEmpresa['cidade'],
         'estado': dadosEmpresa['estado'],
@@ -53,9 +87,17 @@ class EmpresaRepository {
         'bairro': dadosEmpresa['bairro'],
         'numero': dadosEmpresa['numero'],
         'complemento': dadosEmpresa['complemento'],
+        'endereco': {
+          'endereco': dadosEmpresa['rua'],
+          'cidade': dadosEmpresa['cidade'],
+          'estado': dadosEmpresa['estado'],
+          'cep': dadosEmpresa['cep'],
+          'bairro': dadosEmpresa['bairro'],
+          'numero': dadosEmpresa['numero'],
+          'complemento': dadosEmpresa['complemento'],
+          'pais': dadosEmpresa['pais'] ?? 'Brasil',
+        },
       },
-      'cargo': dadosEmpresa['cargo'],
-      'titulo_principal': dadosEmpresa['nivel'],
     });
 
     return result['empresa_id'] as String;

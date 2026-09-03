@@ -160,6 +160,81 @@ async function createCompany(userId: string, body: JsonRecord) {
   return jsonResponse(200, { sucesso: true, empresa_id: companyId })
 }
 
+async function completeSelfRegistration(
+  userId: string,
+  body: JsonRecord,
+  authUser: User,
+) {
+  if (!authUser.email || !authUser.email_confirmed_at) {
+    return jsonResponse(403, { erro: 'Confirme o e-mail antes de concluir o cadastro.' })
+  }
+
+  const profileType = asText(body.perfil_tipo)
+  const profile = body.perfil
+  const address = body.endereco
+  const company = body.empresa
+  let companyPayload: JsonRecord | null = null
+  if (!profileType || !isRecord(profile) || !isRecord(address)) {
+    return jsonResponse(400, { erro: 'Dados de cadastro inválidos.' })
+  }
+  if (profileType.toLowerCase() === 'empresa' || profileType.toLowerCase() === 'company') {
+    if (!isRecord(company)) return jsonResponse(400, { erro: 'Dados da empresa são obrigatórios.' })
+    const cnpj = asText(company.cnpj)
+    if (!cnpj || !cnpjIsValid(cnpj)) return jsonResponse(400, { erro: 'CNPJ inválido.' })
+    if (!isRecord(company.endereco)) {
+      return jsonResponse(400, { erro: 'Endereço comercial é obrigatório.' })
+    }
+    // Keep the normalized CNPJ and the commercial address server-bound in the
+    // payload passed to the service-role SQL function.
+    companyPayload = { ...company, cnpj: formatCnpj(cnpj) }
+  }
+
+  const admin = adminClient()
+  const { data, error } = await admin.rpc('complete_self_registration', {
+    p_user_id: userId,
+    // The SQL function compares this with auth.users.email.  The value comes
+    // from the validated session and is never accepted from the request body.
+    p_email: authUser.email,
+    p_profile_type: profileType,
+    p_profile: profile,
+    p_address: address,
+    p_company: companyPayload,
+  })
+  if (error) throw error
+
+  return jsonResponse(200, isRecord(data) ? { sucesso: true, ...data } : { sucesso: true })
+}
+
+async function cleanupGoogleOrphan(userId: string, authUser: User) {
+  if (authUser.id !== userId) return jsonResponse(403, { erro: 'Usuário inválido.' })
+
+  const admin = adminClient()
+  const { data: profile, error: profileError } = await admin
+    .from('usuarios')
+    .select('id')
+    .eq('id', userId)
+    .maybeSingle()
+  if (profileError) throw profileError
+  if (profile) return jsonResponse(200, { sucesso: true, excluida: false })
+
+  const { data: authData, error: authError } = await admin.auth.admin.getUserById(userId)
+  if (authError || !authData.user) throw authError ?? new Error('Usuário não encontrado.')
+  const identities = authData.user.identities ?? []
+  const providers = identities.map((identity) => identity.provider).filter(Boolean)
+  const createdAt = Date.parse(authData.user.created_at)
+  const isRecent = Number.isFinite(createdAt) && Date.now() - createdAt <= 15 * 60 * 1000
+
+  // Only remove a just-created account whose sole identity is Google.  This
+  // preserves existing e-mail/password accounts and linked identities.
+  if (providers.length !== 1 || providers[0] !== 'google' || !isRecent) {
+    return jsonResponse(200, { sucesso: true, excluida: false })
+  }
+
+  const { error: deleteError } = await admin.auth.admin.deleteUser(userId)
+  if (deleteError) throw deleteError
+  return jsonResponse(200, { sucesso: true, excluida: true })
+}
+
 async function completeProfile(
   userId: string,
   body: JsonRecord,
@@ -453,6 +528,8 @@ Deno.serve(async (req) => {
     if (!action) return jsonResponse(400, { erro: 'Ação obrigatória.' })
 
     if (action === 'create_company') return await createCompany(auth.user.id, body)
+    if (action === 'complete_self_registration') return await completeSelfRegistration(auth.user.id, body, auth.user)
+    if (action === 'cleanup_google_orphan') return await cleanupGoogleOrphan(auth.user.id, auth.user)
     if (action === 'complete_profile') return await completeProfile(auth.user.id, body, auth.user)
     if (action === 'manage_collaborator') return await manageCollaborator(auth.user.id, body)
     if (action === 'transfer_primary_admin') return await transferPrimaryAdmin(auth.user.id, body)

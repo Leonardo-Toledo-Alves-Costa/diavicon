@@ -19,4 +19,8 @@ class CadastroDraftUtils {
     final password = (draft['senha'] ?? draft['password'])?.toString() ?? '';
     return email.isNotEmpty && password.isNotEmpty;
   }
+
+  static bool hasEmail(Map<String, dynamic> draft) {
+    return draft['email']?.toString().trim().isNotEmpty ?? false;
+  }
 }

@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'app.dart';
 import 'routes/app_router.dart';
+import 'features/auth/utils/cadastro_draft_store.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,15 +27,15 @@ Future<void> main() async {
   ]);
 
   final container = ProviderContainer();
+  final draft = await CadastroDraftStore().load();
+  container.read(rascunhoCadastroProvider.notifier).state = draft;
   final router = container.read(routerProvider);
 
-  // Escuta alterações de Auth globais do sistema (como recuperação de senha)
+  // Escuta apenas recuperação de senha; CurrentUserNotifier é o único dono da
+  // sincronização de sessão para evitar respostas fora de ordem duplicadas.
   Supabase.instance.client.auth.onAuthStateChange.listen((data) {
     if (data.event == AuthChangeEvent.passwordRecovery) {
       router.go('/nova-senha');
-    } else if (data.event == AuthChangeEvent.signedIn) {
-      // 🔥 Sincroniza o perfil reativo no Riverpod imediatamente após o login bem-sucedido
-      container.read(currentUserProvider.notifier).sincronizarSessaoAtiva();
     }
   });
 

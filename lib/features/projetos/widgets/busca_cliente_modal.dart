@@ -57,14 +57,14 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
       filhos: [
         _buildCampoBusca(),
         const SizedBox(height: 24),
-        
+
         if (_termoBusca.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
               child: Text(
-                'Digite o nome ou CNPJ para buscar.', 
-                style: TextStyle(color: AppColors.greyMedium)
+                'Digite o nome ou CNPJ para buscar.',
+                style: TextStyle(color: AppColors.greyMedium),
               ),
             ),
           )
@@ -76,15 +76,18 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
             ),
-            error: (err, stack) => Text('Erro na busca: $err', style: const TextStyle(color: Colors.red)),
+            error: (err, stack) => Text(
+              'Erro na busca: $err',
+              style: const TextStyle(color: Colors.red),
+            ),
             data: (empresasEncontradas) {
               if (empresasEncontradas.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
                   child: Center(
                     child: Text(
-                      'Nenhum cliente encontrado.', 
-                      style: TextStyle(color: AppColors.greyMedium)
+                      'Nenhum cliente encontrado.',
+                      style: TextStyle(color: AppColors.greyMedium),
                     ),
                   ),
                 );
@@ -94,7 +97,9 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
               return Column(
                 children: empresasEncontradas.map((empresa) {
                   // Pega o CNPJ ou usa um texto padrão
-                  final String infoSubtitulo = empresa['cnpj'] != null && empresa['cnpj'].toString().isNotEmpty
+                  final String infoSubtitulo =
+                      empresa['cnpj'] != null &&
+                          empresa['cnpj'].toString().isNotEmpty
                       ? 'CNPJ: ${empresa['cnpj']}'
                       : 'Cliente na plataforma';
 
@@ -123,15 +128,21 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
             Expanded(
               child: TextField(
                 controller: _buscaController,
-                onSubmitted: (_) => _realizarBusca(), 
+                onSubmitted: (_) => _realizarBusca(),
                 style: AppTextStyles.corpoTextoEscuro,
                 decoration: InputDecoration(
                   hintText: 'Digite o nome ou CNPJ...',
-                  hintStyle: const TextStyle(color: AppColors.greyLight, fontSize: 14),
+                  hintStyle: const TextStyle(
+                    color: AppColors.greyLight,
+                    fontSize: 14,
+                  ),
                   fillColor: Colors.white,
                   filled: true,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: AppColors.greyLight),
@@ -149,7 +160,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
               ),
             ),
             const SizedBox(width: 12),
-            
           ],
         ),
       ],
@@ -167,11 +177,9 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
         if (widget.onSelecionado != null) {
           widget.onSelecionado!(id, nome);
         } else {
-          ref.read(projetoFormProvider.notifier).update((state) => state.copyWith(
-                clienteId: id,
-                clienteNome: nome,
-                isNovoCliente: false,
-              ));
+          ref
+              .read(projetoFormProvider.notifier)
+              .update((state) => state.withExistingClient(id: id, name: nome));
         }
 
         Navigator.pop(context);
@@ -191,7 +199,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ],
                 image: DecorationImage(
                   image: (fotoUrl != null && fotoUrl.isNotEmpty)
@@ -217,7 +225,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                   Text(
                     subtitulo,
                     style: AppTextStyles.corpoTextoEscuro.copyWith(
-                      color: AppColors.greyMedium, 
+                      color: AppColors.greyMedium,
                       fontSize: 13,
                     ),
                   ),

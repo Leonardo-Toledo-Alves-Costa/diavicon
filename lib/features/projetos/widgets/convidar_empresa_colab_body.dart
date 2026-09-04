@@ -1,14 +1,12 @@
 import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
-import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
-import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart' hide buscarEmpresaPorCnpjProvider;
+import 'package:diavicon/features/projetos/controllers/empresas_projeto_controller.dart';
+import 'package:diavicon/features/projetos/providers/empresas_projeto_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
-
-
 
 class ConvidarEmpresaColabBody extends ConsumerStatefulWidget {
   final String projetoId;
@@ -16,10 +14,12 @@ class ConvidarEmpresaColabBody extends ConsumerStatefulWidget {
   const ConvidarEmpresaColabBody({super.key, required this.projetoId});
 
   @override
-  ConsumerState<ConvidarEmpresaColabBody> createState() => _InviteColabCompanyBodyState();
+  ConsumerState<ConvidarEmpresaColabBody> createState() =>
+      _InviteColabCompanyBodyState();
 }
 
-class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBody> {
+class _InviteColabCompanyBodyState
+    extends ConsumerState<ConvidarEmpresaColabBody> {
   final _cnpjController = TextEditingController();
   String _cnpjBusca = '';
   bool _enviandoConvite = false;
@@ -41,7 +41,9 @@ class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBod
 
     try {
       // Chama o método que criamos no controller de empresas colaboradoras
-      await ref.read(empresasProjetoControllerProvider).enviarConviteEmpresa(
+      await ref
+          .read(empresasProjetoControllerProvider)
+          .enviarConviteEmpresa(
             projetoId: widget.projetoId,
             empresaConvidadaId: empresaId,
           );
@@ -104,14 +106,23 @@ class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBod
               data: (empresaEncontrada) {
                 if (empresaEncontrada == null) {
                   return const Center(
-                    child: Text('Nenhuma empresa encontrada.', style: TextStyle(color: AppColors.hintText)),
+                    child: Text(
+                      'Nenhuma empresa encontrada.',
+                      style: TextStyle(color: AppColors.hintText),
+                    ),
                   );
                 }
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Empresa Encontrada:', style: TextStyle(fontWeight: FontWeight.bold, color: AppColors.textDark)),
+                    const Text(
+                      'Empresa Encontrada:',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textDark,
+                      ),
+                    ),
                     const SizedBox(height: 12),
                     ListTile(
                       contentPadding: EdgeInsets.zero,
@@ -124,17 +135,30 @@ class _InviteColabCompanyBodyState extends ConsumerState<ConvidarEmpresaColabBod
                             ? const Icon(Icons.business, color: Colors.grey)
                             : null,
                       ),
-                      title: Text(empresaEncontrada['nome'], style: const TextStyle(fontWeight: FontWeight.bold)),
+                      title: Text(
+                        empresaEncontrada['nome'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
                       subtitle: Text('CNPJ: ${empresaEncontrada['cnpj']}'),
                       trailing: _enviandoConvite
-                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
                           : ElevatedButton(
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primary,
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
                               ),
-                              onPressed: () => _enviarConvite(empresaEncontrada['id']),
-                              child: const Text('Convidar', style: TextStyle(color: Colors.white)),
+                              onPressed: () =>
+                                  _enviarConvite(empresaEncontrada['id']),
+                              child: const Text(
+                                'Convidar',
+                                style: TextStyle(color: Colors.white),
+                              ),
                             ),
                     ),
                   ],

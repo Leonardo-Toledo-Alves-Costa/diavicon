@@ -6,10 +6,13 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
+import '../../../routes/app_routes.dart';
 import '../providers/auth_provider.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key});
+  const LoginScreen({super.key, this.redirectLocation});
+
+  final String? redirectLocation;
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -35,7 +38,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
       await ref
           .read(authControllerProvider.notifier)
           .login(_emailController.text.trim(), _senhaController.text);
-      if (mounted) context.go('/projetos');
+      if (mounted) context.go(widget.redirectLocation ?? AppPaths.projects);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -106,7 +109,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        context.push('/recuperar-senha');
+                        context.pushNamed(AppRouteNames.recoverPassword);
                       },
                       child: const Text(
                         'Resgatar Senha',

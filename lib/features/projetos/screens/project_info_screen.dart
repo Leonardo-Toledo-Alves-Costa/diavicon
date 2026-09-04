@@ -13,17 +13,16 @@ import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
-import '../../../core/widgets/status_badge.dart';
-
 import '../../../core/widgets/custom_appbar.dart';
+import '../../equipe/providers/equipe_provider.dart';
 
 import '../../auth/providers/auth_provider.dart';
 import '../../estrutura/models/estrutura_model.dart';
 import '../../estrutura/providers/estrutura_provider.dart';
+import '../controllers/clientes_projeto_controller.dart';
+import '../controllers/empresas_projeto_controller.dart';
 import '../models/projeto_model.dart';
 import '../providers/projetos_provider.dart';
-import '../providers/empresas_projeto_provider.dart';
-import '../providers/notificacoes_provider.dart';
 import '../widgets/busca_cliente_modal.dart';
 import '../widgets/trocar_gestora_modal.dart';
 
@@ -37,19 +36,28 @@ class ProjectInfoScreen extends ConsumerStatefulWidget {
 }
 
 class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
+  static const _knownStatusOptions = <String>[
+    'Em andamento',
+    'Concluído',
+    'Atrasado',
+    'Parado',
+    'Cancelado',
+  ];
+  static const _knownPriorityOptions = <String>['Baixa', 'Média', 'Alta'];
+
   final _nomeController = TextEditingController();
   final _descController = TextEditingController();
-  
+
   String? _statusSelecionado;
   String? _prioridadeSelecionada;
-  File? _novaImagemCapa; 
+  File? _novaImagemCapa;
 
   bool _isInitialized = false;
   String _initialNome = '';
   String _initialDesc = '';
   String? _initialStatus;
   String? _initialPrioridade;
-  
+
   bool _isSaving = false;
 
   @override
@@ -69,7 +77,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   }
 
   void _onFieldChanged() {
-    setState(() {}); 
+    setState(() {});
   }
 
   bool get _hasChanges {
@@ -87,25 +95,18 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       _initialNome = projeto.nome;
       _initialDesc = projeto.descricao ?? '';
 
-      switch (projeto.statusBadge) {
-        case BadgeStatus.concluido:
-          _initialStatus = 'Concluído';
-          break;
-        case BadgeStatus.cancelado:
-          _initialStatus = 'Cancelado'; 
-          break;
-        case BadgeStatus.emAndamento:
-        default:
-          _initialStatus = 'Em Andamento';
-          break;
-      }
+      _initialStatus = projeto.statusNome;
       _initialPrioridade = projeto.prioridadeNome;
 
+      _nomeController.removeListener(_onFieldChanged);
+      _descController.removeListener(_onFieldChanged);
       _nomeController.text = _initialNome;
       _descController.text = _initialDesc;
+      _nomeController.addListener(_onFieldChanged);
+      _descController.addListener(_onFieldChanged);
       _statusSelecionado = _initialStatus;
       _prioridadeSelecionada = _initialPrioridade;
-      
+
       _isInitialized = true;
     }
   }
@@ -127,16 +128,33 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       builder: (ctx) => AlertDialog(
         backgroundColor: AppColors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text('Alterações não salvas', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
-        content: const Text('Você fez alterações que ainda não foram salvas. Se sair agora, perderá todas as mudanças. Deseja realmente sair?'),
+        title: const Text(
+          'Alterações não salvas',
+          style: TextStyle(
+            color: AppColors.textDark,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Você fez alterações que ainda não foram salvas. Se sair agora, perderá todas as mudanças. Deseja realmente sair?',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx, false),
-            child: const Text('Ficar na Tela', style: TextStyle(color: AppColors.primary)),
+            child: const Text(
+              'Ficar na Tela',
+              style: TextStyle(color: AppColors.primary),
+            ),
           ),
           TextButton(
             onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Sair sem salvar', style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold)),
+            child: const Text(
+              'Sair sem salvar',
+              style: TextStyle(
+                color: AppColors.error,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
         ],
       ),
@@ -149,26 +167,28 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
   Future<void> _pickImage() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
-      
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.image,
+      );
+
       if (result != null && result.files.single.path != null) {
         final pickedFilePath = result.files.single.path!;
 
         CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFilePath,
-          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), 
+          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9),
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Enquadrar Capa',
-              toolbarColor: AppColors.primary, 
+              toolbarColor: AppColors.primary,
               toolbarWidgetColor: Colors.white,
               initAspectRatio: CropAspectRatioPreset.ratio16x9,
-              lockAspectRatio: true, 
+              lockAspectRatio: true,
               hideBottomControls: false,
             ),
             IOSUiSettings(
               title: 'Enquadrar Capa',
-              aspectRatioLockEnabled: true, 
+              aspectRatioLockEnabled: true,
               resetButtonHidden: true,
             ),
           ],
@@ -182,42 +202,58 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       }
     } catch (e) {
       if (mounted) {
-        DiaviconAlerts.show(context, 'Erro', 'Não foi possível selecionar ou cortar a imagem: $e', isErro: true);
+        DiaviconAlerts.show(
+          context,
+          'Erro',
+          'Não foi possível selecionar ou cortar a imagem: $e',
+          isErro: true,
+        );
       }
     }
   }
 
   Future<void> _salvarAlteracoes() async {
     setState(() => _isSaving = true);
-    
+
     try {
-      await ref.read(projetoRepositoryProvider).updateProject(
-        projetoId: widget.projetoId,
-        nome: _nomeController.text.trim(),
-        descricao: _descController.text.trim(),
-        statusNomeUI: _statusSelecionado ?? 'Em Andamento',
-        prioridadeNomeUI: _prioridadeSelecionada ?? 'Média',
-        novaImagem: _novaImagemCapa,
-      );
+      await ref
+          .read(projectRepositoryProvider)
+          .updateProject(
+            projetoId: widget.projetoId,
+            nome: _nomeController.text.trim(),
+            descricao: _descController.text.trim(),
+            statusNomeUI: _statusSelecionado ?? 'Em andamento',
+            prioridadeNomeUI: _prioridadeSelecionada ?? 'Média',
+            novaImagem: _novaImagemCapa,
+          );
 
       ref.invalidate(projectDetailProvider(widget.projetoId));
-      ref.invalidate(filteredProjectsProvider);
+      ref.invalidate(projectsProvider);
 
       if (mounted) {
-        DiaviconAlerts.show(context, 'Sucesso!', 'Informações do projeto atualizadas com sucesso!');
-        
+        DiaviconAlerts.show(
+          context,
+          'Sucesso!',
+          'Informações do projeto atualizadas com sucesso!',
+        );
+
         setState(() {
           _initialNome = _nomeController.text;
           _initialDesc = _descController.text;
           _initialStatus = _statusSelecionado;
           _initialPrioridade = _prioridadeSelecionada;
-          _novaImagemCapa = null; 
+          _novaImagemCapa = null;
           _isSaving = false;
         });
       }
     } catch (e) {
       if (mounted) {
-        DiaviconAlerts.show(context, 'Erro ao salvar', e.toString().replaceAll('Exception: ', ''), isErro: true);
+        DiaviconAlerts.show(
+          context,
+          'Erro ao salvar',
+          e.toString().replaceAll('Exception: ', ''),
+          isErro: true,
+        );
         setState(() => _isSaving = false);
       }
     }
@@ -230,7 +266,8 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     final confirmar = await showConfirmarExclusaoDialog(
       context: context,
       titulo: 'Excluir Projeto',
-      mensagem: 'Deseja realmente excluir o projeto "${projeto.nome}"? Esta ação não poderá ser desfeita.',
+      mensagem:
+          'Deseja realmente excluir o projeto "${projeto.nome}"? Esta ação não poderá ser desfeita.',
     );
     if (confirmar != true || !mounted) return;
 
@@ -249,15 +286,20 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     }
 
     try {
-      await ref.read(projetoRepositoryProvider).excluirProjeto(widget.projetoId);
+      await ref.read(projectRepositoryProvider).deleteProject(widget.projetoId);
     } catch (e) {
       if (mounted) {
-        DiaviconAlerts.show(context, 'Erro', 'Falha ao excluir projeto: $e', isErro: true);
+        DiaviconAlerts.show(
+          context,
+          'Erro',
+          'Falha ao excluir projeto: $e',
+          isErro: true,
+        );
       }
       return;
     }
 
-    ref.invalidate(filteredProjectsProvider);
+    ref.invalidate(projectsProvider);
     ref.invalidate(projectDetailProvider(widget.projetoId));
 
     if (!mounted) return;
@@ -267,16 +309,24 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       final confirmarEstrutura = await showConfirmarExclusaoDialog(
         context: context,
         titulo: 'Excluir estrutura também?',
-        mensagem: 'O projeto foi excluído. Sua empresa é a gestora de "$nomes" — deseja excluir também essa estrutura (e todos os elementos e ensaios vinculados a ela)?',
+        mensagem:
+            'O projeto foi excluído. Sua empresa é a gestora de "$nomes" — deseja excluir também essa estrutura (e todos os elementos e ensaios vinculados a ela)?',
       );
 
       if (confirmarEstrutura == true && mounted) {
         for (final estrutura in estruturasGerenciadas) {
           try {
-            await ref.read(estruturaRepositoryProvider).excluirEstrutura(estrutura.id);
+            await ref
+                .read(estruturaRepositoryProvider)
+                .excluirEstrutura(estrutura.id);
           } catch (e) {
             if (mounted) {
-              DiaviconAlerts.show(context, 'Erro', 'Falha ao excluir a estrutura "${estrutura.nome}": $e', isErro: true);
+              DiaviconAlerts.show(
+                context,
+                'Erro',
+                'Falha ao excluir a estrutura "${estrutura.nome}": $e',
+                isErro: true,
+              );
             }
           }
         }
@@ -285,7 +335,10 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Projeto excluído com sucesso!'), backgroundColor: Colors.green),
+        const SnackBar(
+          content: Text('Projeto excluído com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
       );
       Navigator.of(context).pop();
     }
@@ -302,51 +355,75 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         projetoId: projeto.id,
         empresaGestoraAtualId: projeto.empresaGestoraId ?? '',
         onSelecionada: (novaEmpresaId, nomeEmpresa) {
-          Navigator.pop(context); 
-          
+          Navigator.pop(context);
+
           showDialog(
             context: context,
             builder: (ctxConfirma) => AlertDialog(
               backgroundColor: AppColors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              title: const Text('Confirmar Transferência', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
-              content: Text('Tem certeza que deseja transferir a gestão para $nomeEmpresa? Sua empresa perderá as permissões administrativas deste projeto.'),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              title: const Text(
+                'Confirmar Transferência',
+                style: TextStyle(
+                  color: AppColors.textDark,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Text(
+                'Tem certeza que deseja transferir a gestão para $nomeEmpresa? Sua empresa perderá as permissões administrativas deste projeto.',
+              ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctxConfirma),
-                  child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+                  child: const Text(
+                    'Cancelar',
+                    style: TextStyle(color: AppColors.greyMedium),
+                  ),
                 ),
                 TextButton(
                   onPressed: () async {
-                    Navigator.pop(ctxConfirma); 
-                    
-                    try {
-                      await ref.read(empresasProjetoControllerProvider).alterarEmpresaGestora(
-                        projetoId: projeto.id,
-                        novaEmpresaGestoraId: novaEmpresaId,
-                      );
-                      
-                      if (mounted) {
-                        await ref.refresh(projectDetailProvider(projeto.id).future);
+                    Navigator.pop(ctxConfirma);
 
+                    try {
+                      await ref
+                          .read(empresasProjetoControllerProvider)
+                          .alterarEmpresaGestora(
+                            projetoId: projeto.id,
+                            novaEmpresaGestoraId: novaEmpresaId,
+                          );
+
+                      if (mounted) {
+                        ref.invalidate(projectDetailProvider(projeto.id));
                         setState(() {
-                          _isInitialized = false; 
+                          _isInitialized = false;
                         });
-                        
-                        DiaviconAlerts.show(context, 'Sucesso!', 'Gestão transferida com sucesso!');
+
+                        DiaviconAlerts.show(
+                          context,
+                          'Sucesso!',
+                          'Gestão transferida com sucesso!',
+                        );
                       }
                     } catch (e) {
                       if (mounted) {
                         DiaviconAlerts.show(
-                          context, 
-                          'Erro na transferência', 
-                          e.toString().replaceAll('Exception: ', ''), 
+                          context,
+                          'Erro na transferência',
+                          e.toString().replaceAll('Exception: ', ''),
                           isErro: true,
                         );
                       }
                     }
                   },
-                  child: const Text('Transferir', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+                  child: const Text(
+                    'Transferir',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -360,6 +437,9 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   Widget build(BuildContext context) {
     final projetoAsync = ref.watch(projectDetailProvider(widget.projetoId));
     final usuarioEmpresaIdAsync = ref.watch(loggedUserCompanyIdProvider);
+    final podeGerenciarAsync = ref.watch(
+      permissaoEdicaoEquipeProvider(widget.projetoId),
+    );
 
     final bottomPadding = MediaQuery.of(context).padding.bottom;
 
@@ -371,29 +451,36 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.white,
-        
 
         appBar: CustomAppBar(
           title: 'Projeto',
           showBackButton: true,
           onBackPressed: _verificarSaida,
-          showMenuButton: false, 
-          showNotificationButton: false, 
+          showMenuButton: false,
+          showNotificationButton: false,
           titleWidget: const Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 'Projeto',
-                style: TextStyle(fontSize: 11, color: Colors.white70, fontWeight: FontWeight.w500),
+                style: TextStyle(
+                  fontSize: 11,
+                  color: Colors.white70,
+                  fontWeight: FontWeight.w500,
+                ),
               ),
               Text(
                 'Informações',
-                style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
             ],
           ),
         ),
-        
+
         bottomNavigationBar: _hasChanges
             ? SafeArea(
                 child: Padding(
@@ -401,7 +488,11 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                   child: _isSaving
                       ? const SizedBox(
                           height: 48,
-                          child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+                          child: Center(
+                            child: CircularProgressIndicator(
+                              color: AppColors.primary,
+                            ),
+                          ),
                         )
                       : CustomButton(
                           text: 'Salvar Alterações',
@@ -409,21 +500,36 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                         ),
                 ),
               )
-            : null, 
+            : null,
 
         body: projetoAsync.when(
-          loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-          error: (err, stack) => Center(child: Text('Erro ao carregar dados: $err')),
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: AppColors.primary),
+          ),
+          error: (err, stack) =>
+              Center(child: Text('Erro ao carregar dados: $err')),
           data: (projeto) {
             _preencherControladores(projeto);
 
             final nomeGestora = projeto.empresaNome;
-            final nomeCliente = projeto.clienteNome ?? 'Cliente não definido'; 
-            final statusVinculoCliente = _formatarStatusCliente(projeto.statusVinculoCliente); 
+            final nomeCliente = projeto.clienteNome ?? 'Cliente não definido';
+            final statusVinculoCliente = _formatarStatusCliente(
+              projeto.statusVinculoCliente,
+            );
 
             bool canEdit = usuarioEmpresaIdAsync.maybeWhen(
-              data: (empresaIdLogada) => projeto.empresaGestoraId == empresaIdLogada,
+              data: (empresaIdLogada) =>
+                  projeto.empresaGestoraId == empresaIdLogada,
               orElse: () => false,
+            );
+            final canManage = canEdit && (podeGerenciarAsync.value ?? false);
+            final statusOptions = _optionsFor(
+              _knownStatusOptions,
+              _statusSelecionado,
+            );
+            final priorityOptions = _optionsFor(
+              _knownPriorityOptions,
+              _prioridadeSelecionada,
             );
 
             return SingleChildScrollView(
@@ -432,41 +538,48 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  _buildCoverImage(projeto.imageUrl, canEdit),
-                  
+                  _buildCoverImage(projeto.imageUrl, canManage),
+
                   const SizedBox(height: 24),
 
                   CustomTextField(
                     label: 'Nome',
                     hint: 'Nome do Projeto',
                     controller: _nomeController,
-                    enabled: canEdit,
+                    enabled: canManage,
                   ),
                   const SizedBox(height: 16),
-                  
+
                   Row(
                     children: [
                       Expanded(
                         child: IgnorePointer(
-                          ignoring: !canEdit,
+                          ignoring: !canManage,
                           child: Opacity(
-                            opacity: canEdit ? 1.0 : 0.6,
+                            opacity: canManage ? 1.0 : 0.6,
                             child: CustomDropdown<String>(
                               label: 'Status',
                               value: _statusSelecionado,
-                              items: ['Em Andamento', 'Concluído', 'Cancelado'].map((String valor) {
+                              items: statusOptions.map((String valor) {
                                 return DropdownMenuItem<String>(
                                   value: valor,
                                   child: Text(
-                                    valor, 
-                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
-                                    overflow: TextOverflow.ellipsis, 
+                                    valor,
+                                    style: const TextStyle(
+                                      color: AppColors.textDark,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 );
                               }).toList(),
                               onChanged: (novoValor) {
-                                if (novoValor != null) setState(() => _statusSelecionado = novoValor);
-                              }, 
+                                if (novoValor != null) {
+                                  setState(
+                                    () => _statusSelecionado = novoValor,
+                                  );
+                                }
+                              },
                             ),
                           ),
                         ),
@@ -474,25 +587,32 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: IgnorePointer(
-                          ignoring: !canEdit,
+                          ignoring: !canManage,
                           child: Opacity(
-                            opacity: canEdit ? 1.0 : 0.6,
+                            opacity: canManage ? 1.0 : 0.6,
                             child: CustomDropdown<String>(
                               label: 'Prioridade',
                               value: _prioridadeSelecionada,
-                              items: ['Baixa', 'Média', 'Alta'].map((String valor) {
+                              items: priorityOptions.map((String valor) {
                                 return DropdownMenuItem<String>(
                                   value: valor,
                                   child: Text(
-                                    valor, 
-                                    style: const TextStyle(color: AppColors.textDark, fontSize: 13), 
-                                    overflow: TextOverflow.ellipsis, 
+                                    valor,
+                                    style: const TextStyle(
+                                      color: AppColors.textDark,
+                                      fontSize: 13,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 );
                               }).toList(),
                               onChanged: (novoValor) {
-                                if (novoValor != null) setState(() => _prioridadeSelecionada = novoValor);
-                              }, 
+                                if (novoValor != null) {
+                                  setState(
+                                    () => _prioridadeSelecionada = novoValor,
+                                  );
+                                }
+                              },
                             ),
                           ),
                         ),
@@ -500,13 +620,13 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  
+
                   CustomTextField(
                     label: 'Descrição',
                     hint: 'Escreva detalhes sobre este projeto...',
                     controller: _descController,
                     maxLines: 4,
-                    enabled: canEdit,
+                    enabled: canManage,
                   ),
 
                   const SizedBox(height: 32),
@@ -515,10 +635,16 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
                   _buildSectionHeader(
                     title: 'Cliente proprietário',
-                    subtitle: 'As estruturas são referentes ao cliente do projeto, sendo este ponto focal do projeto.',
+                    subtitle:
+                        'As estruturas são referentes ao cliente do projeto, sendo este ponto focal do projeto.',
                   ),
                   const SizedBox(height: 16),
-                  _buildClienteCard(nomeCliente, statusVinculoCliente, canEdit, projeto.clienteFotoUrl),
+                  _buildClienteCard(
+                    nomeCliente,
+                    statusVinculoCliente,
+                    canManage,
+                    projeto.clienteFotoUrl,
+                  ),
 
                   const SizedBox(height: 24),
                   const Divider(color: AppColors.inputBorder),
@@ -526,12 +652,20 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
                   _buildSectionHeader(
                     title: 'Gestora do projeto',
-                    subtitle: 'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
+                    subtitle:
+                        'A empresa gestora do projeto possui todas as permissões de edição dos dados.',
                   ),
                   const SizedBox(height: 16),
-                  _buildGestoraCard(nomeGestora, projeto.empresaFotoUrl, canEdit, () => _abrirModalTrocaGestora(projeto)),
+                  _buildGestoraCard(
+                    nomeGestora,
+                    projeto.empresaFotoUrl,
+                    canManage,
+                    () => _abrirModalTrocaGestora(projeto),
+                  ),
 
-                  if (canEdit && ref.watch(currentUserProvider)?.isAdminEmpresa == true) ...[
+                  if (canManage &&
+                      ref.watch(currentUserProvider)?.isAdminEmpresa ==
+                          true) ...[
                     const SizedBox(height: 24),
                     const Divider(color: AppColors.inputBorder),
                     const SizedBox(height: 24),
@@ -556,16 +690,40 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     );
   }
 
+  List<String> _optionsFor(List<String> knownOptions, String? currentValue) {
+    final options = List<String>.from(knownOptions);
+    final normalizedCurrent = currentValue?.trim();
+    if (normalizedCurrent == null || normalizedCurrent.isEmpty) return options;
+
+    final knownIndex = options.indexWhere(
+      (option) => option.toLowerCase() == normalizedCurrent.toLowerCase(),
+    );
+    if (knownIndex >= 0) {
+      options[knownIndex] = normalizedCurrent;
+    } else {
+      options.insert(0, normalizedCurrent);
+    }
+    return options;
+  }
+
   // --- WIDGETS AUXILIARES DA TELA ---
 
   Widget _buildCoverImage(String? imageUrl, bool canEdit) {
     DecorationImage defineImage() {
       if (_novaImagemCapa != null) {
-        return DecorationImage(image: FileImage(_novaImagemCapa!), fit: BoxFit.cover);
+        return DecorationImage(
+          image: FileImage(_novaImagemCapa!),
+          fit: BoxFit.cover,
+        );
       }
-      
-      if (imageUrl != null && imageUrl.isNotEmpty && imageUrl.startsWith('http')) {
-        return DecorationImage(image: NetworkImage(imageUrl), fit: BoxFit.cover);
+
+      if (imageUrl != null &&
+          imageUrl.isNotEmpty &&
+          imageUrl.startsWith('http')) {
+        return DecorationImage(
+          image: NetworkImage(imageUrl),
+          fit: BoxFit.cover,
+        );
       }
 
       return const DecorationImage(
@@ -598,10 +756,18 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
                   color: AppColors.white,
                   shape: BoxShape.circle,
                   boxShadow: [
-                    BoxShadow(color: Colors.black.withValues(alpha: 0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),
+                child: const Icon(
+                  Icons.edit_square,
+                  color: AppColors.textDark,
+                  size: 24,
+                ),
               ),
             ),
           ),
@@ -609,24 +775,40 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
     );
   }
 
-  Widget _buildSectionHeader({required String title, required String subtitle}) {
+  Widget _buildSectionHeader({
+    required String title,
+    required String subtitle,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textDark),
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.textDark,
+          ),
         ),
         const SizedBox(height: 4),
         Text(
           subtitle,
-          style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.w300, color: AppColors.greyMediumDark),
+          style: GoogleFonts.lato(
+            fontSize: 13,
+            fontWeight: FontWeight.w300,
+            color: AppColors.greyMediumDark,
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildClienteCard(String nome, String status, bool canEdit, String? fotoUrl) {
+  Widget _buildClienteCard(
+    String nome,
+    String status,
+    bool canEdit,
+    String? fotoUrl,
+  ) {
     final bool isVinculado = status == 'Vinculado';
     final bool isPendente = status == 'Pendente';
 
@@ -636,27 +818,45 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         CircleAvatar(
           radius: 28,
           backgroundColor: AppColors.greyVeryLight,
-          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty) ? NetworkImage(fotoUrl) : const AssetImage('assets/images/user.png') as ImageProvider,
+          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty)
+              ? NetworkImage(fotoUrl)
+              : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textDark)),
+              Text(
+                nome,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: AppColors.textDark,
+                ),
+              ),
               const SizedBox(height: 4),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
                 decoration: BoxDecoration(
                   color: isVinculado
                       ? const Color(0xFFE6F4EA)
-                      : (isPendente ? const Color(0xFFFFF3E0) : const Color(0xFFFFE5E5)),
+                      : (isPendente
+                            ? const Color(0xFFFFF3E0)
+                            : const Color(0xFFFFE5E5)),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
                   status,
                   style: TextStyle(
-                    color: isVinculado ? Colors.green.shade800 : (isPendente ? Colors.orange.shade800 : AppColors.error),
+                    color: isVinculado
+                        ? Colors.green.shade800
+                        : (isPendente
+                              ? Colors.orange.shade800
+                              : AppColors.error),
                     fontWeight: FontWeight.bold,
                     fontSize: 10,
                   ),
@@ -664,7 +864,13 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
               ),
               if (isPendente) ...[
                 const SizedBox(height: 4),
-                Text('Aguardando aceite do convite', style: GoogleFonts.lato(fontSize: 11, color: AppColors.greyMedium)),
+                Text(
+                  'Aguardando aceite do convite',
+                  style: GoogleFonts.lato(
+                    fontSize: 11,
+                    color: AppColors.greyMedium,
+                  ),
+                ),
               ],
             ],
           ),
@@ -673,12 +879,22 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
               elevation: 0,
             ),
-            onPressed: () => _abrirBuscaClienteEConvidar(clienteAtualNome: isVinculado ? nome : null),
-            child: Text(isVinculado ? 'Trocar' : 'Vincular', style: GoogleFonts.lato(color: AppColors.white, fontWeight: FontWeight.bold)),
+            onPressed: () => _abrirBuscaClienteEConvidar(
+              clienteAtualNome: isVinculado ? nome : null,
+            ),
+            child: Text(
+              isVinculado ? 'Trocar' : 'Vincular',
+              style: GoogleFonts.lato(
+                color: AppColors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
       ],
     );
@@ -693,28 +909,40 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
         context: context,
         builder: (ctxConfirma) => AlertDialog(
           backgroundColor: AppColors.white,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          title: const Text('Trocar cliente proprietário', style: TextStyle(color: AppColors.textDark, fontWeight: FontWeight.bold)),
-          content: Text('$clienteAtualNome perderá o acesso a este projeto imediatamente. Deseja continuar e convidar outra empresa?'),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: const Text(
+            'Trocar cliente proprietário',
+            style: TextStyle(
+              color: AppColors.textDark,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            '$clienteAtualNome perderá o acesso a este projeto imediatamente. Deseja continuar e convidar outra empresa?',
+          ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctxConfirma),
-              child: const Text('Cancelar', style: TextStyle(color: AppColors.greyMedium)),
+              child: const Text(
+                'Cancelar',
+                style: TextStyle(color: AppColors.greyMedium),
+              ),
             ),
             TextButton(
-              onPressed: () async {
+              onPressed: () {
                 Navigator.pop(ctxConfirma);
-                try {
-                  await ref.read(notificacoesControllerProvider).removerClienteAtual(projetoId: widget.projetoId);
-                  ref.invalidate(projectDetailProvider(widget.projetoId));
-                  if (!mounted) return;
-                  _abrirBuscaClienteEConvidar();
-                } catch (e) {
-                  if (!mounted) return;
-                  DiaviconAlerts.show(context, 'Erro', e.toString().replaceAll('Exception: ', ''), isErro: true);
-                }
+                if (!mounted) return;
+                _abrirBuscaClienteEConvidar();
               },
-              child: const Text('Continuar', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold)),
+              child: const Text(
+                'Continuar',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           ],
         ),
@@ -724,41 +952,67 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => BuscaClienteModal(
+      builder: (_) => BuscaClienteModal(
         onSelecionado: (empresaId, nomeEmpresa) async {
           try {
-            await ref.read(notificacoesControllerProvider).enviarConviteCliente(
-                  projetoId: widget.projetoId,
-                  empresaClienteId: empresaId,
+            await ref
+                .read(clientesProjetoControllerProvider)
+                .inviteExistingClient(
+                  projectId: widget.projetoId,
+                  clientCompanyId: empresaId,
                 );
             ref.invalidate(projectDetailProvider(widget.projetoId));
             if (!mounted) return;
-            DiaviconAlerts.show(context, 'Convite enviado!', '$nomeEmpresa vai receber uma notificação para aceitar ser cliente deste projeto.');
+            DiaviconAlerts.show(
+              context,
+              'Convite enviado!',
+              '$nomeEmpresa vai receber uma notificação para aceitar ser cliente deste projeto.',
+            );
           } catch (e) {
             if (!mounted) return;
-            DiaviconAlerts.show(context, 'Erro', e.toString().replaceAll('Exception: ', ''), isErro: true);
+            DiaviconAlerts.show(
+              context,
+              'Erro',
+              e.toString().replaceAll('Exception: ', ''),
+              isErro: true,
+            );
           }
         },
       ),
     );
   }
 
-  Widget _buildGestoraCard(String nome, String? fotoUrl, bool canEdit, VoidCallback onTapEdit) {
+  Widget _buildGestoraCard(
+    String nome,
+    String? fotoUrl,
+    bool canEdit,
+    VoidCallback onTapEdit,
+  ) {
     return Row(
       children: [
         CircleAvatar(
           radius: 28,
           backgroundColor: AppColors.white,
-          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty) ? NetworkImage(fotoUrl) : null,
+          backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty)
+              ? NetworkImage(fotoUrl)
+              : null,
           child: (fotoUrl == null || fotoUrl.isEmpty)
-              ? const Icon(Icons.business, color: AppColors.greyMedium, size: 28)
+              ? const Icon(
+                  Icons.business,
+                  color: AppColors.greyMedium,
+                  size: 28,
+                )
               : null,
         ),
         const SizedBox(width: 16),
         Expanded(
           child: Text(
             nome,
-            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: AppColors.textDark),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: AppColors.textDark,
+            ),
           ),
         ),
         if (canEdit)

@@ -1,5 +1,5 @@
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/home/screens/perfil_header.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';

@@ -1,5 +1,5 @@
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/home/screens/perfil_header.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
 import 'package:flutter/material.dart';
 
 class PerfilCentralAjuda extends StatelessWidget {
@@ -44,30 +44,15 @@ class PerfilCentralAjuda extends StatelessWidget {
                       const SizedBox(height: 25),
                       const _HelpItem(title: 'Versão'),
                       const SizedBox(height: 25),
-                      _HelpItem(
-                        title: 'Política de privacidade',
-                        onTap: () {},
-                      ),
+                      _HelpItem(title: 'Política de privacidade', onTap: () {}),
                       const SizedBox(height: 25),
-                      _HelpItem(
-                        title: 'Licenças de terceiros',
-                        onTap: () {},
-                      ),
+                      _HelpItem(title: 'Licenças de terceiros', onTap: () {}),
                       const SizedBox(height: 25),
-                      _HelpItem(
-                        title: 'Termos de uso',
-                        onTap: () {},
-                      ),
+                      _HelpItem(title: 'Termos de uso', onTap: () {}),
                       const SizedBox(height: 25),
-                      _HelpItem(
-                        title: 'Regras da plataforma',
-                        onTap: () {},
-                      ),
+                      _HelpItem(title: 'Regras da plataforma', onTap: () {}),
                       const SizedBox(height: 25),
-                      _HelpItem(
-                        title: 'Suporte',
-                        onTap: () {},
-                      ),
+                      _HelpItem(title: 'Suporte', onTap: () {}),
                     ],
                   ),
                 ),
@@ -84,10 +69,7 @@ class _HelpItem extends StatelessWidget {
   final String title;
   final VoidCallback? onTap;
 
-  const _HelpItem({
-    required this.title,
-    this.onTap,
-  });
+  const _HelpItem({required this.title, this.onTap});
 
   @override
   Widget build(BuildContext context) {

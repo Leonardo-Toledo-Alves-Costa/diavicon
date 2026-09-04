@@ -1,13 +1,12 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
 import 'package:diavicon/features/auth/models/usuario_model.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
-import 'package:diavicon/features/home/screens/perfil_header.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'dart:io'; // Adicione este import
-import 'package:image_picker/image_picker.dart';
 import 'package:go_router/go_router.dart';
 
 class PerfilMinhaConta extends ConsumerStatefulWidget {
@@ -272,42 +271,42 @@ class _PerfilMinhaContaState extends ConsumerState<PerfilMinhaConta> {
     );
   }
 
-Future<void> _salvar() async {
-  final usuarioAtual = ref.read(currentUserProvider);
-  if (usuarioAtual == null) return;
+  Future<void> _salvar() async {
+    final usuarioAtual = ref.read(currentUserProvider);
+    if (usuarioAtual == null) return;
 
-  if (_senhaCtrl.text.isNotEmpty || _confirmarSenhaCtrl.text.isNotEmpty) {
-    if (_senhaCtrl.text != _confirmarSenhaCtrl.text) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('As senhas não coincidem')),
-      );
-      return;
+    if (_senhaCtrl.text.isNotEmpty || _confirmarSenhaCtrl.text.isNotEmpty) {
+      if (_senhaCtrl.text != _confirmarSenhaCtrl.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('As senhas não coincidem')),
+        );
+        return;
+      }
+      await ref.read(authRepositoryProvider).updatePassword(_senhaCtrl.text);
     }
-    await ref.read(authRepositoryProvider).updatePassword(_senhaCtrl.text);
+
+    final atualizado = UsuarioModel(
+      id: usuarioAtual.id,
+      nome: _nomeCtrl.text.trim(),
+      sobrenome: usuarioAtual.sobrenome,
+      email: _emailCtrl.text.trim(),
+      celular: _telefoneCtrl.text.trim(),
+      cargo: usuarioAtual.cargo,
+      empresaId: usuarioAtual.empresaId,
+      setorId: usuarioAtual.setorId,
+      ativo: usuarioAtual.ativo,
+      tituloPrincipal: usuarioAtual.tituloPrincipal,
+      escolaridade: usuarioAtual.escolaridade,
+      fotoUrl: usuarioAtual.fotoUrl,
+      linkedin: usuarioAtual.linkedin,
+      instagram: usuarioAtual.instagram,
+      criadoEm: usuarioAtual.criadoEm,
+      isAdminEmpresa: usuarioAtual.isAdminEmpresa,
+    );
+
+    await ref.read(authRepositoryProvider).salvarPerfil(atualizado);
+    ref.read(currentUserProvider.notifier).setUserIfSessionMatches(atualizado);
+
+    if (mounted) context.goNamed(AppRouteNames.projects);
   }
-
-  final atualizado = UsuarioModel(
-    id: usuarioAtual.id,
-    nome: _nomeCtrl.text.trim(),
-    sobrenome: usuarioAtual.sobrenome,
-    email: _emailCtrl.text.trim(),
-    celular: _telefoneCtrl.text.trim(),
-    cargo: usuarioAtual.cargo,
-    empresaId: usuarioAtual.empresaId,
-    setorId: usuarioAtual.setorId,
-    ativo: usuarioAtual.ativo,
-    tituloPrincipal: usuarioAtual.tituloPrincipal,
-    escolaridade: usuarioAtual.escolaridade,
-    fotoUrl: usuarioAtual.fotoUrl,
-    linkedin: usuarioAtual.linkedin,
-    instagram: usuarioAtual.instagram,
-    criadoEm: usuarioAtual.criadoEm,
-    isAdminEmpresa: usuarioAtual.isAdminEmpresa,
-  );
-
-  await ref.read(authRepositoryProvider).salvarPerfil(atualizado);
-  ref.read(currentUserProvider.notifier).setUser(atualizado);
-
-  if (mounted) context.go('/projetos');
-}
 }

@@ -1,8 +1,5 @@
-import 'package:diavicon/features/projetos/providers/notificacoes_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; 
 import '../constants/app_colors.dart';
-
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String title;
@@ -10,9 +7,11 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
   final List<Widget>? extraActions;
   final Widget? titleWidget;
   final bool showMenuButton;
-  
-  final bool showNotificationButton; 
-  
+
+  final bool showNotificationButton;
+  final int notificationCount;
+  final VoidCallback? onNotificationPressed;
+
   final VoidCallback? onBackPressed;
 
   const CustomAppBar({
@@ -23,7 +22,9 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.titleWidget,
     this.showMenuButton = true,
     this.showNotificationButton = true,
-    this.onBackPressed, 
+    this.notificationCount = 0,
+    this.onNotificationPressed,
+    this.onBackPressed,
   });
 
   @override
@@ -33,59 +34,44 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 4,
       centerTitle: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          bottom: Radius.circular(32),
-        ),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
       ),
-      
+
       leading: showBackButton
           ? IconButton(
-              icon: const Icon(Icons.arrow_back_ios, color: Colors.white, size: 20),
-              onPressed: onBackPressed ?? () => Navigator.of(context).pop(), 
+              icon: const Icon(
+                Icons.arrow_back_ios,
+                color: Colors.white,
+                size: 20,
+              ),
+              onPressed: onBackPressed ?? () => Navigator.of(context).pop(),
             )
           : null,
-          
-      title: titleWidget ?? Text(
-        title,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 18,
-          fontWeight: FontWeight.bold,
-        ),
-      ),
-      
-      actions: [
 
-        if (showNotificationButton)
-          Consumer(
-            builder: (context, ref, child) {
-              final asyncCount = ref.watch(contadorNaoLidasProvider);
-              
-              // Trata corretamente os estados do Stream para a interface não quebrar
-              final qtdeNaoLidas = asyncCount.when(
-                data: (valor) => valor,
-                loading: () => 0,
-                error: (err, stack) {
-                  debugPrint('Erro no contador do badge: $err');
-                  return 0;
-                },
-              );
-              
-              return IconButton(
-                icon: Badge(
-                  isLabelVisible: qtdeNaoLidas > 0, 
-                  backgroundColor: Colors.orange,
-                  label: Text(
-                    qtdeNaoLidas > 99 ? '99+' : qtdeNaoLidas.toString(),
-                    style: const TextStyle(color: Colors.white, fontSize: 10),
-                  ),
-                  child: const Icon(Icons.notifications_none, color: Colors.white),
-                ),
-                onPressed: () {
-                  // Navegação
-                },
-              );
-            },
+      title:
+          titleWidget ??
+          Text(
+            title,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+
+      actions: [
+        if (showNotificationButton && onNotificationPressed != null)
+          IconButton(
+            icon: Badge(
+              isLabelVisible: notificationCount > 0,
+              backgroundColor: Colors.orange,
+              label: Text(
+                notificationCount > 99 ? '99+' : notificationCount.toString(),
+                style: const TextStyle(color: Colors.white, fontSize: 10),
+              ),
+              child: const Icon(Icons.notifications_none, color: Colors.white),
+            ),
+            onPressed: onNotificationPressed,
           ),
 
         // Ações Extras (injetadas por cada tela)
@@ -103,8 +89,8 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
               );
             },
           ),
-        
-        const SizedBox(width: 8), 
+
+        const SizedBox(width: 8),
       ],
     );
   }

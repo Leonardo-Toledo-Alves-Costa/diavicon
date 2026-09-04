@@ -1,39 +1,40 @@
-import 'package:diavicon/core/utils/diavicon_modal.dart';
+import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/core/widgets/rodape_seguro.dart';
-import 'package:diavicon/features/projetos/widgets/new_project_body.dart';
+import 'package:diavicon/features/feed_educacao/screens/criar_post_screen.dart';
+import 'package:diavicon/features/home/widgets/main_bottom_bar_painter.dart';
+import 'package:diavicon/features/planos/planos_mensagens.dart';
+import 'package:diavicon/features/planos/providers/armazenamento_provider.dart';
+import 'package:diavicon/features/planos/providers/empresa_plano_atual_provider.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_colors.dart';
-import '../../../core/widgets/diavicon_alerts.dart';
-import '../../feed_educacao/screens/criar_post_screen.dart';
-import '../../planos/planos_mensagens.dart';
-import '../../planos/providers/armazenamento_provider.dart';
-import '../../planos/providers/empresa_plano_atual_provider.dart';
-
 class MainScreen extends ConsumerWidget {
   final Widget child;
+  final VoidCallback onProjectQuickAction;
 
-  const MainScreen({super.key, required this.child});
+  const MainScreen({
+    super.key,
+    required this.child,
+    required this.onProjectQuickAction,
+  });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final size = MediaQuery.of(context).size;
-    final String location = GoRouterState.of(context).uri.toString();
+    final location = GoRouterState.of(context).uri.path;
     final planoAsync = ref.watch(empresaPlanoAtualProvider);
 
-    // CONTROLE DE TAMANHOS
     const fabSize = 52.0;
     const innerCircleSize = 22.0;
     const plusIconSize = 14.0;
     const fabBottomOffset = 30.0;
-
     const barHeight = 65.0;
     const humpHeight = 27.0;
     const humpWidth = 83.0;
-
     const spaceBetweenCenter = 65.0;
     const spaceBetweenPairs = 30.0;
 
@@ -46,9 +47,7 @@ class MainScreen extends ConsumerWidget {
       child: Scaffold(
         resizeToAvoidBottomInset: false,
         backgroundColor: Colors.white,
-
         bottomNavigationBar: const RodapeSeguro(),
-
         body: Stack(
           children: [
             Positioned.fill(
@@ -57,14 +56,13 @@ class MainScreen extends ConsumerWidget {
                 child: child,
               ),
             ),
-
             Positioned(
               left: 0,
               right: 0,
               bottom: 0,
               child: CustomPaint(
                 size: Size(size.width, barHeight + humpHeight),
-                painter: BottomBarPainter(
+                painter: const MainBottomBarPainter(
                   humpWidth: humpWidth,
                   humpHeight: humpHeight,
                 ),
@@ -74,68 +72,62 @@ class MainScreen extends ConsumerWidget {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-
                       _buildNavItem(
                         context,
                         Icons.folder_open,
                         'Projetos',
-                        '/projetos',
+                        AppRouteNames.projects,
+                        AppPaths.projects,
                         location,
                       ),
-
                       const SizedBox(width: spaceBetweenPairs),
-
                       _buildNavItem(
                         context,
                         Icons.layers_outlined,
                         'Estruturas',
-                        '/estruturas',
+                        AppRouteNames.structures,
+                        AppPaths.structures,
                         location,
                         onBlocked: planoAsync.value?.monitor == false
                             ? () => DiaviconAlerts.show(
-                                  context,
-                                  'Recurso do seu plano',
-                                  'Seu plano atual não inclui o monitoramento de estruturas. $kMensagemContatoVendas',
-                                  isAviso: true,
-                                )
+                                context,
+                                'Recurso do seu plano',
+                                'Seu plano atual não inclui o monitoramento de estruturas. $kMensagemContatoVendas',
+                                isAviso: true,
+                              )
                             : null,
                       ),
-
                       const SizedBox(width: spaceBetweenCenter),
-
                       _buildNavItem(
                         context,
                         Icons.business_outlined,
                         'Empresas',
-                        '/minha-empresa',
+                        AppRouteNames.myCompany,
+                        AppPaths.myCompany,
                         location,
                       ),
-
                       const SizedBox(width: spaceBetweenPairs),
                       _buildNavItem(
                         context,
                         Icons.school_outlined,
                         'Educação',
-                        '/educacao',
+                        AppRouteNames.education,
+                        AppPaths.education,
                         location,
                       ),
-
                     ],
                   ),
                 ),
               ),
             ),
-
-            // O BOTÃO DE + (AÇÕES RÁPIDAS)
             Positioned(
               left: (size.width / 2) - (fabSize / 2),
               bottom: fabBottomOffset,
               child: Builder(
                 builder: (context) {
-                  // Define se o botão deve estar desativado nas telas que não possuem ação rápida
-                  final bool isFabDisabled =
-                      location.startsWith('/minha-empresa') ||
-                      location.startsWith('/estruturas');
+                  final isFabDisabled =
+                      location.startsWith(AppPaths.myCompany) ||
+                      location.startsWith(AppPaths.structures);
 
                   return GestureDetector(
                     onTap: () async {
@@ -149,19 +141,12 @@ class MainScreen extends ConsumerWidget {
                         return;
                       }
 
-                      // Ação para a tela de Projetos
-                      if (location.startsWith('/projetos')) {
-                        showDiaviconModal(
-                          context: context,
-                          title: 'Novo Projeto',
-                          height: 540,
-                          body: const NewProjectBody(),
-                        );
+                      if (location.startsWith(AppPaths.projects)) {
+                        onProjectQuickAction();
                         return;
                       }
 
-                      // Ação para a tela de Educação (Abre a tela de Criar Post)
-                      if (location.startsWith('/educacao')) {
+                      if (location.startsWith(AppPaths.education)) {
                         if (planoAsync.value?.publicarFeedEdu == false) {
                           DiaviconAlerts.show(
                             context,
@@ -171,6 +156,7 @@ class MainScreen extends ConsumerWidget {
                           );
                           return;
                         }
+
                         if (!await podeAdicionarArquivo(ref)) {
                           if (context.mounted) {
                             DiaviconAlerts.show(
@@ -182,19 +168,18 @@ class MainScreen extends ConsumerWidget {
                           }
                           return;
                         }
+
                         if (context.mounted) {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
+                          await Navigator.of(context).push(
+                            MaterialPageRoute<void>(
                               builder: (_) => const CriarPostScreen(),
                             ),
                           );
                         }
-                        return;
                       }
                     },
                     child: Opacity(
-                      opacity: isFabDisabled ? 0.4 : 1.0,
+                      opacity: isFabDisabled ? 0.4 : 1,
                       child: Container(
                         width: fabSize,
                         height: fabSize,
@@ -240,22 +225,24 @@ class MainScreen extends ConsumerWidget {
     BuildContext context,
     IconData icon,
     String label,
-    String route,
+    String routeName,
+    String routePath,
     String location, {
     bool isDisabled = false,
     VoidCallback? onBlocked,
   }) {
-    final bool isSelected = location.startsWith(route) && !isDisabled;
+    final isSelected = location.startsWith(routePath) && !isDisabled;
+
     return InkWell(
       onTap: () {
         if (onBlocked != null) {
           onBlocked();
           return;
         }
-        context.go(route);
+        context.goNamed(routeName);
       },
       child: Opacity(
-        opacity: isDisabled ? 0.4 : 1.0,
+        opacity: isDisabled ? 0.4 : 1,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -271,15 +258,12 @@ class MainScreen extends ConsumerWidget {
               )
             else
               const SizedBox(height: 8),
-
             Icon(
               icon,
               color: isSelected ? AppColors.primary : Colors.grey[400],
               size: 26,
             ),
-
             const SizedBox(height: 4),
-
             Text(
               label,
               style: TextStyle(
@@ -292,57 +276,5 @@ class MainScreen extends ConsumerWidget {
         ),
       ),
     );
-  }
-}
-
-// O PINTOR DO CURVADO DA BARRA INFERIOR
-class BottomBarPainter extends CustomPainter {
-  final double humpWidth;
-  final double humpHeight;
-
-  BottomBarPainter({required this.humpWidth, required this.humpHeight});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    Paint paint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.fill;
-
-    Path path = Path();
-    double center = size.width / 2;
-
-    path.moveTo(0, humpHeight);
-    path.lineTo(center - humpWidth / 2, humpHeight);
-
-    path.cubicTo(
-      center - humpWidth / 3,
-      humpHeight,
-      center - humpWidth / 2.5,
-      0,
-      center,
-      0,
-    );
-    path.cubicTo(
-      center + humpWidth / 2.5,
-      0,
-      center + humpWidth / 3,
-      humpHeight,
-      center + humpWidth / 2,
-      humpHeight,
-    );
-
-    path.lineTo(size.width, humpHeight);
-    path.lineTo(size.width, size.height);
-    path.lineTo(0, size.height);
-    path.close();
-
-    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.12), 12, false);
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant BottomBarPainter oldDelegate) {
-    return oldDelegate.humpWidth != humpWidth ||
-        oldDelegate.humpHeight != humpHeight;
   }
 }

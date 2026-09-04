@@ -1,46 +1,82 @@
 import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/empresa/providers/empresa_provider.dart';
+import 'package:diavicon/features/empresa/screens/empresa_profile_screen.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../empresa/screens/empresa_profile_screen.dart';
-import '../../../../core/widgets/diavicon_alerts.dart';
 
-class PerfilDrawer extends ConsumerWidget {
+class PerfilDrawer extends ConsumerStatefulWidget {
   const PerfilDrawer({super.key});
 
-  Future<void> _fazerLogout(BuildContext context, WidgetRef ref) async {
+  @override
+  ConsumerState<PerfilDrawer> createState() => _PerfilDrawerState();
+}
+
+class _PerfilDrawerState extends ConsumerState<PerfilDrawer> {
+  @override
+  void initState() {
+    super.initState();
+    ref.listenManual<String?>(
+      currentUserProvider.select((usuario) => usuario?.empresaId),
+      (_, empresaId) => _sincronizarEmpresa(empresaId),
+      fireImmediately: true,
+    );
+  }
+
+  Future<void> _sincronizarEmpresa(String? empresaId) async {
+    final empresaAtual = ref.read(empresaAtualProvider);
+
+    if (empresaId == null || empresaId.isEmpty) {
+      if (empresaAtual != null) {
+        ref.read(empresaAtualProvider.notifier).state = null;
+      }
+      return;
+    }
+
+    if (empresaAtual?.id == empresaId) return;
+
+    if (empresaAtual != null) {
+      ref.read(empresaAtualProvider.notifier).state = null;
+    }
+
     try {
-      Navigator.of(context).pop();
+      await ref
+          .read(empresaControllerProvider.notifier)
+          .carregarEmpresaAtual(empresaId);
+    } catch (_) {
+      // O drawer continua utilizável; a empresa pode ser recarregada no próximo evento.
+    }
+  }
 
-      // Limpa o "crachá" do usuário da memória do app
-      ref.read(currentUserProvider.notifier).clearUser();
+  Future<void> _navegarPara(BuildContext context, String nomeRota) async {
+    final router = GoRouter.of(context);
 
-      // Desloga do banco de dados
-      await Supabase.instance.client.auth.signOut();
+    await Navigator.of(context).maybePop();
+    router.pushNamed(nomeRota);
+  }
 
-      //  Manda para a tela de login
-      if (context.mounted) {
-        context.go('/login');
-      }
+  Future<void> _fazerLogout(BuildContext context) async {
+    final router = GoRouter.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    try {
+      await Navigator.of(context).maybePop();
+      await ref.read(authControllerProvider.notifier).logout();
+      router.goNamed(AppRouteNames.login);
     } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Erro ao sair da conta')));
-      }
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Erro ao sair da conta')),
+      );
     }
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     final usuario = ref.watch(currentUserProvider);
-    ref
-        .read(empresaControllerProvider.notifier)
-        .carregarEmpresaAtual(usuario?.empresaId ?? '');
     final empresa = ref.watch(empresaAtualProvider);
 
     final nome = usuario == null
@@ -149,14 +185,13 @@ class PerfilDrawer extends ConsumerWidget {
                     label: 'Empresa',
                     isDisabled: false,
                     onTap: () {
-                        Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => EmpresaProfileScreen(
-                      empresaId: empresaId,
-                    ),
-                  ),
-                );
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              EmpresaProfileScreen(empresaId: empresaId),
+                        ),
+                      );
                     },
                   ),
                 ],
@@ -191,30 +226,28 @@ class PerfilDrawer extends ConsumerWidget {
                   _ListTileCard(
                     icon: Icons.person_outline,
                     label: 'Perfil',
-                    onTap: () {
-                      context.push('/perfis/perfil_dados');
-                    },
+                    onTap: () =>
+                        _navegarPara(context, AppRouteNames.profileData),
                   ),
                   _ListTileCard(
                     icon: Icons.manage_accounts_outlined,
                     label: 'Minha Conta',
-                    onTap: () {
-                      context.push('/perfis/perfil_minha_conta');
-                    },
+                    onTap: () =>
+                        _navegarPara(context, AppRouteNames.profileAccount),
                   ),
                   _ListTileCard(
                     icon: Icons.notifications_none,
                     label: 'Notificações',
-                    onTap: () {
-                      context.push('/perfis/perfil_notificacoes');
-                    },
+                    onTap: () => _navegarPara(
+                      context,
+                      AppRouteNames.profileNotifications,
+                    ),
                   ),
                   _ListTileCard(
                     icon: Icons.shield_outlined,
                     label: 'Privacidade',
-                    onTap: () {
-                      context.push('/perfis/perfil_privacidade');
-                    },
+                    onTap: () =>
+                        _navegarPara(context, AppRouteNames.profilePrivacy),
                   ),
 
                   const SizedBox(height: 32),
@@ -234,15 +267,14 @@ class PerfilDrawer extends ConsumerWidget {
                   _ListTileCard(
                     icon: Icons.help_outline,
                     label: 'Central de Ajuda',
-                    onTap: () {
-                      context.push('/perfis/perfil_central_ajuda');
-                    },
+                    onTap: () =>
+                        _navegarPara(context, AppRouteNames.profileHelp),
                   ),
                   _ListTileCard(
                     icon: Icons.logout,
                     label: 'Sair',
                     isLogout: true,
-                    onTap: () => _fazerLogout(context, ref),
+                    onTap: () => _fazerLogout(context),
                   ),
                 ],
               ),

@@ -65,39 +65,15 @@ class NotificacoesController {
     required String projetoId,
     required String notificacaoId,
   }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('Sessão expirada.');
-
-    // Aceita o convite na tabela original
-    await _supabase
-        .from('projeto_empresas_colaboradoras')
-        .update({'status': 'aceito'})
-        .eq('id', conviteId);
-
-    // Coloca o usuário na equipe
-    final jaNaEquipe = await _supabase
-        .from('projeto_equipe_interna')
-        .select('usuario_id')
-        .eq('projeto_id', projetoId)
-        .eq('usuario_id', userId)
-        .maybeSingle();
-
-    if (jaNaEquipe != null) {
-      await _supabase
-          .from('projeto_equipe_interna')
-          .update({'ativo': true})
-          .eq('projeto_id', projetoId)
-          .eq('usuario_id', userId);
-    } else {
-      final usuarioData = await _supabase.from('usuarios').select('empresa_id').eq('id', userId).maybeSingle();
-      await _supabase.from('projeto_equipe_interna').insert({
-        'projeto_id': projetoId,
-        'empresa_id': usuarioData?['empresa_id'],
-        'usuario_id': userId,
-        'ativo': true,
-        'is_gestor': false, 
-      });
+    if (_supabase.auth.currentUser?.id == null) {
+      throw Exception('Sessão expirada.');
     }
+
+    // Aceita o convite com a validação de destinatário no banco.
+    await _supabase.rpc('set_project_company_invite_status', params: {
+      'p_convite_id': conviteId,
+      'p_status': 'aceito',
+    });
 
     //Marca a notificação como lida
     await marcarComoLida(notificacaoId);
@@ -108,10 +84,10 @@ class NotificacoesController {
   }
 
   Future<void> recusarConvite(String conviteId, String notificacaoId) async {
-    await _supabase
-        .from('projeto_empresas_colaboradoras')
-        .update({'status': 'recusado'})
-        .eq('id', conviteId);
+    await _supabase.rpc('set_project_company_invite_status', params: {
+      'p_convite_id': conviteId,
+      'p_status': 'recusado',
+    });
 
     await marcarComoLida(notificacaoId);
   }

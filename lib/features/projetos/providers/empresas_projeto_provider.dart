@@ -251,11 +251,13 @@ class EmpresasProjetoController {
     final nomeProjeto = projetoInfo['nome'] ?? 'Projeto Sem Nome';
     final remetenteNome = '${remetenteInfo['nome'] ?? ''} ${remetenteInfo['sobrenome'] ?? ''}'.trim();
 
-    // Busca TODOS os usuários da empresa que foi convidada
+    // Notifica apenas administradores ativos da empresa convidada.
     final usuariosConvidada = await _supabase
         .from('usuarios')
         .select('id')
-        .eq('empresa_id', empresaConvidadaId);
+        .eq('empresa_id', empresaConvidadaId)
+        .eq('ativo', true)
+        .eq('is_admin_empresa', true);
 
     // Dispara a notificação nova para cada um dos usuários daquela empresa
     if (usuariosConvidada.isNotEmpty) {
@@ -282,48 +284,14 @@ class EmpresasProjetoController {
     required String conviteId, 
     required String projetoId, 
   }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) throw Exception('Sessão expirada.');
-
-    final usuarioData = await _supabase
-        .from('usuarios')
-        .select('empresa_id')
-        .eq('id', userId)
-        .maybeSingle();
-
-    final empresaId = usuarioData?['empresa_id'];
-    if (empresaId == null) throw Exception('Seu usuário não está vinculado a uma empresa.');
-
-    await _supabase
-        .from('projeto_empresas_colaboradoras') 
-        .update({'status': 'aceito'})
-        .eq('id', conviteId);
-
-    final jaNaEquipe = await _supabase
-        .from('projeto_equipe_interna') 
-        .select('usuario_id')
-        .eq('projeto_id', projetoId)
-        .eq('usuario_id', userId)
-        .maybeSingle();
-
-    if (jaNaEquipe != null) {
-      await _supabase
-          .from('projeto_equipe_interna')
-          .update({
-            'ativo': true,
-            'is_gestor': true, 
-          })
-          .eq('projeto_id', projetoId)
-          .eq('usuario_id', userId);
-    } else {
-      await _supabase.from('projeto_equipe_interna').insert({
-        'projeto_id': projetoId,
-        'empresa_id': empresaId,
-        'usuario_id': userId,
-        'ativo': true,
-        'is_gestor': true, 
-      });
+    if (_supabase.auth.currentUser?.id == null) {
+      throw Exception('Sessão expirada.');
     }
+
+    await _supabase.rpc('set_project_company_invite_status', params: {
+      'p_convite_id': conviteId,
+      'p_status': 'aceito',
+    });
 
     _ref.invalidate(filteredProjectsProvider); 
     _ref.invalidate(empresasVinculadasProjetoProvider(projetoId));

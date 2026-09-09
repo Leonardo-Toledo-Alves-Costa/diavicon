@@ -1,6 +1,8 @@
 import 'package:diavicon/features/empresa/screens/editar_tabelas_screen.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -135,7 +137,8 @@ class EmpresaHeader extends ConsumerWidget {
                             Icons.notifications_none,
                             color: Colors.white,
                           ),
-                          onPressed: () {},
+                          onPressed: () =>
+                              context.pushNamed(AppRouteNames.notifications),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),

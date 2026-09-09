@@ -1,10 +1,9 @@
+import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_colors.dart';
-
-class PerfilHeader extends ConsumerWidget {
+class PerfilHeader extends StatelessWidget {
   final double topPadding;
   final String paginaAtual;
 
@@ -15,7 +14,7 @@ class PerfilHeader extends ConsumerWidget {
   });
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  Widget build(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
       children: [
@@ -31,9 +30,7 @@ class PerfilHeader extends ConsumerWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const BackButton(
-                    color: Colors.white,
-                  ),
+                  const BackButton(color: Colors.white),
                   Text(
                     paginaAtual,
                     style: TextStyle(
@@ -48,7 +45,8 @@ class PerfilHeader extends ConsumerWidget {
                       Icons.notifications_none,
                       color: Colors.white,
                     ),
-                    onPressed: () => context.push('/notificacoes'),
+                    onPressed: () =>
+                        context.pushNamed(AppRouteNames.notifications),
                   ),
                 ],
               ),

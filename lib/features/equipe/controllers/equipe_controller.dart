@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../projetos/providers/projetos_provider.dart';
 import '../providers/equipe_provider.dart';
 
 // Provider que expõe o Controller para a UI
@@ -30,6 +31,9 @@ class EquipeController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
     _ref.invalidate(colaboradoresProjetoVisiveisProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
+    _ref.invalidate(contagemGeralColaboradoresProvider(projetoId));
+    _ref.invalidate(filteredProjectsProvider);
+    _ref.invalidate(projectDetailProvider(projetoId));
   }
 
   /// Define se um funcionário da sua equipe pode ou não ser "gestor" (adicionar/remover outros)
@@ -50,6 +54,8 @@ class EquipeController {
     _ref.invalidate(colaboradoresProjetoProvider(projetoId));
     _ref.invalidate(colaboradoresProjetoVisiveisProvider(projetoId));
     _ref.invalidate(colaboradoresAtivosProjetoProvider(projetoId));
-    _ref.invalidate(gestaoProjetoProvider(projetoId)); 
+    _ref.invalidate(gestaoProjetoProvider(projetoId));
+    _ref.invalidate(filteredProjectsProvider);
+    _ref.invalidate(projectDetailProvider(projetoId));
   }
 }

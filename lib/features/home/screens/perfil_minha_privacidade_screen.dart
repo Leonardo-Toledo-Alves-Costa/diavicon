@@ -1,5 +1,5 @@
 import 'package:diavicon/core/constants/app_colors.dart';
-import 'package:diavicon/features/home/screens/perfil_header.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 
@@ -103,7 +103,9 @@ class _PerfilMinhaPrivacidadeState extends State<PerfilMinhaPrivacidade> {
                       const SizedBox(height: 20),
                       _PrivacySection(
                         title: 'Visibilidade do perfil',
-                        description: Text('Pessoas que fazem parte da sua\norganização'),
+                        description: Text(
+                          'Pessoas que fazem parte da sua\norganização',
+                        ),
                         value: _visibilidadePerfil,
                         onChanged: (value) {
                           setState(() => _visibilidadePerfil = value);

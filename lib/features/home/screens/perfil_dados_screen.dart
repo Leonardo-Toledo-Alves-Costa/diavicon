@@ -1,14 +1,19 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:diavicon/core/constants/app_text_styles.dart';
+import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/utils/formatters/cep_formatter.dart';
+import 'package:diavicon/core/utils/formatters/formatters_cadastro.dart';
+import 'package:diavicon/core/utils/validators/validators_cadastro.dart';
+import 'package:diavicon/core/widgets/custom_button.dart';
+import 'package:diavicon/core/widgets/custom_text_button.dart';
+import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/features/auth/models/endereco_model.dart';
 import 'package:diavicon/features/auth/models/usuario_model.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/auth/providers/endereco_provider.dart';
-import 'package:diavicon/features/home/screens/perfil_drawer.dart';
-import 'package:diavicon/features/home/screens/perfil_header.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -17,14 +22,6 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart'; // 🔥 Nova importação adicionada
-
-import '../../../core/constants/app_colors.dart';
-import '../../../core/utils/formatters/formatters_cadastro.dart';
-import '../../../core/utils/validators/validators_cadastro.dart';
-import '../../../core/widgets/auth_layout.dart';
-import '../../../core/widgets/custom_button.dart';
-import '../../../core/widgets/custom_text_field.dart';
-import '../../../core/widgets/custom_text_button.dart';
 
 const _escolaridades = <String>[
   'Ensino Médio',
@@ -49,11 +46,13 @@ class StorageService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final caminhoStorage = 'perfis/$usuarioId-$timestamp.$extensao';
 
-    await _supabase.storage.from('avatars').upload(
-      caminhoStorage, 
-      foto,
-      fileOptions: const FileOptions(upsert: true), 
-    );
+    await _supabase.storage
+        .from('avatars')
+        .upload(
+          caminhoStorage,
+          foto,
+          fileOptions: const FileOptions(upsert: true),
+        );
 
     return _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
   }
@@ -90,27 +89,34 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
   String? _escolaridade;
 
+  // 🔥 Controlos de estado para a API de CEP (Agora independentes)
   bool _cepBuscado = false;
   bool _cidadeBloqueada = false;
-  bool _ruaBloqueada = false; 
+  bool _ruaBloqueada = false;
   bool _bairroBloqueado = false;
   bool _estadoBloqueado = false;
   bool _carregandoCep = false;
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
     _cepCtrl.addListener(_ouvinteCep);
     WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
       final usuario = ref.read(currentUserProvider);
-      final endereco = await ref.read(enderecoControllerProvider.notifier).buscarEndereco(usuario?.enderecoId ?? '');
-      if (usuario != null) {
-        _preencherCampos(usuario, endereco);
-      }
+      if (usuario == null) return;
+
+      final endereco = await ref
+          .read(enderecoControllerProvider.notifier)
+          .buscarEndereco(usuario.enderecoId ?? '');
+      if (!mounted) return;
+      _preencherCampos(usuario, endereco);
     });
   }
 
   void _preencherCampos(UsuarioModel usuario, EnderecoModel? endereco) {
+    if (!mounted) return;
+
     _nomeCtrl.text = usuario.nome ?? '';
     _sobrenomeCtrl.text = usuario.sobrenome ?? '';
     _telefoneCtrl.text = usuario.celular ?? '';
@@ -202,6 +208,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
     try {
       final url = Uri.parse('https://viacep.com.br/ws/$cep/json/');
       final response = await http.get(url);
+      if (!mounted) return;
 
       if (response.statusCode == 200) {
         final dados = jsonDecode(response.body);
@@ -242,6 +249,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         setState(() => _carregandoCep = false);
       }
     } catch (e) {
+      if (!mounted) return;
       _mostrarAviso('Erro de conexão ao buscar o CEP.', Colors.red);
       setState(() => _carregandoCep = false);
     }
@@ -253,6 +261,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       maxWidth: 1024,
       maxHeight: 1024,
     );
+    if (!mounted) return;
 
     if (img != null) {
       final croppedFile = await ImageCropper().cropImage(
@@ -275,6 +284,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
           ),
         ],
       );
+      if (!mounted) return;
 
       if (croppedFile != null) {
         setState(() {
@@ -282,10 +292,9 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         });
       }
     }
-  } 
+  }
 
-  // 🔥 Função de salvar completamente atualizada com o fluxo de upload e tratamento de erros
-  void _salvar() async {
+  Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
     final usuarioAtual = ref.read(currentUserProvider);
@@ -296,31 +305,37 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
     try {
       if (enderecoId != null && enderecoId.isNotEmpty) {
-        await ref.read(enderecoControllerProvider.notifier).atualizarEndereco(
-          enderecoId,
-          EnderecoModel(
-            id: enderecoAtual?.id ?? enderecoId,
-            cep: _cepCtrl.text.trim(),
-            cidade: _cidadeCtrl.text.trim(),
-            endereco: _ruaCtrl.text.trim(),
-            bairro: _bairroCtrl.text.trim(),
-            numero: _numeroCtrl.text.trim(),
-            complemento: _complementoCtrl.text.trim(),
-            estado: _estadoCtrl.text.trim(),
-            pais: _paisCtrl.text.trim(),
-          ),
-        );
+        await ref
+            .read(enderecoControllerProvider.notifier)
+            .atualizarEndereco(
+              enderecoId,
+              EnderecoModel(
+                id: enderecoAtual?.id ?? enderecoId,
+                cep: _cepCtrl.text.trim(),
+                cidade: _cidadeCtrl.text.trim(),
+                endereco: _ruaCtrl.text.trim(),
+                bairro: _bairroCtrl.text.trim(),
+                numero: _numeroCtrl.text.trim(),
+                complemento: _complementoCtrl.text.trim(),
+                estado: _estadoCtrl.text.trim(),
+                pais: _paisCtrl.text.trim(),
+              ),
+            );
+        if (!mounted) return;
       } else {
-        final novoEndereco = await ref.read(enderecoControllerProvider.notifier).salvarEndereco({
-          'cep': _cepCtrl.text.trim(),
-          'cidade': _cidadeCtrl.text.trim(),
-          'rua': _ruaCtrl.text.trim(),
-          'bairro': _bairroCtrl.text.trim(),
-          'numero': _numeroCtrl.text.trim(),
-          'complemento': _complementoCtrl.text.trim(),
-          'estado': _estadoCtrl.text.trim(),
-          'pais': _paisCtrl.text.trim(),
-        });
+        final novoEndereco = await ref
+            .read(enderecoControllerProvider.notifier)
+            .salvarEndereco({
+              'cep': _cepCtrl.text.trim(),
+              'cidade': _cidadeCtrl.text.trim(),
+              'rua': _ruaCtrl.text.trim(),
+              'bairro': _bairroCtrl.text.trim(),
+              'numero': _numeroCtrl.text.trim(),
+              'complemento': _complementoCtrl.text.trim(),
+              'estado': _estadoCtrl.text.trim(),
+              'pais': _paisCtrl.text.trim(),
+            });
+        if (!mounted) return;
 
         enderecoId = novoEndereco?.id;
       }
@@ -329,12 +344,19 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
 
       // Chama o provedor de storage que criamos acima
       if (_foto != null) {
-        _mostrarAviso('Salvando perfil e fazendo upload da foto...', const Color(0xFF3E3E3D));
-        
+        _mostrarAviso(
+          'Salvando perfil e fazendo upload da foto...',
+          const Color(0xFF3E3E3D),
+        );
+
         final storageService = ref.read(storageServiceProvider);
         final file = File(_foto!.path);
-        
-        final novaUrl = await storageService.uploadFotoPerfil(usuarioAtual.id, file);
+
+        final novaUrl = await storageService.uploadFotoPerfil(
+          usuarioAtual.id,
+          file,
+        );
+        if (!mounted) return;
         if (novaUrl != null) {
           urlFotoAtualizada = novaUrl;
         }
@@ -352,7 +374,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
         ativo: usuarioAtual.ativo,
         tituloPrincipal: _formacaoCtrl.text.trim(),
         escolaridade: _escolaridade,
-        fotoUrl: urlFotoAtualizada, 
+        fotoUrl: urlFotoAtualizada,
         linkedin: _linkedinCtrl.text.trim(),
         instagram: _instagramCtrl.text.trim(),
         criadoEm: usuarioAtual.criadoEm,
@@ -361,19 +383,26 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
       );
 
       await ref.read(authRepositoryProvider).salvarPerfil(usuarioAtualizado);
-      ref.read(currentUserProvider.notifier).setUser(usuarioAtualizado);
+      if (!mounted) return;
+      final sessaoAindaCorresponde = ref
+          .read(currentUserProvider.notifier)
+          .setUserIfSessionMatches(usuarioAtualizado);
+      if (!sessaoAindaCorresponde) return;
 
-      if (mounted) {
-        _mostrarAviso('Perfil atualizado com sucesso!', Colors.green);
-        context.go('/projetos');
-      }
-
+      _mostrarAviso('Perfil atualizado com sucesso!', Colors.green);
+      context.goNamed(AppRouteNames.projects);
     } on AuthException catch (e) {
       _mostrarAviso('Erro de autenticação: ${e.message}', Colors.red);
     } on PostgrestException catch (e) {
-      _mostrarAviso('Erro ao salvar no banco de dados: ${e.message}', Colors.red);
+      _mostrarAviso(
+        'Erro ao salvar no banco de dados: ${e.message}',
+        Colors.red,
+      );
     } on StorageException catch (e) {
-      _mostrarAviso('Erro ao enviar imagem para o Storage: ${e.message}', Colors.red);
+      _mostrarAviso(
+        'Erro ao enviar imagem para o Storage: ${e.message}',
+        Colors.red,
+      );
     } catch (e) {
       _mostrarAviso('Erro inesperado ao salvar o perfil: $e', Colors.red);
     }
@@ -382,7 +411,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
   @override
   Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
-    final usuario = ref.watch(currentUserProvider); 
+    final usuario = ref.watch(currentUserProvider);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF2F2F2),
@@ -397,9 +426,7 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                 margin: const EdgeInsets.symmetric(horizontal: 6),
                 decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.vertical(
-                    top: Radius.circular(28),
-                  ),
+                  borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
                 ),
                 child: Form(
                   key: _formKey,
@@ -441,7 +468,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                               hint: 'João',
                               isRequired: true,
                               controller: _nomeCtrl,
-                              validator: (v) => ValidatorsCadastro.nome(v, 'nome'),
+                              validator: (v) =>
+                                  ValidatorsCadastro.nome(v, 'nome'),
                             ),
                             const SizedBox(height: 12),
                             CustomTextField(
@@ -449,7 +477,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                               isRequired: true,
                               hint: 'Silva',
                               controller: _sobrenomeCtrl,
-                              validator: (v) => ValidatorsCadastro.nome(v, 'sobrenome'),
+                              validator: (v) =>
+                                  ValidatorsCadastro.nome(v, 'sobrenome'),
                             ),
                             const SizedBox(height: 12),
                             CustomTextField(
@@ -530,10 +559,11 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                                     inputFormatters: [
                                       FilteringTextInputFormatter.digitsOnly,
                                     ],
-                                    validator: (v) => ValidatorsCadastro.obrigatorio(
-                                      v,
-                                      'Inválido',
-                                    ),
+                                    validator: (v) =>
+                                        ValidatorsCadastro.obrigatorio(
+                                          v,
+                                          'Inválido',
+                                        ),
                                   ),
                                 ),
                                 const SizedBox(width: 8),
@@ -581,7 +611,8 @@ class _PerfilScreenState extends ConsumerState<PerfilScreen> {
                             const SizedBox(height: 12),
                             _DropdownEscolaridade(
                               value: _escolaridade,
-                              onChanged: (v) => setState(() => _escolaridade = v),
+                              onChanged: (v) =>
+                                  setState(() => _escolaridade = v),
                             ),
                             const SizedBox(height: 12),
                             CustomTextField(
@@ -702,12 +733,12 @@ class _SectionCard extends StatelessWidget {
 
 class _AvatarPicker extends StatelessWidget {
   final XFile? foto;
-  final String? fotoUrlAtual; 
+  final String? fotoUrlAtual;
   final VoidCallback onTap;
 
   const _AvatarPicker({
-    required this.foto, 
-    this.fotoUrlAtual, 
+    required this.foto,
+    this.fotoUrlAtual,
     required this.onTap,
   });
 
@@ -728,7 +759,7 @@ class _AvatarPicker extends StatelessWidget {
           CircleAvatar(
             radius: 56,
             backgroundColor: Colors.grey.shade200,
-            backgroundImage: imageProvider, 
+            backgroundImage: imageProvider,
             child: imageProvider == null
                 ? Icon(Icons.person, size: 52, color: Colors.grey.shade400)
                 : null,

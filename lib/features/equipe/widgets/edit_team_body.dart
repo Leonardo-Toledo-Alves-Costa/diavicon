@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../providers/equipe_provider.dart'; 
+import '../controllers/equipe_controller.dart';
+import '../providers/equipe_provider.dart';
 import 'team_edit_item.dart';
 import '../screens/convidar_funcionario_screen.dart';
 

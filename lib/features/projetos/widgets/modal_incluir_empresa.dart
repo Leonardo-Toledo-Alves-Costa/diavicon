@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
-import '../providers/empresas_projeto_provider.dart';
+import '../controllers/empresas_projeto_controller.dart';
 
 class ModalIncluirEmpresa extends ConsumerStatefulWidget {
   final String projetoId;

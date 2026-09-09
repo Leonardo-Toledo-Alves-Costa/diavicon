@@ -10,28 +10,24 @@ class DiaviconApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // 2. Leia o router que acabamos de criar
+    final theme = ThemeData(
+      textTheme: GoogleFonts.latoTextTheme(Theme.of(context).textTheme),
+      useMaterial3: true,
+      primaryColor: AppColors.primary,
+      scaffoldBackgroundColor: Colors.white,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.primary,
+        primary: AppColors.primary,
+      ),
+    );
+
     final router = ref.watch(routerProvider);
 
     return MaterialApp.router(
       title: 'Diavicon',
       debugShowCheckedModeBanner: false,
-      
-      // 3. Passe o router lido para o MaterialApp
-      routerConfig: router, 
-      
-      theme: ThemeData(
-        textTheme: GoogleFonts.latoTextTheme(
-          Theme.of(context).textTheme,
-        ),
-        useMaterial3: true,
-        primaryColor: AppColors.primary,
-        scaffoldBackgroundColor: Colors.white,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          primary: AppColors.primary,
-        ),
-      ),
+      routerConfig: router,
+      theme: theme,
     );
   }
 }

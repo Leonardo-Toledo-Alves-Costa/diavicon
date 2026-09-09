@@ -1,23 +1,23 @@
+import 'package:diavicon/features/app_shell/widgets/perfil_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../home/screens/perfil_drawer.dart';
 import '../providers/empresa_provider.dart';
 import '../widgets/empresa_about_section.dart';
 import '../widgets/empresa_header.dart';
 import '../widgets/empresa_info_section.dart';
 import '../widgets/empresa_team_section.dart';
 
-class EmpresaScreen1 extends ConsumerStatefulWidget {
-  const EmpresaScreen1({super.key});
+class EmpresaScreen extends ConsumerStatefulWidget {
+  const EmpresaScreen({super.key});
 
   @override
-  ConsumerState<EmpresaScreen1> createState() => _EmpresaScreenState();
+  ConsumerState<EmpresaScreen> createState() => _EmpresaScreenState();
 }
 
-class _EmpresaScreenState extends ConsumerState<EmpresaScreen1> {
+class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   @override

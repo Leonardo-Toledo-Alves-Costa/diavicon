@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
+import '../models/badge_status.dart';
 
-enum BadgeStatus {
-  emAndamento,
-  concluido,
-  cancelado,
-}
+export '../models/badge_status.dart';
 
 class StatusBadge extends StatelessWidget {
   final BadgeStatus status;
-  final String? customText; 
+  final String? customText;
 
-  const StatusBadge({
-    super.key,
-    required this.status,
-    this.customText,
-  });
+  const StatusBadge({super.key, required this.status, this.customText});
 
   // 🔥 Cor do texto
   Color get _textColor {
@@ -59,13 +52,13 @@ class StatusBadge extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: _backgroundColor, 
+        color: _backgroundColor,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: _textColor, 
+          color: _textColor,
           fontSize: 12,
           fontWeight: FontWeight.w700,
         ),

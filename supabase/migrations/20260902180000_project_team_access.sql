@@ -214,16 +214,28 @@ set search_path = public, pg_catalog
 as $$
 declare
   v_actor_id uuid;
+  v_locked_projeto_id uuid;
   v_empresa_id uuid;
   v_is_company_admin boolean;
   v_target_is_primary boolean;
 begin
+  if p_projeto_id is null or p_usuario_id is null or p_ativo is null then
+    raise exception using errcode = '22023', message = 'Dados da participação inválidos.';
+  end if;
+
+  select p.id
+  into v_locked_projeto_id
+  from public.projetos p
+  where p.id = p_projeto_id
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Projeto não encontrado.';
+  end if;
+
   v_actor_id := (select auth.uid());
   if v_actor_id is null then
     raise exception using errcode = '42501', message = 'Autenticação obrigatória.';
-  end if;
-  if p_projeto_id is null or p_usuario_id is null or p_ativo is null then
-    raise exception using errcode = '22023', message = 'Dados da participação inválidos.';
   end if;
   if p_usuario_id = v_actor_id then
     raise exception using errcode = '42501', message = 'Você não pode alterar a própria participação.';
@@ -326,16 +338,28 @@ set search_path = public, pg_catalog
 as $$
 declare
   v_actor_id uuid;
+  v_locked_projeto_id uuid;
   v_empresa_id uuid;
   v_is_company_admin boolean;
   v_target_is_primary boolean;
 begin
+  if p_projeto_id is null or p_usuario_id is null or p_is_gestor is null then
+    raise exception using errcode = '22023', message = 'Dados da gestão inválidos.';
+  end if;
+
+  select p.id
+  into v_locked_projeto_id
+  from public.projetos p
+  where p.id = p_projeto_id
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Projeto não encontrado.';
+  end if;
+
   v_actor_id := (select auth.uid());
   if v_actor_id is null then
     raise exception using errcode = '42501', message = 'Autenticação obrigatória.';
-  end if;
-  if p_projeto_id is null or p_usuario_id is null or p_is_gestor is null then
-    raise exception using errcode = '22023', message = 'Dados da gestão inválidos.';
   end if;
   if p_usuario_id = v_actor_id then
     raise exception using errcode = '42501', message = 'Você não pode alterar a própria gestão.';

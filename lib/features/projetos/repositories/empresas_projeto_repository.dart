@@ -167,76 +167,23 @@ class EmpresasProjetoRepository {
     required String projectId,
     required String invitedCompanyId,
   }) async {
-    final userId = _supabase.auth.currentUser?.id;
-    if (userId == null) {
+    if (_supabase.auth.currentUser?.id == null) {
       throw StateError('Sessão expirada. Faça login novamente.');
     }
 
-    final existing = await _supabase
-        .from('projeto_empresas_colaboradoras')
-        .select('status')
-        .eq('projeto_id', projectId)
-        .eq('empresa_id', invitedCompanyId)
-        .maybeSingle();
+    final invitationId = await _supabase.rpc(
+      'invite_project_company',
+      params: {
+        'p_project_id': projectId,
+        'p_invited_company_id': invitedCompanyId,
+      },
+    );
 
-    if (existing != null) {
-      if (existing['status'] == 'aceito') {
-        throw StateError('Esta empresa já é colaboradora ativa do projeto.');
-      }
-      throw StateError('Um convite pendente já foi enviado para esta empresa.');
+    if (invitationId == null) {
+      throw StateError('Não foi possível criar o convite.');
     }
 
-    final invitation = await _supabase
-        .from('projeto_empresas_colaboradoras')
-        .insert({
-          'projeto_id': projectId,
-          'empresa_id': invitedCompanyId,
-          'criado_por': userId,
-          'status': 'pendente',
-        })
-        .select('id')
-        .single();
-
-    final project = await _supabase
-        .from('projetos')
-        .select('nome, image_url')
-        .eq('id', projectId)
-        .single();
-    final sender = await _supabase
-        .from('usuarios')
-        .select('nome, sobrenome')
-        .eq('id', userId)
-        .single();
-    final admins = await _supabase
-        .from('usuarios')
-        .select('id')
-        .eq('empresa_id', invitedCompanyId)
-        .eq('ativo', true)
-        .eq('is_admin_empresa', true);
-
-    if ((admins as List).isNotEmpty) {
-      final senderName = '${sender['nome'] ?? ''} ${sender['sobrenome'] ?? ''}'
-          .trim();
-      await _supabase.from('notificacoes').insert(
-        (admins as List).map((admin) {
-          return {
-            'usuario_id': admin['id'],
-            'titulo': 'Novo Convite de Colaboração',
-            'mensagem':
-                '${senderName.isEmpty ? 'Um gestor' : senderName} convidou sua empresa para o projeto ${project['nome'] ?? 'Projeto sem nome'}.',
-            'tipo': 'convite_projeto',
-            'lida': false,
-            'dados_extras': {
-              'projeto_id': projectId,
-              'convite_id': invitation['id'],
-              'foto_url': project['image_url'],
-            },
-          };
-        }).toList(),
-      );
-    }
-
-    return invitation['id'].toString();
+    return invitationId.toString();
   }
 
   Future<void> respondToInvite({
@@ -268,10 +215,13 @@ class EmpresasProjetoRepository {
     required String projectId,
     required String newManagerCompanyId,
   }) async {
-    await _supabase
-        .from('projetos')
-        .update({'empresa_gestora_id': newManagerCompanyId})
-        .eq('id', projectId);
+    await _supabase.rpc(
+      'transfer_project_management',
+      params: {
+        'p_project_id': projectId,
+        'p_new_manager_company_id': newManagerCompanyId,
+      },
+    );
   }
 
   Future<Map<String, dynamic>?> _findCompanyBy(String column, String value) {

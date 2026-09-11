@@ -1047,6 +1047,7 @@ declare
   v_actor_id uuid := auth.uid();
   v_actor_company_id uuid;
   v_project_id uuid;
+  v_locked_project_id uuid;
   v_invited_company_id uuid;
   v_status text;
 begin
@@ -1055,6 +1056,25 @@ begin
   end if;
   if p_accept is null then
     raise exception using errcode = '22023', message = 'p_accept is required.';
+  end if;
+
+  select pec.projeto_id
+    into v_project_id
+  from public.projeto_empresas_colaboradoras pec
+  where pec.id = p_invitation_id;
+
+  if v_project_id is null then
+    raise exception using errcode = 'P0002', message = 'Invitation not found.';
+  end if;
+
+  select p.id
+    into v_locked_project_id
+  from public.projetos p
+  where p.id = v_project_id
+  for update;
+
+  if v_locked_project_id is null then
+    raise exception using errcode = 'P0002', message = 'Project not found.';
   end if;
 
   select u.empresa_id
@@ -1072,9 +1092,10 @@ begin
     into v_project_id, v_invited_company_id, v_status
   from public.projeto_empresas_colaboradoras pec
   where pec.id = p_invitation_id
+    and pec.projeto_id = v_locked_project_id
   for update;
 
-  if v_project_id is null then
+  if not found then
     raise exception using errcode = 'P0002', message = 'Invitation not found.';
   end if;
   if v_invited_company_id <> v_actor_company_id then

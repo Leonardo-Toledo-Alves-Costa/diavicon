@@ -6,7 +6,6 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
-import '../repositories/ponto_inspecao_repository.dart';
 
 class PontoInspecaoDetalheScreen extends ConsumerStatefulWidget {
   final String pontoId;

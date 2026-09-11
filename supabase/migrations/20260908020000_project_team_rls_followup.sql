@@ -71,6 +71,7 @@ as $$
 declare
   v_actor_id uuid;
   v_projeto_id uuid;
+  v_locked_projeto_id uuid;
   v_empresa_id uuid;
   v_old_status text;
   v_actor_is_primary boolean;
@@ -86,10 +87,32 @@ begin
     raise exception using errcode = '22023', message = 'Status de convite inválido.';
   end if;
 
+  select c.projeto_id
+  into v_projeto_id
+  from public.projeto_empresas_colaboradoras c
+  where c.id = p_convite_id;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Convite não encontrado.';
+  end if;
+
+  -- Keep the lock order project -> invitation to match invite_project_company
+  -- and avoid deadlocks between concurrent invitation workflows.
+  select p.id
+  into v_locked_projeto_id
+  from public.projetos p
+  where p.id = v_projeto_id
+  for update;
+
+  if not found then
+    raise exception using errcode = 'P0002', message = 'Projeto não encontrado.';
+  end if;
+
   select c.projeto_id, c.empresa_id, c.status
   into v_projeto_id, v_empresa_id, v_old_status
   from public.projeto_empresas_colaboradoras c
   where c.id = p_convite_id
+    and c.projeto_id = v_locked_projeto_id
   for update;
 
   if not found then

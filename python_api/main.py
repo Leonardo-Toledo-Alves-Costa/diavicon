@@ -4,17 +4,24 @@ import uuid
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.interpolate import griddata
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel
 from supabase import create_client, Client
+from supabase.lib.client_options import ClientOptions
 
 # --- 1. CONFIGURAÇÃO SUPABASE ---
 # Você vai definir essas variáveis de ambiente no servidor (Render/Railway)
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "https://thmmxgzwjrydxrrfoaay.supabase.co")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRobW14Z3p3anJ5ZHhycmZvYWF5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYzMDAwMDksImV4cCI6MjA5MTg3NjAwOX0.KTpJ5lZdTVjATItWyFmuBd9-n1M3LL7wDg2Wj1zYrVE")
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "").strip()
 
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+def _supabase_config() -> tuple[str, str]:
+    if not SUPABASE_URL.startswith(("https://", "http://")):
+        raise HTTPException(status_code=500, detail="SUPABASE_URL não configurada corretamente no ambiente")
+    if not SUPABASE_KEY or "=" in SUPABASE_KEY:
+        raise HTTPException(status_code=500, detail="SUPABASE_KEY não configurada corretamente no ambiente")
+    return SUPABASE_URL, SUPABASE_KEY
+
 
 app = FastAPI(title="Gerador de Mapa de Potencial")
 
@@ -30,13 +37,39 @@ class MapaRequest(BaseModel):
     espacamento_x: float
     espacamento_y: float
     leituras: list[LeituraModel]
-    potencial_id: str # ID para nomear a imagem
+    potencial_id: uuid.UUID
 
 # --- 3. ENDPOINT DE GERAÇÃO ---
 @app.post("/gerar-mapa-calor")
-async def gerar_mapa_calor(req: MapaRequest):
+async def gerar_mapa_calor(req: MapaRequest, request: Request):
+    authorization = request.headers.get("authorization", "")
+    if not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Sessão Supabase obrigatória")
+    access_token = authorization[7:].strip()
+    if not access_token:
+        raise HTTPException(status_code=401, detail="Token Supabase ausente")
+
+    # Keep the user's JWT on every Storage and PostgREST request. Using the
+    # process-wide anon client here would bypass the caller's identity and
+    # make the RLS policy on ponto_ensaio_potencial ineffective.
+    supabase_url, supabase_key = _supabase_config()
+    request_supabase: Client = create_client(
+        supabase_url,
+        supabase_key,
+        options=ClientOptions(
+            headers={"Authorization": f"Bearer {access_token}"},
+        ),
+    )
+
     if not req.leituras:
         raise HTTPException(status_code=400, detail="Sem leituras para interpolar")
+
+    # Confirm authorization before doing CPU work or writing to Storage.
+    ponto = request_supabase.table("ponto_ensaio_potencial").select("id").eq(
+        "id", str(req.potencial_id)
+    ).maybe_single().execute()
+    if not ponto.data:
+        raise HTTPException(status_code=403, detail="Ponto de potencial não autorizado ou inexistente")
 
     # A. Extrair coordenadas reais (X, Y) e valores Z (em módulo)
     pontos_x = []
@@ -88,22 +121,34 @@ async def gerar_mapa_calor(req: MapaRequest):
     file_name = f"mapas/{req.potencial_id}_{uuid.uuid4().hex[:8]}.png"
     
     try:
-        res = supabase.storage.from_("projetos").upload(
+        request_supabase.storage.from_("projetos").upload(
             file_name,
             buf.read(),
             file_options={"content-type": "image/png", "cache-control": "3600", "upsert": "true"}
         )
         
         # Obter URL Pública
-        public_url = supabase.storage.from_("projetos").get_public_url(file_name)
+        public_url = request_supabase.storage.from_("projetos").get_public_url(file_name)
         
         # G. (Opcional) Já gravar a URL diretamente no banco de dados na tabela do potencial
-        supabase.table("ponto_ensaio_potencial").update({"imagem_mapa_calor": public_url}).eq("id", req.potencial_id).execute()
+        updated = request_supabase.table("ponto_ensaio_potencial").update(
+            {"imagem_mapa_calor": public_url}
+        ).eq("id", str(req.potencial_id)).select("id").execute()
+        if not updated.data or len(updated.data) != 1:
+            request_supabase.storage.from_("projetos").remove([file_name])
+            raise HTTPException(status_code=403, detail="Ponto de potencial não autorizado para atualização")
 
         return {"status": "success", "url": public_url}
         
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro no upload do Supabase: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception:
+        # If upload succeeded but a later operation failed, avoid orphaning it.
+        try:
+            request_supabase.storage.from_("projetos").remove([file_name])
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail="Erro ao gerar ou salvar o mapa de potencial")
 
 # Para rodar localmente e testar:
 # uvicorn main:app --reload --port 8000

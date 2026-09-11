@@ -20,7 +20,12 @@ import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/widgets/marcacao_planta_popup.dart';
 
 class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
-  final String estruturaId, plantaId, plantaUrl, empresaId, empresaNome;
+  final String estruturaId,
+      projetoId,
+      plantaId,
+      plantaUrl,
+      empresaId,
+      empresaNome;
   final String? empresaFotoUrl;
   final String plantaLocal;
   final double posicaoX,
@@ -37,6 +42,7 @@ class NovaRegiaoEnsaioModal extends ConsumerStatefulWidget {
   const NovaRegiaoEnsaioModal({
     super.key,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.plantaUrl,
     required this.empresaId,
@@ -96,10 +102,20 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
 
     try {
       final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+      if (userId == null ||
+          widget.projetoId.trim().isEmpty ||
+          widget.estruturaId.trim().isEmpty ||
+          widget.plantaId.trim().isEmpty ||
+          widget.empresaId.trim().isEmpty ||
+          _elementoSelecionadoId!.trim().isEmpty) {
+        throw StateError('Sessão ou dados obrigatórios da região ausentes.');
+      }
       final resp = await supabase
           .from('ensaios_contratados')
           .select('tipo_ensaio_id, quantidade, tipos_ensaio(nome, icone_path)')
-          .eq('regiao_id', regiao.id);
+          .eq('regiao_id', regiao.id)
+          .eq('projeto_id', widget.projetoId);
 
       final carregados = (resp as List).map((item) {
         final tipoEnsaio = item['tipos_ensaio'] as Map<String, dynamic>?;
@@ -198,6 +214,7 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
       // A região guarda só o desenho/marcação na planta. Os quantitativos
       // contratados vivem em `ensaios_contratados`, nunca aqui.
       final dados = {
+        'projeto_id': widget.projetoId,
         'planta_id': widget.plantaId,
         'empresa_id': widget.empresaId,
         'elemento_id': _elementoSelecionadoId,
@@ -213,93 +230,30 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
         'descricao': _descricaoController.text.trim(),
       };
 
-      Map<String, dynamic>? regiaoSalva;
-
-      if (widget.regiao != null) {
-        regiaoSalva = await supabase
-            .from('regioes_ensaio')
-            .update(dados)
-            .eq('id', widget.regiao!.id)
-            .select()
-            .single();
-      } else {
-        regiaoSalva = await supabase
-            .from('regioes_ensaio')
-            .insert({...dados, 'criado_por': supabase.auth.currentUser?.id})
-            .select()
-            .single();
-      }
-
-      final regiaoId = regiaoSalva?['id'];
-
-      final projetoResp = await supabase
-          .from('projeto_estruturas')
-          .select('projeto_id')
-          .eq('estrutura_id', widget.estruturaId)
-          .maybeSingle();
-
-      final projetoId = projetoResp?['projeto_id']?.toString();
-
-      if (projetoId == null || projetoId.isEmpty) {
-        throw Exception('Estrutura sem projeto associado.');
-      }
-
-      // Sincroniza `ensaios_contratados` desta região com o estado atual da
-      // aba "Ensaios": insere os novos, atualiza a quantidade dos que já
-      // existiam e remove os que foram retirados da lista.
-      final existentes = await supabase
-          .from('ensaios_contratados')
-          .select('id, tipo_ensaio_id, quantidade')
-          .eq('regiao_id', regiaoId);
-
-      final existentesPorTipo = <String, Map<String, dynamic>>{
-        for (final e in (existentes as List))
-          e['tipo_ensaio_id'].toString(): Map<String, dynamic>.from(e),
-      };
-
-      final tiposAtuais = <String>{};
-
-      for (final ensaio in _ensaiosAdicionados) {
+      final contratos = _ensaiosAdicionados.map((ensaio) {
         final tipoEnsaioId = ensaio['tipoEnsaioId']?.toString();
-        if (tipoEnsaioId == null) continue;
-
-        tiposAtuais.add(tipoEnsaioId);
-        final qtd = (ensaio['qtd'] as num?)?.toInt() ?? 1;
-        final existente = existentesPorTipo[tipoEnsaioId];
-
-        if (existente != null) {
-          if (((existente['quantidade'] as num?)?.toInt() ?? 0) != qtd) {
-            await supabase
-                .from('ensaios_contratados')
-                .update({'quantidade': qtd})
-                .eq('id', existente['id']);
-          }
-        } else {
-          await supabase.from('ensaios_contratados').insert({
-            'projeto_id': projetoId,
-            'estrutura_id': widget.estruturaId,
-            'empresa_id': widget.empresaId,
-            'tipo_ensaio_id': tipoEnsaioId,
-            'quantidade': qtd,
-            'regiao_id': regiaoId,
-          });
+        if (tipoEnsaioId == null || tipoEnsaioId.isEmpty) {
+          throw StateError('Tipo de ensaio obrigatório.');
         }
-      }
-
-      final idsParaRemover = existentesPorTipo.entries
-          .where((entry) => !tiposAtuais.contains(entry.key))
-          .map((entry) => entry.value['id'])
-          .toList();
-
-      if (idsParaRemover.isNotEmpty) {
-        await supabase
-            .from('ensaios_contratados')
-            .delete()
-            .inFilter('id', idsParaRemover);
-      }
+        return {
+          'estrutura_id': widget.estruturaId,
+          'empresa_id': widget.empresaId,
+          'tipo_ensaio_id': tipoEnsaioId,
+          'quantidade': (ensaio['qtd'] as num?)?.toInt() ?? 1,
+        };
+      }).toList();
+      await supabase.rpc(
+        'save_region_with_contracts',
+        params: {
+          'p_region_id': widget.regiao?.id,
+          'p_region': dados,
+          'p_contracts': contratos,
+        },
+      );
 
       final filtroRegioes = RegioesFiltro(
         plantaId: widget.plantaId,
+        projetoId: widget.projetoId,
         empresaId: widget.empresaId,
       );
       ref.invalidate(regioesEnsaioProvider(filtroRegioes));
@@ -359,6 +313,7 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
       if (!mounted) return;
       final filtroRegioes = RegioesFiltro(
         plantaId: widget.plantaId,
+        projetoId: widget.projetoId,
         empresaId: widget.empresaId,
       );
       ref.invalidate(regioesEnsaioProvider(filtroRegioes));
@@ -391,7 +346,11 @@ class _NovaRegiaoEnsaioModalState extends ConsumerState<NovaRegiaoEnsaioModal> {
     );
     final regioesAsync = ref.watch(
       regioesEnsaioProvider(
-        RegioesFiltro(plantaId: widget.plantaId, empresaId: widget.empresaId),
+        RegioesFiltro(
+          plantaId: widget.plantaId,
+          projetoId: widget.projetoId,
+          empresaId: widget.empresaId,
+        ),
       ),
     );
     final corPino = Color(

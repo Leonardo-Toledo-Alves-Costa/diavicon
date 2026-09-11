@@ -52,9 +52,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
 
       final empresaId = ref.read(currentUserProvider)?.empresaId;
       if (novoSistema != null && _tipoFiltro != null && empresaId != null) {
-        final tipos = ref
-            .read(tiposElementoDropdownProvider(empresaId))
-            .value;
+        final tipos = ref.read(tiposElementoDropdownProvider(empresaId)).value;
         final aindaValido =
             tipos?.any(
               (t) => t.nome == _tipoFiltro && t.sistemaId == novoSistema,
@@ -306,11 +304,12 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         ? null
         : ref.watch(tiposElementoDropdownProvider(empresaId));
 
-    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
-        .where(
-          (t) => _sistemaFiltro == null || t.sistemaId == _sistemaFiltro,
-        )
-        .toList();
+    final tiposDoSistema =
+        (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+            .where(
+              (t) => _sistemaFiltro == null || t.sistemaId == _sistemaFiltro,
+            )
+            .toList();
 
     Set<String>? tiposPermitidosPorSistema;
     if (_sistemaFiltro != null) {
@@ -366,6 +365,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 MaterialPageRoute(
                   builder: (_) => PlanejamentoPlantasScreen(
                     estruturaId: widget.estrutura.id,
+                    projetoId: widget.projetoId,
                   ),
                 ),
               );
@@ -550,7 +550,8 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                             onClear: () => _handleSistemaFiltroChanged(null),
                             onTap: () async {
                               final itens =
-                                  (sistemasAsync?.value ?? const <CampoItemModel>[])
+                                  (sistemasAsync?.value ??
+                                          const <CampoItemModel>[])
                                       .map((s) => (value: s.id, label: s.nome))
                                       .toList();
                               final resultado = await showItemFilterPickerSheet(
@@ -598,7 +599,11 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    _buildElementosList(context, ref, tiposPermitidosPorSistema),
+                    _buildElementosList(
+                      context,
+                      ref,
+                      tiposPermitidosPorSistema,
+                    ),
                   ],
                 ),
               ),

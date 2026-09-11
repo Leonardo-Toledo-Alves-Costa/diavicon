@@ -7,34 +7,38 @@ import 'package:diavicon/features/elementos/widgets/planta_formato_card.dart';
 import 'package:diavicon/features/estrutura/models/local_model.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart'; 
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
-class PlanejamentoPlantasScreen extends ConsumerWidget { 
+class PlanejamentoPlantasScreen extends ConsumerWidget {
   const PlanejamentoPlantasScreen({
     super.key,
-    required this.estruturaId, 
+    required this.estruturaId,
+    required this.projetoId,
   });
 
   final String estruturaId;
+  final String projetoId;
 
   // Função que intercepta o arquivo do popup e envia para o controlador
   Future<void> _adicionarNovaPlanta(BuildContext context, WidgetRef ref) async {
     final result = await showNovoArquivoPopup(context, estruturaId);
-    
+
     if (result != null && context.mounted) {
       try {
         final arquivo = result.arquivo;
-        
+
         // Dispara o salvamento através do nosso Controller
-        await ref.read(plantaControllerProvider.notifier).salvarNovaPlanta(
+        await ref
+            .read(plantaControllerProvider.notifier)
+            .salvarNovaPlanta(
               estruturaId: estruturaId,
               titulo: result.nome,
-              localVinculado: result.localId, 
+              localVinculado: result.localId,
               caminhoLocal: arquivo.path!,
               extensao: arquivo.extension ?? 'pdf',
-              tamanhoArquivo: '${(arquivo.size / (1024 * 1024)).toStringAsFixed(2)} MB',
+              tamanhoArquivo:
+                  '${(arquivo.size / (1024 * 1024)).toStringAsFixed(2)} MB',
             );
 
         if (context.mounted) {
@@ -59,7 +63,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
   }
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) { 
+  Widget build(BuildContext context, WidgetRef ref) {
     // Escuta a lista de plantas em tempo real
     final plantasAsync = ref.watch(plantasPorEstruturaProvider(estruturaId));
     // Escuta o estado de loading do upload
@@ -130,19 +134,21 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                       const Expanded(child: _BuscaMock()),
                       const SizedBox(width: 12),
                       _NovoButton(
-                        onPressed: isSubmitting 
-                            ? null 
+                        onPressed: isSubmitting
+                            ? null
                             : () => _adicionarNovaPlanta(context, ref),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  
+
                   // Tratamento do estado assíncrono do banco de dados
                   Expanded(
                     child: plantasAsync.when(
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       ),
                       error: (err, _) => Center(
                         child: Text(
@@ -159,11 +165,18 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                const Icon(Icons.architecture, size: 64, color: Colors.grey),
+                                const Icon(
+                                  Icons.architecture,
+                                  size: 64,
+                                  color: Colors.grey,
+                                ),
                                 const SizedBox(height: 16),
                                 Text(
                                   'Nenhuma planta cadastrada.',
-                                  style: GoogleFonts.lato(color: Colors.grey, fontSize: 16),
+                                  style: GoogleFonts.lato(
+                                    color: Colors.grey,
+                                    fontSize: 16,
+                                  ),
                                 ),
                               ],
                             ),
@@ -175,38 +188,48 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                           itemCount: plantas.length,
                           itemBuilder: (context, index) {
                             final planta = plantas[index];
-                            
+
                             // Transforma a URL em minúsculo antes de checar
                             final urlLower = planta.arquivoUrl.toLowerCase();
-                            final esImagem = urlLower.contains('.png') || 
-                                             urlLower.contains('.jpg') || 
-                                             urlLower.contains('.jpeg');
+                            final esImagem =
+                                urlLower.contains('.png') ||
+                                urlLower.contains('.jpg') ||
+                                urlLower.contains('.jpeg');
 
                             //  Traduz o ID (UUID) para o Nome real
                             final localReal = locais.firstWhere(
                               (l) => l.id == planta.localVinculado,
-                              orElse: () => LocalModel(id: '', estruturaId: '', nome: 'Local desconhecido'),
+                              orElse: () => LocalModel(
+                                id: '',
+                                estruturaId: '',
+                                nome: 'Local desconhecido',
+                              ),
                             );
 
                             return PlantaFormatoCard(
                               titulo: planta.titulo,
                               local: localReal.nome,
-                              detalhe: planta.tamanhoArquivo ?? 'Tamanho desconhecido',
-                              iconAsset: esImagem ? 'assets/images/image_icon.png' : 'assets/images/pdf.png',
+                              detalhe:
+                                  planta.tamanhoArquivo ??
+                                  'Tamanho desconhecido',
+                              iconAsset: esImagem
+                                  ? 'assets/images/image_icon.png'
+                                  : 'assets/images/pdf.png',
                               onTap: () async {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => PlanejamentoScreen(
-                                        // Passando o ID da estrutura
-                                        estruturaId: estruturaId, 
-                                        plantaId: planta.id,
-                                        plantaUrl: planta.arquivoUrl,
-                                        plantaTitulo: planta.titulo,
-                                        plantaLocal: localReal.nome,
-                                      ),
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => PlanejamentoScreen(
+                                      // Passando o ID da estrutura
+                                      estruturaId: estruturaId,
+                                      projetoId: projetoId,
+                                      plantaId: planta.id,
+                                      plantaUrl: planta.arquivoUrl,
+                                      plantaTitulo: planta.titulo,
+                                      plantaLocal: localReal.nome,
                                     ),
-                                  );
+                                  ),
+                                );
                               },
                             );
                           },
@@ -217,7 +240,7 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            
+
             //  Overlay visual de bloqueio enquanto o arquivo sobe pro Storage
             if (isSubmitting)
               Container(
@@ -231,7 +254,10 @@ class PlanejamentoPlantasScreen extends ConsumerWidget {
                         children: [
                           CircularProgressIndicator(color: AppColors.primary),
                           SizedBox(height: 16),
-                          Text('Enviando arquivo da planta...', style: TextStyle(fontWeight: FontWeight.bold)),
+                          Text(
+                            'Enviando arquivo da planta...',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ],
                       ),
                     ),
@@ -255,7 +281,9 @@ class _BuscaMock extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: const Color(0xFFD9D9D9).withValues(alpha: 0.62)),
+        border: Border.all(
+          color: const Color(0xFFD9D9D9).withValues(alpha: 0.62),
+        ),
         borderRadius: BorderRadius.circular(9999),
       ),
       child: Row(

@@ -22,6 +22,7 @@ class PlanejamentoScreen extends ConsumerStatefulWidget {
   const PlanejamentoScreen({
     super.key,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.plantaUrl,
     required this.plantaTitulo,
@@ -29,6 +30,7 @@ class PlanejamentoScreen extends ConsumerStatefulWidget {
   });
 
   final String estruturaId;
+  final String projetoId;
   final String plantaId;
   final String plantaUrl;
   final String plantaTitulo;
@@ -594,6 +596,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
             child: _VisualizadorPlantaPlanejamento(
               arquivoUrl: widget.plantaUrl,
               estruturaId: widget.estruturaId,
+              projetoId: widget.projetoId,
               plantaId: widget.plantaId,
               mostrarNomes: _visualizarNomeElementos,
               tamanhoFonteNome: _tamanhoFonteNome,
@@ -618,7 +621,12 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 
   Widget _buildAbaRegioesEnsaio() {
-    final infoAsync = ref.watch(infoPlanejamentoProvider(widget.estruturaId));
+    final infoAsync = ref.watch(
+      infoPlanejamentoProvider((
+        estruturaId: widget.estruturaId,
+        projetoId: widget.projetoId,
+      )),
+    );
 
     return infoAsync.when(
       loading: () => const Center(
@@ -736,6 +744,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 child: _VisualizadorPlantaPlanejamento(
                   arquivoUrl: widget.plantaUrl,
                   estruturaId: widget.estruturaId,
+                  projetoId: widget.projetoId,
                   plantaId: widget.plantaId,
                   mostrarNomes: true,
                   tamanhoFonteNome: _tamanhoFonteNome,
@@ -816,6 +825,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                           showListaRegioesModal(
                             context,
                             estruturaId: widget.estruturaId,
+                            projetoId: widget.projetoId,
                             plantaId: widget.plantaId,
                             plantaUrl: widget.plantaUrl,
                             empresaIdSelecionada: empSelecionada['id'],
@@ -1024,6 +1034,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
   const _VisualizadorPlantaPlanejamento({
     required this.arquivoUrl,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.mostrarNomes,
     required this.tamanhoFonteNome,
@@ -1033,6 +1044,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
 
   final String arquivoUrl;
   final String estruturaId;
+  final String projetoId;
   final String plantaId;
   final bool mostrarNomes;
   final double tamanhoFonteNome;
@@ -1135,6 +1147,7 @@ class _VisualizadorPlantaPlanejamentoState
         regioesEnsaioProvider(
           RegioesFiltro(
             plantaId: widget.plantaId,
+            projetoId: widget.projetoId,
             empresaId: widget.empresaIdParaRegioes!,
           ),
         ),
@@ -1310,7 +1323,7 @@ class _VisualizadorPlantaPlanejamentoState
                               }
                               return [
                                 pino,
-                                ?nomeVizinho,
+                                if (nomeVizinho != null) nomeVizinho,
                               ];
                             }),
 

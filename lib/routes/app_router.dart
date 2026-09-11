@@ -24,7 +24,6 @@ import 'package:diavicon/features/elementos/screens/elementos_home_screen.dart';
 import 'package:diavicon/features/elementos/screens/info_elementos_screen.dart';
 import 'package:diavicon/features/elementos/screens/relatorios_screen.dart';
 import 'package:diavicon/features/empresa/screens/empresa_screen.dart';
-import 'package:diavicon/features/empresas_servicos/screens/empresas_screen.dart';
 import 'package:diavicon/features/feed_educacao/screens/feed_screen.dart';
 import 'package:diavicon/features/home/screens/main_screen.dart';
 import 'package:diavicon/features/home/screens/perfil_central_ajuda_screen.dart';

@@ -79,6 +79,14 @@ class CurrentUserNotifier extends StateNotifier<UsuarioModel?> {
                 : AuthAccessStatus.inactive;
   }
 
+  bool setUserIfSessionMatches(UsuarioModel user) {
+    final sessionUserId = Supabase.instance.client.auth.currentUser?.id;
+    if (sessionUserId == null || sessionUserId != user.id) return false;
+
+    setUser(user);
+    return true;
+  }
+
   void clearUser({AuthAccessStatus status = AuthAccessStatus.signedOut}) {
     _syncGeneration++;
     state = null;

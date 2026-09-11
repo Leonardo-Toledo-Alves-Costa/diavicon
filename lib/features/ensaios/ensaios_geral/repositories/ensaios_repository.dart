@@ -22,6 +22,7 @@ class EnsaiosRepository {
   /// desenho/marcação na planta — o quantitativo contratado é sempre
   /// armazenado em `ensaios_contratados`, nunca na região.
   Future<void> salvarEnsaioNaRegiao({
+    required String projetoId,
     required String estruturaId,
     required String empresaId,
     required String regiaoId,
@@ -38,6 +39,7 @@ class EnsaiosRepository {
         .from('ensaios_contratados')
         .select('id')
         .eq('regiao_id', regiaoId)
+        .eq('projeto_id', projetoId)
         .eq('tipo_ensaio_id', tipoEnsaioId)
         .maybeSingle();
 
@@ -48,6 +50,7 @@ class EnsaiosRepository {
           .eq('id', contratoExistente['id']);
     } else {
       await _supabase.from('ensaios_contratados').insert({
+        'projeto_id': projetoId,
         'estrutura_id': estruturaId,
         'empresa_id': empresaId,
         'tipo_ensaio_id': tipoEnsaioId,
@@ -74,7 +77,8 @@ class EnsaiosRepository {
       final contratadosResp = await _supabase
           .from('ensaios_contratados')
           .select('tipo_ensaio_id, quantidade')
-          .eq('estrutura_id', estruturaId);
+          .eq('estrutura_id', estruturaId)
+          .eq('projeto_id', projetoId);
 
       // 3. Busca pontos já realizados de forma segura[cite: 2]
       final realizadosValidadosResp = await _supabase

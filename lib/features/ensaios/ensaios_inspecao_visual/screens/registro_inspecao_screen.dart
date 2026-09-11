@@ -159,6 +159,28 @@ final catalogoAnomaliasProvider = FutureProvider.autoDispose<List<Map<String, dy
   return List<Map<String, dynamic>>.from(res);
 });
 
+// A tela recebe o id de `ponto_inspecao_visual_geral`, enquanto o provider
+// compartilhado de permissões resolve autoria em `pontos_ensaios_geral`.
+final pontoRaizDaInspecaoVisualProvider = FutureProvider.family
+    .autoDispose<String?, String>((ref, inspecaoVisualGeralId) async {
+  final res = await Supabase.instance.client
+      .from('ponto_inspecao_visual_geral')
+      .select('id_ponto_geral')
+      .eq('id', inspecaoVisualGeralId)
+      .maybeSingle();
+  return res?['id_ponto_geral']?.toString();
+});
+
+final permissoesInspecaoVisualProvider = FutureProvider.family
+    .autoDispose<EnsaioPermissoes, String>((ref, inspecaoVisualGeralId) async {
+  final pontoRaizId = await ref.watch(
+    pontoRaizDaInspecaoVisualProvider(inspecaoVisualGeralId).future,
+  );
+  if (pontoRaizId == null || pontoRaizId.isEmpty) {
+    return EnsaioPermissoes.somenteVisualizar;
+  }
+  return ref.watch(ensaioPermissoesProvider(pontoRaizId).future);
+});
 /// Pontuação de risco de uma anomalia já adicionada ao ponto (usa a chave
 /// local `area`, diferente da coluna `area_afetada` do banco).
 double _calcularPontuacaoRisco(Map<String, dynamic> anomalia) {
@@ -229,7 +251,17 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     try {
       final db = Supabase.instance.client;
       
-      final resPonto = await db.from('ponto_inspecao_visual').select('''*, tipos_elemento(nome, sistemas_id)''').eq('id', widget.pontoInspecaoId!).single();
+            // `inspecaoGeralId` é o id de `ponto_inspecao_visual_geral`.
+      // `ponto_inspecao_visual.id_ponto_geral` referencia essa linha, não o
+      // id do ponto raiz em `pontos_ensaios_geral`.
+      final resPonto = await db
+          .from('ponto_inspecao_visual')
+          .select('''*, tipos_elemento(nome, sistemas_id)''')
+          .eq('id', widget.pontoInspecaoId!)
+          .eq('id_projeto', widget.projetoId)
+          .eq('id_estrutura', widget.estruturaId)
+          .eq('id_ponto_geral', widget.inspecaoGeralId)
+          .single();
 
       _nomeCtrl.text = resPonto['registro'] ?? '';
       _descCtrl.text = resPonto['descricao'] ?? '';
@@ -430,15 +462,21 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
         'id_local': _localSelecionadoId,
         'id_elemento': _elementoSelecionadoId,
         'id_tipo_elemento': idTipoElemento, 
-        'criado_por': userId,
       };
 
       if (isEdicao) {
-        await supabase.from('ponto_inspecao_visual').update(dadosPonto).eq('id', pontoId);
+        await supabase
+            .from('ponto_inspecao_visual')
+            .update(dadosPonto)
+            .eq('id', pontoId)
+            .eq('id_projeto', widget.projetoId)
+            .eq('id_estrutura', widget.estruturaId)
+            .eq('id_ponto_geral', widget.inspecaoGeralId);
         await supabase.from('ponto_inspecao_regiao').delete().eq('ponto_id', pontoId);
         await supabase.from('ponto_inspecao_visual_galeria').delete().eq('id_inspecao', pontoId);
         await supabase.from('ponto_inspecao_visual_anomalia').delete().eq('id_inspecao', pontoId);
       } else {
+        dadosPonto['criado_por'] = userId;
         final resPonto = await supabase.from('ponto_inspecao_visual').insert(dadosPonto).select('id').single();
         pontoId = resPonto['id'];
       }
@@ -514,7 +552,7 @@ class _RegistroInspecaoScreenState extends ConsumerState<RegistroInspecaoScreen>
     final tiposAsync = ref.watch(tiposElementoProvider);
     final elementosAsync = ref.watch(elementosProvider((estruturaId: widget.estruturaId, tipoNome: _tipoElementoSelecionadoNome)));
     final plantaAsync = ref.watch(plantaProvider(_localSelecionadoId));
-    final permissoes = ref.watch(ensaioPermissoesProvider(widget.inspecaoGeralId)).value ?? EnsaioPermissoes.somenteVisualizar;
+    final permissoes = ref.watch(permissoesInspecaoVisualProvider(widget.inspecaoGeralId)).value ?? EnsaioPermissoes.somenteVisualizar;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),

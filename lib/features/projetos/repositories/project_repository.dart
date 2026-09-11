@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:developer' as developer;
 
 import 'package:diavicon/features/projetos/models/projeto_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -134,7 +133,7 @@ class ProjectRepository {
 
     final actor = await _supabase
         .from('usuarios')
-        .select('empresa_id, nome, sobrenome')
+        .select('empresa_id')
         .eq('id', userId)
         .single();
     final managerCompanyId = actor['empresa_id']?.toString();
@@ -173,74 +172,24 @@ class ProjectRepository {
         uploadedPaths.add(clientImage.path);
       }
 
-      final storage = _supabase.storage.from('projetos');
-      final projectImageUrl = projectImage == null
-          ? null
-          : storage.getPublicUrl(projectImage.path);
-      final clientImageUrl = clientImage == null
-          ? null
-          : storage.getPublicUrl(clientImage.path);
-      final isOwnCompanyClient =
-          !isNovoCliente && empresaClienteId == managerCompanyId;
-
-      final project = await _supabase
-          .from('projetos')
-          .insert({
-            'nome': nome.trim(),
-            'empresa_gestora_id': managerCompanyId,
-            'empresa_cliente_id': isNovoCliente ? null : empresaClienteId,
-            'status_vinculo_cliente': isNovoCliente
-                ? 'nao_vinculado'
-                : (isOwnCompanyClient ? 'ativo' : 'pendente'),
-            'image_url': projectImageUrl,
-            'criado_por': userId,
-          })
-          .select('id')
-          .single();
-      final projectId = project['id'].toString();
-
-      if (isNovoCliente) {
-        await _supabase.from('projeto_convites_cliente').insert({
-          'projeto_id': projectId,
-          'email_convidado': emailNovoCliente!.trim(),
-          'empresa_nome_temp': nomeNovoCliente!.trim(),
-          'criado_por': userId,
-          'aceito': false,
-          'foto_url': clientImageUrl,
-        });
+      // Project creation, team membership, client link/invite and
+      // notifications must commit together. The RPC also performs the
+      // manager and client-admin checks under the caller's authenticated JWT.
+      final response = await _supabase.rpc(
+        'create_project',
+        params: {
+          'p_name': nome.trim(),
+          'p_client_company_id': isNovoCliente ? null : empresaClienteId,
+          'p_new_client_email': isNovoCliente ? emailNovoCliente!.trim() : null,
+          'p_new_client_name': isNovoCliente ? nomeNovoCliente!.trim() : null,
+          'p_image_url': projectImage?.path,
+          'p_new_client_image_url': clientImage?.path,
+        },
+      );
+      if (response == null || response.toString().isEmpty) {
+        throw StateError('O servidor não retornou o projeto criado.');
       }
-
-      await _supabase.from('projeto_equipe_interna').upsert({
-        'projeto_id': projectId,
-        'usuario_id': userId,
-        'empresa_id': managerCompanyId,
-        'ativo': true,
-        'is_gestor': true,
-      }, onConflict: 'projeto_id,usuario_id');
-
-      if (!isNovoCliente &&
-          empresaClienteId != null &&
-          empresaClienteId != managerCompanyId) {
-        try {
-          await _notifyExistingClientAdmins(
-            projectId: projectId,
-            clientCompanyId: empresaClienteId,
-            projectName: nome.trim(),
-            projectImageUrl: projectImageUrl,
-            senderName: _senderName(actor),
-            senderCompanyName: await _companyName(managerCompanyId),
-          );
-        } catch (error, stackTrace) {
-          developer.log(
-            'Projeto criado, mas não foi possível notificar os admins do cliente.',
-            name: 'ProjectRepository',
-            error: error,
-            stackTrace: stackTrace,
-          );
-        }
-      }
-
-      return projectId;
+      return response.toString();
     } catch (error) {
       await _removeUploadedFiles(uploadedPaths);
       rethrow;
@@ -293,38 +242,18 @@ class ProjectRepository {
         );
       }
 
-      final status = await _supabase
-          .from('status_projeto')
-          .select('id')
-          .eq('nome', statusNomeUI.trim())
-          .maybeSingle();
-      final priority = await _supabase
-          .from('prioridade')
-          .select('id')
-          .eq('nome', prioridadeNomeUI.trim())
-          .maybeSingle();
-      if (status == null || priority == null) {
-        throw StateError('Status ou prioridade do projeto não encontrados.');
-      }
-
-      final updateData = <String, dynamic>{
-        'nome': nome.trim(),
-        'descricao': descricao.trim(),
-        'status_id': status['id'],
-        'prioridade_id': priority['id'],
-        if (uploadedImage != null)
-          'image_url': _supabase.storage
-              .from('projetos')
-              .getPublicUrl(uploadedImage.path),
-      };
-      final updated = await _supabase
-          .from('projetos')
-          .update(updateData)
-          .eq('id', projetoId)
-          .select('id')
-          .maybeSingle();
-
-      if (updated == null) {
+      final updated = await _supabase.rpc(
+        'update_project',
+        params: {
+          'p_project_id': projetoId,
+          'p_name': nome.trim(),
+          'p_description': descricao.trim(),
+          'p_status_name': statusNomeUI.trim(),
+          'p_priority_name': prioridadeNomeUI.trim(),
+          'p_image_url': uploadedImage?.path,
+        },
+      );
+      if (updated == null || updated.toString().isEmpty) {
         throw StateError(
           'Projeto não encontrado ou usuário sem permissão para editá-lo.',
         );
@@ -348,58 +277,7 @@ class ProjectRepository {
   /// direto — mas NÃO apaga as estruturas vinculadas em si (isso é uma ação
   /// separada e explícita, ver `EstruturaRepository.excluirEstrutura`).
   Future<void> deleteProject(String projectId) async {
-    await _supabase.from('projetos').delete().eq('id', projectId);
-  }
-
-  Future<void> _notifyExistingClientAdmins({
-    required String projectId,
-    required String clientCompanyId,
-    required String projectName,
-    required String? projectImageUrl,
-    required String senderName,
-    required String? senderCompanyName,
-  }) async {
-    final admins = await _supabase
-        .from('usuarios')
-        .select('id')
-        .eq('empresa_id', clientCompanyId)
-        .eq('ativo', true)
-        .eq('is_admin_empresa', true);
-    if ((admins as List).isEmpty) {
-      throw StateError(
-        'Esta empresa não possui um administrador cadastrado para receber o convite.',
-      );
-    }
-
-    await _supabase.from('notificacoes').insert(
-      (admins as List).map((admin) {
-        return {
-          'usuario_id': admin['id'],
-          'titulo': 'Convite de Cliente',
-          'mensagem':
-              '${senderName.isEmpty ? 'Um usuário' : senderName}, da empresa ${senderCompanyName ?? 'uma empresa'}, está te convidando para ser cliente do projeto $projectName.',
-          'tipo': 'convite_cliente',
-          'lida': false,
-          'dados_extras': {
-            'projeto_id': projectId,
-            'foto_url': projectImageUrl,
-          },
-        };
-      }).toList(),
-    );
-  }
-
-  Future<String?> _companyName(String companyId) async {
-    final company = await _supabase
-        .from('empresas')
-        .select('nome')
-        .eq('id', companyId)
-        .maybeSingle();
-    return company?['nome']?.toString();
-  }
-
-  static String _senderName(Map<String, dynamic> actor) {
-    return '${actor['nome'] ?? ''} ${actor['sobrenome'] ?? ''}'.trim();
+    await _supabase.rpc('delete_project', params: {'p_project_id': projectId});
   }
 
   List<ProjetoModel> _mapProjects(Object response, String companyId) {

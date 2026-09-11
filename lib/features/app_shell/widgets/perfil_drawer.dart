@@ -3,6 +3,7 @@ import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/empresa/providers/empresa_provider.dart';
 import 'package:diavicon/features/empresa/screens/empresa_profile_screen.dart';
+import 'package:diavicon/features/estrutura/screens/rdo_empresas_screen.dart';
 import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -177,8 +178,16 @@ class _PerfilDrawerState extends ConsumerState<PerfilDrawer> {
                   _TopButton(
                     icon: Icons.assignment_outlined,
                     label: 'RDO',
-                    isDisabled: true,
-                    onTap: () {},
+                    isDisabled: false,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RdoEmpresasScreen(),
+                        ),
+                      );
+                    },
                   ),
                   _TopButton(
                     icon: Icons.business_outlined,

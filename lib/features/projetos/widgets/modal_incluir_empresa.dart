@@ -6,7 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
-import '../providers/empresas_projeto_provider.dart';
+import '../controllers/empresas_projeto_controller.dart';
 
 class ModalIncluirEmpresa extends ConsumerStatefulWidget {
   final String projetoId;
@@ -163,8 +163,9 @@ class _ModalIncluirEmpresaState extends ConsumerState<ModalIncluirEmpresa> {
                 inputFormatters: [CnpjFormatter.mask],
                 validator: (val) {
                   if (val == null || val.isEmpty) return 'Obrigatório';
-                  if (CnpjFormatter.unformat(val).length < 14)
+                  if (CnpjFormatter.unformat(val).length < 14) {
                     return 'CNPJ Inválido';
+                  }
                   return null;
                 },
               ),
@@ -182,7 +183,7 @@ class _ModalIncluirEmpresaState extends ConsumerState<ModalIncluirEmpresa> {
                         color: Colors.white,
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.08),
+                            color: Colors.black.withValues(alpha: 0.08),
                             blurRadius: 10,
                             offset: const Offset(0, 4),
                           ),

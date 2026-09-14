@@ -50,7 +50,7 @@ class _GerarRelatorioScreenState extends ConsumerState<GerarRelatorioScreen> {
   bool _cbResultados = false;
   bool _cbGraficos = false;
   bool _cbGaleria = false;
-  bool _cbDemarcacao = false;
+  final bool _cbDemarcacao = false;
 
   bool _isLoading = false;
 
@@ -127,8 +127,11 @@ class _GerarRelatorioScreenState extends ConsumerState<GerarRelatorioScreen> {
     );
     if (data != null) {
       setState(() {
-        if (isInicio) _dataInicio = data;
-        else _dataFim = data;
+        if (isInicio) {
+          _dataInicio = data;
+        } else {
+          _dataFim = data;
+        }
       });
     }
   }

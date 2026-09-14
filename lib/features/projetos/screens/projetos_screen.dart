@@ -1,4 +1,5 @@
-import 'package:diavicon/features/home/screens/perfil_drawer.dart';
+import 'package:diavicon/features/app_shell/widgets/perfil_drawer.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -10,13 +11,18 @@ import '../providers/projetos_provider.dart';
 import '../widgets/projetos_header.dart';
 import '../widgets/projetos_filter_row.dart';
 
-final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-
-class ProjetosScreen extends ConsumerWidget {
+class ProjetosScreen extends ConsumerStatefulWidget {
   const ProjetosScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ProjetosScreen> createState() => _ProjetosScreenState();
+}
+
+class _ProjetosScreenState extends ConsumerState<ProjetosScreen> {
+  final _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  Widget build(BuildContext context) {
     final topPadding = MediaQuery.of(context).padding.top;
     final projetosAsync = ref.watch(filteredProjectsProvider);
 
@@ -75,16 +81,23 @@ class ProjetosScreen extends ConsumerWidget {
 
                             return ListView.builder(
                               itemCount: lista.length,
-                              padding: const EdgeInsets.only(top: 8, bottom: 100),
-                              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+                              padding: const EdgeInsets.only(
+                                top: 8,
+                                bottom: 100,
+                              ),
+                              keyboardDismissBehavior:
+                                  ScrollViewKeyboardDismissBehavior.onDrag,
                               itemBuilder: (context, index) {
                                 final projeto = lista[index];
                                 return InkWell(
                                   onTap: () {
-                                    FocusManager.instance.primaryFocus?.unfocus();
-                                    context.push(
-                                      '/projetos/detalhes',
-                                      extra: projeto.id,
+                                    FocusManager.instance.primaryFocus
+                                        ?.unfocus();
+                                    context.pushNamed(
+                                      AppRouteNames.projectDetail,
+                                      pathParameters: <String, String>{
+                                        AppPaths.projectIdParameter: projeto.id,
+                                      },
                                     );
                                   },
                                   child: ProjectCard(

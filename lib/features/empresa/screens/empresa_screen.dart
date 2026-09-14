@@ -1,9 +1,9 @@
+import 'package:diavicon/features/app_shell/widgets/perfil_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
-import '../../home/screens/perfil_drawer.dart';
 import '../providers/empresa_provider.dart';
 import '../widgets/empresa_about_section.dart';
 import '../widgets/empresa_header.dart';

@@ -195,8 +195,11 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                                   ref.invalidate(projetoEstruturasProvider(widget.projetoId));
                                 } catch (e) {
                                   setState(() {
-                                    if (val == true) _selectedStructures.remove(est.id);
-                                    else _selectedStructures.add(est.id);
+                                    if (val == true) {
+                                      _selectedStructures.remove(est.id);
+                                    } else {
+                                      _selectedStructures.add(est.id);
+                                    }
                                   });
                                 }
                               },

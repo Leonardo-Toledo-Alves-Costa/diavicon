@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/legacy.dart';
@@ -11,9 +12,10 @@ final empresaRepositoryProvider = Provider((ref) => EmpresaRepository());
 final empresaAtualProvider = StateProvider<EmpresaModel?>((ref) => null);
 
 // O Controller que gerencia o estado de loading e a lógica de cadastro
-final empresaControllerProvider = StateNotifierProvider<EmpresaController, bool>((ref) {
-  return EmpresaController(ref);
-});
+final empresaControllerProvider =
+    StateNotifierProvider<EmpresaController, bool>((ref) {
+      return EmpresaController(ref);
+    });
 
 class EmpresaController extends StateNotifier<bool> {
   final Ref _ref;
@@ -22,21 +24,21 @@ class EmpresaController extends StateNotifier<bool> {
 
   Future<void> cadastrarEmpresa(Map<String, dynamic> dados) async {
     state = true;
-    //ATIVA O ESCUDO DO ROTEADOR: O App_Router agora vai ignorar qualquer mudança
+    var cadastroConcluido = false;
+    // Mantém somente as rotas de onboarding abertas até a tela de boas-vindas.
     _ref.read(bloqueioDeRotaProvider.notifier).state = true;
     try {
       //  PROTEÇÃO 1: Conversão segura (Safe Cast) dos dados de Autenticação.
       // Se a chave vier nula ou com nome diferente (ex: 'password' em vez de 'senha'),
       // o '.toString() ?? ''' impede o erro "Null is not a subtype of String".
       final emailSeguro = dados['email']?.toString() ?? '';
-      final senhaSegura = (dados['senha'] ?? dados['password'])?.toString() ?? '';
+      final senhaSegura =
+          (dados['senha'] ?? dados['password'])?.toString() ?? '';
 
       //  Cria o usuário (Auth + Tabela Usuarios)
-      await _ref.read(authControllerProvider.notifier).registrar(
-            email: emailSeguro,
-            password: senhaSegura,
-            dados: dados,
-          );
+      await _ref
+          .read(authControllerProvider.notifier)
+          .registrar(email: emailSeguro, password: senhaSegura, dados: dados);
 
       //  Recupera o ID do usuário recém-criado
       final usuario = _ref.read(currentUserProvider);
@@ -48,24 +50,25 @@ class EmpresaController extends StateNotifier<bool> {
       //  PROTEÇÃO 2: Garante que os dados da empresa não venham nulos
       final empresaDados = (dados['empresa'] as Map<String, dynamic>?) ?? {};
       final repo = _ref.read(empresaRepositoryProvider);
-      
+
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
           ...empresaDados,
           // Mantém a possibilidade de ser null, mas protege a tipagem
-          'plano_id': dados['plano_escolhido_id'], 
+          'plano_id': dados['plano_escolhido_id'],
           'tipo': dados['tipo']?.toString() ?? 'Profissional',
         },
         userId: usuario.id,
       );
 
-      
       final authRepo = _ref.read(authRepositoryProvider);
       final perfilAtualizado = await authRepo.getUsuarioPerfil(usuario.id);
 
       if (perfilAtualizado != null) {
         // Atualiza o currentUserProvider com o perfil completo (contendo o empresa_id)
-        _ref.read(currentUserProvider.notifier).setUser(perfilAtualizado);
+        _ref
+            .read(currentUserProvider.notifier)
+            .setUserIfSessionMatches(perfilAtualizado);
       }
 
       // 4. Atualiza o estado da empresa atual no provider específico
@@ -73,33 +76,39 @@ class EmpresaController extends StateNotifier<bool> {
       if (empresa != null) {
         _ref.read(empresaAtualProvider.notifier).state = empresa;
       }
-      
+      cadastroConcluido = true;
     } catch (e) {
-      print("🚨 ERRO NO FLUXO DE CADASTRO: $e");
+      debugPrint('Erro no fluxo de cadastro de empresa: $e');
       rethrow;
     } finally {
       state = false;
-      _ref.read(bloqueioDeRotaProvider.notifier).state = false;
+      if (!cadastroConcluido) {
+        _ref.read(bloqueioDeRotaProvider.notifier).state = false;
+      }
     }
   }
 
   Future<void> carregarEmpresaAtual(String empresaId) async {
     final repo = _ref.read(empresaRepositoryProvider);
     final empresa = await repo.getEmpresa(empresaId);
+    if (_ref.read(currentUserProvider)?.empresaId != empresaId) return;
     _ref.read(empresaAtualProvider.notifier).state = empresa;
   }
-  
 }
 
-final colaboradoresEmpresaProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, empresaId) async {
-  final supabase = Supabase.instance.client;
-  
-  // Busca todos os usuários vinculados ao ID desta empresa
-  final response = await supabase
-      .from('usuarios')
-      .select()
-      .eq('empresa_id', empresaId)
-      .eq('ativo', true); 
-      
-  return List<Map<String, dynamic>>.from(response);
-});
+final colaboradoresEmpresaProvider =
+    FutureProvider.family<List<Map<String, dynamic>>, String>((
+      ref,
+      empresaId,
+    ) async {
+      final supabase = Supabase.instance.client;
+
+      // Busca todos os usuários vinculados ao ID desta empresa
+      final response = await supabase
+          .from('usuarios')
+          .select()
+          .eq('empresa_id', empresaId)
+          .eq('ativo', true);
+
+      return List<Map<String, dynamic>>.from(response);
+    });

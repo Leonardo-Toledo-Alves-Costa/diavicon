@@ -41,7 +41,7 @@ class _CadastroAcademicoScreenState
   final _universidadeController = TextEditingController();
   final _motivoController = TextEditingController();
   final _lattesController = TextEditingController();
-  bool _isLoading = false;
+  final bool _isLoading = false;
 
   @override
   void dispose() {
@@ -486,8 +486,9 @@ class _CadastroAcademicoScreenState
       // TRATAMENTO DE ERRO
       if (mounted) {
         String erroMsg = 'Erro ao salvar dados.';
-        if (e.toString().contains('429'))
+        if (e.toString().contains('429')) {
           erroMsg = 'Muitas tentativas. Aguarde 1h.';
+        }
 
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(erroMsg), backgroundColor: Colors.redAccent),

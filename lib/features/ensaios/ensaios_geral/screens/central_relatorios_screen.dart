@@ -117,7 +117,7 @@ class _CentralRelatoriosScreenState extends ConsumerState<CentralRelatoriosScree
                 return ListView.separated(
                   padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   itemCount: filtrados.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final rel = filtrados[index];
                     final locaisSelecionados = List<String>.from(rel.conteudo['locais'] ?? []);

@@ -1,24 +1,24 @@
 import 'dart:convert';
-import 'dart:io'; 
-import 'package:diavicon/routes/app_router.dart';
+import 'dart:io';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:http/http.dart' as http;
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
-import 'package:image_picker/image_picker.dart'; 
-import 'package:image_cropper/image_cropper.dart'; 
+import 'package:image_picker/image_picker.dart';
+import 'package:image_cropper/image_cropper.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
-import '../../../core/widgets/custom_text_button.dart'; 
+import '../../../core/widgets/custom_text_button.dart';
 import '../../empresa/providers/empresa_provider.dart';
 import '../../../core/utils/formatters/cnpj_formatter.dart';
 import '../../../core/utils/validators/cnpj_validator.dart';
-import '../../../core/utils/validators/validators_cadastro.dart'; 
+import '../../../core/utils/validators/validators_cadastro.dart';
 
 class EmpresaCadastroScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic> dadosUsuario;
@@ -114,27 +114,27 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   Future<void> _selecionarFotoEmpresa() async {
     final img = await ImagePicker().pickImage(
       source: ImageSource.gallery,
-      maxWidth: 1024, 
+      maxWidth: 1024,
       maxHeight: 1024,
     );
 
     if (img != null) {
       final croppedFile = await ImageCropper().cropImage(
         sourcePath: img.path,
-        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1), 
+        aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
         uiSettings: [
           AndroidUiSettings(
             toolbarTitle: 'Ajustar Logo da Empresa',
-            toolbarColor: AppColors.primary, 
+            toolbarColor: AppColors.primary,
             toolbarWidgetColor: Colors.white,
             initAspectRatio: CropAspectRatioPreset.square,
-            lockAspectRatio: true, 
+            lockAspectRatio: true,
           ),
           IOSUiSettings(
             title: 'Ajustar Logo',
             cancelButtonTitle: 'Cancelar',
             doneButtonTitle: 'Concluir',
-            aspectRatioLockEnabled: true, 
+            aspectRatioLockEnabled: true,
             resetButtonHidden: true,
           ),
         ],
@@ -142,7 +142,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
       if (croppedFile != null) {
         setState(() {
-          _fotoEmpresa = XFile(croppedFile.path); 
+          _fotoEmpresa = XFile(croppedFile.path);
         });
       }
     }
@@ -155,7 +155,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
       SnackBar(
         content: Text(
           mensagem,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
         ),
         backgroundColor: cor,
         behavior: SnackBarBehavior.floating,
@@ -167,11 +170,11 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
 
   void _ouvinteCep() {
     final apenasNumeros = _cepController.text.replaceAll(RegExp(r'\D'), '');
-    
+
     if (apenasNumeros.length == 8 && !_cepBuscado && !_carregandoCep) {
       _buscarCep(apenasNumeros);
     }
-    
+
     // Se apagar o CEP, libera tudo
     if (apenasNumeros.isEmpty && _cepBuscado) {
       setState(() {
@@ -219,9 +222,9 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
           _bairroController.text = bairro;
           _estadoController.text = uf;
           _paisController.text = 'Brasil';
-          
+
           _cepBuscado = true;
-          
+
           // 🔥 INTELEGÊNCIA DO CEP: Só bloqueia o campo se a API realmente retornou o dado!
           // Se vier em branco (vazio), a variável assume 'false' e o campo fica editável.
           _cidadeBloqueada = localidade.toString().trim().isNotEmpty;
@@ -233,7 +236,6 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         });
 
         _mostrarAviso('Endereço comercial carregado!', Colors.green);
-
       } else {
         _mostrarAviso('Erro no servidor da ViaCEP.', Colors.red);
         setState(() => _carregandoCep = false);
@@ -265,7 +267,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         'pais': _paisController.text.trim(),
         'site': _siteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
-        'fotoPath': _fotoEmpresa?.path, 
+        'fotoPath': _fotoEmpresa?.path,
       },
     };
 
@@ -275,7 +277,7 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
           .cadastrarEmpresa(dadosCompletos);
 
       if (mounted) {
-        ref.read(routerProvider).go('/empresa/bemvinda', extra: dadosCompletos);
+        context.goNamed(AppRouteNames.companyWelcome, extra: dadosCompletos);
       }
     } catch (e) {
       if (mounted) {
@@ -298,9 +300,9 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
             key: _formKey,
             child: SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                28, 
-                10, 
-                28, 
+                28,
+                10,
+                28,
                 MediaQuery.of(context).padding.bottom + 24,
               ),
               child: Column(
@@ -403,8 +405,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: 'Cidade',
                     isRequired: true,
                     controller: _cidadeController,
-                    enabled: !_cidadeBloqueada, // 🔥 Usando a variável individual
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                    enabled:
+                        !_cidadeBloqueada, // 🔥 Usando a variável individual
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -413,7 +417,8 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     isRequired: true,
                     controller: _ruaController,
                     enabled: !_ruaBloqueada, // 🔥 Usando a variável individual
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
                   Row(
@@ -427,7 +432,8 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                           hint: '123',
                           controller: _numeroController,
                           keyboardType: TextInputType.number,
-                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Inválido'),
+                          validator: (v) =>
+                              ValidatorsCadastro.obrigatorio(v, 'Inválido'),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -438,8 +444,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                           isRequired: true,
                           hint: 'Bairro',
                           controller: _bairroController,
-                          enabled: !_bairroBloqueado, // 🔥 Usando a variável individual
-                          validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                          enabled:
+                              !_bairroBloqueado, // 🔥 Usando a variável individual
+                          validator: (v) =>
+                              ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                         ),
                       ),
                     ],
@@ -450,8 +458,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                     hint: 'Ex: São Paulo',
                     isRequired: true,
                     controller: _estadoController,
-                    enabled: !_estadoBloqueado, // 🔥 Usando a variável individual
-                    validator: (v) => ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
+                    enabled:
+                        !_estadoBloqueado, // 🔥 Usando a variável individual
+                    validator: (v) =>
+                        ValidatorsCadastro.obrigatorio(v, 'Obrigatório'),
                   ),
                   const SizedBox(height: 12),
                   CustomTextField(
@@ -514,14 +524,16 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
             CircleAvatar(
               radius: 56,
               backgroundColor: AppColors.greyVeryLight,
-              backgroundImage: _fotoEmpresa != null ? FileImage(File(_fotoEmpresa!.path)) : null,
-              child: _fotoEmpresa == null 
+              backgroundImage: _fotoEmpresa != null
+                  ? FileImage(File(_fotoEmpresa!.path))
+                  : null,
+              child: _fotoEmpresa == null
                   ? const Icon(
                       Icons.domain,
                       size: 52,
                       color: AppColors.greyLight,
                     )
-                  : null, 
+                  : null,
             ),
             Positioned(
               bottom: 2,
@@ -531,7 +543,10 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: const Color(0xFF1C1C1C), width: 1.5),
+                  border: Border.all(
+                    color: const Color(0xFF1C1C1C),
+                    width: 1.5,
+                  ),
                 ),
                 child: const Icon(
                   Icons.edit_outlined,
@@ -568,7 +583,7 @@ class _DropdownField extends StatelessWidget {
   final String label;
   final String hint;
   final String? valor;
-  final bool isRequired; 
+  final bool isRequired;
   final List<String> opcoes;
   final void Function(String?) onChanged;
   final String? Function(String?)? validator;
@@ -607,12 +622,18 @@ class _DropdownField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         DropdownButtonFormField<String>(
-          value: valor,
+          initialValue: valor,
           isExpanded: true,
           hint: Text(hint, style: const TextStyle(color: AppColors.hintText)),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppColors.primary),
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: AppColors.primary,
+          ),
           decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 12,
+              vertical: 14,
+            ),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: const BorderSide(color: AppColors.inputBorder),
@@ -630,7 +651,9 @@ class _DropdownField extends StatelessWidget {
               borderSide: const BorderSide(color: Colors.red),
             ),
           ),
-          items: opcoes.map((o) => DropdownMenuItem(value: o, child: Text(o))).toList(),
+          items: opcoes
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
           onChanged: onChanged,
           validator: validator,
         ),

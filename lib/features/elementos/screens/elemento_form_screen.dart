@@ -14,6 +14,8 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
+import '../../empresa/providers/campos_personalizaveis_provider.dart';
+import '../../empresa/providers/sistema_provider.dart';
 import '../../estrutura/providers/local_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
 import '../models/elemento_model.dart';
@@ -44,25 +46,19 @@ class ElementoFormScreen extends ConsumerStatefulWidget {
 class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
   final _nomeController = TextEditingController();
 
+  String? _sistemaHabitacional;
   String? _tipoElemento;
   String? _tipologiaEstrutural;
   String? _localElemento;
   String? _revestimento;
 
-  final List<String> _tipoElementoOptions = ['Pilar', 'Viga', 'Laje'];
-  final List<String> _tipologiaOptions = [
-    'Concreto armado',
-    'Metalica',
-    'Mista',
-  ];
-  final List<String> _localOptions = ['Interno', 'Externo', 'Cobertura'];
-  final List<String> _revestimentoOptions = [
-    'Pintura',
-    'Argamassa',
-    'Ceramica',
-  ];
+  final List<String> _tipoElementoOptions = [];
+  final List<String> _tipologiaOptions = [];
+  final List<String> _localOptions = [];
+  final List<String> _revestimentoOptions = [];
 
   File? _novaImagemBanner;
+  String? _marcacaoImagemUrl;
   bool _isSubmitting = false;
   bool _isDirty = false;
 
@@ -79,23 +75,49 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     final el = widget.elemento!;
     _nomeController.text = el.nome ?? '';
 
-    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!))
+    if (el.tipo != null && !_tipoElementoOptions.contains(el.tipo!)) {
       _tipoElementoOptions.add(el.tipo!);
+    }
     _tipoElemento = el.tipo;
 
     if (el.tipologiaEstrutural != null &&
-        !_tipologiaOptions.contains(el.tipologiaEstrutural!))
+        !_tipologiaOptions.contains(el.tipologiaEstrutural!)) {
       _tipologiaOptions.add(el.tipologiaEstrutural!);
+    }
     _tipologiaEstrutural = el.tipologiaEstrutural;
 
-    if (el.local != null && !_localOptions.contains(el.local!))
+    if (el.local != null && !_localOptions.contains(el.local!)) {
       _localOptions.add(el.local!);
+    }
     _localElemento = el.local;
 
     if (el.revestimento != null &&
-        !_revestimentoOptions.contains(el.revestimento!))
+        !_revestimentoOptions.contains(el.revestimento!)) {
       _revestimentoOptions.add(el.revestimento!);
+    }
     _revestimento = el.revestimento;
+    _marcacaoImagemUrl = el.marcacaoImagemUrl;
+  }
+
+  Future<void> _abrirPlanejamento() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) =>
+            PlanejamentoPlantasScreen(estruturaId: widget.estruturaId),
+      ),
+    );
+
+    if (!_isEditing || !mounted) return;
+    final elementos = await ref
+        .read(elementoRepositoryProvider)
+        .buscarElementosPorEstrutura(widget.estruturaId);
+    final atualizado = elementos.firstWhere(
+      (elemento) => elemento.id == widget.elemento!.id,
+    );
+    if (mounted) {
+      setState(() => _marcacaoImagemUrl = atualizado.marcacaoImagemUrl);
+    }
   }
 
   void _marcarComoSujo() {
@@ -272,6 +294,28 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     }
   }
 
+  void _handleSistemaHabitacionalChanged(String? novoSistema) {
+    setState(() {
+      _sistemaHabitacional = novoSistema;
+
+      final empresaId = ref.read(loggedUserCompanyIdProvider).value;
+      if (novoSistema != null && _tipoElemento != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido =
+            tipos?.any(
+              (t) => t.nome == _tipoElemento && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _isDirty = true;
+          _tipoElemento = null;
+        }
+      }
+    });
+  }
+
   Future<void> _handleAddOption(ElementoInfoDropdownField field) async {
     String? newOption;
 
@@ -295,7 +339,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     } else if (field == ElementoInfoDropdownField.tipoElemento) {
       newOption = await showDialog<String>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => const NovoTipoElementoModal(),
       );
     } else if (field == ElementoInfoDropdownField.tipologiaEstrutural) {
@@ -320,18 +364,21 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       _isDirty = true;
       switch (field) {
         case ElementoInfoDropdownField.tipoElemento:
-          if (!_tipoElementoOptions.contains(normalized))
+          if (!_tipoElementoOptions.contains(normalized)) {
             _tipoElementoOptions.add(normalized);
+          }
           _tipoElemento = normalized;
           break;
         case ElementoInfoDropdownField.tipologiaEstrutural:
-          if (!_tipologiaOptions.contains(normalized))
+          if (!_tipologiaOptions.contains(normalized)) {
             _tipologiaOptions.add(normalized);
+          }
           _tipologiaEstrutural = normalized;
           break;
         case ElementoInfoDropdownField.revestimento:
-          if (!_revestimentoOptions.contains(normalized))
+          if (!_revestimentoOptions.contains(normalized)) {
             _revestimentoOptions.add(normalized);
+          }
           _revestimento = normalized;
           break;
         default:
@@ -407,13 +454,27 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
       locaisPorEstruturaProvider(widget.estruturaId),
     );
 
+    final empresaId = usuarioEmpresaIdAsync.value;
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId));
+    final tiposElementoAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
     List<String> locaisFinais = List.from(_localOptions);
 
+    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+        .where(
+          (t) => _sistemaHabitacional == null || t.sistemaId == _sistemaHabitacional,
+        )
+        .map((t) => t.nome);
+    tiposFinais = {...tiposFinais, ...tiposDoSistema}.toList();
+
     opcoesFormulario.whenData((opcoes) {
-      tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
       tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
       revestimentosFinais = {
         ...revestimentosFinais,
@@ -466,7 +527,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   'Elemento',
                   style: TextStyle(
                     fontSize: 11,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     fontWeight: FontWeight.w500,
                     letterSpacing: 0.5,
                   ),
@@ -509,6 +570,32 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   ),
                   const SizedBox(height: 18),
 
+                  IgnorePointer(
+                    ignoring: !canEdit,
+                    child: CustomDropdownWithAdd<String>(
+                      label: 'Sistema Habitacional',
+                      hint: 'Selecione',
+                      value: _sistemaHabitacional,
+                      items: (sistemasAsync?.value ?? const <CampoItemModel>[])
+                          .map(
+                            (s) => DropdownMenuItem<String>(
+                              value: s.id,
+                              child: Text(
+                                s.nome,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: canEdit
+                          ? _handleSistemaHabitacionalChanged
+                          : null,
+                      onAddPressed: () {},
+                      isAddEnabled: false,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
                   _buildDropdownField(
                     label: 'Tipo do Elemento',
                     value: _tipoElemento,
@@ -536,7 +623,12 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  Center(child: _PlantaCard(onPressed: canEdit ? () {} : null)),
+                  Center(
+                    child: _PlantaCard(
+                      imageUrl: _marcacaoImagemUrl,
+                      onPressed: canEdit ? _abrirPlanejamento : null,
+                    ),
+                  ),
                   const SizedBox(height: 14),
 
                   if (canEdit)
@@ -545,16 +637,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
                         width: 292,
                         height: 40,
                         text: 'Adicionar marcação em Planta',
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) => PlanejamentoPlantasScreen(
-                                estruturaId: widget.estruturaId,
-                              ),
-                            ),
-                          );
-                        },
+                        onPressed: _abrirPlanejamento,
                       ),
                     ),
                   const SizedBox(height: 18),
@@ -634,7 +717,7 @@ class _ElementoBanner extends StatelessWidget {
                   height: 46,
                   child: Icon(
                     Icons.edit_outlined,
-                    color: AppColors.greyDarkest.withOpacity(0.95),
+                    color: AppColors.greyDarkest.withValues(alpha: 0.95),
                     size: 31,
                   ),
                 ),
@@ -647,7 +730,8 @@ class _ElementoBanner extends StatelessWidget {
 }
 
 class _PlantaCard extends StatelessWidget {
-  const _PlantaCard({this.onPressed});
+  const _PlantaCard({this.imageUrl, this.onPressed});
+  final String? imageUrl;
   final VoidCallback? onPressed;
   @override
   Widget build(BuildContext context) {
@@ -664,15 +748,34 @@ class _PlantaCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFF5E5E5E), width: 1),
-            image: const DecorationImage(
-              image: AssetImage('assets/images/planta_elementos_info.png'),
-              fit: BoxFit.cover,
-            ),
           ),
+          child: _PlantaCardImage(imageUrl: imageUrl),
         ),
       ),
     );
   }
+}
+
+class _PlantaCardImage extends StatelessWidget {
+  const _PlantaCardImage({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return _fallback();
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Image.asset(
+    'assets/images/planta_elementos_info.png',
+    fit: BoxFit.cover,
+  );
 }
 
 enum ElementoInfoDropdownField {

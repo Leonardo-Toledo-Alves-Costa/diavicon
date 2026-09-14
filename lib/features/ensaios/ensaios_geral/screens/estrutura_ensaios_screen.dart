@@ -7,17 +7,22 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../models/ensaio_resumo_model.dart';
 import '../providers/ensaios_provider.dart';
 import 'pontos_ensaio_screen.dart';
+import '../../ensaios_inspecao_visual/screens/inspecao_visual_lista_screen.dart';
 
 
 
 class EstruturaEnsaiosScreen extends ConsumerWidget {
   final String estruturaId;
   final String projetoId;
+  final String projetoNome; 
+  final String estruturaNome;
 
   const EstruturaEnsaiosScreen({
     super.key,
     required this.estruturaId,
     required this.projetoId,
+    this.projetoNome = 'Projeto',
+    this.estruturaNome = 'Estrutura',
   });
 
   @override
@@ -75,18 +80,42 @@ class EstruturaEnsaiosScreen extends ConsumerWidget {
 
               return GestureDetector(
                 onTap: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => PontosEnsaioScreen(
-                        projetoId: projetoId,
-                        estruturaId: estruturaId,
-                        tipoEnsaioId: ensaio.id, // 👈 Pega o ID (UUID) da tabela tipos_ensaio
-                        iconeEnsaio: ensaio.iconePath,
+                  // 🌟 A LÓGICA DE ROTEAMENTO DINÂMICO ENTRA AQUI 🌟
+                  final nomeEnsaioLower = ensaio.nome.toLowerCase();
+                  
+                  if (nomeEnsaioLower.contains('inspeção visual') || nomeEnsaioLower.contains('inspecao visual')) {
+                    // Rota para o módulo de Inspeção Visual
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => InspecaoVisualListaScreen(
+                          projetoId: projetoId,
+                          projetoNome: projetoNome,
+                          estruturaNome: estruturaNome,
+                          estruturaId: estruturaId,
+                          iconeEnsaio: ensaio.iconePath,
+                          
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    // Rota padrão para ensaios regulares (Potencial, Resistividade, etc)
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PontosEnsaioScreen(
+                          projetoId: projetoId,
+                          estruturaId: estruturaId,
+                          tipoEnsaioId: ensaio.id, // Pega o ID (UUID) da tabela tipos_ensaio
+                          iconeEnsaio: ensaio.iconePath,
+                        ),
+                      ),
+                    );
+                  }
                 },
+
+
+
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(

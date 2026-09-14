@@ -36,7 +36,10 @@ class ProjectHeader extends StatelessWidget {
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.4],
-                colors: [Colors.black.withOpacity(0.5), Colors.transparent],
+                colors: [
+                  Colors.black.withValues(alpha: 0.5),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),

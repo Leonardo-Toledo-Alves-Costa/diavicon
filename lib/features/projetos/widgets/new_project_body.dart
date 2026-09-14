@@ -10,7 +10,7 @@ import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_with_add.dart';
 
 import '../providers/projeto_form_provider.dart';
-import '../providers/projetos_provider.dart'; 
+import '../providers/projetos_provider.dart';
 import '../providers/clientes_provider.dart';
 import '../../auth/providers/auth_provider.dart';
 
@@ -34,14 +34,19 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   // 🔥 NOVA LÓGICA DE FOTO COM ENQUADRAMENTO
   Future<void> _escolherImagem() async {
     try {
-      FilePickerResult? result = await FilePicker.pickFiles(type: FileType.image);
-      
+      FilePickerResult? result = await FilePicker.pickFiles(
+        type: FileType.image,
+      );
+
       if (result != null && result.files.single.path != null) {
         final pickedFilePath = result.files.single.path!;
 
         CroppedFile? croppedFile = await ImageCropper().cropImage(
           sourcePath: pickedFilePath,
-          aspectRatio: const CropAspectRatio(ratioX: 16, ratioY: 9), // Força 16:9
+          aspectRatio: const CropAspectRatio(
+            ratioX: 16,
+            ratioY: 9,
+          ), // Força 16:9
           uiSettings: [
             AndroidUiSettings(
               toolbarTitle: 'Enquadrar Capa',
@@ -61,9 +66,12 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
 
         if (croppedFile != null) {
           // Salva o arquivo recortado no provider
-          ref.read(projetoFormProvider.notifier).update(
-            (state) => state.copyWith(imagemProjeto: File(croppedFile.path)),
-          );
+          ref
+              .read(projetoFormProvider.notifier)
+              .update(
+                (state) =>
+                    state.copyWith(imagemProjeto: File(croppedFile.path)),
+              );
         }
       }
     } catch (e) {
@@ -78,7 +86,10 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     final user = ref.read(currentUserProvider);
 
     if (user == null || user.empresaId == null) {
-      _showSnackBar('Erro: Empresa não identificada no seu perfil.', isError: true);
+      _showSnackBar(
+        'Erro: Empresa não identificada no seu perfil.',
+        isError: true,
+      );
       return;
     }
 
@@ -95,24 +106,22 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
     setState(() => _estaSalvando = true);
 
     try {
-      final repo = ref.read(projetoRepositoryProvider);
+      final repo = ref.read(projectRepositoryProvider);
 
       await repo.createProject(
         nome: _nomeController.text.trim(),
-        empresaGestoraId: user.empresaId!,
-        usuarioId: user.id,
         empresaClienteId: formState.clienteId,
         isNovoCliente: formState.isNovoCliente,
         emailNovoCliente: formState.emailNovoCliente,
         nomeNovoCliente: formState.clienteNome,
         imagemProjeto: formState.imagemProjeto,
-        fotoNovoCliente: formState.clienteFotoUrl != null 
-            ? File(formState.clienteFotoUrl!) 
+        fotoNovoCliente: formState.clienteFotoUrl != null
+            ? File(formState.clienteFotoUrl!)
             : null,
       );
 
       ref.invalidate(projetoFormProvider);
-      ref.invalidate(filteredProjectsProvider); 
+      ref.invalidate(projectsProvider);
 
       if (mounted) {
         Navigator.pop(context);
@@ -142,7 +151,7 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   @override
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    
+
     final rascunho = ref.watch(projetoFormProvider);
     final clientesDropdownAsync = ref.watch(dropdownClientesProvider);
 
@@ -174,11 +183,18 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                     ? const Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.add_a_photo_outlined, size: 32, color: AppColors.greyMedium),
+                          Icon(
+                            Icons.add_a_photo_outlined,
+                            size: 32,
+                            color: AppColors.greyMedium,
+                          ),
                           SizedBox(height: 8),
                           Text(
                             'Adicionar capa',
-                            style: TextStyle(color: AppColors.greyMediumDark, fontSize: 14),
+                            style: TextStyle(
+                              color: AppColors.greyMediumDark,
+                              fontSize: 14,
+                            ),
                           ),
                         ],
                       )
@@ -195,10 +211,18 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                       color: AppColors.white,
                       shape: BoxShape.circle,
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.1), blurRadius: 8, offset: const Offset(0, 4)),
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.1),
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
                       ],
                     ),
-                    child: const Icon(Icons.edit_square, color: AppColors.textDark, size: 24),
+                    child: const Icon(
+                      Icons.edit_square,
+                      color: AppColors.textDark,
+                      size: 24,
+                    ),
                   ),
                 ),
             ],
@@ -237,16 +261,15 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
                 ref
                     .read(projetoFormProvider.notifier)
                     .update(
-                      (state) => state.copyWith(
-                        clienteId: val,
-                        clienteNome: selecionado['nome'],
-                        isNovoCliente: false,
+                      (state) => state.withExistingClient(
+                        id: val,
+                        name: selecionado['nome'].toString(),
                       ),
                     );
               }
             },
             onAddPressed: () {
-              if (_estaSalvando) return; 
+              if (_estaSalvando) return;
 
               showModalBottomSheet(
                 context: context,

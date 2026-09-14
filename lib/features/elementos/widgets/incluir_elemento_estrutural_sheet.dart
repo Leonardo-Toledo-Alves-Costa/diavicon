@@ -1,10 +1,14 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/compact_search_bar.dart';
+import 'package:diavicon/core/widgets/item_filter_field.dart';
 import 'package:diavicon/core/widgets/local_search_dropdown.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/screens/novo_elem_estrutural_screen.dart';
+import 'package:diavicon/features/empresa/providers/campos_personalizaveis_provider.dart';
+import 'package:diavicon/features/empresa/providers/sistema_provider.dart';
 import 'package:diavicon/features/estrutura/providers/estrutura_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +20,8 @@ class ElementoEstruturalOption {
     required this.title,
     required this.subtitle,
     required this.detail,
-    this.imageUrl, 
+    this.tipo,
+    this.imageUrl,
     this.incluido = true,
   });
 
@@ -24,6 +29,7 @@ class ElementoEstruturalOption {
   final String title;
   final String subtitle;
   final String detail;
+  final String? tipo;
   final String? imageUrl;
 
   final bool incluido;
@@ -40,7 +46,7 @@ Future<T?> showIncluirElementoEstruturalSheet<T>({
     isScrollControlled: true,
     useSafeArea: false, 
     backgroundColor: Colors.transparent,
-    barrierColor: Colors.black.withOpacity(0.42),
+    barrierColor: Colors.black.withValues(alpha: 0.42),
     builder: (context) => IncluirElementoEstruturalSheet(
       estruturaId: estruturaId,
       elementos: elementos,
@@ -77,7 +83,29 @@ class _IncluirElementoEstruturalSheetState
   bool get _isDbMode => widget.estruturaId != null;
 
   String? _localFiltro;
+  String? _sistemaFiltro;
+  String? _tipoFiltro;
   final FocusNode _searchFocusNode = FocusNode();
+
+  void _handleSistemaChanged(String? novoSistema) {
+    setState(() {
+      _sistemaFiltro = novoSistema;
+
+      final empresaId = ref.read(currentUserProvider)?.empresaId;
+      if (novoSistema != null && _tipoFiltro != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido = tipos?.any(
+              (t) => t.nome == _tipoFiltro && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _tipoFiltro = null;
+        }
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -132,7 +160,8 @@ class _IncluirElementoEstruturalSheetState
           : 'Elemento sem nome',
       subtitle: subtitlePartes.join(' - '),
       detail: elemento.local ?? '',
-      imageUrl: imageUrl, 
+      tipo: elemento.tipo,
+      imageUrl: imageUrl,
       incluido: elemento.ativo != false,
     );
   }
@@ -159,14 +188,31 @@ class _IncluirElementoEstruturalSheetState
     );
   }
 
+  List<ElementoEstruturalOption> _aplicarFiltros(
+    List<ElementoEstruturalOption> options,
+    Set<String>? tiposPermitidosPorSistema,
+  ) {
+    if (_localFiltro != null) {
+      options = options.where((e) => e.detail == _localFiltro).toList();
+    }
+    if (_tipoFiltro != null) {
+      options = options.where((e) => e.tipo == _tipoFiltro).toList();
+    } else if (tiposPermitidosPorSistema != null) {
+      options = options
+          .where(
+            (e) => e.tipo != null && tiposPermitidosPorSistema.contains(e.tipo),
+          )
+          .toList();
+    }
+    return options;
+  }
+
   Widget _buildElementoList(
     AsyncValue<List<ElementoEstruturalOption>>? asyncOptions,
+    Set<String>? tiposPermitidosPorSistema,
   ) {
     if (asyncOptions == null) {
-      var mockList = widget.elementos;
-      if (_localFiltro != null) {
-        mockList = mockList.where((e) => e.detail == _localFiltro).toList();
-      }
+      final mockList = _aplicarFiltros(widget.elementos, tiposPermitidosPorSistema);
       return _optionsListView(mockList);
     }
 
@@ -179,9 +225,7 @@ class _IncluirElementoEstruturalSheetState
         ),
       ),
       data: (options) {
-        if (_localFiltro != null) {
-          options = options.where((e) => e.detail == _localFiltro).toList();
-        }
+        options = _aplicarFiltros(options, tiposPermitidosPorSistema);
 
         if (options.isEmpty) {
           _currentOptions = const [];
@@ -239,6 +283,22 @@ class _IncluirElementoEstruturalSheetState
               .watch(todosElementosPorEstruturaProvider(estruturaId))
               .whenData((lista) => lista.map(_toOption).toList());
 
+    final empresaId = ref.watch(currentUserProvider)?.empresaId;
+    final tiposAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
+    Set<String>? tiposPermitidosPorSistema;
+    if (_sistemaFiltro != null) {
+      final tiposList = tiposAsync?.value;
+      if (tiposList != null) {
+        tiposPermitidosPorSistema = tiposList
+            .where((t) => t.sistemaId == _sistemaFiltro)
+            .map((t) => t.nome)
+            .toSet();
+      }
+    }
+
     return Align(
       alignment: Alignment.bottomCenter,
       child: Container( 
@@ -251,7 +311,7 @@ class _IncluirElementoEstruturalSheetState
             child: Material(
               color: Colors.white,
               elevation: 6,
-              shadowColor: Colors.black.withOpacity(0.25),
+              shadowColor: Colors.black.withValues(alpha: 0.25),
               borderRadius: BorderRadius.circular(22),
               clipBehavior: Clip.antiAlias,
               child: Padding(
@@ -269,17 +329,31 @@ class _IncluirElementoEstruturalSheetState
                     
                     _FilterRow(
                       estruturaId: estruturaId,
+                      empresaId: empresaId,
                       localFiltro: _localFiltro,
+                      sistemaFiltro: _sistemaFiltro,
+                      tipoFiltro: _tipoFiltro,
                       searchFocusNode: _searchFocusNode,
                       onLocalChanged: (novoLocal) {
                         setState(() {
                           _localFiltro = novoLocal;
                         });
                       },
+                      onSistemaChanged: _handleSistemaChanged,
+                      onTipoChanged: (novoTipo) {
+                        setState(() {
+                          _tipoFiltro = novoTipo;
+                        });
+                      },
                     ),
-                    
+
                     const SizedBox(height: 20),
-                    Expanded(child: _buildElementoList(asyncOptions)),
+                    Expanded(
+                      child: _buildElementoList(
+                        asyncOptions,
+                        tiposPermitidosPorSistema,
+                      ),
+                    ),
                     const SizedBox(height: 14),
                     Align(
                       alignment: Alignment.centerRight,
@@ -432,7 +506,7 @@ class _StructureAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -441,7 +515,7 @@ class _StructureAvatar extends StatelessWidget {
           : Image.asset(
               'assets/images/obra.png',
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.apartment_outlined,
                 color: AppColors.greyDarkest,
                 size: 24,
@@ -451,86 +525,133 @@ class _StructureAvatar extends StatelessWidget {
   }
 }
 
-class _FilterRow extends StatelessWidget {
+class _FilterRow extends ConsumerWidget {
   final String? estruturaId;
+  final String? empresaId;
   final String? localFiltro;
+  final String? sistemaFiltro;
+  final String? tipoFiltro;
   final ValueChanged<String?> onLocalChanged;
+  final ValueChanged<String?> onSistemaChanged;
+  final ValueChanged<String?> onTipoChanged;
   final FocusNode searchFocusNode;
 
   const _FilterRow({
     this.estruturaId,
+    this.empresaId,
     this.localFiltro,
+    this.sistemaFiltro,
+    this.tipoFiltro,
     required this.onLocalChanged,
+    required this.onSistemaChanged,
+    required this.onTipoChanged,
     required this.searchFocusNode,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          flex: 7, 
-          child: estruturaId != null 
-            ? LocalSearchDropdown(
-                estruturaId: estruturaId!,
-                value: localFiltro,
-                focusNode: searchFocusNode,
-                onChanged: onLocalChanged,
-              ) 
-            : const CompactSearchBar(hintText: 'Local')
-        ),
-        
-        if (localFiltro != null) ...[
-          const SizedBox(width: 4),
-          IconButton(
-            icon: const Icon(Icons.clear, color: AppColors.error, size: 20),
-            onPressed: () => onLocalChanged(null),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ],
+  Widget build(BuildContext context, WidgetRef ref) {
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId!));
+    final tiposAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId!));
 
-        const SizedBox(width: 9),
-        const Expanded(flex: 6, child: _ElementoFilterField()),
+    final tiposDoSistema = (tiposAsync?.value ?? const <CampoItemModel>[])
+        .where((t) => sistemaFiltro == null || t.sistemaId == sistemaFiltro)
+        .toList();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: estruturaId != null
+                  ? LocalSearchDropdown(
+                      estruturaId: estruturaId!,
+                      value: localFiltro,
+                      focusNode: searchFocusNode,
+                      onChanged: onLocalChanged,
+                    )
+                  : const CompactSearchBar(hintText: 'Local'),
+            ),
+            if (localFiltro != null) ...[
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.clear, color: AppColors.error, size: 20),
+                onPressed: () => onLocalChanged(null),
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: ItemFilterField(
+                hintText: 'Sistema',
+                selectedLabel: _labelParaId(
+                  sistemasAsync?.value,
+                  sistemaFiltro,
+                ),
+                isLoading: sistemasAsync?.isLoading ?? false,
+                onClear: () => onSistemaChanged(null),
+                onTap: () async {
+                  final itens = (sistemasAsync?.value ?? const <CampoItemModel>[])
+                      .map((s) => (value: s.id, label: s.nome))
+                      .toList();
+                  final resultado = await showItemFilterPickerSheet(
+                    context: context,
+                    titulo: 'Sistema Habitacional',
+                    items: itens,
+                    valorSelecionado: sistemaFiltro,
+                  );
+                  if (resultado == null) return;
+                  onSistemaChanged(
+                    resultado == kLimparFiltroValue ? null : resultado,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: ItemFilterField(
+                hintText: 'Elemento',
+                selectedLabel: tipoFiltro,
+                isLoading: tiposAsync?.isLoading ?? false,
+                onClear: () => onTipoChanged(null),
+                onTap: () async {
+                  final itens = tiposDoSistema
+                      .map((t) => (value: t.nome, label: t.nome))
+                      .toList();
+                  final resultado = await showItemFilterPickerSheet(
+                    context: context,
+                    titulo: 'Tipo de Elemento Estrutural',
+                    items: itens,
+                    valorSelecionado: tipoFiltro,
+                  );
+                  if (resultado == null) return;
+                  onTipoChanged(
+                    resultado == kLimparFiltroValue ? null : resultado,
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ],
     );
   }
-}
 
-class _ElementoFilterField extends StatelessWidget {
-  const _ElementoFilterField();
-
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      height: 36,
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AppColors.inputBorder),
-          borderRadius: BorderRadius.circular(22),
-        ),
-        child: Padding(
-          padding: const EdgeInsets.only(left: 14, right: 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  'Elemento',
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.lato(
-                    color: AppColors.hintText.withOpacity(0.45),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-              ),
-              const Icon(Icons.tune, color: AppColors.primary, size: 19),
-            ],
-          ),
-        ),
-      ),
-    );
+  String? _labelParaId(List<CampoItemModel>? items, String? id) {
+    if (items == null || id == null) return null;
+    for (final item in items) {
+      if (item.id == id) return item.nome;
+    }
+    return null;
   }
 }
 
@@ -550,7 +671,7 @@ class _ElementoSelectionCard extends StatelessWidget {
     return Material(
       color: const Color(0xFFFAFAFA),
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.25),
+      shadowColor: Colors.black.withValues(alpha: 0.25),
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -636,7 +757,7 @@ class _ElementoAvatar extends StatelessWidget {
           ? Image.network(
               imageUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => const Icon(
+              errorBuilder: (_, _, _) => const Icon(
                 Icons.broken_image_outlined,
                 color: AppColors.greyDarkest,
                 size: 28,

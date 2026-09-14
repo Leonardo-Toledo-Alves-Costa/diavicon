@@ -32,10 +32,13 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final regioesAsync = ref.watch(
-      regioesEnsaioProvider(
-        RegioesFiltro(plantaId: plantaId, empresaId: empresaIdSelecionada),
-      ),
+    final filtroRegioes = RegioesFiltro(
+      plantaId: plantaId,
+      empresaId: empresaIdSelecionada,
+    );
+    final regioesAsync = ref.watch(regioesEnsaioProvider(filtroRegioes));
+    final quantidadeEnsaiosAsync = ref.watch(
+      quantidadeEnsaiosPorRegiaoProvider(filtroRegioes),
     );
 
     return Container(
@@ -127,9 +130,11 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                     vertical: 8,
                   ),
                   itemCount: regioes.length,
-                  separatorBuilder: (_, __) => const SizedBox(height: 16),
+                  separatorBuilder: (_, _) => const SizedBox(height: 16),
                   itemBuilder: (context, index) {
                     final regiao = regioes[index];
+                    final qtdEnsaios =
+                        quantidadeEnsaiosAsync.value?[regiao.id] ?? 0;
                     final corPino = Color(
                       int.parse(regiao.corMarcacao.replaceFirst('#', '0xff')),
                     );
@@ -251,7 +256,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                     : BorderRadius.circular(8),
                                 boxShadow: [
                                   BoxShadow(
-                                    color: corPino.withOpacity(0.3),
+                                    color: corPino.withValues(alpha: 0.3),
                                     blurRadius: 4,
                                     offset: const Offset(0, 2),
                                   ),
@@ -289,7 +294,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                       ),
                                       const SizedBox(width: 8),
                                       Text(
-                                        '${regiao.qtdEnsaios.toString().padLeft(2, '0')} Ensaios',
+                                        '${qtdEnsaios.toString().padLeft(2, '0')} Ensaios',
                                         style: GoogleFonts.lato(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w500,

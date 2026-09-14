@@ -60,7 +60,7 @@ class StructureCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.inputBorder.withOpacity(0.5)),
+          border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -103,7 +103,7 @@ class StructureCard extends StatelessWidget {
                     estrutura.nome ?? 'Sem nome',
                     style: const TextStyle(
                       fontWeight: FontWeight.bold,
-                      fontSize: 13,
+                      fontSize: 14,
                     ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -112,7 +112,7 @@ class StructureCard extends StatelessWidget {
                   Text(
                     estrutura.tipoNome ?? 'Sem tipo',
                     style: const TextStyle(
-                      fontSize: 10,
+                      fontSize: 12,
                       color: AppColors.hintText,
                     ),
                     maxLines: 1,
@@ -122,7 +122,7 @@ class StructureCard extends StatelessWidget {
                   Text(
                     '${estrutura.idadeCalculada} Anos  CAA ${estrutura.caa ?? '-'}',
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       color: AppColors.hintText,
                     ),
                     maxLines: 1,
@@ -132,7 +132,7 @@ class StructureCard extends StatelessWidget {
                   Text(
                     estrutura.conjuntoNome ?? 'Sem setor vinculado',
                     style: const TextStyle(
-                      fontSize: 9,
+                      fontSize: 12,
                       color: AppColors.hintText,
                     ),
                     maxLines: 1,

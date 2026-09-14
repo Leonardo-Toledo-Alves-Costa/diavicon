@@ -58,7 +58,7 @@ class _ConfigurarQtdEnsaioModalState extends State<ConfigurarQtdEnsaioModal> {
                   widget.iconeEnsaio,
                   width: 36,
                   height: 36,
-                  errorBuilder: (_, __, ___) => const Icon(Icons.science_outlined, size: 36, color: AppColors.textDark),
+                  errorBuilder: (_, _, _) => const Icon(Icons.science_outlined, size: 36, color: AppColors.textDark),
                 ),
                 const SizedBox(width: 12),
                 Expanded(

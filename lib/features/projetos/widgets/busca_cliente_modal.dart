@@ -7,7 +7,13 @@ import '../../../core/widgets/modal_selecao_base.dart';
 import '../providers/projeto_form_provider.dart';
 
 class BuscaClienteModal extends ConsumerStatefulWidget {
-  const BuscaClienteModal({super.key});
+  /// Quando informado, é chamado no lugar da gravação padrão em
+  /// `projetoFormProvider` (usada no fluxo de criação de projeto) — permite
+  /// reaproveitar essa mesma busca fora do formulário de criação, por
+  /// exemplo pra convidar um cliente pra um projeto já existente.
+  final void Function(String id, String nome)? onSelecionado;
+
+  const BuscaClienteModal({super.key, this.onSelecionado});
 
   @override
   ConsumerState<BuscaClienteModal> createState() => _BuscaClienteModalState();
@@ -51,14 +57,14 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
       filhos: [
         _buildCampoBusca(),
         const SizedBox(height: 24),
-        
+
         if (_termoBusca.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 20),
             child: Center(
               child: Text(
-                'Digite o nome ou CNPJ para buscar.', 
-                style: TextStyle(color: AppColors.greyMedium)
+                'Digite o nome ou CNPJ para buscar.',
+                style: TextStyle(color: AppColors.greyMedium),
               ),
             ),
           )
@@ -70,15 +76,18 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                 child: CircularProgressIndicator(color: AppColors.primary),
               ),
             ),
-            error: (err, stack) => Text('Erro na busca: $err', style: const TextStyle(color: Colors.red)),
+            error: (err, stack) => Text(
+              'Erro na busca: $err',
+              style: const TextStyle(color: Colors.red),
+            ),
             data: (empresasEncontradas) {
               if (empresasEncontradas.isEmpty) {
                 return const Padding(
                   padding: EdgeInsets.symmetric(vertical: 20),
                   child: Center(
                     child: Text(
-                      'Nenhum cliente encontrado.', 
-                      style: TextStyle(color: AppColors.greyMedium)
+                      'Nenhum cliente encontrado.',
+                      style: TextStyle(color: AppColors.greyMedium),
                     ),
                   ),
                 );
@@ -88,7 +97,9 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
               return Column(
                 children: empresasEncontradas.map((empresa) {
                   // Pega o CNPJ ou usa um texto padrão
-                  final String infoSubtitulo = empresa['cnpj'] != null && empresa['cnpj'].toString().isNotEmpty
+                  final String infoSubtitulo =
+                      empresa['cnpj'] != null &&
+                          empresa['cnpj'].toString().isNotEmpty
                       ? 'CNPJ: ${empresa['cnpj']}'
                       : 'Cliente na plataforma';
 
@@ -96,6 +107,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                     id: empresa['id'],
                     nome: empresa['nome'],
                     subtitulo: infoSubtitulo,
+                    fotoUrl: empresa['foto_url']?.toString(),
                   );
                 }).toList(),
               );
@@ -109,22 +121,28 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Nome do cliente', style: AppTextStyles.labelCampo),
+        Text('Nome ou CNPJ do cliente', style: AppTextStyles.labelCampo),
         const SizedBox(height: 6),
         Row(
           children: [
             Expanded(
               child: TextField(
                 controller: _buscaController,
-                onSubmitted: (_) => _realizarBusca(), 
+                onSubmitted: (_) => _realizarBusca(),
                 style: AppTextStyles.corpoTextoEscuro,
                 decoration: InputDecoration(
-                  hintText: 'Digite o nome...',
-                  hintStyle: const TextStyle(color: AppColors.greyLight, fontSize: 14),
+                  hintText: 'Digite o nome ou CNPJ...',
+                  hintStyle: const TextStyle(
+                    color: AppColors.greyLight,
+                    fontSize: 14,
+                  ),
                   fillColor: Colors.white,
                   filled: true,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: AppColors.greyLight),
@@ -142,7 +160,6 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
               ),
             ),
             const SizedBox(width: 12),
-            const Icon(Icons.tune, color: AppColors.primary, size: 28),
           ],
         ),
       ],
@@ -150,19 +167,22 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
   }
 
   Widget _buildItemCliente({
-    required String id, 
-    required String nome, 
+    required String id,
+    required String nome,
     required String subtitulo,
+    String? fotoUrl,
   }) {
     return InkWell(
       onTap: () {
-        ref.read(projetoFormProvider.notifier).update((state) => state.copyWith(
-              clienteId: id,
-              clienteNome: nome,
-              isNovoCliente: false, 
-            ));
-        
-        Navigator.pop(context); 
+        if (widget.onSelecionado != null) {
+          widget.onSelecionado!(id, nome);
+        } else {
+          ref
+              .read(projetoFormProvider.notifier)
+              .update((state) => state.withExistingClient(id: id, name: nome));
+        }
+
+        Navigator.pop(context);
       },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 12.0),
@@ -176,13 +196,15 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                 color: Colors.white,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.05),
+                    color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
-                  )
+                  ),
                 ],
-                image: const DecorationImage(
-                  image: AssetImage('assets/images/empresa.png'), 
+                image: DecorationImage(
+                  image: (fotoUrl != null && fotoUrl.isNotEmpty)
+                      ? NetworkImage(fotoUrl) as ImageProvider
+                      : const AssetImage('assets/images/empresa.png'),
                   fit: BoxFit.contain,
                 ),
               ),
@@ -203,7 +225,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                   Text(
                     subtitulo,
                     style: AppTextStyles.corpoTextoEscuro.copyWith(
-                      color: AppColors.greyMedium, 
+                      color: AppColors.greyMedium,
                       fontSize: 13,
                     ),
                   ),

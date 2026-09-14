@@ -1,11 +1,10 @@
+import 'package:diavicon/features/app_shell/widgets/perfil_drawer.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_empty_state.dart';
-// 👇 IMPORT DO DRAWER ADICIONADO AQUI
-import '../../home/screens/perfil_drawer.dart'; 
 import '../providers/estrutura_provider.dart';
 import '../widgets/estruturas_header.dart';
 import '../widgets/estruturas_filter_row.dart';
@@ -18,7 +17,8 @@ final estruturaConjuntoFiltroProvider = StateProvider<String?>((ref) => null);
 final estruturaIsCompactViewProvider = StateProvider<bool>((ref) => false);
 
 // 👇 CHAVE GLOBAL IGUAL À DA TELA DE PROJETOS ADICIONADA AQUI
-final GlobalKey<ScaffoldState> _estruturasScaffoldKey = GlobalKey<ScaffoldState>();
+final GlobalKey<ScaffoldState> _estruturasScaffoldKey =
+    GlobalKey<ScaffoldState>();
 
 class EstruturasTabScreen extends ConsumerWidget {
   const EstruturasTabScreen({super.key});
@@ -27,7 +27,7 @@ class EstruturasTabScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final topPadding = MediaQuery.of(context).padding.top;
     final estruturasAsync = ref.watch(estruturasDaMinhaEmpresaProvider);
-    
+
     final searchQuery = ref.watch(estruturaSearchQueryProvider);
     final conjuntoFiltroId = ref.watch(estruturaConjuntoFiltroProvider);
     final isCompactView = ref.watch(estruturaIsCompactViewProvider);
@@ -36,7 +36,7 @@ class EstruturasTabScreen extends ConsumerWidget {
       // 👇 CHAVE E DRAWER LIGADOS AO SCAFFOLD
       key: _estruturasScaffoldKey,
       drawer: const PerfilDrawer(),
-      backgroundColor: const Color(0xFFF5F5F5), 
+      backgroundColor: const Color(0xFFF5F5F5),
       resizeToAvoidBottomInset: false,
       body: Column(
         children: [
@@ -54,7 +54,7 @@ class EstruturasTabScreen extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 24.0),
               child: Column(
                 children: [
-                  const SizedBox(height: 40), 
+                  const SizedBox(height: 40),
 
                   // FILTROS EXTRAÍDOS
                   const EstruturasFilterRow(),
@@ -65,14 +65,20 @@ class EstruturasTabScreen extends ConsumerWidget {
                   Expanded(
                     child: estruturasAsync.when(
                       loading: () => const Center(
-                        child: CircularProgressIndicator(color: AppColors.primary),
+                        child: CircularProgressIndicator(
+                          color: AppColors.primary,
+                        ),
                       ),
                       error: (err, stack) => Center(child: Text('Erro: $err')),
                       data: (lista) {
                         // Filtro Duplo
                         final filtradas = lista.where((e) {
-                          final matchBusca = (e.nome ?? '').toLowerCase().contains(searchQuery.toLowerCase());
-                          final matchConjunto = conjuntoFiltroId == null || e.conjuntoEstruturalId == conjuntoFiltroId;
+                          final matchBusca = (e.nome ?? '')
+                              .toLowerCase()
+                              .contains(searchQuery.toLowerCase());
+                          final matchConjunto =
+                              conjuntoFiltroId == null ||
+                              e.conjuntoEstruturalId == conjuntoFiltroId;
                           return matchBusca && matchConjunto;
                         }).toList();
 
@@ -80,14 +86,16 @@ class EstruturasTabScreen extends ConsumerWidget {
                           return const Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              CustomEmptyState(text: 'Nenhuma estrutura encontrada'),
-                              SizedBox(height: 80), 
+                              CustomEmptyState(
+                                text: 'Nenhuma estrutura encontrada',
+                              ),
+                              SizedBox(height: 80),
                             ],
                           );
                         }
 
                         return ListView.builder(
-                          padding: const EdgeInsets.only(top: 8, bottom: 100), 
+                          padding: const EdgeInsets.only(top: 8, bottom: 100),
                           itemCount: filtradas.length,
                           itemBuilder: (context, index) {
                             final estrutura = filtradas[index];

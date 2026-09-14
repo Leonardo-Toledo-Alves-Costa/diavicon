@@ -2,37 +2,25 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/core/widgets/menu_app_bar.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/widgets/bigger_custom_button.dart';
 import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
+import 'package:diavicon/features/empresa/providers/campos_personalizaveis_provider.dart';
+import 'package:diavicon/features/empresa/providers/sistema_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-const List<String> _defaultTipoElementoOptions = <String>[
-  'Pilar',
-  'Viga',
-  'Laje',
-];
+const List<String> _defaultTipoElementoOptions = <String>[];
 
-const List<String> _defaultTipologiaOptions = <String>[
-  'Concreto armado',
-  'Metalica',
-  'Mista',
-];
+const List<String> _defaultTipologiaOptions = <String>[];
 
-const List<String> _defaultLocalOptions = <String>[
-  'Interno',
-  'Externo',
-  'Cobertura',
-];
+const List<String> _defaultLocalOptions = <String>[];
 
-const List<String> _defaultRevestimentoOptions = <String>[
-  'Pintura',
-  'Argamassa',
-  'Ceramica',
-];
+const List<String> _defaultRevestimentoOptions = <String>[];
 
-class ElementoInfoScreen extends StatefulWidget {
+class ElementoInfoScreen extends ConsumerStatefulWidget {
   const ElementoInfoScreen({
     super.key,
     this.initialNome = 'ABC Corp.',
@@ -40,6 +28,7 @@ class ElementoInfoScreen extends StatefulWidget {
     this.initialTipologiaEstrutural,
     this.initialLocalElemento,
     this.initialRevestimento,
+    this.initialMarcacaoImagemUrl,
     this.initialTipoElementoOptions = _defaultTipoElementoOptions,
     this.initialTipologiaOptions = _defaultTipologiaOptions,
     this.initialLocalOptions = _defaultLocalOptions,
@@ -58,6 +47,7 @@ class ElementoInfoScreen extends StatefulWidget {
   final String? initialTipologiaEstrutural;
   final String? initialLocalElemento;
   final String? initialRevestimento;
+  final String? initialMarcacaoImagemUrl;
   final List<String> initialTipoElementoOptions;
   final List<String> initialTipologiaOptions;
   final List<String> initialLocalOptions;
@@ -71,18 +61,20 @@ class ElementoInfoScreen extends StatefulWidget {
   final VoidCallback? onOpenRelatorios;
 
   @override
-  State<ElementoInfoScreen> createState() => _ElementoInfoScreenState();
+  ConsumerState<ElementoInfoScreen> createState() => _ElementoInfoScreenState();
 }
 
-class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
+class _ElementoInfoScreenState extends ConsumerState<ElementoInfoScreen> {
   final GlobalKey<RightMenuBarState> _rightMenuKey =
       GlobalKey<RightMenuBarState>();
   late final TextEditingController _nomeController;
 
+  String? _sistemaHabitacional;
   String? _tipoElemento;
   String? _tipologiaEstrutural;
   String? _localElemento;
   String? _revestimento;
+  String? _marcacaoImagemUrl;
 
   List<String> _tipoElementoOptions = <String>[];
   List<String> _tipologiaOptions = <String>[];
@@ -101,6 +93,7 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
     _tipologiaEstrutural = widget.initialTipologiaEstrutural;
     _localElemento = widget.initialLocalElemento;
     _revestimento = widget.initialRevestimento;
+    _marcacaoImagemUrl = widget.initialMarcacaoImagemUrl;
     _tipoElementoOptions = List<String>.from(widget.initialTipoElementoOptions);
     _tipologiaOptions = List<String>.from(widget.initialTipologiaOptions);
     _localOptions = List<String>.from(widget.initialLocalOptions);
@@ -147,6 +140,7 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
         _tipologiaEstrutural = data.tipologiaEstrutural ?? _tipologiaEstrutural;
         _localElemento = data.localElemento ?? _localElemento;
         _revestimento = data.revestimento ?? _revestimento;
+        _marcacaoImagemUrl = data.marcacaoImagemUrl ?? _marcacaoImagemUrl;
         _sanitizeSelections();
       });
     } catch (error) {
@@ -157,6 +151,27 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
         setState(() => _isLoadingFormData = false);
       }
     }
+  }
+
+  void _handleSistemaHabitacionalChanged(String? novoSistema) {
+    setState(() {
+      _sistemaHabitacional = novoSistema;
+
+      final empresaId = ref.read(currentUserProvider)?.empresaId;
+      if (novoSistema != null && _tipoElemento != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido =
+            tipos?.any(
+              (t) => t.nome == _tipoElemento && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _tipoElemento = null;
+        }
+      }
+    });
   }
 
   Future<void> _handleAddOption(ElementoInfoDropdownField field) async {
@@ -324,6 +339,21 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
   Widget build(BuildContext context) {
     final topContentPadding = MediaQuery.paddingOf(context).top + 124;
 
+    final empresaId = ref.watch(currentUserProvider)?.empresaId;
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId));
+    final tiposElementoAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
+    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+        .where(
+          (t) => _sistemaHabitacional == null || t.sistemaId == _sistemaHabitacional,
+        )
+        .map((t) => t.nome);
+    final tiposFinais = {..._tipoElementoOptions, ...tiposDoSistema}.toList();
+
     return RightMenuBar(
       key: _rightMenuKey,
       onInformacoesPressed: () {},
@@ -357,10 +387,29 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
                     controller: _nomeController,
                   ),
                   const SizedBox(height: 18),
+                  CustomDropdownWithAdd<String>(
+                    label: 'Sistema Habitacional',
+                    hint: 'Selecione',
+                    value: _sistemaHabitacional,
+                    items: (sistemasAsync?.value ?? const <CampoItemModel>[])
+                        .map(
+                          (s) => DropdownMenuItem<String>(
+                            value: s.id,
+                            child: Text(s.nome, overflow: TextOverflow.ellipsis),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (_isLoadingFormData || _isSubmitting)
+                        ? null
+                        : _handleSistemaHabitacionalChanged,
+                    onAddPressed: () {},
+                    isAddEnabled: false,
+                  ),
+                  const SizedBox(height: 18),
                   _buildDropdownField(
                     label: 'Tipo do Elemento',
                     value: _tipoElemento,
-                    options: _tipoElementoOptions,
+                    options: tiposFinais,
                     field: ElementoInfoDropdownField.tipoElemento,
                   ),
                   const SizedBox(height: 18),
@@ -378,7 +427,12 @@ class _ElementoInfoScreenState extends State<ElementoInfoScreen> {
                     field: ElementoInfoDropdownField.localElemento,
                   ),
                   const SizedBox(height: 20),
-                  Center(child: _PlantaCard(onPressed: widget.onPlanPressed)),
+                  Center(
+                    child: _PlantaCard(
+                      imageUrl: _marcacaoImagemUrl,
+                      onPressed: widget.onPlanPressed,
+                    ),
+                  ),
                   const SizedBox(height: 14),
                   Center(
                     child: BiggerCustomButton(
@@ -452,7 +506,7 @@ class _ElementoBanner extends StatelessWidget {
                 height: 46,
                 child: Icon(
                   Icons.edit_outlined,
-                  color: AppColors.greyDarkest.withOpacity(0.95),
+                  color: AppColors.greyDarkest.withValues(alpha: 0.95),
                   size: 31,
                 ),
               ),
@@ -465,8 +519,9 @@ class _ElementoBanner extends StatelessWidget {
 }
 
 class _PlantaCard extends StatelessWidget {
-  const _PlantaCard({this.onPressed});
+  const _PlantaCard({this.imageUrl, this.onPressed});
 
+  final String? imageUrl;
   final VoidCallback? onPressed;
 
   @override
@@ -484,15 +539,34 @@ class _PlantaCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             border: Border.all(color: const Color(0xFF5E5E5E), width: 1),
-            image: const DecorationImage(
-              image: AssetImage('assets/images/planta_elementos_info.png'),
-              fit: BoxFit.cover,
-            ),
           ),
+          child: _PlantaCardImage(imageUrl: imageUrl),
         ),
       ),
     );
   }
+}
+
+class _PlantaCardImage extends StatelessWidget {
+  const _PlantaCardImage({this.imageUrl});
+
+  final String? imageUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final url = imageUrl;
+    if (url == null || url.isEmpty) return _fallback();
+    return Image.network(
+      url,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => _fallback(),
+    );
+  }
+
+  Widget _fallback() => Image.asset(
+    'assets/images/planta_elementos_info.png',
+    fit: BoxFit.cover,
+  );
 }
 
 enum ElementoInfoDropdownField {
@@ -509,6 +583,7 @@ class ElementoInfoFormData {
     this.tipologiaEstrutural,
     this.localElemento,
     this.revestimento,
+    this.marcacaoImagemUrl,
     this.tipoElementoOptions = const <String>[],
     this.tipologiaOptions = const <String>[],
     this.localOptions = const <String>[],
@@ -520,6 +595,7 @@ class ElementoInfoFormData {
   final String? tipologiaEstrutural;
   final String? localElemento;
   final String? revestimento;
+  final String? marcacaoImagemUrl;
   final List<String> tipoElementoOptions;
   final List<String> tipologiaOptions;
   final List<String> localOptions;

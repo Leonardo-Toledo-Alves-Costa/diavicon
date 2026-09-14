@@ -1,64 +1,43 @@
+import 'package:diavicon/core/providers/supabase_provider.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
+import 'package:diavicon/features/projetos/repositories/cliente_repository.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../auth/providers/auth_provider.dart';
+
 import 'projeto_form_provider.dart';
 
-// Busca a carteira de clientes no Supabase
-final clientesListaProvider = FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
-  final usuarioLogado = ref.watch(currentUserProvider);
-  if (usuarioLogado == null || usuarioLogado.empresaId == null) return [];
-
-  final String minhaEmpresaId = usuarioLogado.empresaId!; 
-  final supabase = Supabase.instance.client;
-
-  final data = await supabase
-      .from('empresa_clientes')
-      .select('cliente_id, empresas!cliente_id (id, nome)')
-      .eq('gestora_id', minhaEmpresaId);
-
-  final List<Map<String, dynamic>> lista = data.map((vinculo) {
-    final empresaInfo = vinculo['empresas'] as Map<String, dynamic>;
-    return {'id': empresaInfo['id'], 'nome': empresaInfo['nome']};
-  }).toList();
-
-  lista.insert(0, {'id': minhaEmpresaId, 'nome': 'Minha Empresa'});
-  return lista;
+final clienteRepositoryProvider = Provider<ClienteRepository>((ref) {
+  return ClienteRepository(ref.watch(supabaseClientProvider));
 });
 
-// Ele observa a lista do banco E o rascunho. Se o cliente da busca global não estiver
-// na lista, ele o injeta aqui antes de mandar para a UI.
-final dropdownClientesProvider = Provider.autoDispose<AsyncValue<List<Map<String, dynamic>>>>((ref) {
-  final listaAsync = ref.watch(clientesListaProvider);
-  final rascunho = ref.watch(projetoFormProvider);
+final clientesListaProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+      final currentUser = ref.watch(currentUserProvider);
+      final companyId = currentUser?.empresaId;
+      if (companyId == null) return const [];
 
-  return listaAsync.whenData((clientesDoBanco) {
-    //cópia da lista
-    List<Map<String, dynamic>> listaFinal = List.from(clientesDoBanco);
+      return ref.watch(clienteRepositoryProvider).fetchClients(companyId);
+    });
 
-    // Verificamos se existe um cliente no rascunho que NÃO está na lista do banco
-    if (rascunho.clienteId != null && rascunho.clienteNome != null) {
-      final bool jaExiste = listaFinal.any((c) => c['id'] == rascunho.clienteId);
-      
-      if (!jaExiste) {
-        // Injeta o cliente da busca global na lista para o Dropdown não quebrar
-        listaFinal.add({
-          'id': rascunho.clienteId,
-          'nome': rascunho.clienteNome,
-        });
-      }
-    }
-    return listaFinal;
-  });
-});
+final dropdownClientesProvider =
+    Provider.autoDispose<AsyncValue<List<Map<String, dynamic>>>>((ref) {
+      final clients = ref.watch(clientesListaProvider);
+      final draft = ref.watch(projetoFormProvider);
 
-//Provider de Busca Global (Lupa)
-final buscarTodasEmpresasProvider = FutureProvider.autoDispose.family<List<Map<String, dynamic>>, String>((ref, termoBusca) async {
-  if (termoBusca.trim().isEmpty) return [];
-  final supabase = Supabase.instance.client;
-  final data = await supabase
-      .from('empresas')
-      .select('id, nome, cnpj, criado_em')
-      .or('nome.ilike.%$termoBusca%,cnpj.ilike.%$termoBusca%')
-      .limit(20);
-  return List<Map<String, dynamic>>.from(data);
-});
+      return clients.whenData((databaseClients) {
+        final result = List<Map<String, dynamic>>.from(databaseClients);
+        if (draft.clienteId != null && draft.clienteNome != null) {
+          final alreadyIncluded = result.any(
+            (client) => client['id'] == draft.clienteId,
+          );
+          if (!alreadyIncluded) {
+            result.add({'id': draft.clienteId, 'nome': draft.clienteNome});
+          }
+        }
+        return result;
+      });
+    });
+
+final buscarTodasEmpresasProvider = FutureProvider.autoDispose
+    .family<List<Map<String, dynamic>>, String>((ref, searchTerm) {
+      return ref.watch(clienteRepositoryProvider).searchCompanies(searchTerm);
+    });

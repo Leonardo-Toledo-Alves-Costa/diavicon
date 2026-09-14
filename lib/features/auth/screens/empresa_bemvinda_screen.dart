@@ -2,12 +2,13 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 
 // 🔥 Importe os provedores para ter acesso à memória e ao usuário real
-import '../../auth/providers/auth_provider.dart'; 
+import '../../auth/providers/auth_provider.dart';
 
 class EmpresaBemVindaScreen extends ConsumerWidget {
   final Map<String, dynamic> dadosUsuario;
@@ -21,25 +22,40 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
     final usuarioLogado = ref.watch(currentUserProvider);
 
     // Cruzamento inteligente: tenta pegar do Usuário Banco -> Rota -> Rascunho Memória
-    final nome = usuarioLogado?.nome ?? dadosUsuario['nome'] ?? rascunho['nome'] ?? 'Gestor';
-    final sobrenome = usuarioLogado?.sobrenome ?? dadosUsuario['sobrenome'] ?? rascunho['sobrenome'] ?? '';
-    
-    final empresaMap = dadosUsuario['empresa'] as Map? ?? rascunho['empresa'] as Map?;
+    final nome =
+        usuarioLogado?.nome ??
+        dadosUsuario['nome'] ??
+        rascunho['nome'] ??
+        'Gestor';
+    final sobrenome =
+        usuarioLogado?.sobrenome ??
+        dadosUsuario['sobrenome'] ??
+        rascunho['sobrenome'] ??
+        '';
+
+    final empresaMap =
+        dadosUsuario['empresa'] as Map? ?? rascunho['empresa'] as Map?;
     final cargo = empresaMap?['cargo'] as String? ?? 'Administrador';
     final nivel = empresaMap?['nivel'] as String? ?? '';
 
-    final String? fotoUsuario = usuarioLogado?.fotoUrl ?? dadosUsuario['foto_url'] ?? dadosUsuario['fotoPath'] ?? empresaMap?['fotoPath'];
-    
-    final String nomeExibicao = nome.toString().isNotEmpty ? nome.toString() : 'Gestor';
+    final String? fotoUsuario =
+        usuarioLogado?.fotoUrl ??
+        dadosUsuario['foto_url'] ??
+        dadosUsuario['fotoPath'] ??
+        empresaMap?['fotoPath'];
+
+    final String nomeExibicao = nome.toString().isNotEmpty
+        ? nome.toString()
+        : 'Gestor';
 
     // AJUSTE O BALÃO AQUI:
-    const double bubbleOffsetX = -15.0; 
-    const double bubbleOffsetY = -80.0; 
+    const double bubbleOffsetX = -15.0;
+    const double bubbleOffsetY = -80.0;
 
     return AuthLayout(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 8), 
+        padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(32),
@@ -93,7 +109,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 40), 
+            const SizedBox(height: 40),
 
             Row(
               children: [
@@ -101,8 +117,12 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                   radius: 40,
                   backgroundColor: AppColors.greyVeryLight,
                   backgroundImage: _getImagemPerfil(fotoUsuario),
-                  child: fotoUsuario == null 
-                      ? const Icon(Icons.person, size: 40, color: AppColors.greyLight) 
+                  child: fotoUsuario == null
+                      ? const Icon(
+                          Icons.person,
+                          size: 40,
+                          color: AppColors.greyLight,
+                        )
                       : null,
                 ),
                 const SizedBox(width: 16),
@@ -148,7 +168,7 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 Expanded(
                   flex: 5,
                   child: Image.asset(
-                    'assets/images/cachorro.png', 
+                    'assets/images/cachorro.png',
                     fit: BoxFit.contain,
                     height: 160,
                   ),
@@ -171,13 +191,16 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                       child: RichText(
                         text: const TextSpan(
                           style: TextStyle(
-                            fontSize: 12, 
+                            fontSize: 12,
                             color: AppColors.textDark,
                             height: 1.4,
                             fontFamily: 'Lato',
                           ),
                           children: [
-                            TextSpan(text: 'Hora de começar a\nacompanhar suas\nestruturas! Serei o\nseu '),
+                            TextSpan(
+                              text:
+                                  'Hora de começar a\nacompanhar suas\nestruturas! Serei o\nseu ',
+                            ),
                             TextSpan(
                               text: 'guia!',
                               style: TextStyle(
@@ -203,11 +226,10 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 onPressed: () {
-                  // 🔥 2. A FAXINA: Limpa todos os dados de formulário que estavam no Riverpod
+                  // Encerra a transição protegida do onboarding e limpa o rascunho.
+                  ref.read(bloqueioDeRotaProvider.notifier).state = false;
                   ref.invalidate(rascunhoCadastroProvider);
-                  
-                  // Entra na aplicação de vez!
-                  context.go('/projetos');
+                  context.goNamed(AppRouteNames.projects);
                 },
               ),
             ),

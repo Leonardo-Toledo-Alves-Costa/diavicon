@@ -1,4 +1,3 @@
-import 'dart:io';
 
 class PontoResistividadeLeituraModel {
   final String? id;

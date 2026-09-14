@@ -24,7 +24,7 @@ class ModalPontoLeituraArrancamento extends StatefulWidget {
 }
 
 class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArrancamento> {
-  int _abaSelecionada = 0; // 0: Informações, 1: Ruptura
+  int _abaSelecionada = 0; 
   bool _salvando = false;
 
   late TextEditingController _nomeCtrl;
@@ -143,6 +143,22 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
     }
   }
 
+  // --- REGRA DE VALIDAÇÃO DA RUPTURA ---
+  void _tentarSalvar() {
+    if (_somaPorcentagens <= 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, informe a porcentagem da ruptura (soma deve ser maior que 0%).'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 4),
+        ),
+      );
+      setState(() => _abaSelecionada = 1); // Direciona forçadamente para a aba de ruptura
+      return;
+    }
+    _submeter(); // Se passou, chama o salvamento real
+  }
+
   Future<void> _submeter() async {
     setState(() => _salvando = true);
     try {
@@ -198,7 +214,6 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // Header com Fechar (X)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -214,7 +229,6 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
               ),
               const SizedBox(height: 12),
 
-              // Segmented Tab Switcher (Informações / Ruptura)
               Container(
                 decoration: BoxDecoration(color: const Color(0xFFF5F5F5), borderRadius: BorderRadius.circular(25)),
                 padding: const EdgeInsets.all(4),
@@ -232,11 +246,7 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
                           child: Text(
                             'Informações',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.lato(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: _abaSelecionada == 0 ? Colors.white : const Color(0xFF757575),
-                            ),
+                            style: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14, color: _abaSelecionada == 0 ? Colors.white : const Color(0xFF757575)),
                           ),
                         ),
                       ),
@@ -253,11 +263,7 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
                           child: Text(
                             'Ruptura',
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.lato(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 14,
-                              color: _abaSelecionada == 1 ? Colors.white : const Color(0xFF757575),
-                            ),
+                            style: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 14, color: _abaSelecionada == 1 ? Colors.white : const Color(0xFF757575)),
                           ),
                         ),
                       ),
@@ -267,13 +273,11 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
               ),
               const SizedBox(height: 16),
 
-              // Conteúdo das Abas com Rolagem
               Expanded(
                 child: _abaSelecionada == 0 ? _buildAbaInformacoes() : _buildAbaRuptura(soma, somaValida),
               ),
 
               const SizedBox(height: 16),
-              // Botões de Ação Inferiores (Apagar / Salvar)
               Row(
                 children: [
                   if (widget.onApagar != null) ...[
@@ -292,7 +296,8 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
                   ],
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _salvando ? null : _submeter,
+                      // <-- GATILHO DA VALIDAÇÃO ANTES DE SALVAR
+                      onPressed: _salvando ? null : _tentarSalvar,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFFA726),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -319,40 +324,18 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
         children: [
           Text('Nome do ponto', style: GoogleFonts.lato(fontSize: 13, color: const Color(0xFF757575))),
           const SizedBox(height: 4),
-          TextField(
-            controller: _nomeCtrl,
-            decoration: InputDecoration(
-              contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
-            ),
-          ),
+          TextField(controller: _nomeCtrl, decoration: _inputDeco()),
           const SizedBox(height: 14),
 
-          // Cards de Fotos (Realização e Superfície Rompida)
           Row(
             children: [
-              Expanded(
-                child: _buildCardFotoUpload(
-                  titulo: 'Realização do Ensaio',
-                  fotoLocal: _fotoEnsaioLocal,
-                  urlRemota: _urlFotoEnsaio,
-                  onTap: () => _selecionarFoto(true),
-                ),
-              ),
+              Expanded(child: _buildCardFotoUpload(titulo: 'Realização do Ensaio', fotoLocal: _fotoEnsaioLocal, urlRemota: _urlFotoEnsaio, onTap: () => _selecionarFoto(true))),
               const SizedBox(width: 12),
-              Expanded(
-                child: _buildCardFotoUpload(
-                  titulo: 'Superfície Rompida',
-                  fotoLocal: _fotoRupturaLocal,
-                  urlRemota: _urlFotoRuptura,
-                  onTap: () => _selecionarFoto(false),
-                ),
-              ),
+              Expanded(child: _buildCardFotoUpload(titulo: 'Superfície Rompida', fotoLocal: _fotoRupturaLocal, urlRemota: _urlFotoRuptura, onTap: () => _selecionarFoto(false))),
             ],
           ),
           const SizedBox(height: 14),
 
-          // D1, D2 e Carga (N)
           Row(
             children: [
               Expanded(child: _buildInputNumerico('D1 (mm)', _d1Ctrl)),
@@ -364,7 +347,6 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
           ),
           const SizedBox(height: 14),
 
-          // Cards com Cálculos Dinâmicos
           Row(
             children: [
               Expanded(
@@ -411,33 +393,20 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
             Text('Forma de ruptura', style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF555555))),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                color: somaValida ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE),
-                borderRadius: BorderRadius.circular(12),
-              ),
+              decoration: BoxDecoration(color: somaValida ? const Color(0xFFE8F5E9) : const Color(0xFFFFEBEE), borderRadius: BorderRadius.circular(12)),
               child: Text(
                 '${soma.toStringAsFixed(0)} %',
-                style: GoogleFonts.lato(
-                  color: somaValida ? const Color(0xFF2E7D32) : Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                ),
+                style: GoogleFonts.lato(color: somaValida ? const Color(0xFF2E7D32) : Colors.red, fontWeight: FontWeight.bold, fontSize: 12),
               ),
             ),
           ],
         ),
         const SizedBox(height: 12),
 
-        // Grid com Rolagem dos tipos de ruptura
         Expanded(
           child: GridView.builder(
             itemCount: CatalogoRupturas.itens.length,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
-              childAspectRatio: 0.88,
-            ),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, crossAxisSpacing: 10, mainAxisSpacing: 10, childAspectRatio: 0.88),
             itemBuilder: (context, index) {
               final item = CatalogoRupturas.itens[index];
               final ctrl = _porcentagemControllers[item.id]!;
@@ -456,31 +425,21 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
                     Expanded(
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
-                        child: Image.asset(item.assetPath, fit: BoxFit.contain, errorBuilder: (_, __, ___) => const Icon(Icons.broken_image, color: Colors.grey)),
+                        child: Image.asset(item.assetPath, fit: BoxFit.contain, errorBuilder: (_, _, _) => const Icon(Icons.broken_image, color: Colors.grey)),
                       ),
                     ),
                     const SizedBox(height: 4),
-                    Text(
-                      item.titulo,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFF616161)),
-                    ),
+                    Text(item.titulo, textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFF616161))),
                     const SizedBox(height: 4),
                     SizedBox(
-                      height: 32,
+                      height: 34,
                       width: 75,
                       child: TextField(
                         controller: ctrl,
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
                         style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold),
-                        decoration: InputDecoration(
-                          hintText: '00 %',
-                          contentPadding: EdgeInsets.zero,
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
-                        ),
+                        decoration: _inputDeco(hintText: '00 %').copyWith(contentPadding: EdgeInsets.zero),
                       ),
                     ),
                   ],
@@ -499,17 +458,21 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
       children: [
         Text(label, style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFF757575))),
         const SizedBox(height: 4),
-        TextField(
-          controller: controller,
-          textAlign: TextAlign.center,
-          keyboardType: const TextInputType.numberWithOptions(decimal: true),
-          decoration: InputDecoration(
-            hintText: '00',
-            contentPadding: const EdgeInsets.symmetric(vertical: 8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
-          ),
-        ),
+        TextField(controller: controller, textAlign: TextAlign.center, keyboardType: const TextInputType.numberWithOptions(decimal: true), decoration: _inputDeco(hintText: '00')),
       ],
+    );
+  }
+
+  // --- Função centralizada para padronizar bordas e fundo de todos os inputs ---
+  InputDecoration _inputDeco({String? hintText}) {
+    return InputDecoration(
+      hintText: hintText,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      filled: true,
+      fillColor: const Color(0xFFF9F9F9),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF9E9E9E), width: 1)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF9E9E9E), width: 1)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
     );
   }
 
@@ -536,20 +499,20 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
             alignment: Alignment.bottomRight,
             children: [
               Container(
-                height: 90,
+                height: 150, // <-- IMAGEM AUMENTADA NO MODAL
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: const Color(0xFFF5F5F5),
                   borderRadius: BorderRadius.circular(12),
                   image: image != null ? DecorationImage(image: image, fit: BoxFit.cover) : null,
                 ),
-                child: image == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 28) : null,
+                child: image == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 36) : null,
               ),
               Container(
-                margin: const EdgeInsets.all(4),
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-                child: const Icon(Icons.edit_square, size: 14, color: Color(0xFF3E3E3D)),
+                margin: const EdgeInsets.all(6),
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.edit_square, size: 18, color: Color(0xFF3E3E3D)),
               ),
             ],
           ),

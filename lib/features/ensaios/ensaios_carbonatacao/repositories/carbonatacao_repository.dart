@@ -38,6 +38,7 @@ class CarbonatacaoRepository {
     required String projetoId,
     required String elementoId,
     required String tipoEnsaioId,
+    
     File? fotoQuebraNova,
     File? fotoAspersaoNova,
   }) async {
@@ -88,8 +89,9 @@ class CarbonatacaoRepository {
       double cobP = dados.cobArmP ?? 0.0;
       double cobS = dados.cobArmS ?? 0.0;
       double cobrimentoEfetivo = 0.0;
-      if (cobS > 0 && cobP > 0) cobrimentoEfetivo = min(cobS, cobP);
-      else if (cobS > 0) cobrimentoEfetivo = cobS;
+      if (cobS > 0 && cobP > 0) {
+        cobrimentoEfetivo = min(cobS, cobP);
+      } else if (cobS > 0) cobrimentoEfetivo = cobS;
       else cobrimentoEfetivo = cobP;
 
       // C. Calcula a média das frentes de carbonatação[cite: 12]
@@ -127,6 +129,8 @@ class CarbonatacaoRepository {
       // 3. SALVAR NO BANCO DE DADOS (INJETANDO OS RESULTADOS)
       // =========================================================
       String pontoGeralId;
+      // 1. Busca a estrutura_id a partir do elementoId fornecido na tabela elementos_estruturais
+     
       
       // Agrupa os dados que serão criados ou atualizados[cite: 15]
       final dadosGerais = {
@@ -135,7 +139,38 @@ class CarbonatacaoRepository {
         'cor_resultado': corResultado,     // Preenche a nova coluna[cite: 15]
       };
 
+      final String? userIdT = _supabase.auth.currentUser?.id;
+      if (userIdT == null) {
+        throw const AuthException('Usuário não está autenticado ou a sessão expirou.');
+      }
+
+final String userId2 = userIdT;
+      final usuarioResponse = await _supabase
+          .from('usuarios')
+          .select('empresa_id')
+          .eq('id', userIdT)
+          .single();
+
+      final String? empresaId = usuarioResponse['empresa_id'] as String?;
+
+      if (empresaId == null) {
+        throw Exception('Usuário não está vinculado a nenhuma empresa.');
+      }
+
       if (dados.idGeral == null || dados.idGeral!.isEmpty) {
+
+                  final elementoResponse = await _supabase
+          .from('elementos_estruturais')
+          .select('estrutura_id')
+          .eq('id', elementoId)
+          .single();
+
+          final String? estruturaId = elementoResponse['estrutura_id'] as String?;
+
+          if (estruturaId == null) {
+            throw Exception('Nenhuma estrutura vinculada a este elemento foi encontrada.');
+          }
+
         final resp = await _supabase.from('pontos_ensaios_geral').insert({
           ...dadosGerais,
           'criado_por': userId,
@@ -144,6 +179,8 @@ class CarbonatacaoRepository {
           'tipo_ensaio': 'Frente de carbonatação',
           'elemento_estrutural_id': elementoId,
           'projeto_id': projetoId,
+          'estrutura_id': estruturaId,
+          
         }).select('id').single();
         pontoGeralId = resp['id'] as String;
       } else {

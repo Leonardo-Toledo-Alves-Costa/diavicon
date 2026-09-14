@@ -79,7 +79,9 @@ class SelecaoClienteModal extends ConsumerWidget {
               Expanded(
                 child: Text(
                   'Quero cadastrar meu cliente',
-                  style: AppTextStyles.corpoDestaqueBranco.copyWith(fontSize: 18),
+                  style: AppTextStyles.corpoDestaqueBranco.copyWith(
+                    fontSize: 18,
+                  ),
                 ),
               ),
             ],
@@ -111,7 +113,7 @@ class SelecaoClienteModal extends ConsumerWidget {
                 style: AppTextStyles.corpoSubtextoBranco,
               ),
               const SizedBox(height: 12),
-              
+
               TextField(
                 readOnly: true,
                 onTap: () {
@@ -124,22 +126,28 @@ class SelecaoClienteModal extends ConsumerWidget {
                 decoration: InputDecoration(
                   hintText: projetoForm.clienteNome ?? 'AbCD123',
                   hintStyle: TextStyle(
-                    color: projetoForm.clienteNome != null 
-                        ? AppColors.textPrimary 
+                    color: projetoForm.clienteNome != null
+                        ? AppColors.textPrimary
                         : AppColors.greyLight,
                   ),
                   fillColor: Colors.white,
                   filled: true,
                   isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 12,
+                  ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12), 
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  suffixIcon: const Icon(Icons.search, color: AppColors.primary),
+                  suffixIcon: const Icon(
+                    Icons.search,
+                    color: AppColors.primary,
+                  ),
                 ),
               ),
-              
+
               // Card de resultado aparece apenas se houver um cliente selecionado
               if (projetoForm.clienteNome != null) ...[
                 const SizedBox(height: 12),
@@ -148,14 +156,18 @@ class SelecaoClienteModal extends ConsumerWidget {
                   decoration: BoxDecoration(
                     color: AppColors.primary,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: Colors.white.withOpacity(0.3)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
                   ),
                   child: Row(
                     children: [
                       CircleAvatar(
-                        radius: 20, 
+                        radius: 20,
                         backgroundColor: Colors.white,
-                        backgroundImage: _obterImagemCliente(projetoForm.clienteFotoUrl),
+                        backgroundImage: _obterImagemCliente(
+                          projetoForm.clienteFotoUrl,
+                        ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
@@ -164,12 +176,16 @@ class SelecaoClienteModal extends ConsumerWidget {
                           children: [
                             Text(
                               projetoForm.clienteNome!,
-                              style: AppTextStyles.corpoSubtextoBranco.copyWith(fontWeight: FontWeight.bold),
+                              style: AppTextStyles.corpoSubtextoBranco.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             Text(
-                              projetoForm.localCliente ?? 'Sem localização', 
-                              style: AppTextStyles.corpoSubtextoBranco.copyWith(fontSize: 11),
+                              projetoForm.localCliente ?? 'Sem localização',
+                              style: AppTextStyles.corpoSubtextoBranco.copyWith(
+                                fontSize: 11,
+                              ),
                             ),
                           ],
                         ),
@@ -185,16 +201,20 @@ class SelecaoClienteModal extends ConsumerWidget {
     );
   }
 
-  Widget _buildCardLaranja({required Widget filho, VoidCallback? onTap, EdgeInsets? padding}) {
+  Widget _buildCardLaranja({
+    required Widget filho,
+    VoidCallback? onTap,
+    EdgeInsets? padding,
+  }) {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1), 
-            blurRadius: 8, 
+            color: Colors.black.withValues(alpha: 0.1),
+            blurRadius: 8,
             offset: const Offset(0, 4),
-          )
+          ),
         ],
       ),
       child: Material(

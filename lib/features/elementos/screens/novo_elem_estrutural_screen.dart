@@ -4,6 +4,7 @@ import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/elementos/models/elemento_model.dart';
 import 'package:diavicon/features/elementos/providers/elemento_provider.dart';
 import 'package:diavicon/features/elementos/providers/opcoes_elemento_provider.dart';
@@ -14,6 +15,8 @@ import 'package:diavicon/features/elementos/widgets/novo_local_widget.dart';
 import 'package:diavicon/features/elementos/widgets/novo_tipo_elemento_modal.dart';
 import 'package:diavicon/features/elementos/widgets/right_menu_bar.dart';
 import 'package:diavicon/features/elementos/widgets/selecionar_planta_popup.dart';
+import 'package:diavicon/features/empresa/providers/campos_personalizaveis_provider.dart';
+import 'package:diavicon/features/empresa/providers/sistema_provider.dart';
 import 'package:diavicon/features/estrutura/models/local_model.dart';
 import 'package:diavicon/features/estrutura/providers/local_provider.dart';
 import 'package:flutter/foundation.dart';
@@ -25,25 +28,13 @@ import 'package:image_cropper/image_cropper.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:pdfx/pdfx.dart';
 
-const List<String> _defaultTipoElementoOptions = <String>[
-  'Pilar',
-  'Viga',
-  'Laje',
-];
+const List<String> _defaultTipoElementoOptions = <String>[];
 
-const List<String> _defaultTipologiaOptions = <String>[
-  'Concreto armado',
-  'Metalica',
-  'Mista',
-];
+const List<String> _defaultTipologiaOptions = <String>[];
 
 const List<String> _defaultLocalOptions = <String>[];
 
-const List<String> _defaultRevestimentoOptions = <String>[
-  'Pintura',
-  'Argamassa',
-  'Ceramica',
-];
+const List<String> _defaultRevestimentoOptions = <String>[];
 
 class NovoElemEstruturalScreen extends ConsumerStatefulWidget {
   const NovoElemEstruturalScreen({
@@ -102,6 +93,7 @@ class _NovoElemEstruturalScreenState
       GlobalKey<RightMenuBarState>();
   late final TextEditingController _nomeController;
 
+  String? _sistemaHabitacional;
   String? _tipoElemento;
   String? _tipologiaEstrutural;
   String? _localElemento;
@@ -229,6 +221,27 @@ class _NovoElemEstruturalScreenState
     }
   }
 
+  void _handleSistemaHabitacionalChanged(String? novoSistema) {
+    setState(() {
+      _sistemaHabitacional = novoSistema;
+
+      final empresaId = ref.read(currentUserProvider)?.empresaId;
+      if (novoSistema != null && _tipoElemento != null && empresaId != null) {
+        final tipos = ref
+            .read(tiposElementoDropdownProvider(empresaId))
+            .value;
+        final aindaValido =
+            tipos?.any(
+              (t) => t.nome == _tipoElemento && t.sistemaId == novoSistema,
+            ) ??
+            false;
+        if (!aindaValido) {
+          _tipoElemento = null;
+        }
+      }
+    });
+  }
+
   Future<void> _handleAddOption(EstruturalDropdownField field) async {
     if (_fieldBeingAdded != null) return;
 
@@ -237,14 +250,14 @@ class _NovoElemEstruturalScreenState
     if (field == EstruturalDropdownField.localElemento) {
       final localCriado = await showDialog<LocalModel>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => NovoLocalModal(estruturaId: widget.estruturaId),
       );
       novaOpcao = localCriado?.nome;
     } else if (field == EstruturalDropdownField.tipoElemento) {
       novaOpcao = await showDialog<String>(
         context: context,
-        barrierColor: Colors.black.withOpacity(0.42),
+        barrierColor: Colors.black.withValues(alpha: 0.42),
         builder: (_) => const NovoTipoElementoModal(),
       );
     } else if (widget.onAddOption != null) {
@@ -319,6 +332,7 @@ class _NovoElemEstruturalScreenState
       plantaId: idPlanta,
       inicial: _marcacaoPlanta,
       nomeElemento: nomeDigitado.isNotEmpty ? nomeDigitado : null,
+      capturarImagem: true,
     );
 
     if (resultado == null || !mounted) return;
@@ -383,7 +397,7 @@ class _NovoElemEstruturalScreenState
       urlsDeFotos = [urlPublica];
     }
 
-    await repo.criarElemento(
+    final elementoCriado = await repo.criarElemento(
       ElementoModel(
         id: '',
         nome: draft.nome.isEmpty ? null : draft.nome,
@@ -406,6 +420,28 @@ class _NovoElemEstruturalScreenState
       ),
       estruturaId,
     );
+
+    final marcacao = draft.marcacao;
+    if (marcacao == null) return;
+
+    try {
+      final imagemBytes = marcacao.thumbnailBytes;
+      if (imagemBytes == null || imagemBytes.isEmpty) {
+        throw Exception('A imagem da marcação não foi gerada.');
+      }
+      final imagemUrl = await repo.uploadImagemMarcacao(
+        elementoId: elementoCriado.id,
+        bytes: imagemBytes,
+      );
+      await repo.atualizarElemento(
+        elementoCriado.copyWith(marcacaoImagemUrl: imagemUrl),
+      );
+    } catch (e) {
+      try {
+        await repo.excluirElemento(elementoCriado.id);
+      } catch (_) {}
+      rethrow;
+    }
   }
 
   List<String> _getOptionsList(EstruturalDropdownField field) {
@@ -507,12 +543,26 @@ class _NovoElemEstruturalScreenState
 
     final opcoesFormulario = ref.watch(opcoesFormularioElementoProvider);
 
+    final empresaId = ref.watch(currentUserProvider)?.empresaId;
+    final sistemasAsync = empresaId == null
+        ? null
+        : ref.watch(sistemasDropdownProvider(empresaId));
+    final tiposElementoAsync = empresaId == null
+        ? null
+        : ref.watch(tiposElementoDropdownProvider(empresaId));
+
     List<String> tiposFinais = List.from(_tipoElementoOptions);
     List<String> tipologiasFinais = List.from(_tipologiaOptions);
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
 
+    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+        .where(
+          (t) => _sistemaHabitacional == null || t.sistemaId == _sistemaHabitacional,
+        )
+        .map((t) => t.nome);
+    tiposFinais = {...tiposFinais, ...tiposDoSistema}.toList();
+
     opcoesFormulario.whenData((opcoes) {
-      tiposFinais = {...tiposFinais, ...opcoes.tipos}.toList();
       tipologiasFinais = {...tipologiasFinais, ...opcoes.tipologias}.toList();
       revestimentosFinais = {
         ...revestimentosFinais,
@@ -568,6 +618,28 @@ class _NovoElemEstruturalScreenState
                           const SizedBox(height: 10),
 
                           //  PASSANDO AS OPÇÕES FINAIS PROS DROPDOWNS
+                          CustomDropdownWithAdd<String>(
+                            label: 'Sistema Habitacional',
+                            hint: 'Selecione',
+                            value: _sistemaHabitacional,
+                            items: (sistemasAsync?.value ?? const <CampoItemModel>[])
+                                .map(
+                                  (s) => DropdownMenuItem<String>(
+                                    value: s.id,
+                                    child: Text(
+                                      s.nome,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (_isLoadingFormData || _isSubmitting)
+                                ? null
+                                : _handleSistemaHabitacionalChanged,
+                            onAddPressed: () {},
+                            isAddEnabled: false,
+                          ),
+                          const SizedBox(height: 10),
                           _buildDropdownField(
                             label: 'Tipo do Elemento',
                             value: _tipoElemento,
@@ -821,7 +893,7 @@ class _ElementoAvatar extends StatelessWidget {
                       child: Icon(
                         Icons.location_city_outlined,
                         size: 64,
-                        color: AppColors.greyDarkest.withOpacity(0.8),
+                        color: AppColors.greyDarkest.withValues(alpha: 0.8),
                       ),
                     )
                   : null,
@@ -838,7 +910,7 @@ class _ElementoAvatar extends StatelessWidget {
                 ),
                 child: Icon(
                   Icons.edit_outlined,
-                  color: AppColors.greyDarkest.withOpacity(0.9),
+                  color: AppColors.greyDarkest.withValues(alpha: 0.9),
                   size: 25,
                 ),
               ),
@@ -852,7 +924,6 @@ class _ElementoAvatar extends StatelessWidget {
 
 class _PlanImageCard extends StatefulWidget {
   const _PlanImageCard({
-    super.key,
     this.onPressed,
     this.marcacao,
     this.arquivoUrl,
@@ -890,11 +961,12 @@ class _PlanImageCardState extends State<_PlanImageCard> {
   Future<void> _carregarPreviewPdf() async {
     final url = widget.arquivoUrl;
     if (url == null || !url.toLowerCase().contains('.pdf')) {
-      if (mounted)
+      if (mounted) {
         setState(() {
           _pdfBytes = null;
           _currentUrl = url;
         });
+      }
       return;
     }
 

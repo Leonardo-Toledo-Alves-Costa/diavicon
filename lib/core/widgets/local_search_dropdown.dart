@@ -60,7 +60,7 @@ class LocalSearchDropdown extends ConsumerWidget {
                 isDense: true, 
                 constraints: const BoxConstraints(maxHeight: 36, minHeight: 36), 
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-                hintStyle: GoogleFonts.lato(color: AppColors.hintText.withOpacity(0.6), fontSize: 13),
+                hintStyle: GoogleFonts.lato(color: AppColors.hintText.withValues(alpha: 0.6), fontSize: 13),
                 
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(30),
@@ -108,7 +108,7 @@ class LocalSearchDropdown extends ConsumerWidget {
           constraints: const BoxConstraints(maxHeight: 36, minHeight: 36),
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
           hintText: isError ? 'Erro' : (isLoading ? 'Carregando...' : 'Local'),
-          hintStyle: GoogleFonts.lato(color: AppColors.hintText.withOpacity(0.6), fontSize: 13),
+          hintStyle: GoogleFonts.lato(color: AppColors.hintText.withValues(alpha: 0.6), fontSize: 13),
           
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(30),

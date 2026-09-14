@@ -46,10 +46,10 @@ class _TeamEditItemState extends State<TeamEditItem> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.inputBorder.withOpacity(0.5)),
+        border: Border.all(color: AppColors.inputBorder.withValues(alpha: 0.5)),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.03),
+            color: Colors.black.withValues(alpha: 0.03),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -129,7 +129,7 @@ class _TeamEditItemState extends State<TeamEditItem> {
                         ),
                         Switch(
                           value: widget.isUserGestor,
-                          activeColor: AppColors.primary,
+                          activeThumbColor: AppColors.primary,
                           onChanged: widget.onToggleGestor,
                         ),
                       ],

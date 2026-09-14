@@ -4,6 +4,58 @@ import '../models/ensaio_resumo_model.dart';
 class EnsaiosRepository {
   final SupabaseClient _supabase;
   EnsaiosRepository(this._supabase);
+  Future<String?> buscarTipoEnsaioIdPorNome(String nomeEnsaio) async {
+    try {
+      final resp = await _supabase
+          .from('tipos_ensaio')
+          .select('id, nome, icone_path')
+          .ilike('nome', nomeEnsaio)
+          .maybeSingle();
+
+      return resp?['id']?.toString();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Vincula um ensaio contratado a uma região. A região só guarda o
+  /// desenho/marcação na planta — o quantitativo contratado é sempre
+  /// armazenado em `ensaios_contratados`, nunca na região.
+  Future<void> salvarEnsaioNaRegiao({
+    required String estruturaId,
+    required String empresaId,
+    required String regiaoId,
+    required String nomeEnsaio,
+    required int quantidade,
+  }) async {
+    final tipoEnsaioId = await buscarTipoEnsaioIdPorNome(nomeEnsaio);
+
+    if (tipoEnsaioId == null || tipoEnsaioId.isEmpty) {
+      throw Exception('Tipo de ensaio não encontrado no banco: $nomeEnsaio');
+    }
+
+    final contratoExistente = await _supabase
+        .from('ensaios_contratados')
+        .select('id')
+        .eq('regiao_id', regiaoId)
+        .eq('tipo_ensaio_id', tipoEnsaioId)
+        .maybeSingle();
+
+    if (contratoExistente != null) {
+      await _supabase
+          .from('ensaios_contratados')
+          .update({'quantidade': quantidade})
+          .eq('id', contratoExistente['id']);
+    } else {
+      await _supabase.from('ensaios_contratados').insert({
+        'estrutura_id': estruturaId,
+        'empresa_id': empresaId,
+        'tipo_ensaio_id': tipoEnsaioId,
+        'quantidade': quantidade,
+        'regiao_id': regiaoId,
+      });
+    }
+  }
 
   Future<List<ResumoEnsaioModel>> getResumoEnsaiosEstrutura({
     required String projetoId,
@@ -27,9 +79,9 @@ class EnsaiosRepository {
       // 3. Busca pontos já realizados de forma segura[cite: 2]
       final realizadosValidadosResp = await _supabase
           .from('pontos_ensaios_geral')
-          .select('tipo_ensaio, elementos_estruturais!inner(estrutura_id)')
+          .select('tipo_ensaio_id, estrutura_id')
           .eq('projeto_id', projetoId)
-          .eq('elementos_estruturais.estrutura_id', estruturaId);
+          .eq('estrutura_id', estruturaId);
 
       // 4. Mapeia quantidades contratadas com segurança de tipo
       Map<String, int> mapContratados = {};
@@ -38,18 +90,23 @@ class EnsaiosRepository {
           final tipoEnsaioId = c['tipo_ensaio_id']?.toString();
           if (tipoEnsaioId != null) {
             final qtd = (c['quantidade'] as num?)?.toInt() ?? 0;
-            mapContratados[tipoEnsaioId] = (mapContratados[tipoEnsaioId] ?? 0) + qtd;
+            mapContratados[tipoEnsaioId] =
+                (mapContratados[tipoEnsaioId] ?? 0) + qtd;
           }
         }
       }
 
       // 5. Mapeia quantidades realizadas
       Map<String, int> mapRealizados = {};
-      if (realizadosValidadosResp != null && realizadosValidadosResp is List) {
+      if (realizadosValidadosResp is List) {
         for (var r in realizadosValidadosResp) {
-          final tipoEnsaioNome = (r['tipo_ensaio'] ?? '').toString().trim().toLowerCase();
+          final tipoEnsaioNome = (r['tipo_ensaio'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
           if (tipoEnsaioNome.isNotEmpty) {
-            mapRealizados[tipoEnsaioNome] = (mapRealizados[tipoEnsaioNome] ?? 0) + 1;
+            mapRealizados[tipoEnsaioNome] =
+                (mapRealizados[tipoEnsaioNome] ?? 0) + 1;
           }
         }
       }
@@ -68,17 +125,23 @@ class EnsaiosRepository {
 
         // Normalização específica para carbonatação conforme tabelas criadas[cite: 2]
         if (nomeLower.contains('carbonata')) {
-          realizadas = mapRealizados['frente de carbonatação'] ??
-              mapRealizados['carbonatação'] ?? realizadas;
+          realizadas =
+              mapRealizados['frente de carbonatação'] ??
+              mapRealizados['carbonatação'] ??
+              realizadas;
         }
 
-        lista.add(ResumoEnsaioModel(
-          id: id,
-          nome: nome,
-          iconePath: (iconePath != null && iconePath.isNotEmpty) ? iconePath : 'assets/images/ensaios/default.png',
-          contratadas: contratadas,
-          realizadas: realizadas,
-        ));
+        lista.add(
+          ResumoEnsaioModel(
+            id: id,
+            nome: nome,
+            iconePath: (iconePath != null && iconePath.isNotEmpty)
+                ? iconePath
+                : 'assets/images/ensaios/default.png',
+            contratadas: contratadas,
+            realizadas: realizadas,
+          ),
+        );
       }
 
       // 7. Ordenação limpa
@@ -89,7 +152,6 @@ class EnsaiosRepository {
       });
 
       return lista;
-
     } on PostgrestException catch (e) {
       throw Exception('Erro de Banco de Dados (${e.code}): ${e.message}');
     } on AuthException catch (e) {

@@ -1,10 +1,11 @@
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/features/notificacoes/providers/notificacoes_provider.dart';
 import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
-import 'package:diavicon/features/projetos/screens/project_companies_screen.dart';
-import 'package:diavicon/features/projetos/screens/project_info_screen.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
@@ -24,6 +25,7 @@ class ProjectDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final keyboardHeight = MediaQuery.of(context).viewInsets.bottom;
     final projetoAsync = ref.watch(projectDetailProvider(projetoId));
+    final notificationCount = ref.watch(contadorNaoLidasProvider).value ?? 0;
 
     return projetoAsync.when(
       loading: () => const Scaffold(
@@ -58,12 +60,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                   label: 'Informações',
                   onTap: () {
                     Navigator.pop(context); // Fecha o menu lateral
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProjectInfoScreen(projetoId: projetoId),
-                      ),
+                    context.pushNamed(
+                      AppRouteNames.projectInfo,
+                      pathParameters: <String, String>{
+                        AppPaths.projectIdParameter: projetoId,
+                      },
                     );
                   },
                 ),
@@ -91,12 +92,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                   label: 'Empresas',
                   onTap: () {
                     Navigator.pop(context);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) =>
-                            ProjectCompaniesScreen(projetoId: projetoId),
-                      ),
+                    context.pushNamed(
+                      AppRouteNames.projectCompanies,
+                      pathParameters: <String, String>{
+                        AppPaths.projectIdParameter: projetoId,
+                      },
                     );
                   },
                 ),
@@ -153,7 +153,13 @@ class ProjectDetailScreen extends ConsumerWidget {
                 ),
               ],
             ),
-            appBar: const CustomAppBar(title: 'Projetos', showBackButton: true),
+            appBar: CustomAppBar(
+              title: 'Projetos',
+              showBackButton: true,
+              notificationCount: notificationCount,
+              onNotificationPressed: () =>
+                  context.pushNamed(AppRouteNames.notifications),
+            ),
 
             body: SingleChildScrollView(
               padding: EdgeInsets.zero,

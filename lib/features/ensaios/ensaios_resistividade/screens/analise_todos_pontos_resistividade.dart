@@ -1,4 +1,3 @@
-import 'dart:ffi';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -54,7 +53,7 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
   String _filtroTipoElemento = 'Elementos';
   
   int _agrupamentoGrafico = 0; // 0: Elemento, 1: Local
-  int _radioEstatisticaSelecionada = 0; // 0: Risco, 1: Taxa, 2: Permissividade
+  final int _radioEstatisticaSelecionada = 0; // 0: Risco, 1: Taxa, 2: Permissividade
 
   @override
   Widget build(BuildContext context) {
@@ -253,7 +252,7 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
                       const SizedBox(height: 4),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        decoration: BoxDecoration(color: corRisco.withOpacity(0.15), borderRadius: BorderRadius.circular(12)),
+                        decoration: BoxDecoration(color: corRisco.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
                         child: Text(statusRisco, style: TextStyle(color: corRisco, fontWeight: FontWeight.bold, fontSize: 12)),
                       ),
                     ],
@@ -305,11 +304,11 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
               minimum: 0,
               maximum: max(80, maxGlobal * 1.2), // PlotBands fixas do Figma
               plotBands: [
-                PlotBand(start: 0, end: 15, color: Colors.red.withOpacity(0.3)),
-                PlotBand(start: 0, end: 20, color: Colors.redAccent.withOpacity(0.2)),
-                PlotBand(start: 20, end: 55, color: Colors.orange.withOpacity(0.15)),
-                PlotBand(start: 55, end: 80, color: Colors.green.withOpacity(0.3)),
-                PlotBand(start: 80, end: max(80, maxGlobal * 1.2), color: Colors.greenAccent.withOpacity(0.15)),
+                PlotBand(start: 0, end: 15, color: Colors.red.withValues(alpha: 0.3)),
+                PlotBand(start: 0, end: 20, color: Colors.redAccent.withValues(alpha: 0.2)),
+                PlotBand(start: 20, end: 55, color: Colors.orange.withValues(alpha: 0.15)),
+                PlotBand(start: 55, end: 80, color: Colors.green.withValues(alpha: 0.3)),
+                PlotBand(start: 80, end: max(80, maxGlobal * 1.2), color: Colors.greenAccent.withValues(alpha: 0.15)),
               ],
             ),
             series: <CartesianSeries>[
@@ -388,7 +387,7 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
             const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(color: badgeColor?.withOpacity(0.2), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(color: badgeColor?.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(8)),
               child: Text(badge, style: TextStyle(fontSize: 9, fontWeight: FontWeight.bold, color: badgeColor)),
             ),
           ]
@@ -489,7 +488,7 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
   }
 
   Widget _buildLinhaTabela(String titulo, String condicao, String media, String cv) {
-    Color corBadge = condicao == 'Risco Alto' ? Colors.red.withOpacity(0.8) : condicao == 'Risco Moderado' ? Colors.orange.withOpacity(0.8) : Colors.green.withOpacity(0.8);
+    Color corBadge = condicao == 'Risco Alto' ? Colors.red.withValues(alpha: 0.8) : condicao == 'Risco Moderado' ? Colors.orange.withValues(alpha: 0.8) : Colors.green.withValues(alpha: 0.8);
     //Color corCv = cv. < '15' ? Colors.green.withOpacity(0.8) : cv == 'Risco Moderado' ? Colors.orange.withOpacity(0.8) : Colors.green.withOpacity(0.8);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -593,9 +592,9 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
               title: const AxisTitle(text: 'Resistividade elétrica kΩ·cm', textStyle: TextStyle(fontSize: 10)),
               minimum: 0, maximum:  max(80, maxGlobal * 1.2),
               plotBands: [
-                PlotBand(start: 0, end: 15, color: Colors.red.withOpacity(0.15)),
-                PlotBand(start: 15, end: 55, color: Colors.orange.withOpacity(0.1)),
-                PlotBand(start: 55, end: max(80, maxGlobal * 1.2), color: Colors.green.withOpacity(0.1)),
+                PlotBand(start: 0, end: 15, color: Colors.red.withValues(alpha: 0.15)),
+                PlotBand(start: 15, end: 55, color: Colors.orange.withValues(alpha: 0.1)),
+                PlotBand(start: 55, end: max(80, maxGlobal * 1.2), color: Colors.green.withValues(alpha: 0.1)),
               ],
             ),
             series: seriesList,

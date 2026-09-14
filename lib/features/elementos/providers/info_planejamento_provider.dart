@@ -71,6 +71,40 @@ class RegioesFiltro {
   int get hashCode => plantaId.hashCode ^ empresaId.hashCode;
 }
 
+/// Quantidade de tipos de ensaio contratados por região (agrupado por
+/// `regiao_id` em `ensaios_contratados`). A região em si só guarda o
+/// desenho/marcação da planta; os quantitativos contratados vivem em
+/// `ensaios_contratados`.
+final quantidadeEnsaiosPorRegiaoProvider = FutureProvider.autoDispose
+    .family<Map<String, int>, RegioesFiltro>((ref, filtro) async {
+  final supabase = Supabase.instance.client;
+
+  final regioesResp = await supabase
+      .from('regioes_ensaio')
+      .select('id')
+      .eq('planta_id', filtro.plantaId)
+      .eq('empresa_id', filtro.empresaId);
+
+  final regiaoIds = (regioesResp as List)
+      .map((r) => r['id'].toString())
+      .toList();
+  if (regiaoIds.isEmpty) return {};
+
+  final contratadosResp = await supabase
+      .from('ensaios_contratados')
+      .select('regiao_id')
+      .inFilter('regiao_id', regiaoIds);
+
+  final Map<String, int> contagem = {};
+  for (final row in (contratadosResp as List)) {
+    final regiaoId = row['regiao_id']?.toString();
+    if (regiaoId != null) {
+      contagem[regiaoId] = (contagem[regiaoId] ?? 0) + 1;
+    }
+  }
+  return contagem;
+});
+
 final regioesEnsaioProvider = StreamProvider.autoDispose.family<List<RegiaoEnsaioModel>, RegioesFiltro>((ref, filtro) {
   final supabase = Supabase.instance.client;
 

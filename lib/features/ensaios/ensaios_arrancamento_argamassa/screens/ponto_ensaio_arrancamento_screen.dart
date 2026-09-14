@@ -11,7 +11,8 @@ import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 import 'analise_ponto_arrancamento_screen.dart';
 
 // Providers
-import '../../ensaios_geral/providers/ensaios_provider.dart'; // <-- Ajuste o caminho se necessário para o seu resumoEnsaiosProvider
+import '../../ensaios_geral/providers/ensaios_provider.dart';
+import '../../ensaios_geral/providers/ensaio_permissoes_provider.dart';
 
 // Modelos e Repositórios locais
 import '../models/ponto_arrancamento_model.dart';
@@ -48,7 +49,7 @@ class PontoEnsaioArrancamentoScreen extends ConsumerStatefulWidget {
 class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArrancamentoScreen> {
   bool _isLoading = false;
   bool _isInitializing = true;
-  bool _hasChanges = false; // <-- Controle do botão Salvar
+  bool _hasChanges = false; 
 
   late TextEditingController _nomeCtrl;
   final TextEditingController _tempCtrl = TextEditingController();
@@ -76,7 +77,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     if (widget.pontoGeralId != null && widget.pontoGeralId!.isNotEmpty) {
       _pontoGeralIdAtual = widget.pontoGeralId;
     } else {
-      _hasChanges = true; // Se é um ponto novo, já precisa salvar
+      _hasChanges = true;
     }
     
     _substratoSelecionado = _opcoesSubstrato.first;
@@ -95,7 +96,6 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     super.dispose();
   }
 
-  // --- CONTROLE DE EDIÇÕES (LISTENERS) ---
   void _onFieldChanged() {
     if (!_hasChanges) {
       setState(() => _hasChanges = true);
@@ -117,10 +117,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     _idadeCtrl.removeListener(_onFieldChanged);
     _colaCtrl.removeListener(_onFieldChanged);
   }
-  // ---------------------------------------
 
-  // --- INCLUA ESTA FUNÇÃO NO STATE DA TELA ---
-  // --- ADICIONE ESTA FUNÇÃO NO STATE ---
   Future<void> _deletarPonto() async {
     if (_pontoGeralIdAtual == null) {
       Navigator.pop(context);
@@ -158,7 +155,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Ponto excluído com sucesso!'), backgroundColor: Colors.green),
         );
-        Navigator.pop(context); // Fecha a tela atual e volta pra lista
+        Navigator.pop(context); 
       }
     } catch (e) {
       if (mounted) {
@@ -180,7 +177,6 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
           _urlFotoRegiao = dados.imagemRegiao;
           _urlFotoPastilhas = dados.imagemColagem;
           
-          // Desativa os listeners temporariamente para não acionar o _hasChanges durante a carga
           _removerListeners();
           _tempCtrl.text = dados.temperatura ?? '';
           _umidCtrl.text = dados.umidade ?? '';
@@ -193,6 +189,10 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
               _opcoesSubstrato.add(dados.tipoSubstrato!);
             }
             _substratoSelecionado = dados.tipoSubstrato;
+          } else {
+            if (!_opcoesSubstrato.contains(_substratoSelecionado)) {
+               _substratoSelecionado = _opcoesSubstrato.first;
+            }
           }
           _leituras = List.from(dados.leituras);
         }
@@ -204,7 +204,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
           _removerListeners();
           _idadeCtrl.text = idadeDefault;
           _adicionarListeners();
-          _hasChanges = true; // Sugeriu a idade? O usuário precisa salvar.
+          _hasChanges = true; 
         }
       }
     } catch (e) {
@@ -215,8 +215,6 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
       if (mounted) setState(() => _isInitializing = false);
     }
   }
-
-  
 
   Future<void> _capturarFoto(bool isRegiao) async {
     final picker = ImagePicker();
@@ -252,7 +250,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
           } else {
             _fotoPastilhasLocal = File(file.path);
           }
-          _hasChanges = true; // Ativa o botão Salvar
+          _hasChanges = true; 
         });
       }
     }
@@ -293,14 +291,10 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         if (res['urlColagem'] != null) _urlFotoPastilhas = res['urlColagem'];
         _fotoRegiaoLocal = null;
         _fotoPastilhasLocal = null;
-        _hasChanges = false; // <-- Esconde o botão após salvar com sucesso
+        _hasChanges = false; 
       });
 
-      // <-- INVALIDE O PROVIDER AQUI PARA RECARREGAR A TELA ANTERIOR -->
-      // Caso sua tela de pontos geral use este provider específico (ajuste se usar outro nome):
-      try {
-        ref.invalidate(resumoEnsaiosProvider);
-      } catch(_) {}
+      try { ref.invalidate(resumoEnsaiosProvider); } catch(_) {}
 
       if (mostrarFeedback && mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -325,7 +319,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         title: Text(valorAtual == null ? 'Adicionar Substrato' : 'Editar Substrato'),
         content: TextField(
           controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Ex: Argamassa colante AC-III'),
+          decoration: const InputDecoration(hintText: 'Ex: Argamassa colante'),
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancelar')),
@@ -336,12 +330,18 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                 setState(() {
                   if (valorAtual != null) {
                     final idx = _opcoesSubstrato.indexOf(valorAtual);
-                    if (idx != -1) _opcoesSubstrato[idx] = text;
+                    if (idx != -1) {
+                       if (!_opcoesSubstrato.contains(text)) {
+                          _opcoesSubstrato[idx] = text;
+                       } else {
+                          if (text != valorAtual) _opcoesSubstrato.removeAt(idx);
+                       }
+                    }
                   } else {
                     if (!_opcoesSubstrato.contains(text)) _opcoesSubstrato.add(text);
                   }
                   _substratoSelecionado = text;
-                  _hasChanges = true; // Ativa o botão Salvar
+                  _hasChanges = true;
                 });
               }
               Navigator.pop(context);
@@ -353,18 +353,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     );
   }
 
-  void _abrirModalPontoLeitura({PontoArrancamentoLeituraModel? leituraExistente}) async {
-    // Exige salvar a aba geral antes de cadastrar pontos secundários
-    if (_arrancamentoIdAtual == null || _hasChanges) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor, salve as informações gerais do ensaio primeiro.'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
+  void _abrirModalPontoLeitura({PontoArrancamentoLeituraModel? leituraExistente}) {
     final proximoNumero = _leituras.length + 1;
     final nomeSugerido = 'Ponto ${proximoNumero.toString().padLeft(2, '0')}';
 
@@ -375,28 +364,72 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         leituraExistente: leituraExistente,
         nomeSugerido: nomeSugerido,
         onSalvar: (leituraSalvar, fEnsaio, fRuptura) async {
-          final repo = ref.read(arrancamentoRepositoryProvider);
-          await repo.salvarPontoLeitura(
-            idArrancamento: _arrancamentoIdAtual!,
-            leitura: leituraSalvar,
-            fotoEnsaio: fEnsaio,
-            fotoRuptura: fRuptura,
-          );
-          
-          // Invalida o provider geral quando finaliza uma leitura, para atualizar os contadores externos se necessário
-          try { ref.invalidate(resumoEnsaiosProvider); } catch(_) {}
-          
-          await _carregarDados();
+          if (_arrancamentoIdAtual == null || _hasChanges) {
+            await _salvarGeral(mostrarFeedback: false);
+          }
+
+          if (_arrancamentoIdAtual != null) {
+            final repo = ref.read(arrancamentoRepositoryProvider);
+            
+            // 1. Salva a nova leitura no banco
+            await repo.salvarPontoLeitura(
+              idArrancamento: _arrancamentoIdAtual!,
+              leitura: leituraSalvar,
+              fotoEnsaio: fEnsaio,
+              fotoRuptura: fRuptura,
+            );
+            
+            // 2. Recarrega os dados para atualizar as listas e o Model completo
+            await _carregarDados();
+            
+            // 3. Atualiza os dados consolidados do valor_resultado/cor na tabela geral
+            if (_pontoGeralIdAtual != null) {
+              final modelAtual = PontoArrancamentoModel(leituras: _leituras);
+              await repo.atualizarResultadoGeral(_pontoGeralIdAtual!, modelAtual.mediaTensao);
+            }
+            
+            try { ref.invalidate(resumoEnsaiosProvider); } catch(_) {}
+          } else {
+             if (mounted) {
+               ScaffoldMessenger.of(context).showSnackBar(
+                 const SnackBar(content: Text('Falha ao registrar base do ensaio.'), backgroundColor: Colors.red)
+               );
+             }
+          }
         },
         onApagar: leituraExistente?.id != null
             ? () async {
                 final repo = ref.read(arrancamentoRepositoryProvider);
+                
+                // 1. Exclui leitura
                 await repo.deletarPontoLeitura(leituraExistente!.id!);
                 if (mounted) Navigator.pop(context);
+                
+                // 2. Recarrega os dados
                 await _carregarDados();
+
+                // 3. Atualiza os dados consolidados do valor_resultado/cor na tabela geral
+                if (_pontoGeralIdAtual != null) {
+                  final modelAtual = PontoArrancamentoModel(leituras: _leituras);
+                  await repo.atualizarResultadoGeral(_pontoGeralIdAtual!, modelAtual.mediaTensao);
+                }
+                
+                try { ref.invalidate(resumoEnsaiosProvider); } catch(_) {}
               }
             : null,
       ),
+    );
+  }
+
+  InputDecoration _inputDeco({String? hintText}) {
+    return InputDecoration(
+      hintText: hintText,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      filled: true,
+      fillColor: const Color(0xFFF9F9F9),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF9E9E9E), width: 1)),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFF9E9E9E), width: 1)),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary, width: 2)),
     );
   }
 
@@ -412,85 +445,74 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     final modelAtual = PontoArrancamentoModel(leituras: _leituras);
     final totalPontos = _leituras.length;
     final bool atendeMinimo = totalPontos >= 12;
+    final permissoes = ref.watch(ensaioPermissoesProvider(_pontoGeralIdAtual ?? '')).value ?? EnsaioPermissoes.somenteVisualizar;
 
     return Scaffold(
       backgroundColor: Colors.white,
-
       endDrawer: MenuDrawerAppBar(
-          title: 'Ponto de\nensaio',
-          items: [
-            Opacity(
-              opacity: 0.4,
-              child: DiaviconMenuItem(
-                icon: Icons.info_outline,
-                label: 'Informações',
-                onTap: () {},
-              ),
-            ),
-            DiaviconMenuItem(
-              icon: Icons.camera_alt_outlined,
-              label: 'Fotos',
-              onTap: () {
-                final navigator = Navigator.of(context);
-                navigator.pop();
-                if (_pontoGeralIdAtual == null || _hasChanges) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Salve as informações primeiro.'),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-                navigator.push(
-                  MaterialPageRoute(
-                    builder: (context) => GaleriaEnsaioScreen(
-                      pontoGeralId: _pontoGeralIdAtual!,
-                      pontoNome: _nomeCtrl.text,
-                      elementoNome: widget.elementoNome,
-                      tipoElemento: widget.tipoElemento,
-                      local: widget.local,
-                      tipoEnsaio: 'Arrancamento em Argamassa',
-                    ),
-                  ),
+        title: 'Ponto de\nensaio',
+        items: [
+          Opacity(
+            opacity: 0.4,
+            child: DiaviconMenuItem(icon: Icons.info_outline, label: 'Informações', onTap: () {}),
+          ),
+          DiaviconMenuItem(
+            icon: Icons.camera_alt_outlined,
+            label: 'Fotos',
+            onTap: () async {
+              final navigator = Navigator.of(context);
+              navigator.pop();
+              if (_pontoGeralIdAtual == null || _hasChanges) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Salve as informações primeiro.'), backgroundColor: Colors.orange),
                 );
-              },
-            ),
-
-            DiaviconMenuItem(
-              icon: Icons.show_chart_rounded,
-              label: 'Análise',
-              onTap: () {
-                Navigator.pop(context);
-                if (_pontoGeralIdAtual == null || _hasChanges) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text(
-                        'Salve o ponto primeiro para visualizar a análise.',
-                      ),
-                      backgroundColor: Colors.orange,
-                    ),
-                  );
-                  return;
-                }
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        AnalisePontoArrancamentoScreen(
-                          pontoGeralId: _pontoGeralIdAtual!,
-                          pontoNome: _nomeCtrl.text,
-                          elementoNome: widget.elementoNome,
-                          local: widget.local,
-                        ),
+                return;
+              }
+              
+              await navigator.push(
+                MaterialPageRoute(
+                  builder: (context) => GaleriaEnsaioScreen(
+                    pontoGeralId: _pontoGeralIdAtual!,
+                    pontoNome: _nomeCtrl.text,
+                    elementoNome: widget.elementoNome,
+                    tipoElemento: widget.tipoElemento,
+                    local: widget.local,
+                    tipoEnsaio: 'Arrancamento em Argamassa',
                   ),
+                ),
+              );
+              
+              try { ref.invalidate(resumoEnsaiosProvider); } catch(_) {}
+              _carregarDados();
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.show_chart_rounded,
+            label: 'Análise',
+            onTap: () {
+              Navigator.pop(context);
+              if (_pontoGeralIdAtual == null || _hasChanges) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Salve o ponto primeiro para visualizar a análise.'), backgroundColor: Colors.orange),
                 );
-              },
-            ),
-
-            const Spacer(),
-            const Divider(),
-
+                return;
+              }
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AnalisePontoArrancamentoScreen(
+                    pontoGeralId: _pontoGeralIdAtual!,
+                    pontoNome: _nomeCtrl.text,
+                    elementoNome: widget.elementoNome,
+                    local: widget.local,
+                  ),
+                ),
+              );
+            },
+          ),
+          const Spacer(),
+          const Divider(),
+          if (permissoes.canDelete)
             Center(
               child: IconButton(
                 iconSize: 30,
@@ -502,10 +524,8 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                 },
               ),
             ),
-          ],
-        ),
-
-
+        ],
+      ),
       appBar: const CustomAppBar(
         title: 'Ensaio',
         showBackButton: true,
@@ -521,6 +541,29 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (!permissoes.canEdit)
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(color: Colors.grey.shade100, borderRadius: BorderRadius.circular(8)),
+                child: Row(
+                  children: [
+                    Icon(Icons.visibility_outlined, size: 16, color: Colors.grey.shade700),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Somente visualização — apenas a empresa que criou este ensaio pode editá-lo.',
+                        style: TextStyle(fontSize: 12, color: Colors.grey.shade700),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            AbsorbPointer(
+              absorbing: !permissoes.canEdit,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -530,13 +573,12 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                     style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)),
                   ),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_square, color: Color(0xFF3E3E3D)),
-                  onPressed: () {},
-                ),
+                if (permissoes.canEdit)
+                  IconButton(icon: const Icon(Icons.edit_square, color: Color(0xFF3E3E3D)), onPressed: () {}),
               ],
             ),
             Text(widget.tipoElemento, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
+            //Text(widget., style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
             Text(widget.local, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 16),
 
@@ -571,9 +613,9 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
             Text('Equipamento Utilizado', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey)),
             const SizedBox(height: 4),
             Container(
-              height: 42,
+              height: 48,
               padding: const EdgeInsets.symmetric(horizontal: 12),
-              decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD9D9D9)), borderRadius: BorderRadius.circular(8)),
+              decoration: BoxDecoration(border: Border.all(color: const Color(0xFF9E9E9E)), borderRadius: BorderRadius.circular(10), color: const Color(0xFFF9F9F9)),
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
@@ -593,13 +635,13 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
               children: [
                 Expanded(
                   child: Container(
-                    height: 42,
+                    height: 48,
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD9D9D9)), borderRadius: BorderRadius.circular(8)),
+                    decoration: BoxDecoration(border: Border.all(color: const Color(0xFF9E9E9E)), borderRadius: BorderRadius.circular(10), color: const Color(0xFFF9F9F9)),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         isExpanded: true,
-                        value: _substratoSelecionado,
+                        value: _opcoesSubstrato.contains(_substratoSelecionado) ? _substratoSelecionado : _opcoesSubstrato.first,
                         items: _opcoesSubstrato.map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                         onChanged: (val) {
                           if (val != null && val != _substratoSelecionado) {
@@ -614,14 +656,8 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                   ),
                 ),
                 const SizedBox(width: 8),
-                IconButton(
-                  icon: const Icon(Icons.edit, size: 20, color: AppColors.primary),
-                  onPressed: () => _abrirModalAdicionarOuEditarSubstrato(valorAtual: _substratoSelecionado),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.add_circle, size: 24, color: AppColors.primary),
-                  onPressed: () => _abrirModalAdicionarOuEditarSubstrato(),
-                ),
+                IconButton(icon: const Icon(Icons.edit, size: 20, color: AppColors.primary), onPressed: () => _abrirModalAdicionarOuEditarSubstrato(valorAtual: _substratoSelecionado)),
+                IconButton(icon: const Icon(Icons.add_circle, size: 24, color: AppColors.primary), onPressed: () => _abrirModalAdicionarOuEditarSubstrato()),
               ],
             ),
             const SizedBox(height: 12),
@@ -641,11 +677,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                           Text('Idade (anos)', style: GoogleFonts.lato(fontSize: 11, color: Colors.grey)),
                           const SizedBox(width: 2),
                           GestureDetector(
-                            onTap: () => InfoTooltipDialog.show(
-                              context,
-                              titulo: 'Idade do Revestimento',
-                              texto: 'Idade aproximada do revestimento calculada com base no ano de concepção da estrutura.',
-                            ),
+                            onTap: () => InfoTooltipDialog.show(context, titulo: 'Idade do Revestimento', texto: 'Idade aproximada baseada na estrutura.'),
                             child: const Icon(Icons.info_outline, size: 16, color: Colors.grey),
                           ),
                         ],
@@ -655,10 +687,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                         controller: _idadeCtrl,
                         textAlign: TextAlign.center,
                         keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
-                        ),
+                        decoration: _inputDeco(),
                       ),
                     ],
                   ),
@@ -676,17 +705,10 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                 Text('Pontos de Arrancamento', style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: atendeMinimo ? const Color(0xFFE8F5E9) : const Color(0xFFFFF9C4),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  decoration: BoxDecoration(color: atendeMinimo ? const Color(0xFFE8F5E9) : const Color(0xFFFFF9C4), borderRadius: BorderRadius.circular(12)),
                   child: Text(
                     '$totalPontos realizados',
-                    style: GoogleFonts.lato(
-                      color: atendeMinimo ? const Color(0xFF2E7D32) : const Color(0xFFF57F17),
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                    ),
+                    style: GoogleFonts.lato(color: atendeMinimo ? const Color(0xFF2E7D32) : const Color(0xFFF57F17), fontSize: 11, fontWeight: FontWeight.bold),
                   ),
                 ),
               ],
@@ -696,11 +718,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
             Container(
               constraints: const BoxConstraints(minHeight: 120),
               padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFAFAFA),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFEEEEEE)),
-              ),
+              decoration: BoxDecoration(color: const Color(0xFFFAFAFA), borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFEEEEEE))),
               child: _leituras.isEmpty
                   ? Center(child: Text('Nenhum ponto registrado ainda.', style: GoogleFonts.lato(color: Colors.grey)))
                   : Column(
@@ -710,11 +728,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 10),
                             padding: const EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(12),
-                              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))],
-                            ),
+                            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 4, offset: Offset(0, 2))]),
                             child: Row(
                               children: [
                                 ClipRRect(
@@ -806,9 +820,11 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
               ],
             ),
             const SizedBox(height: 32),
+                ],
+              ),
+            ),
 
-            // O BOTÃO DE SALVAR SÓ APARECE SE HOUVER ALTERAÇÕES PENDENTES
-            if (_hasChanges)
+            if (_hasChanges && permissoes.canEdit)
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
@@ -840,10 +856,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
         TextField(
           controller: ctrl,
           textAlign: isFullWidth ? TextAlign.start : TextAlign.center,
-          decoration: InputDecoration(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFD9D9D9))),
-          ),
+          decoration: _inputDeco(),
         ),
       ],
     );
@@ -872,20 +885,20 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
             alignment: Alignment.bottomRight,
             children: [
               Container(
-                height: 160,
+                height: 150,
                 width: double.infinity,
                 decoration: BoxDecoration(
                   color: Colors.grey.shade200,
                   borderRadius: BorderRadius.circular(12),
                   image: img != null ? DecorationImage(image: img, fit: BoxFit.cover) : null,
                 ),
-                child: img == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 32) : null,
+                child: img == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 40) : null,
               ),
               Container(
                 margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6)),
-                child: const Icon(Icons.edit_square, size: 18, color: Color(0xFF3E3E3D)),
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+                child: const Icon(Icons.edit_square, size: 20, color: Color(0xFF3E3E3D)),
               ),
             ],
           ),

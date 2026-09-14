@@ -62,8 +62,9 @@ final analiseCarbonatacaoProvider = FutureProvider.family.autoDispose<AnaliseCar
     
     // O Python define: "menor cobrimento, normalmente da armadura secundária"
     double cobrimentoEfetivo = 0;
-    if (cobS > 0 && cobP > 0) cobrimentoEfetivo = min(cobS, cobP);
-    else if (cobS > 0) cobrimentoEfetivo = cobS;
+    if (cobS > 0 && cobP > 0) {
+      cobrimentoEfetivo = min(cobS, cobP);
+    } else if (cobS > 0) cobrimentoEfetivo = cobS;
     else cobrimentoEfetivo = cobP;
 
     double mediaFrentes = frentes.isEmpty ? 0 : frentes.reduce((a, b) => a + b) / frentes.length;

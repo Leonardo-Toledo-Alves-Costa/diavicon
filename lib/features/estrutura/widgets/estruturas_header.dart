@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:diavicon/routes/app_routes.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_search_bar.dart';
 import '../screens/estruturas_tab_screen.dart';
 
-import '../../auth/providers/auth_provider.dart'; 
+import '../../auth/providers/auth_provider.dart';
 
 class EstruturasHeader extends ConsumerWidget {
   final double topPadding;
-  final VoidCallback? onOpenDrawer; 
+  final VoidCallback? onOpenDrawer;
 
   const EstruturasHeader({
-    super.key, 
+    super.key,
     required this.topPadding,
-    this.onOpenDrawer, 
+    this.onOpenDrawer,
   });
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-
     final fotoUrlAsync = ref.watch(fotoUsuarioProvider);
 
     return Stack(
@@ -45,22 +45,40 @@ class EstruturasHeader extends ConsumerWidget {
                       borderRadius: BorderRadius.circular(21),
                       child: fotoUrlAsync.when(
                         loading: () => const SizedBox(
-                          width: 42, 
-                          height: 42, 
-                          child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          width: 42,
+                          height: 42,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
                         ),
-                        error: (_, __) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                        error: (_, _) => Image.asset(
+                          'assets/images/user.png',
+                          width: 42,
+                          height: 42,
+                          fit: BoxFit.cover,
+                        ),
                         data: (fotoUrl) {
                           if (fotoUrl != null && fotoUrl.isNotEmpty) {
                             return Image.network(
-                              fotoUrl, 
-                              width: 42, 
-                              height: 42, 
+                              fotoUrl,
+                              width: 42,
+                              height: 42,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) => Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover),
+                              errorBuilder: (_, _, _) => Image.asset(
+                                'assets/images/user.png',
+                                width: 42,
+                                height: 42,
+                                fit: BoxFit.cover,
+                              ),
                             );
                           }
-                          return Image.asset('assets/images/user.png', width: 42, height: 42, fit: BoxFit.cover);
+                          return Image.asset(
+                            'assets/images/user.png',
+                            width: 42,
+                            height: 42,
+                            fit: BoxFit.cover,
+                          );
                         },
                       ),
                     ),
@@ -76,15 +94,23 @@ class EstruturasHeader extends ConsumerWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.notifications_none, color: Colors.white),
-                    onPressed: () => context.push('/notificacoes'),
+                    icon: const Icon(
+                      Icons.notifications_none,
+                      color: Colors.white,
+                    ),
+                    onPressed: () =>
+                        context.pushNamed(AppRouteNames.notifications),
                   ),
                 ],
               ),
               const SizedBox(height: 4),
               const Text(
                 'Gerencie e monitore suas estruturas',
-                style: TextStyle(color: Colors.white70, fontSize: 12, fontFamily: 'Lato'),
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 12,
+                  fontFamily: 'Lato',
+                ),
               ),
             ],
           ),
@@ -98,7 +124,7 @@ class EstruturasHeader extends ConsumerWidget {
               borderRadius: BorderRadius.circular(50),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.08),
+                  color: Colors.black.withValues(alpha: 0.08),
                   blurRadius: 15,
                   offset: const Offset(0, 6),
                 ),

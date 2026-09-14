@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,9 +14,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await dotenv.load(fileName: ".env");
-  final supabaseUrl = dotenv.env['SUPABASE_URL'];
-  print('--- DEBUG SUPABASE URL: "$supabaseUrl" ---');
-  
+
   await Supabase.initialize(
     url: dotenv.env['SUPABASE_URL']!,
     anonKey: dotenv.env['SUPABASE_ANON_KEY']!,
@@ -26,22 +26,19 @@ Future<void> main() async {
   ]);
 
   final container = ProviderContainer();
-  final router = container.read(routerProvider);
-
-  // Escuta alterações de Auth globais do sistema (como recuperação de senha)
-  Supabase.instance.client.auth.onAuthStateChange.listen((data) {
-    if (data.event == AuthChangeEvent.passwordRecovery) {
-      router.go('/nova-senha');
-    } else if (data.event == AuthChangeEvent.signedIn) {
-      // 🔥 Sincroniza o perfil reativo no Riverpod imediatamente após o login bem-sucedido
-      container.read(currentUserProvider.notifier).sincronizarSessaoAtiva();
-    }
-  });
+  container.read(routerProvider);
 
   runApp(
-    UncontrolledProviderScope(
-      container: container,
-      child: const DiaviconApp(),
-    ),
+    UncontrolledProviderScope(container: container, child: const DiaviconApp()),
   );
+
+  unawaited(_finishAuthBootstrap(container));
+}
+
+Future<void> _finishAuthBootstrap(ProviderContainer container) async {
+  try {
+    await container.read(currentUserProvider.notifier).sincronizarSessaoAtiva();
+  } finally {
+    container.read(authBootstrapCompleteProvider.notifier).state = true;
+  }
 }

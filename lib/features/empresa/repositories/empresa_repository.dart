@@ -1,90 +1,107 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../auth/repositories/auth_operations_repository.dart';
 import '../models/empresa_model.dart';
 
 class EmpresaRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  
   Future<String> salvarEmpresa({
     required Map<String, dynamic> dadosEmpresa,
+    required Map<String, dynamic> dadosUsuario,
     required String userId,
   }) async {
-    //  Salva o endereço comercial (Criando o registro na tabela enderecos)
-    final enderecoData = await _supabase
-        .from('enderecos')
-        .insert({
-          'endereco': dadosEmpresa['rua'], 
+    String? fotoUsuarioUrl;
+    final fotoUsuarioPath = dadosEmpresa['foto_usuario_path'];
+    if (fotoUsuarioPath is String &&
+        fotoUsuarioPath.isNotEmpty &&
+        await File(fotoUsuarioPath).exists()) {
+      // usuarios/<uid>_<uuid>.<ext>: a política do bucket exige o uid no início.
+      final caminho = await _supabase.storage
+          .from('avatars')
+          .enviarArquivoSeguro('usuarios', File(fotoUsuarioPath), prefixo: '${userId}_');
+      fotoUsuarioUrl = _supabase.storage.from('avatars').getPublicUrl(caminho);
+    }
+
+    // Faz o Upload da Foto para o Storage
+    String? fotoUrlPublica;
+    final String? fotoPathLocal = dadosEmpresa['fotoPath'];
+
+    if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
+      try {
+        final arquivoFoto = File(fotoPathLocal);
+        // A empresa ainda não existe (é criada logo abaixo), então a logo do
+        // cadastro vai para avatars/empresas/cadastro/<uid>/<uuid>.<ext>: a
+        // política do bucket só deixa cada usuário gravar na própria pasta.
+        final caminhoStorage = await _supabase.storage
+            .from('avatars')
+            .enviarArquivoSeguro('empresas/cadastro/$userId', arquivoFoto);
+        fotoUrlPublica = _supabase.storage
+            .from('avatars')
+            .getPublicUrl(caminhoStorage);
+      } catch (e) {
+        // Rethrow para o erro aparecer na tela do cadastro
+        throw Exception(
+          'Falha ao fazer upload da logo da empresa. Verifique as policies do bucket "avatars". Erro: $e',
+        );
+      }
+    }
+
+    final result = await AuthOperationsRepository().execute('complete_self_registration', {
+      'perfil_tipo': 'empresa',
+      'perfil': {
+        'nome': dadosEmpresa['nome_pessoa'] ?? dadosEmpresa['nome_usuario'],
+        'sobrenome': dadosEmpresa['sobrenome'],
+        'celular': dadosEmpresa['telefone'] ?? dadosEmpresa['celular'],
+        'perfil': dadosEmpresa['perfil'] ?? 'empresa',
+        'cargo': dadosEmpresa['cargo'],
+        'titulo_principal': dadosEmpresa['nivel'],
+        'foto_url': fotoUsuarioUrl,
+      },
+      'endereco': {
+        // The root address is the person's address. Company address is sent
+        // separately below so the RPC never links both records to one row.
+        'endereco': dadosUsuario['rua'],
+        'cidade': dadosUsuario['cidade'],
+        'estado': dadosUsuario['estado'],
+        'cep': dadosUsuario['cep'],
+        'bairro': dadosUsuario['bairro'],
+        'numero': dadosUsuario['numero'],
+        'complemento': dadosUsuario['complemento'],
+        'pais': dadosUsuario['pais'] ?? 'Brasil',
+      },
+      'empresa': {
+        'nome': dadosEmpresa['nome'],
+        'cnpj': dadosEmpresa['cnpj'],
+        'tamanho': dadosEmpresa['colaboradores'],
+        'tipo': dadosEmpresa['tipo'],
+        'foto_url': fotoUrlPublica,
+        'site': dadosEmpresa['site'],
+        'linkedin': dadosEmpresa['linkedin'],
+        'instagram': dadosEmpresa['instagram'],
+        'rua': dadosEmpresa['rua'],
+        'cidade': dadosEmpresa['cidade'],
+        'estado': dadosEmpresa['estado'],
+        'cep': dadosEmpresa['cep'],
+        'bairro': dadosEmpresa['bairro'],
+        'numero': dadosEmpresa['numero'],
+        'complemento': dadosEmpresa['complemento'],
+        'endereco': {
+          'endereco': dadosEmpresa['rua'],
           'cidade': dadosEmpresa['cidade'],
           'estado': dadosEmpresa['estado'],
           'cep': dadosEmpresa['cep'],
           'bairro': dadosEmpresa['bairro'],
           'numero': dadosEmpresa['numero'],
-          'complemento': dadosEmpresa['complemento'], 
-          'pais': 'Brasil',
-        })
-        .select('id')
-        .single();
+          'complemento': dadosEmpresa['complemento'],
+          'pais': dadosEmpresa['pais'] ?? 'Brasil',
+        },
+      },
+    });
 
-    final String idEndereco = enderecoData['id'];
-
-    // Faz o Upload da Foto para o Storage 
-    String? fotoUrlPublica;
-    final String? fotoPathLocal = dadosEmpresa['fotoPath']; 
-    
-    if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
-      try {
-        final arquivoFoto = File(fotoPathLocal);
-        final extensao = fotoPathLocal.split('.').last;
-        final timestamp = DateTime.now().millisecondsSinceEpoch;
-        final caminhoStorage = 'empresas/$timestamp.$extensao';
-
-        await _supabase.storage.from('avatars').upload(caminhoStorage, arquivoFoto);
-        fotoUrlPublica = _supabase.storage.from('avatars').getPublicUrl(caminhoStorage);
-      } catch (e) {
-        // Rethrow para o erro aparecer na tela do cadastro
-        throw Exception('Falha ao fazer upload da logo da empresa. Verifique as policies do bucket "avatars". Erro: $e');
-      }
-    }
-
-    //  Formata o CNPJ e salva a empresa (VINCULANDO O ENDEREÇO)
-    final String cnpjLimpo = dadosEmpresa['cnpj'].replaceAll(RegExp(r'[^0-9]'), '');
-    final String cnpjFormatado = cnpjLimpo.length == 14
-        ? '${cnpjLimpo.substring(0, 2)}.${cnpjLimpo.substring(2, 5)}.${cnpjLimpo.substring(5, 8)}/${cnpjLimpo.substring(8, 12)}-${cnpjLimpo.substring(12, 14)}'
-        : dadosEmpresa['cnpj'];
-
-    final empresaData = await _supabase
-        .from('empresas')
-        .insert({
-          'nome': dadosEmpresa['nome'],
-          'cnpj': cnpjFormatado,
-          'plano_id': dadosEmpresa['plano_id'],
-          'tamanho': dadosEmpresa['colaboradores'],
-          'tipo': dadosEmpresa['tipo'], 
-          'ativo': true,
-          'foto_url': fotoUrlPublica,
-          'site': dadosEmpresa['site'], 
-          'linkedin': dadosEmpresa['linkedin'],
-          'endereco_id': idEndereco, 
-        })
-        .select('id')
-        .single();
-
-    final String idEmpresa = empresaData['id'];
-
-    //  Atualiza o usuário 
-    await _supabase
-        .from('usuarios')
-        .update({
-          'empresa_id': idEmpresa,
-          'cargo': dadosEmpresa['cargo'],
-          'titulo_principal': dadosEmpresa['nivel'],
-          'is_admin_empresa': true,
-        })
-        .eq('id', userId);
-
-    return idEmpresa;
+    return result['empresa_id'] as String;
   }
 
   /// Busca os dados da empresa para manter no estado global do app

@@ -1,0 +1,103 @@
+<!--
+  E-mail "Confirme seu cadastro" — Supabase › Authentication › Email Templates
+  › "Confirm signup".
+
+  IMPORTANTE: o config.toml só vale para o Supabase rodando no computador. No
+  projeto de verdade este modelo precisa ser COLADO no painel (campo
+  "Message body"), e o assunto no campo "Subject":
+
+      Assunto: Confirme seu cadastro na Diavicon
+
+  {{ .ConfirmationURL }} e {{ .Email }} são preenchidos pelo Supabase. Depois
+  de confirmar, o Supabase leva a pessoa para a página
+  https://diavicon.com.br/app/email-confirmado.html — esse endereço precisa
+  estar em Authentication › URL Configuration › Redirect URLs.
+
+  Feito para abrir bem em qualquer programa de e-mail: só tabelas e estilos
+  escritos direto em cada elemento (Gmail e Outlook ignoram <style>).
+-->
+<table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="background:#F6F5F2;padding:32px 12px;font-family:Arial,Helvetica,sans-serif;">
+  <tr>
+    <td align="center">
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;background:#ffffff;border-radius:16px;border-top:6px solid #F9A232;">
+
+        <!-- Marca -->
+        <tr>
+          <td style="padding:28px 28px 4px;text-align:center;">
+            <img src="https://diavicon.com.br/app/assets/assets/images/logo_diavicon.png" alt="DIAVICON" width="170" style="display:inline-block;width:170px;max-width:60%;height:auto;border:0;">
+            <div style="font-size:12px;color:#6B6D70;margin-top:6px;">Soluções para o diagnóstico da vida útil das construções</div>
+          </td>
+        </tr>
+
+        <!-- Mensagem -->
+        <tr>
+          <td style="padding:20px 28px 0;color:#2E3033;">
+            <h1 style="font-size:22px;line-height:1.3;margin:0 0 12px;color:#2E3033;">Falta só confirmar o seu e-mail</h1>
+            <p style="font-size:15px;line-height:1.55;color:#4A4A4A;margin:0 0 8px;">
+              Recebemos o cadastro de <strong style="color:#2E3033;">{{ .Email }}</strong> na Diavicon.
+            </p>
+            <p style="font-size:15px;line-height:1.55;color:#4A4A4A;margin:0 0 22px;">
+              Toque no botão abaixo para confirmar que este e-mail é seu e ativar a conta.
+            </p>
+          </td>
+        </tr>
+
+        <!-- Botão -->
+        <tr>
+          <td align="center" style="padding:0 28px 6px;">
+            <a href="{{ .ConfirmationURL }}"
+               style="display:inline-block;background:#F9A232;color:#2E3033;font-size:16px;font-weight:bold;text-decoration:none;padding:15px 34px;border-radius:12px;">
+              Confirmar meu e-mail
+            </a>
+          </td>
+        </tr>
+
+        <!-- Próximos passos -->
+        <tr>
+          <td style="padding:26px 28px 4px;">
+            <div style="font-size:13px;font-weight:bold;color:#2E3033;text-transform:uppercase;letter-spacing:.6px;margin:0 0 10px;">Depois de confirmar</div>
+            <table width="100%" cellpadding="0" cellspacing="0" role="presentation">
+              <tr>
+                <td width="30" valign="top" style="padding:0 0 10px;"><div style="width:22px;height:22px;border-radius:11px;background:#FDF0E0;color:#A85A00;font-size:12px;font-weight:bold;text-align:center;line-height:22px;">1</div></td>
+                <td valign="top" style="padding:1px 0 10px;font-size:14px;line-height:1.45;color:#4A4A4A;">Você volta para o app (ou continua pelo navegador) e entra com o seu e-mail e senha.</td>
+              </tr>
+              <tr>
+                <td width="30" valign="top" style="padding:0 0 10px;"><div style="width:22px;height:22px;border-radius:11px;background:#FDF0E0;color:#A85A00;font-size:12px;font-weight:bold;text-align:center;line-height:22px;">2</div></td>
+                <td valign="top" style="padding:1px 0 10px;font-size:14px;line-height:1.45;color:#4A4A4A;">Completa os dados da sua empresa — a conta começa no plano gratuito.</td>
+              </tr>
+              <tr>
+                <td width="30" valign="top" style="padding:0 0 4px;"><div style="width:22px;height:22px;border-radius:11px;background:#FDF0E0;color:#A85A00;font-size:12px;font-weight:bold;text-align:center;line-height:22px;">3</div></td>
+                <td valign="top" style="padding:1px 0 4px;font-size:14px;line-height:1.45;color:#4A4A4A;">Cadastra as primeiras estruturas e convida a sua equipe.</td>
+              </tr>
+            </table>
+          </td>
+        </tr>
+
+        <!-- Link reserva e segurança -->
+        <tr>
+          <td style="padding:20px 28px 28px;">
+            <div style="border-top:1px solid #EDEAE4;padding-top:16px;">
+              <p style="font-size:12px;line-height:1.5;color:#6B6D70;margin:0 0 10px;">
+                O botão não funcionou? Copie e cole este endereço no navegador:<br>
+                <a href="{{ .ConfirmationURL }}" style="word-break:break-all;color:#A85A00;">{{ .ConfirmationURL }}</a>
+              </p>
+              <p style="font-size:12px;line-height:1.5;color:#6B6D70;margin:0;">
+                Não criou uma conta na Diavicon? Pode ignorar este e-mail: sem a confirmação, nenhuma conta é ativada.
+              </p>
+            </div>
+          </td>
+        </tr>
+      </table>
+
+      <!-- Rodapé -->
+      <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="max-width:520px;">
+        <tr>
+          <td style="padding:16px 12px 0;text-align:center;font-size:12px;line-height:1.5;color:#7A7C7F;">
+            Diavicon · <a href="https://diavicon.com.br" style="color:#8A8C8F;">diavicon.com.br</a> · <a href="mailto:contato@diavicon.com.br" style="color:#8A8C8F;">contato@diavicon.com.br</a><br>
+            Você recebeu esta mensagem porque este endereço foi usado para criar uma conta.
+          </td>
+        </tr>
+      </table>
+    </td>
+  </tr>
+</table>

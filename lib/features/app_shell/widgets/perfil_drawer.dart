@@ -1,13 +1,17 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:diavicon/features/empresa/providers/empresa_provider.dart';
 import 'package:diavicon/features/empresa/screens/empresa_profile_screen.dart';
+import 'package:diavicon/features/gastos/screens/meus_gastos_screen.dart';
+import 'package:diavicon/features/projetos/rdo/screens/meus_rdos_screen.dart';
 import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class PerfilDrawer extends ConsumerStatefulWidget {
   const PerfilDrawer({super.key});
@@ -107,7 +111,7 @@ class _PerfilDrawerState extends ConsumerState<PerfilDrawer> {
                       border: Border.all(color: Colors.orange, width: 2),
                       image: DecorationImage(
                         image: fotoUrl != null && fotoUrl.isNotEmpty
-                            ? NetworkImage(fotoUrl)
+                            ? StorageNetworkImage(fotoUrl)
                             : const AssetImage('assets/images/user.png')
                                   as ImageProvider,
                         fit: BoxFit.cover,
@@ -171,22 +175,37 @@ class _PerfilDrawerState extends ConsumerState<PerfilDrawer> {
                   _TopButton(
                     icon: Icons.monetization_on_outlined,
                     label: 'Gastos',
-                    isDisabled: true,
-                    onTap: () {},
+                    isDisabled: false,
+                    onTap: () {
+                      // Pela raiz, como o RDO: cobre a barra inferior do shell.
+                      Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute(
+                          builder: (context) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: const MeusGastosScreen()),
+                        ),
+                      );
+                    },
                   ),
                   _TopButton(
                     icon: Icons.assignment_outlined,
                     label: 'RDO',
-                    isDisabled: true,
-                    onTap: () {},
+                    isDisabled: false,
+                    onTap: () {
+                      // Navegação pela raiz: o Drawer vive dentro do shell
+                      // (MainScreen, com a barra inferior); um push comum
+                      // ficaria aninhado ali dentro e a barra não sumiria.
+                      Navigator.of(context, rootNavigator: true).push(
+                        MaterialPageRoute(
+                          builder: (context) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: const MeusRdosScreen()),
+                        ),
+                      );
+                    },
                   ),
                   _TopButton(
                     icon: Icons.business_outlined,
                     label: 'Empresa',
                     isDisabled: false,
                     onTap: () {
-                      Navigator.push(
-                        context,
+                      Navigator.of(context, rootNavigator: true).push(
                         MaterialPageRoute(
                           builder: (context) =>
                               EmpresaProfileScreen(empresaId: empresaId),

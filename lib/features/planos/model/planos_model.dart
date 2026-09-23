@@ -13,6 +13,7 @@ class PlanosModel {
   final bool servicos;
   final bool rdoGastos;
   final bool monitor;
+  final bool dashboard;
   final bool publicarFeedEdu;
   final bool gerarRelatorio;
   final bool chatIa;
@@ -35,6 +36,7 @@ class PlanosModel {
     this.servicos = false,
     this.rdoGastos = false,
     this.monitor = false,
+    this.dashboard = false,
     this.publicarFeedEdu = false,
     this.gerarRelatorio = false,
     this.chatIa = false,
@@ -76,6 +78,7 @@ class PlanosModel {
       servicos: map['servicos'] ?? false,
       rdoGastos: map['rdo_gastos'] ?? false,
       monitor: map['monitor'] ?? false,
+      dashboard: map['dashboard'] ?? false,
       publicarFeedEdu: map['publicar_feed_edu'] ?? false,
       gerarRelatorio: map['gerar_relatorio'] ?? false,
       chatIa: map['chat_ia'] ?? false,
@@ -102,6 +105,7 @@ class PlanosModel {
       'servicos': servicos,
       'rdo_gastos': rdoGastos,
       'monitor': monitor,
+      'dashboard': dashboard,
       'publicar_feed_edu': publicarFeedEdu,
       'gerar_relatorio': gerarRelatorio,
       'chat_ia': chatIa,
@@ -126,6 +130,7 @@ class PlanosModel {
     bool? servicos,
     bool? rdoGastos,
     bool? monitor,
+    bool? dashboard,
     bool? publicarFeedEdu,
     bool? gerarRelatorio,
     bool? chatIa,
@@ -147,6 +152,7 @@ class PlanosModel {
       servicos: servicos ?? this.servicos,
       rdoGastos: rdoGastos ?? this.rdoGastos,
       monitor: monitor ?? this.monitor,
+      dashboard: dashboard ?? this.dashboard,
       publicarFeedEdu: publicarFeedEdu ?? this.publicarFeedEdu,
       gerarRelatorio: gerarRelatorio ?? this.gerarRelatorio,
       chatIa: chatIa ?? this.chatIa,

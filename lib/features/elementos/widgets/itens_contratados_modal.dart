@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/elementos/providers/itens_contratados_provider.dart';
 import 'package:diavicon/features/ensaios/ensaios_geral/screens/ensaios_contratados_screen.dart';
 import 'package:flutter/material.dart';
@@ -49,7 +50,7 @@ class ItensContratadosModal extends ConsumerWidget {
                     backgroundColor: Colors.white,
                     backgroundImage:
                         (empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty)
-                        ? NetworkImage(empresaFotoUrl!)
+                        ? StorageNetworkImage(empresaFotoUrl!)
                         : null,
                     child: (empresaFotoUrl == null || empresaFotoUrl!.isEmpty)
                         ? const Icon(Icons.business, color: AppColors.primary)

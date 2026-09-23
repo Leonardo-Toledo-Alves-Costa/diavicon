@@ -163,6 +163,46 @@ final estruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<Estrutu
       });
 });
 
+// --- PROVIDER: TODAS AS ESTRUTURAS DA EMPRESA (monitoradas ou não) ---
+// Igual a `estruturasDaMinhaEmpresaProvider`, mas sem o filtro `monitorada`
+// — usado pra navegação por Conjunto Estrutural (ver estruturas_tab_screen.dart),
+// que precisa listar TODAS as estruturas de um conjunto e mostrar se cada
+// uma é monitorada ou não.
+final todasEstruturasDaMinhaEmpresaProvider = StreamProvider.autoDispose<List<EstruturaModel>>((ref) {
+  final supabase = Supabase.instance.client;
+  final userId = supabase.auth.currentUser?.id;
+
+  if (userId == null) return Stream.value([]);
+
+  return supabase
+      .from('estruturas')
+      .stream(primaryKey: ['id'])
+      .asyncMap((_) async {
+        final usuarioData = await supabase
+            .from('usuarios')
+            .select('empresa_id')
+            .eq('id', userId)
+            .maybeSingle();
+        final minhaEmpresaId = usuarioData?['empresa_id'];
+
+        if (minhaEmpresaId == null) return [];
+
+        final response = await supabase
+            .from('estruturas')
+            .select('''
+              *,
+              conjuntos_estruturais(nome),
+              utilizacoes_estrutura(nome),
+              tipos_estrutura(nome),
+              tipologias_estrutura(nome)
+            ''')
+            .eq('empresa_gestora_id', minhaEmpresaId)
+            .order('criado_em', ascending: false);
+
+        return response.map((item) => EstruturaModel.fromJson(item)).toList();
+      });
+});
+
 // --- PROVIDER: CONTADORES DINÂMICOS DO PREVIEW DA ESTRUTURA ---
 typedef EstruturaEstatisticas = ({int elementos, int ensaios, int projetos});
 

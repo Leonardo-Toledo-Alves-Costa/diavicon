@@ -1,6 +1,9 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
+
+import '../../../../core/widgets/foto_ensaio.dart';
+import '../widgets/iv_ui.dart';
 
 /// Paleta, modelos e widgets de gráfico compartilhados pelas telas de
 /// Análise (por Local e Geral) — fonte única pra evitar que os dois
@@ -100,32 +103,7 @@ List<String> topNCategorias(Map<String, double> valores, int n) {
 }
 
 void abrirImagemAmpliada(BuildContext context, String url) {
-  showDialog(
-    context: context,
-    barrierColor: Colors.black87,
-    builder: (_) => Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(16),
-      child: Stack(
-        alignment: Alignment.topRight,
-        children: [
-          InteractiveViewer(
-            child: Image.network(
-              url,
-              errorBuilder: (c, e, s) => const Padding(
-                padding: EdgeInsets.all(32),
-                child: Icon(Icons.broken_image, color: Colors.white, size: 48),
-              ),
-            ),
-          ),
-          IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-        ],
-      ),
-    ),
-  );
+  abrirFotoTelaCheia(context, [StorageNetworkImage(url)]);
 }
 
 Widget pizzaChart(List<ChartDataPie> dados) {
@@ -193,10 +171,11 @@ Widget empilhadoChart({
 /// ciclando pela paleta — usado no gráfico "G.U.T. por Local".
 Color corDaPaleta(int i) => paletaAnalise[i % paletaAnalise.length];
 
-/// Card de um registro de inspeção na aba Tabelas — planta com marcação
-/// (foto_marcacao), galeria de fotos e anomalias, todos ampliáveis. Mostra
-/// um selo com o nome do Local quando [RegistroAnaliseModel.localNome] vem
-/// preenchido (análise Geral, que cruza vários locais).
+/// Card de um registro de inspeção na aba Tabelas: lê como uma ficha de
+/// laudo (dados em "rótulo: valor", não em campos de formulário), com a
+/// planta marcada, as fotos e as anomalias sempre à vista. Mostra o Local
+/// quando [RegistroAnaliseModel.localNome] vem preenchido (análise Geral,
+/// que cruza vários locais).
 class RegistroAnaliseCard extends StatelessWidget {
   final RegistroAnaliseModel registro;
 
@@ -204,180 +183,120 @@ class RegistroAnaliseCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final gut = registro.gutTotal.toDouble();
+    final faixa = FaixaGut.de(gut);
+    final fotos = [for (final u in registro.fotosGaleria) ResizeImage(StorageNetworkImage(u), width: 1600, policy: ResizeImagePolicy.fit)];
+
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))],
+        border: Border.all(color: kIvBorda),
       ),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          // Faixa superior na cor da criticidade.
+          Container(height: 5, color: faixa.cor),
           Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (registro.localNome != null && registro.localNome!.isNotEmpty) ...[
-                  Row(
-                    children: [
-                      const Icon(Icons.place, size: 14, color: Color(0xFFFFA726)),
-                      const SizedBox(width: 4),
-                      Text(registro.localNome!, style: GoogleFonts.lato(fontSize: 12, fontWeight: FontWeight.bold, color: const Color(0xFFFFA726))),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                ],
-                _campoTexto(registro.nomeRegistro),
-                const SizedBox(height: 5),
-                _campoTexto(registro.descricao, minLines: 3),
-                const SizedBox(height: 5),
-
-                // PLANTA (COM MARCAÇÃO) E INFORMAÇÕES
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    GestureDetector(
-                      onTap: registro.plantaUrl.isEmpty ? null : () => abrirImagemAmpliada(context, registro.plantaUrl),
-                      child: Container(
-                        width: 120,
-                        height: 120,
-                        clipBehavior: Clip.hardEdge,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200, borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: Colors.grey.shade300),
-                        ),
-                        child: registro.plantaUrl.isEmpty
-                            ? const Center(child: Icon(Icons.map_outlined, color: Colors.grey))
-                            : Image.network(
-                                registro.plantaUrl,
-                                fit: BoxFit.cover,
-                                errorBuilder: (c, e, s) => const Center(child: Icon(Icons.broken_image, color: Colors.grey)),
-                                loadingBuilder: (c, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                              ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _campoTexto(registro.sistemaNome, isSmall: true),
-                          const SizedBox(height: 6),
-                          _campoTexto(registro.tipoElementoNome, isSmall: true),
-                          const SizedBox(height: 6),
-                          _campoTexto(registro.elementoNome, isSmall: true),
+                          if (registro.localNome != null && registro.localNome!.isNotEmpty)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.place_outlined, size: 14, color: kIvLaranjaTexto),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      registro.localNome!,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kIvLaranjaTexto),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          Text(registro.nomeRegistro, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kIvTinta)),
                         ],
                       ),
-                    )
+                    ),
+                    const SizedBox(width: 8),
+                    SeloGut(valor: gut, mostrarFaixa: true),
                   ],
                 ),
-                const SizedBox(height: 5),
-
-                // GALERIA
-                SizedBox(
-                  height: 50,
-                  child: registro.fotosGaleria.isEmpty
-                      ? Align(
-                          alignment: Alignment.centerLeft,
-                          child: Text('Sem fotos', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade400)),
-                        )
-                      : ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: registro.fotosGaleria.length,
-                          separatorBuilder: (_, __) => const SizedBox(width: 8),
-                          itemBuilder: (context, idx) {
-                            final url = registro.fotosGaleria[idx];
-                            return GestureDetector(
-                              onTap: () => abrirImagemAmpliada(context, url),
-                              child: Container(
-                                width: 50,
-                                height: 50,
-                                clipBehavior: Clip.hardEdge,
-                                decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(8)),
-                                child: Image.network(
-                                  url,
-                                  fit: BoxFit.cover,
-                                  errorBuilder: (c, e, s) => const Icon(Icons.broken_image, color: Colors.white, size: 20),
-                                  loadingBuilder: (c, child, progress) => progress == null
-                                      ? child
-                                      : const Center(child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))),
-                                ),
-                              ),
-                            );
-                          },
-                        ),
+                if (registro.descricao.trim().isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Text(registro.descricao, style: const TextStyle(fontSize: 13, color: kIvTexto, height: 1.45)),
+                ],
+                const SizedBox(height: 14),
+                LayoutBuilder(
+                  builder: (context, c) {
+                    final planta = _Planta(url: registro.plantaUrl, lado: c.maxWidth < 420 ? 110 : 140);
+                    final dados = Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _Dado(rotulo: 'Sistema', valor: registro.sistemaNome),
+                        _Dado(rotulo: 'Tipo de elemento', valor: registro.tipoElementoNome),
+                        _Dado(rotulo: 'Elemento', valor: registro.elementoNome, ultimo: true),
+                      ],
+                    );
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [planta, const SizedBox(width: 14), Expanded(child: dados)],
+                    );
+                  },
                 ),
+                const SizedBox(height: 14),
+                Text(
+                  fotos.isEmpty ? 'Sem fotos' : 'Fotos (${fotos.length})',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kIvSuave),
+                ),
+                if (fotos.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  GradeFotosEnsaio(
+                    imagens: [for (final u in registro.fotosGaleria) ResizeImage(StorageNetworkImage(u), width: 320)],
+                    tamanhoMinimo: 72,
+                  ),
+                ],
               ],
             ),
           ),
-
-          // EXPANSION TILE ANOMALIAS
-          Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: Container(
-              margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.orange.shade200),
-                borderRadius: BorderRadius.circular(12),
-                color: Colors.orange.shade50.withValues(alpha: 0.3),
-              ),
-              child: ExpansionTile(
-                title: Row(
+          // Anomalias sempre visíveis: é o conteúdo principal da análise.
+          Container(
+            color: const Color(0xFFFAFAF8),
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
                   children: [
-                    const Text('Anomalias e manifestações', style: TextStyle(fontSize: 12, color: Color(0xFF3E3E3D))),
-                    const Spacer(),
-                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16),
-                    const SizedBox(width: 4),
-                    const Text('G.U.T ', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                    Text('${registro.gutTotal}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+                    const Icon(Icons.report_gmailerrorred_outlined, size: 16, color: kIvSuave),
+                    const SizedBox(width: 6),
+                    Text(
+                      registro.anomalias.isEmpty
+                          ? 'Sem anomalias'
+                          : 'Anomalias e manifestações (${registro.anomalias.length})',
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: kIvSuave),
+                    ),
                   ],
                 ),
-                children: registro.anomalias.map((ano) => Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-                  child: Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(ano.nome, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF3E3E3D))),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text('Área afetada ${ano.areaAfetada.toInt()}%', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                            Row(
-                              children: [
-                                const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 14),
-                                const SizedBox(width: 4),
-                                const Text('G.U.T ', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                                Text('${ano.gut}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-                              ],
-                            )
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)),
-                              child: Text('Risco ${ano.riscoTipo} ${ano.riscoClasse}', style: const TextStyle(fontSize: 10, color: Colors.red, fontWeight: FontWeight.bold)),
-                            ),
-                            const Spacer(),
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(12)),
-                              child: Text('Majoração ${ano.majoracao.toInt()}%', style: const TextStyle(fontSize: 10, color: Colors.black54, fontWeight: FontWeight.bold)),
-                            ),
-                          ],
-                        )
-                      ],
-                    ),
-                  ),
-                )).toList(),
-              ),
+                for (final ano in registro.anomalias) ...[
+                  const SizedBox(height: 8),
+                  _LinhaAnomalia(anomalia: ano),
+                ],
+              ],
             ),
           ),
         ],
@@ -386,15 +305,131 @@ class RegistroAnaliseCard extends StatelessWidget {
   }
 }
 
-Widget _campoTexto(String text, {int minLines = 1, bool isSmall = false}) {
-  return Container(
-    padding: EdgeInsets.symmetric(horizontal: 12, vertical: isSmall ? 8 : 12),
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(isSmall ? 4 : 8),
-      border: Border.all(color: Colors.grey.shade300),
-      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 4, offset: const Offset(0, 2))],
-    ),
-    child: Text(text, style: TextStyle(fontSize: isSmall ? 12 : 14, color: const Color(0xFF3E3E3D))),
-  );
+class _Planta extends StatelessWidget {
+  final String url;
+  final double lado;
+
+  const _Planta({required this.url, required this.lado});
+
+  @override
+  Widget build(BuildContext context) {
+    final tem = url.isNotEmpty;
+    return Tooltip(
+      message: tem ? 'Ampliar planta' : 'Sem marcação em planta',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: tem ? () => abrirImagemAmpliada(context, url) : null,
+        child: Container(
+          width: lado,
+          height: lado,
+          clipBehavior: Clip.hardEdge,
+          decoration: BoxDecoration(
+            color: const Color(0xFFF4F4F2),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: kIvBorda),
+          ),
+          child: !tem
+              ? const Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.map_outlined, color: kIvSuave),
+                    SizedBox(height: 4),
+                    Text('Sem planta', style: TextStyle(fontSize: 11, color: kIvSuave)),
+                  ],
+                )
+              // `contain`: a planta com a marcação aparece inteira.
+              : ImagemStorage.network(
+                  url,
+                  cacheWidth: 480,
+                  fit: BoxFit.contain,
+                  errorBuilder: (c, e, s) => const Center(child: Icon(Icons.broken_image, color: kIvSuave)),
+                  loadingBuilder: (c, child, progress) => progress == null ? child : const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Dado extends StatelessWidget {
+  final String rotulo;
+  final String valor;
+  final bool ultimo;
+
+  const _Dado({required this.rotulo, required this.valor, this.ultimo = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final vazio = valor.trim().isEmpty || valor == '-';
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      decoration: BoxDecoration(border: ultimo ? null : const Border(bottom: BorderSide(color: Color(0xFFF0F0F0)))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(rotulo, style: const TextStyle(fontSize: 11, color: kIvSuave)),
+          const SizedBox(height: 2),
+          Text(
+            vazio ? 'Não informado' : valor,
+            style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: vazio ? kIvSuave : kIvTinta),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LinhaAnomalia extends StatelessWidget {
+  final AnomaliaDetalheModel anomalia;
+
+  const _LinhaAnomalia({required this.anomalia});
+
+  @override
+  Widget build(BuildContext context) {
+    final classe = anomalia.riscoClasse.toLowerCase();
+    final corClasse = switch (classe) {
+      'alto' => const Color(0xFFB3261E),
+      'médio' || 'medio' => const Color(0xFFB26A00),
+      'baixo' => const Color(0xFF2E7D32),
+      _ => kIvSuave,
+    };
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: kIvBorda),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: Text(anomalia.nome, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: kIvTinta))),
+              const SizedBox(width: 8),
+              SeloGut(valor: anomalia.gut.toDouble()),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              EtiquetaIv(texto: 'Área ${_pct(anomalia.areaAfetada)}', icone: Icons.crop_free_rounded),
+              if (anomalia.majoracao > 0) EtiquetaIv(texto: 'Majoração ${_pct(anomalia.majoracao)}', icone: Icons.trending_up_rounded),
+              EtiquetaIv(
+                texto: 'Risco ${anomalia.riscoTipo.toLowerCase()} · $classe',
+                icone: Icons.shield_outlined,
+                cor: corClasse,
+                fundo: corClasse.withValues(alpha: 0.1),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _pct(double v) => v == v.roundToDouble() ? '${v.toInt()}%' : '${v.toStringAsFixed(1)}%';
 }

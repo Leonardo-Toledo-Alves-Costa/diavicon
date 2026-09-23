@@ -1,3 +1,4 @@
+import '../../../core/widgets/requisitos_senha.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
@@ -21,6 +22,8 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
   final _confirmaCtrl = TextEditingController();
 
   bool _senhaVisible    = false;
+  /// Depois da primeira tentativa, o que falta na senha fica em vermelho.
+  bool _tentouEnviarSenha = false;
   bool _confirmaVisible = false;
 
   @override
@@ -32,6 +35,7 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
   }
 
   void _avancar() {
+    setState(() => _tentouEnviarSenha = true);
     if (!_formKey.currentState!.validate()) return;
     context.go('/register/dados', extra: {
       'email': _emailCtrl.text.trim(),
@@ -117,6 +121,16 @@ class _CadastroR0ScreenState extends State<CadastroR0Screen> {
                                 setState(() => _senhaVisible = !_senhaVisible),
                           ),
                           validator: ValidatorsCadastro.senha,
+                        ),
+                        ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _senhaCtrl,
+                          builder: (_, valor, _) => Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ForcaSenha(senha: valor.text),
+                              RequisitosSenha(senha: valor.text, marcarFaltantes: _tentouEnviarSenha),
+                            ],
+                          ),
                         ),
                         const SizedBox(height: 16),
                         CustomTextField(

@@ -1,5 +1,9 @@
+import 'dart:convert';
+
 import 'package:diavicon/features/auth/providers/auth_provider.dart';
 import 'package:flutter/material.dart';
+import 'package:diavicon/core/security/entrada_segura.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,12 +14,18 @@ import '../../../../core/widgets/custom_text_field.dart';
 import '../../../../core/widgets/custom_button.dart';
 
 // 🔥 IMPORTANTE: Ajuste o caminho abaixo para apontar para o seu equipe_provider onde está o planLimitByProjectProvider
-import '../../equipe/providers/equipe_provider.dart'; 
+import '../../equipe/providers/equipe_provider.dart';
+import '../../empresa/providers/colaboradores_provider.dart';
+import '../../../core/widgets/aviso_topo.dart';
 
 class ConvidarFuncionarioScreen extends ConsumerStatefulWidget {
-  final String projetoId;
+  // Nulo = convite de empresa (sem vínculo com projeto). A Edge Function
+  // `convidar-funcionario` trata a ausência dessa chave como "sem projeto" —
+  // só passe um valor aqui quando o convite realmente for feito de dentro
+  // de um projeto (ver `edit_team_body.dart`).
+  final String? projetoId;
 
-  const ConvidarFuncionarioScreen({super.key, required this.projetoId});
+  const ConvidarFuncionarioScreen({super.key, this.projetoId});
 
   @override
   ConsumerState<ConvidarFuncionarioScreen> createState() => _ConvidarFuncionarioScreenState();
@@ -50,88 +60,115 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
         throw Exception('Erro: Empresa não identificada.');
       }
 
+      final email = _emailController.text.trim();
       final response = await Supabase.instance.client.functions.invoke(
         'convidar-funcionario',
         body: {
-          'email': _emailController.text.trim(),
+          'email': email,
           'nome': _nomeController.text.trim(),
           'sobrenome': _sobrenomeController.text.trim(),
           'cargo': _cargoController.text.trim(),
-          'empresa_id': usuarioAtual.empresaId, 
-          'projeto_id': widget.projetoId, 
+          'empresa_id': usuarioAtual.empresaId,
+          if (widget.projetoId != null) 'projeto_id': widget.projetoId,
         },
       );
 
-      if (response.status == 200) {
-        final data = response.data;
-        final senhaTemporaria = data['senhaProvisoria'];
-
-        if (!mounted) return;
-
-        // Invalida o cache do limite do plano para forçar a atualização imediata do gráfico
-        ref.invalidate(planLimitByProjectProvider(widget.projetoId));
-
-        showDialog(
-          context: context,
-          barrierDismissible: false, 
-          builder: (context) => AlertDialog(
-            title: const Text('✅ Cadastro Realizado!', style: TextStyle(fontWeight: FontWeight.bold)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('O acesso do funcionário foi criado com sucesso. Envie esta senha temporária para ele:'),
-                const SizedBox(height: 16),
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade200,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.grey.shade400),
-                  ),
-                  child: SelectableText(
-                    senhaTemporaria,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: 2),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'Ele precisará trocar essa senha no primeiro login.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop(); 
-                  context.pop(); 
-                },
-                child: const Text('Entendi'),
-              ),
-            ],
-          ),
-        );
-      } else {
-        throw Exception(response.data['erro'] ?? 'Erro desconhecido ao convidar.');
+      final data = response.data;
+      if (response.status < 200 || response.status >= 300) {
+        throw Exception(_mensagemErro(data) ?? 'Erro desconhecido ao convidar.');
       }
+
+      if (!mounted) return;
+
+      // Invalida o cache do limite do plano pra forçar a atualização
+      // imediata do gráfico — tem DOIS sistemas de contagem de vagas
+      // separados que não se invalidam entre si (planLimitByProjectProvider,
+      // usado só aqui, e equipeEmpresaProvider/limitePlanoProvider, usados
+      // na tela de Colaboradores da Empresa): sem invalidar os dois, quem
+      // convida por aqui e volta pra "Colaboradores" vê a contagem antiga
+      // até reabrir a tela do zero.
+      ref.invalidate(planLimitByProjectProvider(widget.projetoId ?? ''));
+      final empresaId = usuarioAtual.empresaId;
+      if (empresaId != null) {
+        ref.invalidate(equipeEmpresaProvider((empresaId: empresaId)));
+        ref.invalidate(limitePlanoProvider((empresaId: empresaId)));
+      }
+
+      final emailEnviado =
+          data is Map && data.containsKey('emailEnviado') ? data['emailEnviado'] == true : null;
+
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _DialogoConviteCriado(
+          email: email,
+          senha: data is Map ? '${data['senhaProvisoria']}' : '',
+          // A função tenta mandar a senha por e-mail depois de criar a conta.
+          // Se o envio falhar, o convite continua valendo: a senha aparece
+          // aqui do mesmo jeito, junto com o motivo da falha. Nulo quer dizer
+          // que a função publicada ainda é a antiga, que não manda e-mail —
+          // nesse caso a janela não fala de e-mail nenhum.
+          emailEnviado: emailEnviado,
+          emailErro: data is Map ? data['emailErro']?.toString() : null,
+        ),
+      );
+
+      // Além da faixa dentro da janela, o resultado do e-mail aparece no topo
+      // da tela — a faixa sozinha passava despercebida.
+      if (emailEnviado == true) {
+        mostrarAviso(context, 'Senha enviada por e-mail para $email.', tipo: TipoAviso.sucesso);
+      } else if (emailEnviado == false) {
+        mostrarAviso(
+          context,
+          'O acesso foi criado, mas o e-mail não saiu. Passe a senha por outro caminho.',
+          tipo: TipoAviso.erro,
+          duracao: const Duration(seconds: 6),
+        );
+      }
+    } on FunctionException catch (e) {
+      // O cliente do Supabase joga esta exceção em qualquer resposta de erro,
+      // e o texto dela é técnico demais para a tela. Aqui sai a mensagem que
+      // a própria função escreveu.
+      if (!mounted) return;
+      final mensagem = _mensagemErro(e.details) ??
+          _mensagemErro(e.reasonPhrase) ??
+          'O convite falhou no servidor (código ${e.status}).';
+      mostrarAviso(context, mensagem, tipo: TipoAviso.erro, duracao: const Duration(seconds: 6));
     } on PostgrestException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro no banco de dados: ${e.message}')));
+      mostrarAviso(context, 'Erro no banco de dados: ${e.message}', tipo: TipoAviso.erro);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro: ${e.toString().replaceAll('Exception: ', '')}')));
+      mostrarAviso(context, e.toString().replaceAll('Exception: ', ''), tipo: TipoAviso.erro);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
   }
 
+  /// Texto de erro que a função devolve, venha como mapa ou como JSON em
+  /// texto.
+  static String? _mensagemErro(dynamic bruto) {
+    if (bruto == null) return null;
+    if (bruto is Map) return (bruto['erro'] ?? bruto['error'] ?? bruto['message'])?.toString();
+    if (bruto is String) {
+      final texto = bruto.trim();
+      if (texto.isEmpty) return null;
+      try {
+        final decodificado = jsonDecode(texto);
+        if (decodificado is Map) return _mensagemErro(decodificado);
+      } catch (_) {
+        // Não era JSON: vale o texto puro.
+      }
+      return texto;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
-    // 1. Escuta o limite do plano da empresa atrelada a este projeto
-    final planLimitAsync = ref.watch(planLimitByProjectProvider(widget.projetoId));
+    // 1. Escuta o limite do plano da empresa (o provider ignora o projetoId
+    // internamente — é usado só como chave de cache; ver `equipe_provider.dart`).
+    final planLimitAsync = ref.watch(planLimitByProjectProvider(widget.projetoId ?? ''));
     final int cadastrados = planLimitAsync.value?.cadastrados ?? 0;
     final int permitidos = planLimitAsync.value?.permitidos ?? 0;
     final bool isPlanoEsgotado = permitidos > 0 && cadastrados >= permitidos;
@@ -182,7 +219,8 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Ele receberá um link por e-mail para definir a própria senha e completar o cadastro.',
+                  'O acesso é criado na hora e a senha provisória vai por e-mail para ele. '
+                  'Ela também aparece aqui, caso você precise passar por outro caminho.',
                   style: TextStyle(color: Colors.grey.shade600, fontSize: 14),
                 ),
                 const SizedBox(height: 24),
@@ -217,7 +255,7 @@ class _ConvidarFuncionarioScreenState extends ConsumerState<ConvidarFuncionarioS
                   keyboardType: TextInputType.emailAddress,
                   validator: (val) {
                     if (val == null || val.isEmpty) return 'O e-mail é obrigatório';
-                    if (!val.contains('@')) return 'Digite um e-mail válido';
+                    if (!EntradaSegura.emailValido(val)) return 'Digite um e-mail válido';
                     return null;
                   },
                 ),
@@ -318,6 +356,152 @@ class _MiniDashboardCard extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+
+/// Confirmação do convite: mostra a senha provisória e conta se o e-mail
+/// com ela saiu ou não.
+class _DialogoConviteCriado extends StatelessWidget {
+  final String email;
+  final String senha;
+  final bool? emailEnviado;
+  final String? emailErro;
+
+  const _DialogoConviteCriado({
+    required this.email,
+    required this.senha,
+    required this.emailEnviado,
+    this.emailErro,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text('Acesso criado', style: TextStyle(fontWeight: FontWeight.bold)),
+      // Rolagem porque o aviso de falha do e-mail pode trazer um texto longo,
+      // e em tela de celular a janela não teria altura para ele.
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Esta é a senha provisória do funcionário:'),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade200,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey.shade400),
+              ),
+              child: SelectableText(
+                senha,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, letterSpacing: 2),
+              ),
+            ),
+            if (emailEnviado != null) ...[
+              const SizedBox(height: 12),
+              _AvisoEmail(email: email, enviado: emailEnviado!, erro: emailErro),
+            ],
+            const SizedBox(height: 12),
+            const Text(
+              'Ele precisará trocar essa senha no primeiro login.',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
+        ),
+      ),
+      // Botões de verdade, um embaixo do outro: em janela estreita os dois
+      // lado a lado ficavam apertados e pareciam links.
+      actionsPadding: const EdgeInsets.fromLTRB(20, 4, 20, 16),
+      actions: [
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              await Clipboard.setData(ClipboardData(text: senha));
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Senha copiada.')),
+              );
+            },
+            style: OutlinedButton.styleFrom(
+              foregroundColor: AppColors.textDark,
+              side: const BorderSide(color: AppColors.primary),
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            icon: const Icon(Icons.copy_rounded, size: 18),
+            label: const Text('Copiar senha', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              context.pop();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Entendi', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Linha que diz se a senha chegou ao e-mail — e, quando não chegou, por quê.
+class _AvisoEmail extends StatelessWidget {
+  final String email;
+  final bool enviado;
+  final String? erro;
+
+  const _AvisoEmail({required this.email, required this.enviado, this.erro});
+
+  @override
+  Widget build(BuildContext context) {
+    final cor = enviado ? const Color(0xFF1B7F4B) : const Color(0xFFA85A00);
+    final fundo = enviado ? const Color(0xFFE8F5EE) : const Color(0xFFFDF2E3);
+    final texto = enviado
+        ? 'Enviamos a senha para $email.'
+        : 'Não conseguimos enviar o e-mail para $email — passe a senha por outro caminho.'
+            '${erro == null || erro!.isEmpty ? '' : '\n\n$erro'}';
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: fundo,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            enviado ? Icons.mark_email_read_outlined : Icons.report_gmailerrorred_outlined,
+            size: 18,
+            color: cor,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(texto, style: TextStyle(fontSize: 12.5, height: 1.4, color: cor)),
           ),
         ],
       ),

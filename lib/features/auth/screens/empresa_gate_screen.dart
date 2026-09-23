@@ -99,7 +99,7 @@ class _EmpresaGateScreenState extends ConsumerState<EmpresaGateScreen> {
 
             TextButton(
               onPressed: () =>
-                  context.go('/register/onboarding', extra: widget.dadosUsuario),
+                  context.go('/empresa/onboarding', extra: widget.dadosUsuario),
               child: const Text(
                 '< Voltar',
                 style: TextStyle(color: AppColors.greyMedium),

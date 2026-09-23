@@ -1,4 +1,4 @@
-import 'dart:math';
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,14 +39,16 @@ class CriarPostController {
       final postId = postResp['id'];
 
       if (fotos.isNotEmpty) {
+        final uidEnvio = userId;
         final List<Map<String, dynamic>> fotosParaInserir = [];
         for (var foto in fotos) {
           final bytes = await foto.readAsBytes();
-          final ext = foto.name.split('.').last;
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.$ext';
-
-          await supabase.storage.from('avatars/feed').uploadBinary(fileName, bytes);
-          final fotoUrl = supabase.storage.from('avatars/feed').getPublicUrl(fileName);
+          // avatars/feed/<uid de quem envia>/<uuid>.<ext>: a política do
+          // bucket só deixa cada usuário gravar na própria pasta.
+          final caminho = await supabase.storage
+              .from('avatars')
+              .enviarBytesSeguro('feed/$uidEnvio', bytes);
+          final fotoUrl = supabase.storage.from('avatars').getPublicUrl(caminho);
 
           fotosParaInserir.add({'post_id': postId, 'foto_url': fotoUrl});
         }
@@ -100,14 +102,17 @@ class CriarPostController {
 
       // 3. Upload das Novas Fotos
       if (novasFotos.isNotEmpty) {
+        final uidEnvio = supabase.auth.currentUser?.id;
+        if (uidEnvio == null) throw Exception('Usuário não autenticado.');
         final List<Map<String, dynamic>> fotosParaInserir = [];
         for (var foto in novasFotos) {
           final bytes = await foto.readAsBytes();
-          final ext = foto.name.split('.').last;
-          final fileName = '${DateTime.now().millisecondsSinceEpoch}_${Random().nextInt(1000)}.$ext';
-
-          await supabase.storage.from('avatars/feed').uploadBinary(fileName, bytes);
-          final fotoUrl = supabase.storage.from('avatars/feed').getPublicUrl(fileName);
+          // avatars/feed/<uid de quem envia>/<uuid>.<ext>: a política do
+          // bucket só deixa cada usuário gravar na própria pasta.
+          final caminho = await supabase.storage
+              .from('avatars')
+              .enviarBytesSeguro('feed/$uidEnvio', bytes);
+          final fotoUrl = supabase.storage.from('avatars').getPublicUrl(caminho);
 
           fotosParaInserir.add({'post_id': postId, 'foto_url': fotoUrl});
         }

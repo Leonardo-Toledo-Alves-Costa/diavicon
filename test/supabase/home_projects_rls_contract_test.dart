@@ -9,7 +9,7 @@ void main() {
 
   setUpAll(() {
     final migrationFile = File(
-      'supabase/migrations/20260903120000_harden_home_projects_rls.sql',
+      'supabase/migrations_manual/20260903120000_harden_home_projects_rls.sql',
     );
     expect(migrationFile.existsSync(), isTrue);
     migration = migrationFile.readAsStringSync();

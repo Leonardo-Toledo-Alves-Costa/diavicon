@@ -10,6 +10,7 @@ import '../../../../core/widgets/custom_appbar.dart';
 import '../../../empresa/providers/campos_personalizaveis_provider.dart';
 import '../utils/analise_charts_util.dart';
 import '../utils/risco_gut_calculo.dart';
+import '../widgets/iv_ui.dart';
 
 // =========================================================================
 // 1. MODELS DE DADOS
@@ -454,33 +455,15 @@ class _InspecaoVisualAnaliseScreenState extends ConsumerState<InspecaoVisualAnal
                 resumoAsync.when(
                   loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
                   error: (e, _) => const Text('Erro ao carregar dados', style: TextStyle(color: Colors.red)),
-                  data: (resumo) => Row(
-                    children: [
-                      _ResumoCardBase(titulo: 'Registros', valor: resumo.totalRegistros.toString()),
-                      const SizedBox(width: 8),
-                      _ResumoCardBase(titulo: 'Elementos', valor: resumo.totalElementos.toString()),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]),
-                          child: Column(
-                            children: [
-                              Text('Pontuação G.U.T', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500)),
-                              const SizedBox(height: 4),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 18),
-                                  const SizedBox(width: 4),
-                                  Text(resumo.pontuacaoGutTotal.toString(), style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
+                  data: (resumo) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: IndicadoresIv(
+                      itens: [
+                        IndicadorIv(icone: Icons.fact_check_outlined, rotulo: 'Registros', valor: '${resumo.totalRegistros}'),
+                        IndicadorIv(icone: Icons.view_in_ar_outlined, rotulo: 'Elementos', valor: '${resumo.totalElementos}'),
+                        IndicadorIv.gut(resumo.pontuacaoGutTotal.toDouble()),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 5),
@@ -542,33 +525,6 @@ class _DropdownFiltro extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ResumoCardBase extends StatelessWidget {
-  final String titulo;
-  final String valor;
-  const _ResumoCardBase({required this.titulo, required this.valor});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 80,
-      padding: const EdgeInsets.symmetric(vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.grey.shade200),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))],
-      ),
-      child: Column(
-        children: [
-          Text(titulo, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500)),
-          const SizedBox(height: 4),
-          Text(valor, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-        ],
-      ),
     );
   }
 }
@@ -741,8 +697,9 @@ class _ChartContainer extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF4F5F6),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: kIvBorda),
       ),
       child: Column(
         children: [

@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -86,7 +88,7 @@ class _SelecionarAreaEnsaioModalState extends ConsumerState<SelecionarAreaEnsaio
         _isLoadingMidia = true;
       });
       try {
-        final req = await HttpClient().getUrl(Uri.parse(widget.plantaUrl));
+        final req = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(widget.plantaUrl)));
         final doc = await PdfDocument.openData(await consolidateHttpClientResponseBytes(await req.close()));
         final page = await doc.getPage(1);
         double w = page.width;
@@ -211,7 +213,7 @@ class _SelecionarAreaEnsaioModalState extends ConsumerState<SelecionarAreaEnsaio
                           children: [
                             _isPdf
                                 ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox())
-                                : Image.network(widget.plantaUrl),
+                                : ImagemStorage.network(widget.plantaUrl),
                             Positioned.fill(
                               child: LayoutBuilder(
                                 builder: (context, constraints) {

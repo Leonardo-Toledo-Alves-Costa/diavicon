@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/feed_provider.dart';
@@ -31,7 +32,7 @@ class EmpresaFeedCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   child: empresa.fotoCapa != null
-                      ? Image.network(empresa.fotoCapa!, height: 140, width: double.infinity, fit: BoxFit.cover)
+                      ? ImagemStorage.network(empresa.fotoCapa!, height: 140, width: double.infinity, fit: BoxFit.cover)
                       : Container(height: 140, color: Colors.grey[300]),
                 ),
                 Positioned(
@@ -54,7 +55,7 @@ class EmpresaFeedCard extends StatelessWidget {
                     child: CircleAvatar(
                       radius: 23,
                       backgroundColor: Colors.grey[200],
-                      backgroundImage: empresa.fotoUrl != null ? NetworkImage(empresa.fotoUrl!) : null,
+                      backgroundImage: empresa.fotoUrl != null ? StorageNetworkImage(empresa.fotoUrl!) : null,
                       child: empresa.fotoUrl == null ? const Icon(Icons.business, color: Colors.grey) : null,
                     ),
                   ),
@@ -117,7 +118,7 @@ class ServicoFeedCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   child: servico.fotoPrincipal != null
-                      ? Image.network(servico.fotoPrincipal!, height: 160, width: double.infinity, fit: BoxFit.cover)
+                      ? ImagemStorage.network(servico.fotoPrincipal!, height: 160, width: double.infinity, fit: BoxFit.cover)
                       : Container(height: 160, color: Colors.grey[300]),
                 ),
                 if (servico.categoria != null)
@@ -142,7 +143,7 @@ class ServicoFeedCard extends StatelessWidget {
                       CircleAvatar(
                         radius: 14,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: servico.empresaFotoUrl != null ? NetworkImage(servico.empresaFotoUrl!) : null,
+                        backgroundImage: servico.empresaFotoUrl != null ? StorageNetworkImage(servico.empresaFotoUrl!) : null,
                       ),
                       const SizedBox(width: 10),
                       Expanded(

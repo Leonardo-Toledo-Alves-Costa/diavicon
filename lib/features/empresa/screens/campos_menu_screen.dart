@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import 'anomalias_screen.dart';
 import 'campo_itens_screen.dart';
+import 'conjuntos_estruturais_screen.dart';
 
 class CamposMenuScreen extends StatelessWidget {
   final String empresaId; 
@@ -36,6 +37,7 @@ class CamposMenuScreen extends StatelessWidget {
 
             // GRUPO ESTRUTURA
             _buildCategoryTitle('ESTRUTURA'),
+            _buildMenuItem(context, 'Conjuntos estruturais', 'conjuntos_estruturais', Icons.workspaces_outline),
             _buildMenuItem(context, 'Tipos de estrutura', 'tipos_estrutura', Icons.apartment),
             _buildMenuItem(context, 'Tipologias de estrutura', 'tipologias_estrutura', Icons.account_tree_outlined),
             _buildMenuItem(context, 'Utilização da estrutura', 'utilizacoes_estrutura', Icons.business_center_outlined),
@@ -83,7 +85,11 @@ class CamposMenuScreen extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => tableName == 'anomalias'
+            // Conjuntos têm tela própria: além do nome, mostram quantas
+            // estruturas cada um agrupa e só deixam apagar o que está vazio.
+            builder: (_) => tableName == 'conjuntos_estruturais'
+                ? const ConjuntosEstruturaisScreen()
+                : tableName == 'anomalias'
                 ? AnomaliasScreen(empresaId: empresaId)
                 : CampoItensScreen(
                     empresaId: empresaId,

@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/compact_search_bar.dart';
@@ -233,7 +234,7 @@ class _StructureAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: imageUrl != null && imageUrl!.isNotEmpty
-          ? Image.network(
+          ? ImagemStorage.network(
               imageUrl!,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const Icon(
@@ -296,7 +297,7 @@ class _ElementoCard extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 12, 15, 12),
             child: Row(
               children: [
-                Container(width: 54, height: 54, decoration: const BoxDecoration(color: Color(0xFFE6E7E8), shape: BoxShape.circle), clipBehavior: Clip.antiAlias, child: imgUrl != null ? Image.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_,_,_)=> const Icon(Icons.broken_image_outlined, color: AppColors.greyDarkest)) : const Icon(Icons.business_outlined, color: AppColors.greyDarkest, size: 28)),
+                Container(width: 54, height: 54, decoration: const BoxDecoration(color: Color(0xFFE6E7E8), shape: BoxShape.circle), clipBehavior: Clip.antiAlias, child: imgUrl != null ? ImagemStorage.network(imgUrl, fit: BoxFit.cover, errorBuilder: (_,_,_)=> const Icon(Icons.broken_image_outlined, color: AppColors.greyDarkest)) : const Icon(Icons.business_outlined, color: AppColors.greyDarkest, size: 28)),
                 const SizedBox(width: 15),
                 Expanded(
                   child: Column(

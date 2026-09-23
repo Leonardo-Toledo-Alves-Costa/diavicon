@@ -1,0 +1,476 @@
+diff -ru --strip-trailing-cr orig/lib/features/dashboards_bi/screens/dashboard_screen.dart /mnt/user-data/outputs/patch/lib/features/dashboards_bi/screens/dashboard_screen.dart
+--- orig/lib/features/dashboards_bi/screens/dashboard_screen.dart	2026-09-21 14:42:43.638467525 -0300
++++ /mnt/user-data/outputs/patch/lib/features/dashboards_bi/screens/dashboard_screen.dart	2026-09-21 14:48:06.083201903 -0300
+@@ -7,6 +7,7 @@
+ import '../../../core/widgets/custom_appbar.dart';
+ import '../../auth/providers/auth_provider.dart';
+ import '../../empresa/providers/campos_personalizaveis_provider.dart' show DIAVICON_EMPRESA_ID;
++import '../../planos/acesso_plano.dart';
+ import '../models/bi_data_point.dart';
+ import '../models/bi_filtros_model.dart';
+ import '../models/dashboard_card_model.dart';
+@@ -477,6 +478,14 @@
+ 
+   @override
+   Widget build(BuildContext context) {
++    // Dashboard é recurso de plano (coluna `dashboard` em `planos`).
++    return GuardaModuloPlano(
++      modulo: ModuloPlano.dashboard,
++      child: Builder(builder: _buildConteudo),
++    );
++  }
++
++  Widget _buildConteudo(BuildContext context) {
+     return Scaffold(
+       backgroundColor: kBiFundo,
+       endDrawer: _buildEndDrawer(),
+diff -ru --strip-trailing-cr orig/lib/features/elementos/screens/elemento_form_screen.dart /mnt/user-data/outputs/patch/lib/features/elementos/screens/elemento_form_screen.dart
+--- orig/lib/features/elementos/screens/elemento_form_screen.dart	2026-09-21 14:42:43.639056798 -0300
++++ /mnt/user-data/outputs/patch/lib/features/elementos/screens/elemento_form_screen.dart	2026-09-21 14:50:28.249305550 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ 
+ import 'package:diavicon/core/widgets/custom_appbar.dart';
+ import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
+@@ -208,6 +209,10 @@
+   }
+ 
+   Future<void> _salvar() async {
++    if (_isSubmitting) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (!_isEditing && !await verificarArmazenamento(context, ref)) return;
++    if (!mounted || _isSubmitting) return;
+     if (_nomeController.text.trim().isEmpty) {
+       DiaviconAlerts.show(
+         context,
+diff -ru --strip-trailing-cr orig/lib/features/elementos/screens/novo_elem_estrutural_screen.dart /mnt/user-data/outputs/patch/lib/features/elementos/screens/novo_elem_estrutural_screen.dart
+--- orig/lib/features/elementos/screens/novo_elem_estrutural_screen.dart	2026-09-21 14:42:43.639106381 -0300
++++ /mnt/user-data/outputs/patch/lib/features/elementos/screens/novo_elem_estrutural_screen.dart	2026-09-21 14:50:28.251963122 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ 
+ import 'package:diavicon/core/constants/app_colors.dart';
+ import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
+@@ -349,6 +350,9 @@
+     if (_isSubmitting) return;
+ 
+     if (!_canSubmit) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (widget.onSubmit == null && !await verificarArmazenamento(context, ref)) return;
++    if (!mounted || _isSubmitting) return;
+ 
+     final draft = NovoElemEstruturalDraft(
+       nome: _nomeController.text.trim(),
+diff -ru --strip-trailing-cr orig/lib/features/empresa/screens/padroes_empresa_screen.dart /mnt/user-data/outputs/patch/lib/features/empresa/screens/padroes_empresa_screen.dart
+--- orig/lib/features/empresa/screens/padroes_empresa_screen.dart	2026-09-21 14:42:43.638640686 -0300
++++ /mnt/user-data/outputs/patch/lib/features/empresa/screens/padroes_empresa_screen.dart	2026-09-21 14:42:45.359375157 -0300
+@@ -81,7 +81,7 @@
+               onTap: () {
+                 Navigator.push(
+                   context,
+-                  MaterialPageRoute(builder: (_) => ModelosDashboardScreen(empresaId: empresaId)),
++                  MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.dashboard, child: ModelosDashboardScreen(empresaId: empresaId))),
+                 );
+               },
+             ),
+@@ -92,7 +92,7 @@
+               onTap: () {
+                 Navigator.push(
+                   context,
+-                  MaterialPageRoute(builder: (_) => ModelosEquacaoScreen(empresaId: empresaId)),
++                  MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.dashboard, child: ModelosEquacaoScreen(empresaId: empresaId))),
+                 );
+               },
+             ),
+@@ -103,7 +103,7 @@
+               onTap: () {
+                 Navigator.push(
+                   context,
+-                  MaterialPageRoute(builder: (_) => ModelosSimulacaoScreen(empresaId: empresaId)),
++                  MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.dashboard, child: ModelosSimulacaoScreen(empresaId: empresaId))),
+                 );
+               },
+             ),
+diff -ru --strip-trailing-cr orig/lib/features/ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart /mnt/user-data/outputs/patch/lib/features/ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart
+--- orig/lib/features/ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart	2026-09-21 14:47:18.229042699 -0300
++++ /mnt/user-data/outputs/patch/lib/features/ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart	2026-09-21 14:50:28.253208048 -0300
+@@ -1,4 +1,5 @@
+ import '../../../../core/widgets/autoria_badge.dart';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -47,6 +48,7 @@
+ 
+   // Controle de ordenação (False = Mais recentes primeiro)
+   bool _isAscending = false;
++  bool _verificandoEspaco = false;
+ 
+   void _recarregarLista() {
+     ref.invalidate(pontosEnsaioProvider((
+@@ -541,11 +543,23 @@
+                           CompactButton(
+                             text: 'Novo',
+                             width: 80,
+-                            onPressed: () => _mostrarModalNovoEnsaio(
+-                              context,
+-                              widget.estruturaId,
+-                              tipoEnsaioNomeUI,
+-                            ),
++                            onPressed: () async {
++                              // Plano sem espaço: não abre um ponto novo (o servidor também recusa).
++                              if (_verificandoEspaco) return;
++                              _verificandoEspaco = true;
++                              final bool temEspaco;
++                              try {
++                                temEspaco = await verificarArmazenamento(context, ref);
++                              } finally {
++                                _verificandoEspaco = false;
++                              }
++                              if (!temEspaco || !context.mounted) return;
++                              _mostrarModalNovoEnsaio(
++                                context,
++                                widget.estruturaId,
++                                tipoEnsaioNomeUI,
++                              );
++                            },
+                           ),
+                         ],
+                       ),
+diff -ru --strip-trailing-cr orig/lib/features/ensaios/ensaios_geral/widgets/imagem_ensaio_modal.dart /mnt/user-data/outputs/patch/lib/features/ensaios/ensaios_geral/widgets/imagem_ensaio_modal.dart
+--- orig/lib/features/ensaios/ensaios_geral/widgets/imagem_ensaio_modal.dart	2026-09-21 14:42:43.639212004 -0300
++++ /mnt/user-data/outputs/patch/lib/features/ensaios/ensaios_geral/widgets/imagem_ensaio_modal.dart	2026-09-21 14:48:40.840710737 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:async';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ import 'dart:io';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -148,6 +149,12 @@
+     // `_isLoading == true` e sai antes de inserir de novo.
+     if (_isLoading) return;
+ 
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (!_isEditing && !await verificarArmazenamento(context, ref)) return;
++    if (!mounted) return;
++    // Toque duplo: a outra chamada pode ter avançado durante o await acima.
++    if (_isLoading) return;
++
+     // Validação
+     if (!_isEditing && _imagemLocal == null) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecione uma imagem.'), backgroundColor: Colors.orange));
+diff -ru --strip-trailing-cr orig/lib/features/estrutura/screens/nova_estrutura_body.dart /mnt/user-data/outputs/patch/lib/features/estrutura/screens/nova_estrutura_body.dart
+--- orig/lib/features/estrutura/screens/nova_estrutura_body.dart	2026-09-21 14:42:43.638998333 -0300
++++ /mnt/user-data/outputs/patch/lib/features/estrutura/screens/nova_estrutura_body.dart	2026-09-21 14:50:28.247615275 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ import 'dart:async';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -245,6 +246,10 @@
+   }
+ 
+   Future<void> _handleCriar() async {
++    if (_isLoading) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (!await verificarArmazenamento(context, ref)) return;
++    if (!mounted || _isLoading) return;
+     if (!_formKey.currentState!.validate()) {
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(
+diff -ru --strip-trailing-cr orig/lib/features/gastos/widgets/gasto_form_dialog.dart /mnt/user-data/outputs/patch/lib/features/gastos/widgets/gasto_form_dialog.dart
+--- orig/lib/features/gastos/widgets/gasto_form_dialog.dart	2026-09-21 14:42:43.639265040 -0300
++++ /mnt/user-data/outputs/patch/lib/features/gastos/widgets/gasto_form_dialog.dart	2026-09-21 14:50:28.250463848 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ 
+ import 'package:file_picker/file_picker.dart';
+ import 'package:flutter/material.dart';
+@@ -216,6 +217,10 @@
+ 
+   Future<void> _salvar() async {
+     if (_salvando) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (widget.gasto == null && !await verificarArmazenamento(context, ref)) return;
++    if (!mounted) return;
++    if (_salvando) return;
+     final valor = lerValorDigitado(_valorCtrl.text);
+     final String? erro = valor == null || valor <= 0
+         ? 'Informe um valor maior que zero.'
+diff -ru --strip-trailing-cr orig/lib/features/planos/acesso_plano.dart /mnt/user-data/outputs/patch/lib/features/planos/acesso_plano.dart
+--- orig/lib/features/planos/acesso_plano.dart	2026-09-21 14:42:43.638358152 -0300
++++ /mnt/user-data/outputs/patch/lib/features/planos/acesso_plano.dart	2026-09-21 14:45:27.368460149 -0300
+@@ -5,6 +5,7 @@
+ import '../../core/widgets/diavicon_alerts.dart';
+ import 'model/planos_model.dart';
+ import 'planos_mensagens.dart';
++import 'providers/armazenamento_provider.dart';
+ import 'providers/empresa_plano_atual_provider.dart';
+ 
+ /// Módulos que dependem do plano da empresa. A regra de cada um vem SEMPRE da
+@@ -24,6 +25,9 @@
+   /// Telas de RDO e de gastos — `rdo_gastos`.
+   rdoGastos,
+ 
++  /// Dashboards de BI e seus modelos (equação, simulação) — `dashboard`.
++  dashboard,
++
+   /// Cadastrar serviços da empresa — `servicos`.
+   servicos,
+ 
+@@ -42,6 +46,7 @@
+         ModuloPlano.monitor => 'Monitoramento de estruturas',
+         ModuloPlano.relatorios => 'Geração de relatórios',
+         ModuloPlano.rdoGastos => 'RDO e gastos',
++        ModuloPlano.dashboard => 'Dashboard',
+         ModuloPlano.servicos => 'Cadastro de serviços',
+         ModuloPlano.publicarFeed => 'Publicar no feed',
+         ModuloPlano.patrocinarFeed => 'Patrocinar publicações',
+@@ -53,6 +58,7 @@
+         ModuloPlano.monitor => 'o monitoramento de estruturas',
+         ModuloPlano.relatorios => 'a geração de relatórios',
+         ModuloPlano.rdoGastos => 'o RDO e o controle de gastos',
++        ModuloPlano.dashboard => 'o dashboard',
+         ModuloPlano.servicos => 'o cadastro de serviços',
+         ModuloPlano.publicarFeed => 'publicar no feed',
+         ModuloPlano.patrocinarFeed => 'patrocinar publicações no feed',
+@@ -70,6 +76,7 @@
+         ModuloPlano.monitor => monitor,
+         ModuloPlano.relatorios => gerarRelatorio,
+         ModuloPlano.rdoGastos => rdoGastos,
++        ModuloPlano.dashboard => dashboard,
+         ModuloPlano.servicos => servicos,
+         ModuloPlano.publicarFeed => publicarFeedEdu,
+         ModuloPlano.patrocinarFeed => (tokensPublicidade ?? 0) > 0,
+@@ -95,6 +102,7 @@
+       (texto: 'Ensaios, coleta e análises', incluso: true),
+       (texto: 'Geração de relatórios', incluso: gerarRelatorio),
+       (texto: 'RDO e controle de gastos', incluso: rdoGastos),
++      (texto: 'Dashboard', incluso: dashboard),
+       (
+         texto: monitor && tokensEstrutura > 0
+             ? 'Monitoramento de até $tokensEstrutura estrutura${tokensEstrutura == 1 ? '' : 's'}'
+@@ -135,6 +143,33 @@
+   }
+   return false;
+ }
++
++/// Mensagem do bloqueio por armazenamento. É a mesma que o servidor devolve
++/// (migration 20260921100000_cota_armazenamento.sql).
++const String kMensagemArmazenamentoCheio =
++    'O armazenamento do seu plano está cheio. Apague arquivos que não usa mais ou entre em contato com o time de vendas da Diavicon para aumentar o seu plano.';
++
++/// Confere se ainda há espaço no plano antes de uma criação (projeto,
++/// estrutura, elemento, ponto de ensaio, leitura, foto, relatório, RDO,
++/// gasto, serviço ou post). Se o armazenamento acabou, mostra o aviso e
++/// devolve `false`.
++///
++/// Sem conseguir calcular (ex.: sem internet), deixa seguir: o servidor
++/// recusa a gravação se o espaço tiver acabado.
++Future<bool> verificarArmazenamento(BuildContext context, WidgetRef ref, {double tamanhoEstimadoMb = 0}) async {
++  bool pode;
++  try {
++    ref.invalidate(armazenamentoUsoProvider);
++    pode = await podeAdicionarArquivo(ref, tamanhoEstimadoMb: tamanhoEstimadoMb);
++  } catch (_) {
++    return true;
++  }
++  if (pode) return true;
++  if (context.mounted) {
++    DiaviconAlerts.show(context, 'Armazenamento cheio', kMensagemArmazenamentoCheio, isAviso: true);
++  }
++  return false;
++}
+ 
+ /// Envolve uma tela inteira de um módulo pago. Cobre quem chega pelo endereço
+ /// (no navegador dá para digitar a URL) ou por um atalho esquecido.
+diff -ru --strip-trailing-cr orig/lib/features/planos/model/planos_model.dart /mnt/user-data/outputs/patch/lib/features/planos/model/planos_model.dart
+--- orig/lib/features/planos/model/planos_model.dart	2026-09-21 14:42:43.638340044 -0300
++++ /mnt/user-data/outputs/patch/lib/features/planos/model/planos_model.dart	2026-09-21 14:48:06.009462011 -0300
+@@ -13,6 +13,7 @@
+   final bool servicos;
+   final bool rdoGastos;
+   final bool monitor;
++  final bool dashboard;
+   final bool publicarFeedEdu;
+   final bool gerarRelatorio;
+   final bool chatIa;
+@@ -35,6 +36,7 @@
+     this.servicos = false,
+     this.rdoGastos = false,
+     this.monitor = false,
++    this.dashboard = false,
+     this.publicarFeedEdu = false,
+     this.gerarRelatorio = false,
+     this.chatIa = false,
+@@ -76,6 +78,7 @@
+       servicos: map['servicos'] ?? false,
+       rdoGastos: map['rdo_gastos'] ?? false,
+       monitor: map['monitor'] ?? false,
++      dashboard: map['dashboard'] ?? false,
+       publicarFeedEdu: map['publicar_feed_edu'] ?? false,
+       gerarRelatorio: map['gerar_relatorio'] ?? false,
+       chatIa: map['chat_ia'] ?? false,
+@@ -102,6 +105,7 @@
+       'servicos': servicos,
+       'rdo_gastos': rdoGastos,
+       'monitor': monitor,
++      'dashboard': dashboard,
+       'publicar_feed_edu': publicarFeedEdu,
+       'gerar_relatorio': gerarRelatorio,
+       'chat_ia': chatIa,
+@@ -126,6 +130,7 @@
+     bool? servicos,
+     bool? rdoGastos,
+     bool? monitor,
++    bool? dashboard,
+     bool? publicarFeedEdu,
+     bool? gerarRelatorio,
+     bool? chatIa,
+@@ -147,6 +152,7 @@
+       servicos: servicos ?? this.servicos,
+       rdoGastos: rdoGastos ?? this.rdoGastos,
+       monitor: monitor ?? this.monitor,
++      dashboard: dashboard ?? this.dashboard,
+       publicarFeedEdu: publicarFeedEdu ?? this.publicarFeedEdu,
+       gerarRelatorio: gerarRelatorio ?? this.gerarRelatorio,
+       chatIa: chatIa ?? this.chatIa,
+diff -ru --strip-trailing-cr orig/lib/features/planos/providers/armazenamento_provider.dart /mnt/user-data/outputs/patch/lib/features/planos/providers/armazenamento_provider.dart
+--- orig/lib/features/planos/providers/armazenamento_provider.dart	2026-09-21 14:42:43.638293366 -0300
++++ /mnt/user-data/outputs/patch/lib/features/planos/providers/armazenamento_provider.dart	2026-09-21 14:50:28.254243642 -0300
+@@ -1,16 +1,18 @@
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+ import 'package:supabase_flutter/supabase_flutter.dart';
++import '../model/planos_model.dart';
+ import 'empresa_plano_atual_provider.dart';
+ 
+ /// Uso de armazenamento da empresa, em MB, por categoria.
+ ///
+-/// Medir o tamanho exato em bytes de cada arquivo no Storage (ou de cada
+-/// linha no Postgres) exigiria rastrear o tamanho de cada upload no momento
+-/// em que ele acontece — hoje nenhum dos ~15 pontos de upload do app grava
+-/// isso. Em vez de tentar reconstruir isso de forma frágil (casando URL por
+-/// URL contra listagens de bucket), calculamos uma ESTIMATIVA a partir da
+-/// contagem de linhas/fotos multiplicada por um tamanho médio por item.
+-/// Fica claro na UI que é estimado, não uma medição exata.
++/// Fonte principal: RPC `uso_armazenamento_empresa` (migration
++/// 20260921100000_cota_armazenamento.sql). Ela soma o tamanho REAL de cada
++/// arquivo no Storage enviado por usuários da empresa (PDF = relatório, resto
++/// = foto) e estima os dados em 2 KB por projeto/estrutura/elemento/ponto. É a
++/// mesma conta que o servidor usa para bloquear criações quando o plano enche.
++///
++/// Se a RPC ainda não existir no banco, cai na estimativa antiga (contagem de
++/// linhas × tamanho médio), calculada aqui no app.
+ class ArmazenamentoUso {
+   final double dadosMb;
+   final double fotosMb;
+@@ -34,8 +36,33 @@
+ 
+ final armazenamentoUsoProvider = FutureProvider.autoDispose<ArmazenamentoUso>((ref) async {
+   final supabase = Supabase.instance.client;
++  // Assinado antes de qualquer await (regra do Riverpod para `ref.watch`).
++  final planoFuture = ref.watch(empresaPlanoAtualProvider.future);
++
++  try {
++    final rows = await supabase.rpc('uso_armazenamento_empresa');
++    if (rows is List && rows.isNotEmpty) {
++      final r = Map<String, dynamic>.from(rows.first as Map);
++      double mb(String k) => (r[k] as num?)?.toDouble() ?? 0;
++      return ArmazenamentoUso(
++        dadosMb: mb('dados_mb'),
++        fotosMb: mb('fotos_mb'),
++        relatoriosMb: mb('relatorios_mb'),
++        limiteMb: (r['limite_mb'] as num?)?.toInt() ?? 0,
++      );
++    }
++  } catch (_) {
++    // RPC ainda não aplicada: segue para a estimativa abaixo.
++  }
++
++  return _estimativaLocal(planoFuture);
++});
++
++/// Estimativa antiga, usada só se a RPC não estiver disponível.
++Future<ArmazenamentoUso> _estimativaLocal(Future<PlanosModel> planoFuture) async {
++  final supabase = Supabase.instance.client;
+   final userId = supabase.auth.currentUser?.id;
+-  final plano = await ref.watch(empresaPlanoAtualProvider.future);
++  final plano = await planoFuture;
+ 
+   if (userId == null) {
+     return ArmazenamentoUso(dadosMb: 0, fotosMb: 0, relatoriosMb: 0, limiteMb: plano.armazenamentoMb);
+@@ -109,12 +136,16 @@
+     relatoriosMb: (relatoriosCount * _kbPorRelatorio) / 1024,
+     limiteMb: plano.armazenamentoMb,
+   );
+-});
++}
+ 
+ /// Checa se a empresa ainda tem espaço no plano antes de uma nova criação
+ /// (post do feed, serviço, etc.) que vá adicionar aproximadamente
+ /// [tamanhoEstimadoMb] de armazenamento.
+ Future<bool> podeAdicionarArquivo(WidgetRef ref, {double tamanhoEstimadoMb = 1}) async {
+   final uso = await ref.read(armazenamentoUsoProvider.future);
+-  return (uso.totalMb + tamanhoEstimadoMb) <= uso.limiteMb;
++  // Limite 0 = plano sem limite definido: não bloqueia (igual ao servidor).
++  if (uso.limiteMb <= 0) return true;
++  // O servidor recusa quando o uso já atingiu o limite; aqui, igual, e também
++  // quando a nova criação passaria do limite.
++  return (uso.totalMb + tamanhoEstimadoMb) < uso.limiteMb;
+ }
+diff -ru --strip-trailing-cr orig/lib/features/planos/screens/meu_plano_screen.dart /mnt/user-data/outputs/patch/lib/features/planos/screens/meu_plano_screen.dart
+--- orig/lib/features/planos/screens/meu_plano_screen.dart	2026-09-21 14:42:43.638251418 -0300
++++ /mnt/user-data/outputs/patch/lib/features/planos/screens/meu_plano_screen.dart	2026-09-21 14:42:44.461595283 -0300
+@@ -66,7 +66,7 @@
+                     _titulo('Armazenamento'),
+                     const SizedBox(height: 4),
+                     Text(
+-                      'Estimativa com base na quantidade de dados, fotos e relatórios cadastrados.',
++                      'Fotos e relatórios pelo tamanho real dos arquivos. Dados cadastrados são estimados. Quando o limite é atingido, novas criações ficam bloqueadas até liberar espaço ou aumentar o plano.',
+                       style: GoogleFonts.lato(fontSize: 12, color: AppColors.greyMedium),
+                     ),
+                     const SizedBox(height: 16),
+diff -ru --strip-trailing-cr orig/lib/features/projetos/rdo/screens/novo_rdo_screen.dart /mnt/user-data/outputs/patch/lib/features/projetos/rdo/screens/novo_rdo_screen.dart
+--- orig/lib/features/projetos/rdo/screens/novo_rdo_screen.dart	2026-09-21 14:42:43.638786511 -0300
++++ /mnt/user-data/outputs/patch/lib/features/projetos/rdo/screens/novo_rdo_screen.dart	2026-09-21 14:50:28.246516340 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ 
+ import 'package:diavicon/core/constants/app_colors.dart';
+ import 'package:diavicon/core/widgets/custom_appbar.dart';
+@@ -780,6 +781,10 @@
+   }
+ 
+   Future<void> _salvar(BuildContext context) async {
++    if (_salvando) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (!await verificarArmazenamento(context, ref)) return;
++    if (!context.mounted || _salvando) return;
+     if (_dataController.text.isEmpty) {
+       DiaviconAlerts.show(context, 'Data obrigatória', 'Selecione a data do RDO antes de salvar.', isAviso: true);
+       return;
+diff -ru --strip-trailing-cr orig/lib/features/projetos/widgets/new_project_body.dart /mnt/user-data/outputs/patch/lib/features/projetos/widgets/new_project_body.dart
+--- orig/lib/features/projetos/widgets/new_project_body.dart	2026-09-21 14:42:43.638735831 -0300
++++ /mnt/user-data/outputs/patch/lib/features/projetos/widgets/new_project_body.dart	2026-09-21 14:50:28.248355713 -0300
+@@ -1,4 +1,5 @@
+ import 'dart:io';
++import 'package:diavicon/features/planos/acesso_plano.dart';
+ import 'package:diavicon/features/projetos/widgets/selecao_cliente_modal.dart';
+ import 'package:flutter/material.dart';
+ import 'package:flutter_riverpod/flutter_riverpod.dart';
+@@ -82,6 +83,10 @@
+   }
+ 
+   Future<void> _salvarProjetoCompleto() async {
++    if (_estaSalvando) return;
++    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
++    if (!await verificarArmazenamento(context, ref)) return;
++    if (!mounted || _estaSalvando) return;
+     final formState = ref.read(projetoFormProvider);
+     final user = ref.read(currentUserProvider);
+ 

@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'package:diavicon/core/utils/diavicon_modal.dart';
 import 'package:file_picker/file_picker.dart';
@@ -14,6 +15,7 @@ import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
 import '../../../core/widgets/custom_appbar.dart';
+import '../../../core/widgets/resumo_exclusao_accordion.dart';
 import '../../equipe/providers/equipe_provider.dart';
 
 import '../../auth/providers/auth_provider.dart';
@@ -263,11 +265,20 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
   /// estrutura vinculada a ele, pergunta se quer excluir essa(s)
   /// estrutura(s) também (e todos os elementos/ensaios dela).
   Future<void> _excluirProjeto(ProjetoModel projeto) async {
+    Map<String, List<String>> resumoProjeto = const {};
+    try {
+      resumoProjeto = await ref.read(projectRepositoryProvider).buscarResumoExclusao(widget.projetoId);
+    } catch (_) {
+      // Segue sem o resumo se a busca falhar — não trava a exclusão em si.
+    }
+    if (!mounted) return;
+
     final confirmar = await showConfirmarExclusaoDialog(
       context: context,
       titulo: 'Excluir Projeto',
       mensagem:
           'Deseja realmente excluir o projeto "${projeto.nome}"? Esta ação não poderá ser desfeita.',
+      extraContent: ResumoExclusaoAccordion(itensPorCategoria: resumoProjeto),
     );
     if (confirmar != true || !mounted) return;
 
@@ -306,11 +317,28 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
 
     if (estruturasGerenciadas.isNotEmpty) {
       final nomes = estruturasGerenciadas.map((e) => e.nome).join(', ');
+
+      // Combina o resumo de todas as estruturas gerenciadas nessa mesma lista.
+      final resumoEstruturas = <String, List<String>>{};
+      for (final estrutura in estruturasGerenciadas) {
+        try {
+          final resumo = await ref.read(estruturaRepositoryProvider).buscarResumoExclusao(estrutura.id);
+          for (final entrada in resumo.entries) {
+            resumoEstruturas.putIfAbsent(entrada.key, () => []).addAll(entrada.value);
+          }
+        } catch (_) {
+          // Segue sem o resumo dessa estrutura se a busca falhar.
+        }
+      }
+      resumoEstruturas['Estruturas'] = estruturasGerenciadas.map((e) => e.nome ?? 'Sem nome').toList();
+      if (!mounted) return;
+
       final confirmarEstrutura = await showConfirmarExclusaoDialog(
         context: context,
         titulo: 'Excluir estrutura também?',
         mensagem:
             'O projeto foi excluído. Sua empresa é a gestora de "$nomes" — deseja excluir também essa estrutura (e todos os elementos e ensaios vinculados a ela)?',
+        extraContent: ResumoExclusaoAccordion(itensPorCategoria: resumoEstruturas),
       );
 
       if (confirmarEstrutura == true && mounted) {
@@ -721,7 +749,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
           imageUrl.isNotEmpty &&
           imageUrl.startsWith('http')) {
         return DecorationImage(
-          image: NetworkImage(imageUrl),
+          image: StorageNetworkImage(imageUrl),
           fit: BoxFit.cover,
         );
       }
@@ -819,7 +847,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
           radius: 28,
           backgroundColor: AppColors.greyVeryLight,
           backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty)
-              ? NetworkImage(fotoUrl)
+              ? StorageNetworkImage(fotoUrl)
               : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
         const SizedBox(width: 16),
@@ -994,7 +1022,7 @@ class _ProjectInfoScreenState extends ConsumerState<ProjectInfoScreen> {
           radius: 28,
           backgroundColor: AppColors.white,
           backgroundImage: (fotoUrl != null && fotoUrl.isNotEmpty)
-              ? NetworkImage(fotoUrl)
+              ? StorageNetworkImage(fotoUrl)
               : null,
           child: (fotoUrl == null || fotoUrl.isEmpty)
               ? const Icon(

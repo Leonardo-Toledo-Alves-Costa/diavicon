@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
@@ -22,6 +24,7 @@ class PlanejamentoScreen extends ConsumerStatefulWidget {
   const PlanejamentoScreen({
     super.key,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.plantaUrl,
     required this.plantaTitulo,
@@ -29,6 +32,7 @@ class PlanejamentoScreen extends ConsumerStatefulWidget {
   });
 
   final String estruturaId;
+  final String projetoId;
   final String plantaId;
   final String plantaUrl;
   final String plantaTitulo;
@@ -56,7 +60,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _carregarPreferenciasPlanta() async {
     try {
       final resp = await Supabase.instance.client
-          .from('plantas')
+          .from('estruturas_plantas')
           .select('mostrar_nomes, tamanho_fonte_nomes')
           .eq('id', widget.plantaId)
           .maybeSingle();
@@ -80,7 +84,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   Future<void> _salvarPreferenciasPlanta() async {
     try {
       await Supabase.instance.client
-          .from('plantas')
+          .from('estruturas_plantas')
           .update({
             'mostrar_nomes': _visualizarNomeElementos,
             'tamanho_fonte_nomes': _tamanhoFonteNome,
@@ -594,6 +598,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
             child: _VisualizadorPlantaPlanejamento(
               arquivoUrl: widget.plantaUrl,
               estruturaId: widget.estruturaId,
+              projetoId: widget.projetoId,
               plantaId: widget.plantaId,
               mostrarNomes: _visualizarNomeElementos,
               tamanhoFonteNome: _tamanhoFonteNome,
@@ -618,7 +623,12 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
   }
 
   Widget _buildAbaRegioesEnsaio() {
-    final infoAsync = ref.watch(infoPlanejamentoProvider(widget.estruturaId));
+    final infoAsync = ref.watch(
+      infoPlanejamentoProvider((
+        estruturaId: widget.estruturaId,
+        projetoId: widget.projetoId,
+      )),
+    );
 
     return infoAsync.when(
       loading: () => const Center(
@@ -675,7 +685,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                         radius: 14,
                         backgroundColor: AppColors.greyVeryLight,
                         backgroundImage: emp['foto_url'] != null
-                            ? NetworkImage(emp['foto_url'])
+                            ? StorageNetworkImage(emp['foto_url'])
                             : null,
                         child: emp['foto_url'] == null
                             ? const Icon(
@@ -736,6 +746,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                 child: _VisualizadorPlantaPlanejamento(
                   arquivoUrl: widget.plantaUrl,
                   estruturaId: widget.estruturaId,
+                  projetoId: widget.projetoId,
                   plantaId: widget.plantaId,
                   mostrarNomes: true,
                   tamanhoFonteNome: _tamanhoFonteNome,
@@ -816,6 +827,7 @@ class _PlanejamentoScreenState extends ConsumerState<PlanejamentoScreen> {
                           showListaRegioesModal(
                             context,
                             estruturaId: widget.estruturaId,
+                            projetoId: widget.projetoId,
                             plantaId: widget.plantaId,
                             plantaUrl: widget.plantaUrl,
                             empresaIdSelecionada: empSelecionada['id'],
@@ -1024,6 +1036,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
   const _VisualizadorPlantaPlanejamento({
     required this.arquivoUrl,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.mostrarNomes,
     required this.tamanhoFonteNome,
@@ -1033,6 +1046,7 @@ class _VisualizadorPlantaPlanejamento extends ConsumerStatefulWidget {
 
   final String arquivoUrl;
   final String estruturaId;
+  final String projetoId;
   final String plantaId;
   final bool mostrarNomes;
   final double tamanhoFonteNome;
@@ -1064,7 +1078,7 @@ class _VisualizadorPlantaPlanejamentoState
         _isLoading = true;
       });
       try {
-        final request = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
+        final request = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(widget.arquivoUrl)));
         final response = await request.close();
         if (response.statusCode != 200) {
           throw Exception('Status: ${response.statusCode}');
@@ -1135,6 +1149,7 @@ class _VisualizadorPlantaPlanejamentoState
         regioesEnsaioProvider(
           RegioesFiltro(
             plantaId: widget.plantaId,
+            projetoId: widget.projetoId,
             empresaId: widget.empresaIdParaRegioes!,
           ),
         ),
@@ -1164,7 +1179,7 @@ class _VisualizadorPlantaPlanejamentoState
                     ? (_imageBytes != null
                           ? Image.memory(_imageBytes!)
                           : const SizedBox())
-                    : Image.network(widget.arquivoUrl),
+                    : ImagemStorage.network(widget.arquivoUrl),
 
                 Positioned.fill(
                   child: LayoutBuilder(
@@ -1310,7 +1325,7 @@ class _VisualizadorPlantaPlanejamentoState
                               }
                               return [
                                 pino,
-                                ?nomeVizinho,
+                                if (nomeVizinho != null) nomeVizinho,
                               ];
                             }),
 

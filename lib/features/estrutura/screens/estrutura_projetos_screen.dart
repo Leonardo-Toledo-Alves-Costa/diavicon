@@ -6,6 +6,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/custom_empty_state.dart';
 import '../../projetos/widgets/project_card.dart';
+import '../../../routes/app_routes.dart';
 import '../models/estrutura_model.dart';
 import '../providers/estrutura_provider.dart';
 
@@ -53,10 +54,11 @@ class EstruturaProjetosScreen extends ConsumerWidget {
             itemBuilder: (context, index) {
               final projeto = lista[index];
               return InkWell(
-                onTap: () => context.push('/projetos/detalhes', extra: projeto.id),
+                onTap: () => context.push(AppPaths.projectDetail(projeto.id)),
                 child: ProjectCard(
                   title: projeto.nome,
                   progress: projeto.progresso,
+                  projetoId: projeto.id,
                   status: projeto.statusBadge,
                   priority: projeto.prioridadeNome,
                   imageUrl: projeto.imageUrl,

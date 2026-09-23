@@ -34,6 +34,17 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    // Nova ordem dos serviços a cada vez que a tela é aberta. Fica fora do
+    // build de propósito: renovar a semente durante o build reordenaria a
+    // lista a cada rebuild.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(feedServicosSeedProvider.notifier).renovar();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final currentTab = ref.watch(feedTabProvider);
     final topPadding = MediaQuery.of(context).padding.top;
@@ -237,14 +248,16 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
             return EmpresaFeedCard(
               empresa: empresas[index],
               onTap: () {
-                Navigator.push(
-                  context,
+                // Navegação pela raiz: esta aba vive dentro do shell (barra
+                // inferior); um push comum ficaria aninhado ali dentro e a
+                // barra não sumiria.
+                Navigator.of(context, rootNavigator: true).push(
                   MaterialPageRoute(
                     builder: (context) =>
                         EmpresaProfileScreen(empresaId: empresas[index].id),
                   ),
                 );
-              }, // Futuro: Redirecionamento para a tela da empresa
+              },
             );
           },
         );
@@ -276,8 +289,7 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
             return ServicoFeedCard(
               servico: servico,
               onTap: () {
-                Navigator.push(
-                  context,
+                Navigator.of(context, rootNavigator: true).push(
                   MaterialPageRoute(
                     builder: (_) => ServicoDetalheScreen(
                       servico: servico,
@@ -288,7 +300,7 @@ class _EmpresaScreenState extends ConsumerState<EmpresaScreen> {
                     ),
                   ),
                 );
-              }, // Futuro: Redirecionamento para tela do produto
+              },
             );
           },
         );

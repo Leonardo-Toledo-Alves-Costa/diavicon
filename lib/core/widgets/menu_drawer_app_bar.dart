@@ -43,26 +43,31 @@ class MenuDrawerAppBar extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(minHeight: constraints.maxHeight),
                   child: IntrinsicHeight(
-                    child: Column(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 28, 8, 16),
-                          child: Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w800,
-                              fontSize: 14,
-                              color: Color(0xFF4A4A4A),
-                              height: 1.2,
+                    child: Padding(
+                      // Sem isso, o círculo do ícone ficava colado nas bordas
+                      // arredondadas do drawer (sobretudo com 1 item só).
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Column(
+                        children: [
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(0, 28, 0, 16),
+                            child: Text(
+                              title,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w800,
+                                fontSize: 14,
+                                color: Color(0xFF4A4A4A),
+                                height: 1.2,
+                              ),
                             ),
                           ),
-                        ),
 
-                        ...items,
+                          ...items,
 
-                        const SizedBox(height: 16),
-                      ],
+                          const SizedBox(height: 16),
+                        ],
+                      ),
                     ),
                   ),
                 ),

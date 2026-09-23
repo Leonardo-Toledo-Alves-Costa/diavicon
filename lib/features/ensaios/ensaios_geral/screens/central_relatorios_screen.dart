@@ -9,6 +9,7 @@ import '../../../../core/widgets/compact_search_bar.dart';
 import '../providers/relatorio_ensaio_provider.dart';
 import 'gerar_relatorio_screen.dart';
 import 'detalhe_relatorio_screen.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class CentralRelatoriosScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -73,13 +74,13 @@ class _CentralRelatoriosScreenState extends ConsumerState<CentralRelatoriosScree
                     Text('Central de relatórios', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
                     ElevatedButton(
                       onPressed: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => GerarRelatorioScreen(
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.relatorios, child: GerarRelatorioScreen(
                           projetoId: widget.projetoId,
                           estruturaId: widget.estruturaId,
                           tipoEnsaioId: widget.tipoEnsaioId, // 👈 CORREÇÃO: Repassando o ID para gerar o relatório
                           projetoNome: widget.projetoNome,
                           estruturaNome: widget.estruturaNome,
-                        ))).then((_) => ref.refresh(relatoriosProvider((projetoId: widget.projetoId, estruturaId: widget.estruturaId, tipoEnsaioId: widget.tipoEnsaioId))));
+                        )))).then((_) => ref.refresh(relatoriosProvider((projetoId: widget.projetoId, estruturaId: widget.estruturaId, tipoEnsaioId: widget.tipoEnsaioId))));
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFFFFA726),

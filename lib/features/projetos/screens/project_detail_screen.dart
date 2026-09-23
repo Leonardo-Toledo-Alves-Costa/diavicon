@@ -1,4 +1,4 @@
-import 'package:diavicon/core/widgets/diavicon_alerts.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/notificacoes/providers/notificacoes_provider.dart';
 import 'package:diavicon/features/projetos/providers/projetos_provider.dart';
 import 'package:diavicon/routes/app_routes.dart';
@@ -11,10 +11,17 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../dashboards_bi/models/dashboard_modelo_model.dart';
+import '../../dashboards_bi/screens/dashboard_screen.dart';
+import '../../gastos/screens/gastos_projeto_screen.dart';
+import '../rdo/screens/rdo_acesso_screen.dart';
 import '../widgets/project_header.dart';
 import '../widgets/project_progress_card.dart';
 import '../widgets/structures_section.dart';
 import '../widgets/team_section.dart';
+import '../../ensaios/ensaios_geral/repositories/relatorios_item_repository.dart';
+import '../../ensaios/ensaios_geral/screens/relatorios_item_screen.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class ProjectDetailScreen extends ConsumerWidget {
   final String projetoId;
@@ -69,21 +76,22 @@ class ProjectDetailScreen extends ConsumerWidget {
                   },
                 ),
 
-                // 2. RDO (Desativado)
-                Opacity(
-                  opacity: 0.4,
-                  child: DiaviconMenuItem(
-                    icon: Icons.assignment_outlined,
-                    label: 'RDO',
-                    onTap: () {
-                      DiaviconAlerts.show(
-                        context,
-                        'Em desenvolvimento',
-                        'Esta funcionalidade estará disponível em breve!',
-                        isAviso: true,
-                      );
-                    },
-                  ),
+                // 2. RDO (Ativo)
+                DiaviconMenuItem(
+                  icon: Icons.assignment_outlined,
+                  label: 'RDO',
+                  onTap: () {
+                    Navigator.pop(context); // Fecha o menu lateral
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: RdoAcessoScreen(
+                          projetoId: projetoId,
+                          projetoNome: projeto.nome,
+                        )),
+                      ),
+                    );
+                  },
                 ),
 
                 // 3. EMPRESAS (Ativo)
@@ -101,55 +109,60 @@ class ProjectDetailScreen extends ConsumerWidget {
                   },
                 ),
 
-                // 4. RELATÓRIOS (Desativado)
-                Opacity(
-                  opacity: 0.4,
-                  child: DiaviconMenuItem(
-                    icon: Icons.description_outlined,
-                    label: 'Relatórios',
-                    onTap: () {
-                      DiaviconAlerts.show(
-                        context,
-                        'Em desenvolvimento',
-                        'Esta funcionalidade estará disponível em breve!',
-                        isAviso: true,
-                      );
-                    },
-                  ),
+                // 4. RELATÓRIOS
+                DiaviconMenuItem(
+                  icon: Icons.description_outlined,
+                  label: 'Relatórios',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => RelatoriosItemScreen(
+                          nivel: NivelRelatorios.projeto,
+                          nomeItem: projeto.nome,
+                          projetoId: projetoId,
+                        ),
+                      ),
+                    );
+                  },
                 ),
 
-                // 5. GASTOS (Desativado)
-                Opacity(
-                  opacity: 0.4,
-                  child: DiaviconMenuItem(
-                    icon: Icons.payments_outlined,
-                    label: 'Gastos',
-                    onTap: () {
-                      DiaviconAlerts.show(
-                        context,
-                        'Em desenvolvimento',
-                        'Esta funcionalidade estará disponível em breve!',
-                        isAviso: true,
-                      );
-                    },
-                  ),
+                // 5. GASTOS
+                DiaviconMenuItem(
+                  icon: Icons.payments_outlined,
+                  label: 'Gastos',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: GastosProjetoScreen(
+                          projetoId: projetoId,
+                          projetoNome: projeto.nome,
+                        )),
+                      ),
+                    );
+                  },
                 ),
 
-                // 6. DASHBOARD (Desativado)
-                Opacity(
-                  opacity: 0.4,
-                  child: DiaviconMenuItem(
-                    icon: Icons.pie_chart_outline,
-                    label: 'Dashboard',
-                    onTap: () {
-                      DiaviconAlerts.show(
-                        context,
-                        'Em desenvolvimento',
-                        'Esta funcionalidade estará disponível em breve!',
-                        isAviso: true,
-                      );
-                    },
-                  ),
+                // 6. DASHBOARD
+                DiaviconMenuItem(
+                  icon: Icons.pie_chart_outline,
+                  label: 'Dashboard',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DashboardScreen(
+                          nivel: NivelAplicacaoBi.projeto,
+                          projetoId: projetoId,
+                          titulo: projeto.nome,
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -191,9 +204,7 @@ class ProjectDetailScreen extends ConsumerWidget {
                           ),
                           const SizedBox(height: 24),
 
-                          ProjectProgressCard(
-                            progresso: projeto.progresso,
-                          ), // Componente extraído!
+                          ProjectProgressCard(projetoId: projetoId), // Componente extraído!
                           const SizedBox(height: 15),
 
                           const Text(
@@ -236,7 +247,7 @@ class ProjectDetailScreen extends ConsumerWidget {
         // 🔥 Lógica de fallback para a imagem
         ClipOval(
           child: fotoUrl != null && fotoUrl.isNotEmpty
-              ? Image.network(
+              ? ImagemStorage.network(
                   fotoUrl,
                   height: 35,
                   width: 35,

@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -87,7 +88,7 @@ class EmpresaTeamSection extends ConsumerWidget {
           radius: 24, 
           backgroundColor: Colors.grey[200], 
           backgroundImage: fotoUrl != null 
-              ? NetworkImage(fotoUrl) 
+              ? StorageNetworkImage(fotoUrl) 
               : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
         const SizedBox(height: 8),

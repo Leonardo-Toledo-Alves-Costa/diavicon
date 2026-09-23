@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 
@@ -15,7 +16,7 @@ class EstruturaHomeHeader extends StatelessWidget {
       children: [
         (imageUrl == null || imageUrl!.isEmpty)
             ? Image.asset(defaultAsset, width: double.infinity, height: 280, fit: BoxFit.cover)
-            : Image.network(
+            : ImagemStorage.network(
                 imageUrl!,
                 width: double.infinity,
                 height: 280,

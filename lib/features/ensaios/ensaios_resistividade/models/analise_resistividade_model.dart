@@ -1,4 +1,5 @@
 import 'dart:math';
+import '../utils/classificacao_resistividade.dart';
 
 class AnaliseResistividadePonto {
   final String id;
@@ -102,27 +103,10 @@ class AnaliseResistividadePonto {
     return (desvioPadrao / m) * 100;
   }
 
-  String get riscoCorrosao {
-    if (media < 15) return 'Muito Alto';
-    if (media < 20) return 'Alto';
-    if (media < 55) return 'Moderado';
-    if (media <= 80) return 'Baixo';
-    return 'Desprezível';
-  }
+  // Delegam para a fonte unica (ver ClassificacaoResistividade).
+  String get riscoCorrosao => ClassificacaoResistividade.risco.classificar(media)?.texto ?? '-';
 
-  String get taxaCorrosao {
-    if (media < 5) return 'Muito Alto';
-    if (media < 10) return 'Alto';
-    if (media < 20) return 'Moderado';
-    if (media > 20 ) return 'Baixo';
-    return 'Desprezível';
-  }
+  String get taxaCorrosao => ClassificacaoResistividade.taxa.classificar(media)?.texto ?? '-';
 
-  String get permissividade {
-    if (media < 12) return 'Alto';
-    if (media < 21) return 'Moderado';
-    if (media < 37) return 'Baixo';
-    if (media <= 254) return 'Muito Baixo';
-    return 'Desprezível';
-  }
+  String get permissividade => ClassificacaoResistividade.permissividade.classificar(media)?.texto ?? '-';
 }

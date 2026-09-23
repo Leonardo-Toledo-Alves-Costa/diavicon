@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ponto_resistividade_model.dart';
+import '../utils/classificacao_resistividade.dart';
 
 // --- MODELO DE DADOS DA ANÁLISE ---
 class AnaliseResistividadeData {
@@ -108,32 +109,17 @@ final analiseResistividadeProvider = FutureProvider.family<AnaliseResistividadeD
     isHomogeneo = coefVar <= 15.0;
   }
 
-  // 6. Condicionais de Risco Genéricas (Podem ser ajustadas conforme a norma)
-  Map<String, dynamic> avaliarRiscoCorrosao(double m) {
-    if (m <= 0) return {'texto': '-', 'corTxt': Colors.grey.shade500, 'corFundo': Colors.grey.shade200};
-    if (m <= 15) return {'texto': 'Muito Alto', 'corTxt': const Color(0xFFD32F2F), 'corFundo': const Color(0xFFFFEBEE)};
-    if (m <= 20) return {'texto': 'Alto', 'corTxt': const Color(0xFFF57C00), 'corFundo': const Color(0xFFFFF3E0)};
-    if (m <= 55) return {'texto': 'Moderado', 'corTxt': const Color(0xFFFBC02D), 'corFundo': const Color(0xFFFFFDE7)};
-    if (m <= 80) return {'texto': 'Baixo', 'corTxt': const Color(0xFF388E3C), 'corFundo': const Color(0xFFFFFDE7)};
-    return {'texto': 'Desprezível', 'corTxt': const Color(0xFF388E3C), 'corFundo': const Color(0xFFE8F5E9)};
-  }
+  // 6. Classificacoes — delegam para a fonte unica (ClassificacaoResistividade).
+  // Sem medicao (m <= 0) mantem o '-' cinza que a tela ja esperava.
+  Map<String, dynamic> semMedicao() => {'texto': '-', 'corTxt': Colors.grey.shade500, 'corFundo': Colors.grey.shade200};
+  Map<String, dynamic> avaliarRiscoCorrosao(double m) =>
+      ClassificacaoResistividade.risco.classificar(m)?.comoMapaLegado ?? semMedicao();
 
-  Map<String, dynamic> avaliarTaxa(double m) {
-    if (m <= 0) return {'texto': '-', 'corTxt': Colors.grey.shade500, 'corFundo': Colors.grey.shade200};
-    if (m <= 5) return {'texto': 'Muito Alto', 'corTxt': const Color(0xFFD32F2F), 'corFundo': const Color(0xFFFFEBEE)};
-    if (m <= 10) return {'texto': 'Alto', 'corTxt': const Color(0xFFF57C00), 'corFundo': const Color(0xFFFFF3E0)};
-    if (m <= 20) return {'texto': 'Moderado', 'corTxt': const Color(0xFFFBC02D), 'corFundo': const Color(0xFFFFFDE7)};
-    return {'texto': 'Baixo', 'corTxt': const Color(0xFF388E3C), 'corFundo': const Color(0xFFE8F5E9)};
-  }
+  Map<String, dynamic> avaliarTaxa(double m) =>
+      ClassificacaoResistividade.taxa.classificar(m)?.comoMapaLegado ?? semMedicao();
 
-  Map<String, dynamic> avaliarPremissividade(double m) {
-    if (m <= 0) return {'texto': '-', 'corTxt': Colors.grey.shade500, 'corFundo': Colors.grey.shade200};
-    if (m <= 12) return {'texto': 'Muito Alto', 'corTxt': const Color(0xFFD32F2F), 'corFundo': const Color(0xFFFFEBEE)};
-    if (m <= 21) return {'texto': 'Alto', 'corTxt': const Color(0xFFF57C00), 'corFundo': const Color(0xFFFFF3E0)};
-    if (m <= 37) return {'texto': 'Moderado', 'corTxt': const Color(0xFFFBC02D), 'corFundo': const Color(0xFFFFFDE7)};
-    if (m <= 254) return {'texto': 'Baixo', 'corTxt': const Color(0xFF388E3C), 'corFundo': const Color(0xFFFFFDE7)};
-    return {'texto': 'Desprezível', 'corTxt': const Color(0xFF388E3C), 'corFundo': const Color(0xFFE8F5E9)};
-  }
+  Map<String, dynamic> avaliarPremissividade(double m) =>
+      ClassificacaoResistividade.permissividade.classificar(m)?.comoMapaLegado ?? semMedicao();
 
   return AnaliseResistividadeData(
     pontoNome: geralResp['nome_ponto'] ?? 'Desconhecido',

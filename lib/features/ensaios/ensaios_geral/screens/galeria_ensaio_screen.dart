@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -34,8 +35,11 @@ class GaleriaEnsaioScreen extends ConsumerWidget {
     showDialog(
       context: context,
       builder: (context) => ImagemEnsaioModal(
-        pontoEnsaioId: pontoGeralId, 
+        pontoEnsaioId: pontoGeralId,
         imagemExistente: imagemExistente,
+        nomeLocal: local,
+        nomeTipoElemento: tipoElemento,
+        nomeElementoEspecifico: elementoNome,
       ),
     );
   }
@@ -162,7 +166,7 @@ class GaleriaEnsaioScreen extends ConsumerWidget {
                           children: [
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Image.network(
+                              child: ImagemStorage.network(
                                 img.imagemUrl,
                                 width: 100,
                                 height: 100,

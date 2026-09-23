@@ -1,7 +1,9 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/esclerometria_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/repositories/ponto_geral_identidade.dart';
 
 final esclerometriaRepositoryProvider = Provider((ref) => EsclerometriaRepository());
 
@@ -51,6 +53,8 @@ class EsclerometriaRepository {
           'valor_resultado': dados.resultado,
           'cor_resultado': dados.resultadoCor,
         }).eq('id', pontoGeralId);
+        // Ponto antigo sem estrutura/tipo? Completa ao salvar (ver ponto_geral_identidade.dart).
+        await completarIdentidadePontoGeral(_supabase, pontoGeralId: pontoGeralId, elementoId: elementoId, tipoEnsaioId: tipoEnsaioId);
       }
 
       // 2. `ponto_ensaio_esclerometria` (upsert — leituras dependem do seu id)
@@ -73,11 +77,12 @@ class EsclerometriaRepository {
       // 3. Fotos (foto_janela = marcação da área, foto_ensaio = realização do ensaio)
       Future<String?> uploadFoto(File? foto, String campo) async {
         if (foto == null) return null;
-        final extensao = foto.path.split('.').last;
-        final nomeArquivo = '${esclerometriaId}_${campo}_${DateTime.now().millisecondsSinceEpoch}.$extensao';
-        final path = 'ensaios/esclerometria/$nomeArquivo';
-
-        await _supabase.storage.from('projetos').upload(path, foto, fileOptions: const FileOptions(upsert: true));
+        final path = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+          'ensaios/esclerometria',
+          foto,
+          prefixo: '${esclerometriaId}_${campo}_',
+          fileOptions: const FileOptions(upsert: true),
+        );
         final url = _supabase.storage.from('projetos').getPublicUrl(path);
 
         await _supabase.from('ponto_ensaio_esclerometria').update({campo: url}).eq('id', esclerometriaId!);

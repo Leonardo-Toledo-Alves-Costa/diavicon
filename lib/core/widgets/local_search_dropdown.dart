@@ -13,12 +13,20 @@ class LocalSearchDropdown extends ConsumerWidget {
   
   final FocusNode? focusNode; 
 
+  /// Quando informado, adiciona uma primeira entrada com este rotulo que
+  /// LIMPA a selecao (devolve null em [onChanged]). Serve pros usos como
+  /// filtro de lista, onde "nenhum local escolhido" e um estado valido; nos
+  /// usos como campo de formulario fica de fora, porque ali o local e
+  /// obrigatorio.
+  final String? rotuloTodos;
+
   const LocalSearchDropdown({
     super.key,
     required this.estruturaId,
     this.value,
     required this.onChanged,
-    this.focusNode, 
+    this.focusNode,
+    this.rotuloTodos, 
   });
 
   @override
@@ -75,7 +83,21 @@ class LocalSearchDropdown extends ConsumerWidget {
                   borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
-              dropdownMenuEntries: locais.map((local) {
+              dropdownMenuEntries: [
+                if (rotuloTodos != null)
+                  DropdownMenuEntry<String>(
+                    // String vazia como sentinela de "sem filtro": o menu e
+                    // tipado como DropdownMenuEntry<String>, entao null nao
+                    // cabe como valor de entrada. A traducao pra null
+                    // acontece no onSelected.
+                    value: '',
+                    label: rotuloTodos!,
+                    style: MenuItemButton.styleFrom(
+                      foregroundColor: const Color(0xFF3E3E3D),
+                      textStyle: GoogleFonts.lato(fontSize: 14),
+                    ),
+                  ),
+                ...locais.map((local) {
                 final nomeLocal = local.nome ?? 'Sem nome'; 
                 
                 return DropdownMenuEntry<String>(
@@ -86,8 +108,10 @@ class LocalSearchDropdown extends ConsumerWidget {
                     textStyle: GoogleFonts.lato(fontSize: 14),
                   ),
                 );
-              }).toList(),
-              onSelected: onChanged,
+              }),
+              ],
+              onSelected: (valor) =>
+                  onChanged((valor == null || valor.isEmpty) ? null : valor),
             );
           },
         );

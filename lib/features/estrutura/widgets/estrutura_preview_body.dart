@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/constants/app_colors.dart';
@@ -27,7 +28,7 @@ class EstruturaPreviewBody extends ConsumerWidget {
                 topRight: Radius.circular(32),
               ),
               child: estrutura.imageUrl != null
-                  ? Image.network(estrutura.imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover)
+                  ? ImagemStorage.network(estrutura.imageUrl!, height: 160, width: double.infinity, fit: BoxFit.cover)
                   : Image.asset('assets/images/sem_estrutura.png', height: 160, width: double.infinity, fit: BoxFit.cover),
             ),
             Positioned(

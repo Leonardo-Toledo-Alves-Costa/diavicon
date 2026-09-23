@@ -1,19 +1,34 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
+import 'dart:async';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/services/foto_watermark_service.dart';
+import '../../../auth/providers/auth_provider.dart';
+import '../../../empresa/providers/empresa_profile_provider.dart';
+import '../../../empresa/repositories/timestamp_foto_padrao_repository.dart';
 import '../repositories/galeria_ensaio_repository.dart';
 import '../models/galeria_ensaio_model.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class ImagemEnsaioModal extends ConsumerStatefulWidget {
   final String pontoEnsaioId;
   final GaleriaEnsaioModel? imagemExistente; // Nulo = Criar | Preenchido = Editar
+  final String? nomeLocal;
+  final String? nomeTipoElemento;
+  final String? nomeElementoEspecifico;
 
   const ImagemEnsaioModal({
     super.key,
     required this.pontoEnsaioId,
     this.imagemExistente,
+    this.nomeLocal,
+    this.nomeTipoElemento,
+    this.nomeElementoEspecifico,
   });
 
   @override
@@ -42,7 +57,7 @@ class _ImagemEnsaioModalState extends ConsumerState<ImagemEnsaioModal> {
   }
 
   Future<void> _capturarFoto() async {
-    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+    final ImageSource? source = origemFotoNoNavegador ?? await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (BuildContext context) {
         return SafeArea(
@@ -70,12 +85,78 @@ class _ImagemEnsaioModalState extends ConsumerState<ImagemEnsaioModal> {
       final XFile? image = await picker.pickImage(source: source, imageQuality: 70);
 
       if (image != null) {
-        setState(() => _imagemLocal = File(image.path));
+        final arquivo = File(image.path);
+        if (source == ImageSource.camera) {
+          // Foto tirada na hora (não escolhida da galeria): guarda também no
+          // álbum de fotos do celular, além de anexar à galeria do ensaio.
+          unawaited(FotoWatermarkService.salvarNaGaleriaDoDispositivo(arquivo));
+        }
+        setState(() => _imagemLocal = arquivo);
       }
     }
   }
 
+  Future<File?> _aplicarLegendaPadraoDaEmpresa(File imagem) async {
+    try {
+      final empresaId = ref.read(currentUserProvider)?.empresaId;
+      if (empresaId == null) {
+        debugPrint('[FotoWatermark] sem empresaId no usuário logado, pulando legenda');
+        return null;
+      }
+
+      final padrao = await ref.read(timestampFotoPadraoRepositoryProvider).buscarPadrao(empresaId);
+      if (padrao == null || !padrao.temAlgumCampoAtivo) {
+        debugPrint('[FotoWatermark] sem padrão ativo para empresa $empresaId; imagem salva sem legenda');
+        return null;
+      }
+
+      String? nomeEmpresa;
+      String? logoUrl;
+      if (padrao.nomeEmpresa || padrao.logo) {
+        final empresa = await ref.read(empresaDetalheProvider(empresaId).future);
+        nomeEmpresa = empresa.nome;
+        logoUrl = empresa.fotoUrl;
+      }
+
+      final contexto = await FotoWatermarkService.resolverContexto(
+        padrao: padrao,
+        supabase: Supabase.instance.client,
+        nomeLocal: widget.nomeLocal,
+        nomeTipoElemento: widget.nomeTipoElemento,
+        nomeElementoEspecificoDireto: widget.nomeElementoEspecifico,
+        nomeUsuario: ref.read(currentUserProvider)?.nome,
+        nomeEmpresa: nomeEmpresa,
+        logoUrl: logoUrl,
+        descricaoImagem: _legendaController.text,
+      );
+
+      return await FotoWatermarkService.aplicarLegenda(foto: imagem, padrao: padrao, contexto: contexto);
+    } catch (e) {
+      debugPrint('[FotoWatermark] erro ao aplicar legenda na imagem do ensaio: $e');
+      return null;
+    }
+  }
+
   Future<void> _salvar() async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _isLoading ? null : _salvar`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer. Como
+    // `_isEditing` (calculado a partir de `widget.imagemExistente`, fixo pra
+    // essa instância da tela) decide entre `repo.adicionarImagem` (INSERT em
+    // `galeria_pontos_ensaios_geral`) e `repo.atualizarImagem` (UPDATE), no
+    // modo criação as duas chamadas cairiam no INSERT e duplicariam a
+    // imagem na galeria. Setar `_isLoading` aqui é síncrono (setState muda o
+    // campo na hora, só o rebuild é adiado), então a segunda chamada já vê
+    // `_isLoading == true` e sai antes de inserir de novo.
+    if (_isLoading) return;
+
+    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
+    if (!_isEditing && !await verificarArmazenamento(context, ref)) return;
+    if (!mounted) return;
+    // Toque duplo: a outra chamada pode ter avançado durante o await acima.
+    if (_isLoading) return;
+
     // Validação
     if (!_isEditing && _imagemLocal == null) {
       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Selecione uma imagem.'), backgroundColor: Colors.orange));
@@ -86,19 +167,22 @@ class _ImagemEnsaioModalState extends ConsumerState<ImagemEnsaioModal> {
     final repo = ref.read(galeriaEnsaioRepositoryProvider);
 
     try {
+      final imagemComLegenda = _imagemLocal != null ? await _aplicarLegendaPadraoDaEmpresa(_imagemLocal!) : null;
+      final imagemParaSalvar = imagemComLegenda ?? _imagemLocal;
+
       if (_isEditing) {
         // MODO EDIÇÃO
         await repo.atualizarImagem(
           imagemId: widget.imagemExistente!.id,
           urlAtual: widget.imagemExistente!.imagemUrl,
-          novaImagemLocal: _imagemLocal,
+          novaImagemLocal: imagemParaSalvar,
           novaLegenda: _legendaController.text,
         );
       } else {
         // MODO CRIAÇÃO
         await repo.adicionarImagem(
           pontoEnsaioId: widget.pontoEnsaioId,
-          imagemLocal: _imagemLocal!,
+          imagemLocal: imagemParaSalvar!,
           legenda: _legendaController.text,
         );
       }
@@ -160,7 +244,7 @@ class _ImagemEnsaioModalState extends ConsumerState<ImagemEnsaioModal> {
     if (_imagemLocal != null) {
       imageProvider = FileImage(_imagemLocal!);
     } else if (_isEditing && widget.imagemExistente!.imagemUrl.isNotEmpty) {
-      imageProvider = NetworkImage(widget.imagemExistente!.imagemUrl);
+      imageProvider = StorageNetworkImage(widget.imagemExistente!.imagemUrl);
     }
 
     return Dialog(

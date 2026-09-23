@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
@@ -75,7 +76,7 @@ class ProprietarioVinculoSection extends ConsumerWidget {
                               radius: 22,
                               backgroundColor: AppColors.white,
                               backgroundImage: (empresa['foto_url'] != null && empresa['foto_url'].toString().isNotEmpty)
-                                  ? NetworkImage(empresa['foto_url'])
+                                  ? StorageNetworkImage(empresa['foto_url'])
                                   : const AssetImage('assets/images/empresa.png') as ImageProvider,
                             ),
                             const SizedBox(width: 12),
@@ -183,7 +184,7 @@ class ProprietarioVinculoSection extends ConsumerWidget {
                   CircleAvatar(
                     radius: 20,
                     backgroundColor: Colors.white,
-                    backgroundImage: (empresa.fotoUrl != null && empresa.fotoUrl!.isNotEmpty) ? NetworkImage(empresa.fotoUrl!) : null,
+                    backgroundImage: (empresa.fotoUrl != null && empresa.fotoUrl!.isNotEmpty) ? StorageNetworkImage(empresa.fotoUrl!) : null,
                     child: (empresa.fotoUrl == null || empresa.fotoUrl!.isEmpty) ? const Icon(Icons.business, color: AppColors.greyMedium) : null,
                   ),
                   const SizedBox(width: 12),

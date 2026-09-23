@@ -13,6 +13,7 @@ import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../models/analise_ensaio_todos_model.dart';
 import '../models/carbonatacao_math.dart'; // Utilitário criado no Passo 2
 import '../providers/analise_ensaio_todos_provider.dart';
+import '../utils/curva_despassivacao.dart';
 
 class ChartData {
   final double x;
@@ -147,25 +148,16 @@ class _AnaliseEnsaioScreenState extends ConsumerState<AnaliseEnsaioScreen> {
     double kDp = CarbonatacaoMath.stdDev(arrayK);
 
     double tempoAnalisePb = tempoCalc * (tempoCalc < 10 ? 3 : 2);
-    int nSim = 1000;
-
-    List<double> kSim = CarbonatacaoMath.randomNormal(kMd, kDp, nSim);
-    List<double> cobSim = CarbonatacaoMath.randomNormal(mediaCob, dpCob, nSim);
-
-    List<ChartData> curvaMonteCarlo = [];
-
-    for (double t = 0; t <= tempoAnalisePb; t += (tempoAnalisePb / 100)) {
-      if (t == 0) {
-        curvaMonteCarlo.add(ChartData(0, 0));
-        continue;
-      }
-      int falhas = 0;
-      for (int i = 0; i < nSim; i++) {
-        double x = kSim[i] * sqrt(t);
-        if (x > cobSim[i]) falhas++;
-      }
-      curvaMonteCarlo.add(ChartData(t, (falhas / nSim) * 100));
-    }
+    // Monte Carlo: fonte única (CurvaDespassivacao). Mesma chave do relatório
+    // e do dashboard — com as mesmas entradas, a tela, o PDF e o dashboard
+    // mostram exatamente a mesma curva.
+    final curva = CurvaDespassivacao.calcular(
+      kMedia: kMd, kDesvio: kDp, cobMedia: mediaCob, cobDesvio: dpCob,
+      horizonte: tempoAnalisePb, chave: CurvaDespassivacao.chaveGeral,
+    );
+    List<ChartData> curvaMonteCarlo = [
+      for (var i = 0; i < curva.tempos.length; i++) ChartData(curva.tempos[i], curva.probabilidades[i]),
+    ];
 
     // Função para achar ano alvo na curva de probabilidade
     String buscarTempoProb(double probAlvo) {

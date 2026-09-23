@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
 import 'package:diavicon/core/widgets/custom_text_field.dart';
@@ -556,7 +557,7 @@ class _PlantaCardImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = imageUrl;
     if (url == null || url.isEmpty) return _fallback();
-    return Image.network(
+    return ImagemStorage.network(
       url,
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => _fallback(),

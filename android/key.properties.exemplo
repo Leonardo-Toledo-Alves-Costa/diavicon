@@ -1,0 +1,17 @@
+# Modelo do android/key.properties.
+#
+# Copie este arquivo para `key.properties` (na mesma pasta), troque os valores
+# e NÃO versione o resultado — o android/.gitignore já cuida disso.
+#
+# Como gerar a chave: veja android/ASSINATURA.md.
+
+# Apelido da chave dentro do arquivo .jks (o -alias do keytool).
+keyAlias=diavicon
+
+# Senha da chave e senha do arquivo .jks. Podem ser iguais.
+keyPassword=COLOQUE_A_SENHA_DA_CHAVE
+storePassword=COLOQUE_A_SENHA_DO_ARQUIVO
+
+# Caminho do .jks. Use o caminho completo, com barras normais (/), mesmo no
+# Windows. Guarde o arquivo FORA da pasta do projeto.
+storeFile=C:/Users/popch/chaves/diavicon-publicacao.jks

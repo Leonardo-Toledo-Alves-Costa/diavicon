@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/equipe/providers/equipe_provider.dart';
 import 'package:diavicon/features/notificacoes/providers/notificacoes_provider.dart';
 import 'package:diavicon/routes/app_routes.dart';
@@ -13,7 +14,12 @@ import '../../../core/widgets/diavicon_alerts.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../providers/empresas_projeto_provider.dart';
+import '../../gastos/screens/gastos_projeto_screen.dart';
+import '../rdo/screens/rdo_acesso_screen.dart';
 import '../widgets/modal_incluir_empresa.dart';
+import '../../ensaios/ensaios_geral/repositories/relatorios_item_repository.dart';
+import '../../ensaios/ensaios_geral/screens/relatorios_item_screen.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class ProjectCompaniesScreen extends ConsumerWidget {
   final String projetoId;
@@ -61,7 +67,15 @@ class ProjectCompaniesScreen extends ConsumerWidget {
           DiaviconMenuItem(
             icon: Icons.assignment_outlined,
             label: 'RDO',
-            onTap: () {},
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: RdoAcessoScreen(projetoId: projetoId)),
+                ),
+              );
+            },
           ),
           DiaviconMenuItem(
             icon: Icons.business_outlined,
@@ -73,12 +87,32 @@ class ProjectCompaniesScreen extends ConsumerWidget {
           DiaviconMenuItem(
             icon: Icons.description_outlined,
             label: 'Relatórios',
-            onTap: () {},
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RelatoriosItemScreen(
+                    nivel: NivelRelatorios.projeto,
+                    nomeItem: 'Projeto',
+                    projetoId: projetoId,
+                  ),
+                ),
+              );
+            },
           ),
           DiaviconMenuItem(
             icon: Icons.payments_outlined,
             label: 'Gastos',
-            onTap: () {},
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.rdoGastos, child: GastosProjetoScreen(projetoId: projetoId)),
+                ),
+              );
+            },
           ),
           DiaviconMenuItem(
             icon: Icons.pie_chart_outline,
@@ -440,7 +474,7 @@ class ProjectCompaniesScreen extends ConsumerWidget {
                   radius: 26,
                   backgroundColor: Colors.transparent,
                   backgroundImage: temFoto
-                      ? NetworkImage(emp['foto_url'])
+                      ? StorageNetworkImage(emp['foto_url'])
                       : null,
                   child: !temFoto
                       ? const Icon(Icons.business, color: AppColors.greyMedium)

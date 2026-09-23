@@ -1,3 +1,8 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
+import '../../empresas_servicos/screens/servico_detalhe_screen.dart';
+import '../providers/empresa_profile_provider.dart' show empresaDetalheProvider;
+import '../../../core/widgets/aviso_topo.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -136,27 +141,19 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Foto removida com sucesso!'), backgroundColor: Colors.green),
-        );
+        mostrarAviso(context, 'Foto removida da galeria.', tipo: TipoAviso.sucesso);
       }
     } on PostgrestException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro no banco de dados ao remover foto: ${e.message}'), backgroundColor: Colors.red),
-        );
+        mostrarAviso(context, 'Erro no banco ao remover a foto: ${e.message}', tipo: TipoAviso.erro);
       }
     } on AuthException catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro de autenticação ao remover foto: ${e.message}'), backgroundColor: Colors.red),
-        );
+        mostrarAviso(context, 'Erro de autenticação ao remover a foto: ${e.message}', tipo: TipoAviso.erro);
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Erro inesperado ao remover foto: $e'), backgroundColor: Colors.red),
-        );
+        mostrarAviso(context, 'Erro inesperado ao remover a foto: $e', tipo: TipoAviso.erro);
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -165,9 +162,140 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
 
   // =======================================================================
 
+  /// Abre a tela que o cliente vê, com o que está no formulário agora.
+  ///
+  /// Serve para conferir como o item fica no perfil público sem precisar
+  /// salvar, sair, procurar na lista e abrir. A galeria mostrada é a que já
+  /// está salva — fotos ainda não enviadas não aparecem aqui.
+  void _preVisualizar() {
+    final servicoSalvo = widget.servico;
+    if (servicoSalvo == null) {
+      mostrarAviso(
+        context,
+        'Salve o item uma primeira vez para poder pré-visualizar.',
+        tipo: TipoAviso.neutro,
+      );
+      return;
+    }
+
+    final empresa = ref.read(empresaDetalheProvider(widget.empresaId)).value;
+    final previa = ServicoEmpresaModel(
+      id: servicoSalvo.id,
+      empresaId: widget.empresaId,
+      nome: _nomeCtrl.text.trim().isEmpty ? servicoSalvo.nome : _nomeCtrl.text.trim(),
+      descricao: _descricaoCtrl.text.trim(),
+      objetivo: _objetivoCtrl.text.trim(),
+      categoria: _categoriaSelecionada,
+      fotoPrincipal: servicoSalvo.fotoPrincipal,
+      linkAnexo: _linkCtrl.text.trim(),
+      nomeAnexo: _nomeAnexoCtrl.text.trim(),
+    );
+
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ServicoDetalheScreen(
+          servico: previa,
+          empresaNome: empresa?.nome ?? 'Sua empresa',
+          empresaFotoUrl: empresa?.fotoUrl,
+          empresaCidade: empresa?.cidade,
+          empresaEstado: empresa?.estado,
+        ),
+      ),
+    );
+  }
+
+  /// Apaga o serviço inteiro: as fotos da galeria, os arquivos no Storage e a
+  /// linha do catálogo.
+  ///
+  /// Até aqui só dava para editar: um item cadastrado errado ficava para
+  /// sempre na vitrine da empresa. Só aparece em modo de edição — item que
+  /// ainda não foi salvo é só fechar a tela.
+  Future<void> _excluirServico() async {
+    final servico = widget.servico;
+    if (servico == null) return;
+
+    final confirmou = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Excluir do catálogo', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Excluir "${servico.nome}" apaga o item, a foto de capa e todas as fotos '
+          'da galeria. Não dá para desfazer.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Excluir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+    if (confirmou != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final supabase = Supabase.instance.client;
+
+      // Os arquivos saem primeiro, enquanto ainda dá para saber quais são.
+      // Falha aqui não impede a exclusão: sobra um arquivo órfão no Storage,
+      // que ninguém alcança sem o registro.
+      try {
+        final caminhos = <String>[];
+        final galeria = await supabase
+            .from('empresa_servicos_galeria')
+            .select('foto_url')
+            .eq('servico_id', servico.id);
+        for (final linha in (galeria as List)) {
+          final caminho = _caminhoNoStorage(linha['foto_url']?.toString());
+          if (caminho != null) caminhos.add(caminho);
+        }
+        final capa = _caminhoNoStorage(servico.fotoPrincipal);
+        if (capa != null) caminhos.add(capa);
+        if (caminhos.isNotEmpty) await supabase.storage.from('avatars').remove(caminhos);
+      } catch (_) {}
+
+      // A galeria antes do serviço: se houver chave estrangeira sem cascata,
+      // apagar o serviço primeiro daria erro.
+      await supabase.from('empresa_servicos_galeria').delete().eq('servico_id', servico.id);
+      await supabase.from('empresa_servicos').delete().eq('id', servico.id);
+
+      ref.invalidate(painelServicosListProvider(widget.empresaId));
+      ref.invalidate(servicoGaleriaProvider(servico.id));
+
+      if (!mounted) return;
+      mostrarAviso(context, '"${servico.nome}" foi excluído do catálogo.', tipo: TipoAviso.sucesso);
+      Navigator.of(context).pop();
+    } on PostgrestException catch (e) {
+      if (mounted) mostrarAviso(context, 'Erro no banco ao excluir: ${e.message}', tipo: TipoAviso.erro);
+    } catch (e) {
+      if (mounted) mostrarAviso(context, 'Erro inesperado ao excluir: $e', tipo: TipoAviso.erro);
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  /// Caminho do arquivo dentro do bucket, a partir da URL pública.
+  static String? _caminhoNoStorage(String? url) {
+    if (url == null || url.isEmpty) return null;
+    const marca = '/object/public/avatars/';
+    final i = url.indexOf(marca);
+    if (i < 0) return null;
+    return Uri.decodeComponent(url.substring(i + marca.length).split('?').first);
+  }
+
   Future<void> _salvar() async {
     if (_nomeCtrl.text.isEmpty || _categoriaSelecionada == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Preencha o Nome e a Categoria.'), backgroundColor: Colors.orange));
+      mostrarAviso(context, 'Preencha os campos obrigatórios: categoria e nome.', tipo: TipoAviso.erro);
       return;
     }
 
@@ -205,10 +333,15 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
 
       // 2. UPLOAD FOTO PRINCIPAL
       if (_fotoPrincipalLocal != null) {
-        final ext = _fotoPrincipalLocal!.path.split('.').last;
-        final path = '$servicoId/capa_${DateTime.now().millisecondsSinceEpoch}.$ext';
-        await supabase.storage.from('avatars/empresas/servicos_cad').upload(path, _fotoPrincipalLocal!, fileOptions: const FileOptions(upsert: true));
-        fotoPrincipalUrl = supabase.storage.from('avatars/empresas/servicos_cad').getPublicUrl(path);
+        // avatars/empresas/servicos_cad/<servico_id>/...: a política do bucket
+        // só deixa o admin da empresa dona do serviço gravar nessa pasta.
+        final path = await supabase.storage.from('avatars').enviarArquivoSeguro(
+          'empresas/servicos_cad/$servicoId',
+          _fotoPrincipalLocal!,
+          prefixo: 'capa_',
+          fileOptions: const FileOptions(upsert: true),
+        );
+        fotoPrincipalUrl = supabase.storage.from('avatars').getPublicUrl(path);
         
         await supabase.from('empresa_servicos').update({'foto_principal': fotoPrincipalUrl}).eq('id', servicoId);
       }
@@ -216,11 +349,10 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
       // 3. UPLOAD DA GALERIA
       if (_novasFotosGaleria.isNotEmpty) {
         for (var foto in _novasFotosGaleria) {
-          final ext = foto.path.split('.').last;
-          final path = '$servicoId/galeria_${DateTime.now().microsecondsSinceEpoch}.$ext';
-          
-          await supabase.storage.from('avatars/empresas/servicos_cad').upload(path, foto);
-          final url = supabase.storage.from('avatars/empresas/servicos_cad').getPublicUrl(path);
+          final path = await supabase.storage
+              .from('avatars')
+              .enviarArquivoSeguro('empresas/servicos_cad/$servicoId', foto, prefixo: 'galeria_');
+          final url = supabase.storage.from('avatars').getPublicUrl(path);
           
           await supabase.from('empresa_servicos_galeria').insert({
             'servico_id': servicoId,
@@ -232,15 +364,15 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
 
       if (mounted) {
         ref.invalidate(painelServicosListProvider(widget.empresaId));
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Salvo com sucesso!'), backgroundColor: Colors.green));
+        mostrarAviso(context, 'Salvo com sucesso!', tipo: TipoAviso.sucesso);
         Navigator.pop(context);
       }
     } on PostgrestException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro no banco: ${e.message}'), backgroundColor: Colors.red));
+      if (mounted) mostrarAviso(context, 'Erro no banco: ${e.message}', tipo: TipoAviso.erro);
     } on AuthException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro de autenticação: ${e.message}'), backgroundColor: Colors.red));
+      if (mounted) mostrarAviso(context, 'Erro de autenticação: ${e.message}', tipo: TipoAviso.erro);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Erro inesperado: $e'), backgroundColor: Colors.red));
+      if (mounted) mostrarAviso(context, 'Erro inesperado: $e', tipo: TipoAviso.erro);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -252,7 +384,7 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
     if (_fotoPrincipalLocal != null) {
       imgCapa = FileImage(_fotoPrincipalLocal!);
     } else if (widget.servico?.fotoPrincipal != null) {
-      imgCapa = NetworkImage(widget.servico!.fotoPrincipal!);
+      imgCapa = StorageNetworkImage(widget.servico!.fotoPrincipal!);
     }
 
     // Provider para carregar fotos antigas da galeria (se for modo edição)
@@ -306,7 +438,14 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
             const SizedBox(height: 24),
 
             // FORMULÁRIO
-            const Text('Categoria', style: TextStyle(color: Colors.grey, fontSize: 13)),
+            const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: Text(
+                'Os campos marcados com * são obrigatórios.',
+                style: TextStyle(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+            const _RotuloCampo('Categoria', obrigatorio: true),
             const SizedBox(height: 4),
             DropdownButtonFormField<String>(
               value: _categoriaSelecionada,
@@ -320,8 +459,8 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
             ),
             const SizedBox(height: 16),
 
-            _buildTextField('Nome', _nomeCtrl),
-            _buildTextField('Nome do anexo', _nomeAnexoCtrl),
+            _buildTextField('Nome', _nomeCtrl, obrigatorio: true),
+            _buildTextField('Nome do anexo', _nomeAnexoCtrl, complemento: '(opcional)'),
             
             // Campo de Link com ícone de anexo customizado
             Padding(
@@ -329,11 +468,14 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('Link', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  const _RotuloCampo('Link', complemento: '(opcional)'),
                   const SizedBox(height: 4),
                   TextFormField(
                     controller: _linkCtrl,
+                    keyboardType: TextInputType.url,
                     decoration: InputDecoration(
+                      hintText: 'https://…',
+                      hintStyle: const TextStyle(color: Colors.black26),
                       prefixIcon: const Icon(Icons.attach_file, color: Colors.black54),
                       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.black26)),
@@ -360,7 +502,7 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
                     galeriaAntigaAsync.when(
                       data: (fotos) => Row(
                         children: fotos.map((f) => _buildGaleriaImg(
-                          provider: NetworkImage(f.fotoUrl),
+                          provider: StorageNetworkImage(f.fotoUrl),
                           onRemove: () => _removerFotoAntigaGaleria(f.id), // Passa a função de remover com o ID correto
                         )).toList(),
                       ),
@@ -406,6 +548,23 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
             
             const SizedBox(height: 40),
 
+            // VER COMO O CLIENTE VÊ
+            SizedBox(
+              width: double.infinity,
+              height: 50,
+              child: OutlinedButton.icon(
+                onPressed: _isLoading ? null : _preVisualizar,
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textDark,
+                  side: const BorderSide(color: AppColors.primary),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                ),
+                icon: const Icon(Icons.visibility_outlined, size: 18),
+                label: const Text('Ver como o cliente vê', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ),
+            const SizedBox(height: 12),
+
             // BOTÃO SALVAR
             SizedBox(
               width: double.infinity,
@@ -418,6 +577,19 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
                   : const Text('Salvar Informações', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
             ),
+            if (widget.servico != null) ...[
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: TextButton.icon(
+                  onPressed: _isLoading ? null : _excluirServico,
+                  style: TextButton.styleFrom(foregroundColor: AppColors.error),
+                  icon: const Icon(Icons.delete_outline, size: 18),
+                  label: const Text('Excluir do catálogo', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
             const SizedBox(height: 40),
           ],
         ),
@@ -425,13 +597,20 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, {int? maxLength, int maxLines = 1}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    int? maxLength,
+    int maxLines = 1,
+    bool obrigatorio = false,
+    String? complemento,
+  }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.grey, fontSize: 13)),
+          _RotuloCampo(label, obrigatorio: obrigatorio, complemento: complemento),
           const SizedBox(height: 4),
           TextFormField(
             controller: controller,
@@ -488,6 +667,39 @@ class _ServicoFormScreenState extends ConsumerState<ServicoFormScreen> {
           ),
         ),
       ],
+    );
+  }
+}
+
+
+/// Rótulo de campo. Com `obrigatorio`, ganha um asterisco vermelho — é o
+/// único aviso de que o campo trava o salvamento.
+class _RotuloCampo extends StatelessWidget {
+  final String texto;
+  final bool obrigatorio;
+  final String? complemento;
+
+  const _RotuloCampo(this.texto, {this.obrigatorio = false, this.complemento});
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        children: [
+          TextSpan(text: texto),
+          if (obrigatorio)
+            const TextSpan(
+              text: ' *',
+              style: TextStyle(color: Color(0xFFC62828), fontWeight: FontWeight.bold),
+            ),
+          if (complemento != null)
+            TextSpan(
+              text: ' $complemento',
+              style: const TextStyle(fontStyle: FontStyle.italic),
+            ),
+        ],
+      ),
+      style: const TextStyle(color: Colors.grey, fontSize: 13),
     );
   }
 }

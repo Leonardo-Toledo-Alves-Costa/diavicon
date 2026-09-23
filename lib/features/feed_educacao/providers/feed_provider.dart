@@ -54,7 +54,6 @@ class EducacaoFeedController {
           .from('feed_posts')
           .select('''
             *,
-            usuarios (nome, foto_url, empresas (nome, foto_url)),
             feed_likes (usuario_id),
             feed_comentarios (id),
             feed_fotos (foto_url)
@@ -62,15 +61,37 @@ class EducacaoFeedController {
           .order('criado_em', ascending: false)
           .limit(100);
 
-      List<FeedPostModel> posts = (response as List).map((json) {
+      final postsJson = (response as List).cast<Map<String, dynamic>>();
+
+      // RLS só deixa cada usuário ler a própria linha de `usuarios`/`empresas`
+      // (dado sensível: email, celular, is_admin...) — um embed direto
+      // `usuarios(nome, foto_url, empresas(...))` resolve null pra posts de
+      // qualquer outro autor, daí o "Empresa Desconhecida". `get_perfis_feed`
+      // é uma function SECURITY DEFINER que expõe só nome/foto (autor e
+      // empresa) de usuários ativos, do mesmo jeito que list_public_companies
+      // já expõe dado público de empresa pra descoberta.
+      final autorIds = postsJson.map((p) => p['usuario_id']?.toString()).whereType<String>().toSet().toList();
+      final perfis = autorIds.isEmpty ? const [] : await supabase.rpc('get_perfis_feed', params: {'p_usuario_ids': autorIds});
+      final perfisPorUsuario = {for (final p in (perfis as List).cast<Map<String, dynamic>>()) p['usuario_id'].toString(): p};
+
+      List<FeedPostModel> posts = postsJson.map((json) {
         final likes = json['feed_likes'] as List? ?? [];
         final comentarios = json['feed_comentarios'] as List? ?? [];
         final fotosJson = json['feed_fotos'] as List? ?? [];
-        
+
         json['user_liked'] = userId != null && likes.any((l) => l['usuario_id'] == userId);
         json['total_likes'] = likes.length;
         json['total_comentarios'] = comentarios.length;
         json['fotos'] = fotosJson.map((f) => f['foto_url'].toString()).toList();
+
+        final perfil = perfisPorUsuario[json['usuario_id']?.toString()];
+        if (perfil != null) {
+          json['usuarios'] = {
+            'nome': perfil['nome'],
+            'foto_url': perfil['foto_url'],
+            'empresas': {'nome': perfil['empresa_nome'], 'foto_url': perfil['empresa_foto_url']},
+          };
+        }
 
         return FeedPostModel.fromMap(json);
       }).toList();

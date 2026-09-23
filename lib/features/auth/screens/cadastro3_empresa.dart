@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:diavicon/features/planos/model/planos_model.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 import 'package:diavicon/features/planos/providers/planos_provider.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/auth_provider.dart';
+import '../widgets/cachorro_guia.dart';
 
 class Cadastro3Empresa extends ConsumerStatefulWidget {
   // Recebe o "pacotão" de dados acumulado de todas as telas anteriores (R0, R1, R2)
@@ -20,34 +22,9 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
   int _planoPagina = 0;
   bool _planoInicializado = false;
 
-  int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) {
-
-    int indicePlanoPadrao = 0;
-
-    if (pontos <= 19){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'starter');
-    }
-    else if (pontos >=20 && pontos < 30){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'basic');
-    }
-    else if (pontos >=30){
-      indicePlanoPadrao = planos.indexWhere((plano) => plano.nome.toLowerCase() == 'professional');
-    }
-
-
-    if (indicePlanoPadrao != -1) {
-      return indicePlanoPadrao;
-    }
-
-    var melhorIndex = 0;
-    for (var i = 1; i < planos.length; i++) {
-      if (planos[i].valor > planos[melhorIndex].valor) {
-        melhorIndex = i;
-      }
-    }
-
-    return melhorIndex;
-  }
+  // O questionário que dava "pontos" saiu do cadastro: começa no primeiro
+  // plano da lista (já vem em ordem de preço).
+  int _indicePlanoPadrao(List<PlanosModel> planos, int pontos) => 0;
 
   PlanosModel _planoAtivo(List<PlanosModel> planos, int pontos) {
     final index = _planoInicializado
@@ -126,6 +103,7 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       'plano_escolhido_features': null,
     };
 
+    ref.read(rascunhoCadastroProvider.notifier).state = dadosComPlano;
     context.go('/empresa/cadastro', extra: dadosComPlano);
   }
 
@@ -152,27 +130,16 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Image.asset(
-                'assets/images/logo_diavicon.png',
-                height: 150,
-                fit: BoxFit.contain,
-              ),
+              const CachorroGuia(fala: 'Vamos começar?\nEscolha o seu plano'),
               Expanded(
                 child: planosAsync.when(
                   loading: _buildLoadingState,
                   error: (error, stackTrace) => _buildErrorState(error),
                   data: (planos) {
-                    planos = planos.where((plano) {
-                      final nome = plano.nome.toLowerCase();
-                      final descricao = plano.descricao.toLowerCase();
-                      bool isPlanoEmpresa =
-                          (descricao == 'plano starter para empresas' ||
-                          nome == 'basic' ||
-                          nome == 'professional' ||
-                          nome == 'advanced');
-                      return isPlanoEmpresa;
-                    }).toList();
-                    print(pontuacaoTotal);
+                    // Os planos seguem a tabela `planos` do Supabase. O gratuito
+                    // fica no botão de baixo; o carrossel mostra os pagos.
+                    final pagos = planos.where((plano) => plano.valor > 0).toList();
+                    if (pagos.isNotEmpty) planos = pagos;
                     if (planos.isEmpty) {
                       return _buildEmptyState();
                     }
@@ -414,24 +381,39 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          for (final feature in plano.features ?? [])
-            _buildFeatureItem(feature),
+          for (final recurso in plano.recursos)
+            _buildFeatureItem(recurso.texto, recurso.incluso),
         ],
       ),
     );
   }
 
-  Widget _buildFeatureItem(String text) {
+  Widget _buildFeatureItem(String text, bool incluso) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 18),
-      child: Text(
-        text,
-        style: TextStyle(
-          fontSize: 16,
-          fontWeight: FontWeight.w500,
-          color: Colors.grey.shade700,
-          height: 1.25,
-        ),
+      padding: const EdgeInsets.symmetric(vertical: 7),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(
+            incluso ? Icons.check_circle_rounded : Icons.remove_circle_outline_rounded,
+            size: 20,
+            color: incluso ? AppColors.primary : Colors.grey.shade400,
+            semanticLabel: incluso ? 'Incluso' : 'Não incluso',
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+                color: incluso ? Colors.grey.shade800 : Colors.grey.shade500,
+                decoration: incluso ? null : TextDecoration.lineThrough,
+                height: 1.25,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -472,8 +454,8 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
         onPressed: isLoading ? null : _finalizarTrial,
         style: TextButton.styleFrom(foregroundColor: AppColors.primary),
         child: const Text(
-          'Experimente por 1 Mês',
-          style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          'Começar com o plano gratuito',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
     );
@@ -483,24 +465,19 @@ class _Cadastro3EmpresaState extends ConsumerState<Cadastro3Empresa> {
 class _BeneficioItem extends StatelessWidget {
   final String texto;
 
-  const _BeneficioItem({
-    required this.texto,
-  });
+  const _BeneficioItem({required this.texto});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 18),
       child: Row(
-        crossAxisAlignment:
-            CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             width: 8,
             height: 8,
-            margin: const EdgeInsets.only(
-              top: 6,
-            ),
+            margin: const EdgeInsets.only(top: 6),
             decoration: const BoxDecoration(
               color: AppColors.primary,
               shape: BoxShape.circle,

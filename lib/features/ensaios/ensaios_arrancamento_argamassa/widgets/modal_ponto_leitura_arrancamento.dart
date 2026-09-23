@@ -1,9 +1,12 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:diavicon/core/widgets/foto_ensaio.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../models/ponto_arrancamento_model.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class ModalPontoLeituraArrancamento extends StatefulWidget {
   final PontoArrancamentoLeituraModel? leituraExistente;
@@ -107,7 +110,7 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
 
   Future<void> _selecionarFoto(bool isEnsaio) async {
     final picker = ImagePicker();
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = origemFotoNoNavegador ?? await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
       builder: (_) => SafeArea(
@@ -160,6 +163,19 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
   }
 
   Future<void> _submeter() async {
+    // Trava síncrona de reentrância — o botão "Salvar" só fica desabilitado
+    // (`onPressed: _salvando ? null : _tentarSalvar`) a partir do PRÓXIMO
+    // rebuild/frame, e `_tentarSalvar` chama este método sem `await`. Num
+    // toque duplo rápido, a segunda chamada ainda acha o botão habilitado e
+    // entra aqui de novo antes do rebuild acontecer, disparando dois
+    // `widget.onSalvar(...)` — que no ponto de arrancamento faz o
+    // INSERT/UPDATE em `ponto_ensaio_arrancamento_leitura` — pro mesmo
+    // ponto de leitura, duplicando a linha. Setar `_salvando` aqui é
+    // síncrono (setState muda o campo na hora, só o rebuild é adiado), então
+    // a segunda chamada já vê `_salvando == true` e sai antes de salvar de
+    // novo.
+    if (_salvando) return;
+
     setState(() => _salvando = true);
     try {
       final d1Val = double.tryParse(_d1Ctrl.text.replaceAll(',', '.'));
@@ -486,35 +502,24 @@ class _ModalPontoLeituraArrancamentoState extends State<ModalPontoLeituraArranca
     if (fotoLocal != null) {
       image = FileImage(fotoLocal);
     } else if (urlRemota != null && urlRemota.isNotEmpty) {
-      image = NetworkImage(urlRemota);
+      image = StorageNetworkImage(urlRemota);
     }
 
     return Column(
       children: [
         Text(titulo, style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFF757575)), maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 4),
-        GestureDetector(
-          onTap: onTap,
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                height: 150, // <-- IMAGEM AUMENTADA NO MODAL
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF5F5F5),
-                  borderRadius: BorderRadius.circular(12),
-                  image: image != null ? DecorationImage(image: image, fit: BoxFit.cover) : null,
-                ),
-                child: image == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 36) : null,
-              ),
-              Container(
-                margin: const EdgeInsets.all(6),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.edit_square, size: 18, color: Color(0xFF3E3E3D)),
-              ),
-            ],
+        // Proporção fixa em vez de altura fixa: a foto não achata em tela larga.
+        // Tocar continua trocando a foto.
+        FotoEnsaio(
+          imagem: image,
+          raio: 12,
+          aoTocar: onTap,
+          vazio: const Center(child: Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 36)),
+          acao: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.edit_square, size: 18, color: Color(0xFF3E3E3D)),
           ),
         ),
       ],

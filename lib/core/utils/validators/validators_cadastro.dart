@@ -1,3 +1,5 @@
+import '../../widgets/requisitos_senha.dart';
+
 /// Validadores centralizados para as telas de cadastro.
 /// Uso: validator: ValidatorsCadastro.email
 class ValidatorsCadastro {
@@ -26,10 +28,22 @@ class ValidatorsCadastro {
   }
 
   // ── Senha ──────────────────────────────────────────────────────────────────
+  // Vale para senhas NOVAS (cadastro e troca). O login não usa esta regra,
+  // para quem já tem senha antiga de 6 caracteres continuar entrando.
+  // Mantenha igual à política do Supabase Auth (ver
+  // supabase/SEGURANCA_LOGIN_E_ENTRADAS.md): mínimo 8, letras e números.
   static String? senha(String? val) {
     if (val == null || val.isEmpty) return 'Campo obrigatório';
-    if (val.length < 6) return 'Mínimo 6 caracteres';
-    return null;
+    if (val.length > 72) return 'Máximo 72 caracteres';
+    // Os requisitos ficam em requisitos_senha.dart, junto da lista que a tela
+    // mostra: a regra cobrada e o aviso exibido são sempre os mesmos.
+    final faltando = [
+      for (final r in requisitosSenha)
+        if (!r.cumprido(val)) r.texto.toLowerCase(),
+    ];
+    if (faltando.isEmpty) return null;
+    if (faltando.length == 1) return 'Falta ${faltando.first}';
+    return 'Falta ${faltando.sublist(0, faltando.length - 1).join(', ')} e ${faltando.last}';
   }
 
   /// Valida confirmação de senha comparando com a senha original.

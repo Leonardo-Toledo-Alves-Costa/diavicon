@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 import 'package:diavicon/features/projetos/widgets/selecao_cliente_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,6 +83,10 @@ class _NewProjectBodyState extends ConsumerState<NewProjectBody> {
   }
 
   Future<void> _salvarProjetoCompleto() async {
+    if (_estaSalvando) return;
+    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
+    if (!await verificarArmazenamento(context, ref)) return;
+    if (!mounted || _estaSalvando) return;
     final formState = ref.read(projetoFormProvider);
     final user = ref.read(currentUserProvider);
 

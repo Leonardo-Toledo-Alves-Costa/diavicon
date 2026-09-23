@@ -1,4 +1,7 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_dropdown_with_add.dart';
@@ -349,6 +352,9 @@ class _NovoElemEstruturalScreenState
     if (_isSubmitting) return;
 
     if (!_canSubmit) return;
+    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
+    if (widget.onSubmit == null && !await verificarArmazenamento(context, ref)) return;
+    if (!mounted || _isSubmitting) return;
 
     final draft = NovoElemEstruturalDraft(
       nome: _nomeController.text.trim(),
@@ -978,7 +984,7 @@ class _PlanImageCardState extends State<_PlanImageCard> {
     });
 
     try {
-      final request = await HttpClient().getUrl(Uri.parse(url));
+      final request = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(url)));
       final response = await request.close();
       final bytes = await consolidateHttpClientResponseBytes(response);
       final doc = await PdfDocument.openData(bytes);
@@ -1034,7 +1040,7 @@ class _PlanImageCardState extends State<_PlanImageCard> {
                   else if (bytesThumbnail != null)
                     Image.memory(bytesThumbnail)
                   else if (url != null && !isPdf)
-                    Image.network(url)
+                    ImagemStorage.network(url)
                   else if (isPdf)
                     const Icon(
                       Icons.picture_as_pdf_outlined,

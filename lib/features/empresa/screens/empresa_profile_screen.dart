@@ -1,3 +1,5 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
+import '../../../core/widgets/icone_rede.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,7 +11,6 @@ import '../../auth/providers/auth_provider.dart';
 import '../providers/empresa_profile_provider.dart';
 import 'empresa_painel_screen.dart'; 
 import '../../empresas_servicos/screens/servico_detalhe_screen.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class EmpresaProfileScreen extends ConsumerWidget {
   final String empresaId;
@@ -122,9 +123,15 @@ class _EmpresaHeaderWidget extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentUser = ref.watch(currentUserProvider);
-    final isColaboradorAdmin = currentUser != null && 
-                               currentUser.empresaId == empresa.id && 
-                               currentUser.isAdminEmpresa == true;
+    final bool pertenceAEmpresa = currentUser != null && currentUser.empresaId == empresa.id;
+    // Quem abre o Painel: o Gestor, o admin da empresa (é lá que ele
+    // gerencia colaboradores e serviços) e quem recebeu acesso só de
+    // visualização. O admin faltava nesta lista: tinha permissão para
+    // gerenciar, mas nenhum caminho na tela para chegar até o Painel.
+    final podeAbrirPainel = pertenceAEmpresa &&
+        (currentUser.isAdminEmpresa == true ||
+            currentUser.isAdmin == true ||
+            currentUser.podeVisualizarEmpresa == true);
 
     return Column(
       
@@ -137,11 +144,11 @@ class _EmpresaHeaderWidget extends ConsumerWidget {
             
             // Imagem de Capa (🔥 Altura aumentada para 260 para caber atrás do AppBar)
             empresa.fotoCapa != null && empresa.fotoCapa!.isNotEmpty
-                ? Image.network(empresa.fotoCapa!, height: 220, width: double.infinity, fit: BoxFit.cover)
+                ? ImagemStorage.network(empresa.fotoCapa!, height: 220, width: double.infinity, fit: BoxFit.cover)
                 : Container(height: 260, color: Colors.grey[400]),
             
             // Botão Painel
-            if (isColaboradorAdmin)
+            if (podeAbrirPainel)
               Positioned(
                 bottom: 16,
                 right: 20,
@@ -176,7 +183,7 @@ class _EmpresaHeaderWidget extends ConsumerWidget {
                 child: CircleAvatar(
                   radius: 54,
                   backgroundColor: Colors.grey[200],
-                  backgroundImage: (empresa.fotoUrl != null && empresa.fotoUrl!.isNotEmpty) ? NetworkImage(empresa.fotoUrl!) : null,
+                  backgroundImage: (empresa.fotoUrl != null && empresa.fotoUrl!.isNotEmpty) ? StorageNetworkImage(empresa.fotoUrl!) : null,
                   child: (empresa.fotoUrl == null || empresa.fotoUrl!.isEmpty) ? const Icon(Icons.business, size: 40, color: Colors.grey) : null,
                 ),
               ),
@@ -210,17 +217,17 @@ class _EmpresaHeaderWidget extends ConsumerWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   if (_isValid(empresa.linkedin)) 
-                    _SocialIcon(Icons.work_outline, _formatUrl(empresa.linkedin!)),
+                    _SocialIcon(CanalContato.linkedin, _formatUrl(empresa.linkedin!)),
                   if (_isValid(empresa.instagram)) 
-                    _SocialIcon(Icons.camera_alt_outlined, _formatUrl(empresa.instagram!)),
+                    _SocialIcon(CanalContato.instagram, _formatUrl(empresa.instagram!)),
                   if (_isValid(empresa.youtube)) 
-                    _SocialIcon(Icons.play_circle_outline, _formatUrl(empresa.youtube!)),
+                    _SocialIcon(CanalContato.youtube, _formatUrl(empresa.youtube!)),
                   if (_isValid(empresa.site)) 
-                    _SocialIcon(Icons.language, _formatUrl(empresa.site!)),
+                    _SocialIcon(CanalContato.site, _formatUrl(empresa.site!)),
                   if (_isValid(empresa.emailContato)) 
-                    _SocialIcon(Icons.mail_outline, 'mailto:${empresa.emailContato!}'),
+                    _SocialIcon(CanalContato.email, 'mailto:${empresa.emailContato!}'),
                   if (_isValid(empresa.whatsapp)) 
-                    _SocialIcon(Icons.chat_outlined, 'https://wa.me/55${empresa.whatsapp!.replaceAll(RegExp(r'\D'), '')}'),
+                    _SocialIcon(CanalContato.whatsapp, 'https://wa.me/55${empresa.whatsapp!.replaceAll(RegExp(r'\D'), '')}'),
                 ],
               )
             ],
@@ -241,10 +248,10 @@ class _EmpresaHeaderWidget extends ConsumerWidget {
 }
 
 class _SocialIcon extends StatelessWidget {
-  final IconData icon;
+  final CanalContato canal;
   final String url;
   
-  const _SocialIcon(this.icon, this.url);
+  const _SocialIcon(this.canal, this.url);
 
   Future<void> _abrirLink(BuildContext context) async {
     try {
@@ -277,7 +284,7 @@ class _SocialIcon extends StatelessWidget {
       onTap: () => _abrirLink(context),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 10),
-        child: Icon(icon, size: 28, color: const Color(0xFF3E3E3D)),
+        child: IconeRede(canal, tamanho: 20),
       ),
     );
   }
@@ -328,7 +335,7 @@ class _SliverSobreTab extends ConsumerWidget {
                                 CircleAvatar(
                                   radius: 30,
                                   backgroundColor: Colors.grey[200],
-                                  backgroundImage: (colab.fotoUrl != null && colab.fotoUrl!.isNotEmpty) ? NetworkImage(colab.fotoUrl!) : null,
+                                  backgroundImage: (colab.fotoUrl != null && colab.fotoUrl!.isNotEmpty) ? StorageNetworkImage(colab.fotoUrl!) : null,
                                   child: (colab.fotoUrl == null || colab.fotoUrl!.isEmpty) ? const Icon(Icons.person, color: Colors.grey) : null,
                                 ),
                                 const SizedBox(height: 8),
@@ -435,7 +442,7 @@ class _SliverServicosTab extends ConsumerWidget {
                           ClipRRect(
                             borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                             child: (servico.fotoPrincipal != null && servico.fotoPrincipal!.isNotEmpty)
-                                ? Image.network(servico.fotoPrincipal!, height: 120, fit: BoxFit.cover)
+                                ? ImagemStorage.network(servico.fotoPrincipal!, height: 120, fit: BoxFit.cover)
                                 : Container(height: 120, color: Colors.grey[300]),
                           ),
                           Padding(
@@ -462,7 +469,12 @@ class _SliverServicosTab extends ConsumerWidget {
                                   GestureDetector(
                                     onTap: () async {
                                       try {
-                                        final uri = Uri.parse(servico.linkAnexo!);
+                                        final bruto = servico.linkAnexo!.trim();
+                                        final uri = Uri.parse(bruto.contains('://') ? bruto : 'https://$bruto');
+                                        // Só endereços web: bloqueia javascript:, data:, file: e afins.
+                                        if (uri.scheme != 'https' && uri.scheme != 'http') {
+                                          throw const FormatException('esquema não permitido');
+                                        }
                                         await launchUrl(uri, mode: LaunchMode.externalApplication);
                                       } catch (e) {
                                         if (context.mounted) {

@@ -32,10 +32,13 @@ String? appRouteRedirect({
 
   final isProtectedCompanyTransition =
       auth.isTemporarilySuspended && AppPaths.isCompanyFlow(path);
+  final isCompanySetupCompletion =
+      path == AppPaths.companyRegistration || path == AppPaths.companyWelcome;
 
   if (auth.hasCompany &&
       AppPaths.isCompanyFlow(path) &&
-      !isProtectedCompanyTransition) {
+      !isProtectedCompanyTransition &&
+      !isCompanySetupCompletion) {
     return AppPaths.projects;
   }
 
@@ -60,7 +63,8 @@ String? appRouteRedirect({
 }
 
 bool _isPublicPath(String path) {
-  return path == AppPaths.welcome ||
+  return AppPaths.isLegal(path) ||
+      path == AppPaths.welcome ||
       path == AppPaths.login ||
       AppPaths.isRegisterFlow(path) ||
       AppPaths.isCompanyFlow(path) ||

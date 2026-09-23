@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -66,7 +68,7 @@ class _SelecionarPontoMedicaoModalState extends State<SelecionarPontoMedicaoModa
         _isLoading = true;
       });
       try {
-        final req = await HttpClient().getUrl(Uri.parse(widget.plantaUrl));
+        final req = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(widget.plantaUrl)));
         final doc = await PdfDocument.openData(await consolidateHttpClientResponseBytes(await req.close()));
         final page = await doc.getPage(1);
         double w = page.width;
@@ -129,7 +131,7 @@ class _SelecionarPontoMedicaoModalState extends State<SelecionarPontoMedicaoModa
                       child: Center(
                         child: Stack(
                           children: [
-                            _isPdf ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox()) : Image.network(widget.plantaUrl),
+                            _isPdf ? (_imageBytes != null ? Image.memory(_imageBytes!) : const SizedBox()) : ImagemStorage.network(widget.plantaUrl),
                             Positioned.fill(
                               child: LayoutBuilder(
                                 builder: (context, constraints) {

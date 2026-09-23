@@ -1,0 +1,145 @@
+--- /sessions/rcw-012ymvkusojxtrxfthx3gzeg/base_m/supabase/functions/auth-operations/index.ts	2026-09-21 15:59:56.637741800 +0000
++++ supabase/functions/auth-operations/index.ts	2026-09-21 19:45:47.898407000 +0000
+@@ -567,6 +567,8 @@
+       // auth.users primeiro: é o passo que libera o e-mail pra reconvite —
+       // se falhar, nada foi apagado ainda. Se a linha de `usuarios` falhar
+       // depois, sobra um perfil órfão sem conta de login, inofensivo.
++      await admin.rpc('preparar_exclusao_conta', { p_usuario_id: targetId })
++      await auditar(admin, userId, 'conta.excluida_pelo_administrador', 'usuarios', targetId, companyId)
+       const { error: authError } = await admin.auth.admin.deleteUser(targetId)
+       if (authError) throw authError
+ 
+@@ -577,6 +579,7 @@
+         .eq('empresa_id', companyId)
+       if (deleteRowError) throw deleteRowError
+ 
++      await esvaziarFilaDeArquivos(admin)
+       return jsonResponse(200, { sucesso: true })
+     }
+ 
+@@ -778,6 +781,117 @@
+   return await removeCompanyEverything(admin, empresaId)
+ }
+ 
++// ---------------------------------------------------------------------------
++// LGPD: exclusão da própria conta, auditoria e fila de arquivos a apagar
++// ---------------------------------------------------------------------------
++
++// Registro de auditoria (private.auditoria). Nunca derruba a operação.
++async function auditar(
++  admin: AdminClient,
++  ator: string | null,
++  acao: string,
++  tabela: string | null,
++  alvoId: string | null,
++  empresaId: string | null,
++  detalhes: JsonRecord | null = null,
++) {
++  const { error } = await admin.rpc('registrar_evento_auditoria', {
++    p_ator: ator,
++    p_acao: acao,
++    p_tabela: tabela,
++    p_id: alvoId,
++    p_empresa: empresaId,
++    p_detalhes: detalhes,
++  })
++  if (error) console.warn('auditoria:', error.message)
++}
++
++// Apaga do Storage os arquivos que o banco pôs na fila
++// (private.arquivos_para_apagar): fotos de perfil e do feed de contas
++// excluídas, inclusive pela retenção automática. Só confirma na fila o que
++// o Storage apagou de fato.
++async function esvaziarFilaDeArquivos(admin: AdminClient): Promise<number> {
++  const { data, error } = await admin.rpc('arquivos_para_apagar_pegar', { p_limite: 500 })
++  if (error || !Array.isArray(data)) {
++    if (error) console.warn('fila de arquivos:', error.message)
++    return 0
++  }
++  const porBucket = new Map<string, string[]>()
++  for (const item of data) {
++    if (!isRecord(item)) continue
++    const bucket = asText(item.bucket_id)
++    const nome = asText(item.nome)
++    if (!bucket || !nome) continue
++    porBucket.set(bucket, [...(porBucket.get(bucket) ?? []), nome])
++  }
++  let apagados = 0
++  for (const [bucket, nomes] of porBucket) {
++    for (let i = 0; i < nomes.length; i += 100) {
++      const lote = nomes.slice(i, i + 100)
++      const { error: storageError } = await admin.storage.from(bucket).remove(lote)
++      if (storageError) continue
++      apagados += lote.length
++      await admin.rpc('arquivos_para_apagar_confirmar', { p_bucket: bucket, p_nomes: lote })
++    }
++  }
++  return apagados
++}
++
++// O próprio usuário exclui a conta (Perfil > Minha conta). Exige a palavra
++// EXCLUIR.
++//   • Colaborador / administrador secundário: apaga foto de perfil, fotos e
++//     publicações do feed, a linha de usuarios e o login. O que ele criou
++//     para a empresa (projetos, ensaios, fotos, relatórios) fica com a
++//     empresa, sem o vínculo de autoria.
++//   • Administrador principal com outros usuários na empresa: recusa; ele
++//     precisa transferir a administração antes.
++//   • Administrador principal sozinho: apaga a empresa inteira junto (mesma
++//     rotina de "Excluir empresa").
++async function deleteOwnAccount(userId: string, body: JsonRecord) {
++  if ((asText(body.confirmacao) ?? '').toUpperCase() !== 'EXCLUIR') {
++    return jsonResponse(400, { erro: 'Digite EXCLUIR para confirmar.' })
++  }
++  const admin = adminClient()
++  const actor = await loadProfile(admin, userId)
++  const empresaId = actor?.empresa_id ? String(actor.empresa_id) : null
++
++  if (actor && actor.is_admin_empresa === true && empresaId) {
++    if (empresaId === DIAVICON_EMPRESA_ID) {
++      return jsonResponse(403, { erro: 'A conta do administrador principal da DIAVICON não pode ser excluída por aqui.' })
++    }
++    const { count, error } = await admin
++      .from('usuarios')
++      .select('id', { count: 'exact', head: true })
++      .eq('empresa_id', empresaId)
++      .neq('id', userId)
++    if (error) throw error
++    if ((count ?? 0) > 0) {
++      return jsonResponse(409, {
++        erro: 'Você é o administrador principal e há outros usuários na empresa. Transfira a administração principal em Empresa > Colaboradores antes de excluir sua conta.',
++      })
++    }
++    await auditar(admin, userId, 'conta.excluida_pelo_titular', 'usuarios', userId, empresaId, { junto_com_empresa: true })
++    return await removeCompanyEverything(admin, empresaId)
++  }
++
++  const { data: preparo, error: preparoError } = await admin.rpc('preparar_exclusao_conta', { p_usuario_id: userId })
++  if (preparoError) throw preparoError
++
++  await auditar(admin, userId, 'conta.excluida_pelo_titular', 'usuarios', userId, empresaId, isRecord(preparo) ? preparo : null)
++
++  // Login primeiro (mesma ordem de delete_permanently): se falhar, nada de
++  // cadastro foi apagado ainda.
++  const { error: authError } = await admin.auth.admin.deleteUser(userId)
++  if (authError && !/not.?found/i.test(authError.message ?? '')) throw authError
++
++  // A linha de usuarios sai em cascata com auth.users; isto cobre bancos
++  // em que a FK não é cascade.
++  await admin.from('usuarios').delete().eq('id', userId)
++
++  const arquivos = await esvaziarFilaDeArquivos(admin)
++  return jsonResponse(200, { sucesso: true, arquivos_excluidos: arquivos })
++}
++
+ Deno.serve(async (req) => {
+   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+   if (req.method !== 'POST') return jsonResponse(405, { erro: 'Método não permitido.' })
+@@ -800,6 +914,7 @@
+     if (action === 'list_company_colleagues') return await listCompanyColleagues(auth.user.id)
+     if (action === 'list_company_members_admin') return await listCompanyMembersAdmin(auth.user.id)
+     if (action === 'delete_own_company') return await deleteOwnCompany(auth.user.id, body)
++    if (action === 'delete_own_account') return await deleteOwnAccount(auth.user.id, body)
+     if (action === 'platform_list_companies') return await platformListCompanies(auth.user.id)
+     if (action === 'platform_delete_company') return await platformDeleteCompany(auth.user.id, body)
+     return jsonResponse(400, { erro: 'Ação desconhecida.' })

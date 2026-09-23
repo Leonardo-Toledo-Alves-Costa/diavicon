@@ -1,7 +1,11 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
+import '../../../core/services/links_auth.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/usuario_model.dart';
+import 'auth_operations_repository.dart';
+import '../utils/destino_confirmacao_email.dart';
 
 class AuthRepository {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -16,76 +20,105 @@ class AuthRepository {
     );
   }
 
-  // Executa o isolamento de credenciais e realiza o upload assíncrono da foto de perfil
-  Future<void> signUp({
+  Future<AuthResponse> signUp({
     required String email,
     required String password,
-    required Map<String, dynamic> dadosCompletos,
   }) async {
-    final response = await _supabase.auth.signUp(
+    return _supabase.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: destinoConfirmacaoEmail(),
     );
+  }
 
-    if (response.user != null) {
-      String? fotoUrlPublica;
-      final String? fotoPathLocal =
-          dadosCompletos['fotoPath'] ?? dadosCompletos['fotoPerfilPath'];
+  Future<void> resendSignupConfirmation(String email) async {
+    await _supabase.auth.resend(
+      type: OtpType.signup,
+      email: email,
+      emailRedirectTo: destinoConfirmacaoEmail(),
+    );
+  }
 
-      if (fotoPathLocal != null && fotoPathLocal.isNotEmpty) {
-        try {
-          final arquivoFoto = File(fotoPathLocal);
-          final extensao = fotoPathLocal.split('.').last;
-          final timestamp = DateTime.now().millisecondsSinceEpoch;
-          final caminhoStorage =
-              'usuarios/${response.user!.id}_$timestamp.$extensao';
-
-          await _supabase.storage
-              .from('avatars')
-              .upload(caminhoStorage, arquivoFoto);
-          fotoUrlPublica = _supabase.storage
-              .from('avatars')
-              .getPublicUrl(caminhoStorage);
-        } catch (e) {
-          debugPrint('🚨 [ERRO STORAGE AVATAR]: $e');
-          throw Exception(
-            'Falha ao processar upload da foto de perfil contratada: $e',
-          );
-        }
-      }
-      print(dadosCompletos);
-      final enderecoData = await _supabase
-          .from('enderecos')
-          .insert({
-            // Certifique-se que as chaves ('rua', 'cidade', etc) batem com o que vem do front
-            'endereco': dadosCompletos['rua'],
-            'cidade': dadosCompletos['cidade'],
-            'estado': dadosCompletos['estado'],
-            'cep': dadosCompletos['cep'],
-            'bairro': dadosCompletos['bairro'],
-            'numero': dadosCompletos['numero'],
-            'complemento':
-                dadosCompletos['complemento'], // Adicionei complemento que faltava
-            'pais': 'Brasil',
-          })
-          .select('id')
-          .single();
-
-      final String idEndereco = enderecoData['id'];
-
-      // Persiste a estrutura de dados de segurança na tabela pública de usuários
-      await _supabase.from('usuarios').insert({
-        'id': response.user!.id,
-        'nome': dadosCompletos['nome'],
-        'sobrenome': dadosCompletos['sobrenome'],
-        'email': email,
-        'celular': dadosCompletos['telefone'],
-        'perfil': dadosCompletos['perfil'],
-        'foto_url': fotoUrlPublica,
-        'ativo': true,
-        'endereco_id': idEndereco,
-      });
+  Future<Map<String, dynamic>> completeSelfRegistration({
+    required String profileType,
+    required Map<String, dynamic> dados,
+  }) async {
+    final user = _supabase.auth.currentUser;
+    if (user == null || user.emailConfirmedAt == null) {
+      throw Exception('Confirme o e-mail antes de concluir o cadastro.');
     }
+
+    String? fotoUrl;
+    final fotoPath = dados['fotoPath'] ?? dados['fotoPerfilPath'];
+    if (fotoPath is String && fotoPath.isNotEmpty && await File(fotoPath).exists()) {
+      try {
+        // usuarios/<uid>_<uuid>.<ext>: a política do bucket exige o uid no início.
+        final caminho = await _supabase.storage
+            .from('avatars')
+            .enviarArquivoSeguro('usuarios', File(fotoPath), prefixo: '${user.id}_');
+        fotoUrl = _supabase.storage.from('avatars').getPublicUrl(caminho);
+      } catch (e) {
+        debugPrint('[AUTH] erro ao enviar foto do perfil: $e');
+        throw Exception('Falha ao processar a foto de perfil: $e');
+      }
+    }
+
+    final empresa = dados['empresa'];
+    final empresaPayload = empresa is Map
+        ? <String, dynamic>{
+            'nome': empresa['nome'],
+            'cnpj': empresa['cnpj'],
+            'tamanho': empresa['colaboradores'],
+            'tipo': empresa['tipo'],
+            'foto_url': empresa['foto_url'],
+            'site': empresa['site'],
+            'linkedin': empresa['linkedin'],
+            'instagram': empresa['instagram'],
+            'email_contato': empresa['email_contato'],
+            'whatsapp': empresa['whatsapp'],
+            'youtube': empresa['youtube'],
+            'ramo_atuacao': empresa['ramo_atuacao'],
+            'foto_capa': empresa['foto_capa'],
+            'sobre': empresa['sobre'],
+            'endereco': {
+              'endereco': empresa['rua'],
+              'cidade': empresa['cidade'],
+              'estado': empresa['estado'],
+              'cep': empresa['cep'],
+              'bairro': empresa['bairro'],
+              'numero': empresa['numero'],
+              'complemento': empresa['complemento'],
+              'pais': empresa['pais'] ?? 'Brasil',
+            },
+          }
+        : null;
+    final profile = <String, dynamic>{
+      'nome': dados['nome'],
+      'sobrenome': dados['sobrenome'],
+      'celular': dados['telefone'] ?? dados['celular'],
+      'perfil': dados['perfil'],
+      'escolaridade': dados['escolaridade'],
+      'formacao': dados['formacao'],
+      'cargo': empresa is Map ? empresa['cargo'] : dados['cargo'],
+      'titulo_principal': empresa is Map ? empresa['nivel'] : dados['titulo_principal'],
+      'foto_url': fotoUrl,
+    };
+    final address = <String, dynamic>{
+      'endereco': dados['rua'],
+      'cidade': dados['cidade'],
+      'estado': dados['estado'],
+      'cep': dados['cep'],
+      'bairro': dados['bairro'],
+      'numero': dados['numero'],
+      'complemento': dados['complemento'],
+      'pais': dados['pais'] ?? 'Brasil',
+    };
+    return AuthOperationsRepository().execute('complete_self_registration', {
+      'perfil_tipo': profileType,
+      'perfil': profile,
+      'endereco': address,
+      if (empresaPayload != null) 'empresa': empresaPayload,
+    });
   }
 
   // Recupera as informações estendidas mapeadas no banco relacional
@@ -101,7 +134,10 @@ class AuthRepository {
   }
 
   Future<void> salvarPerfil(UsuarioModel usuario) async {
-    await _supabase.from('usuarios').upsert(usuario.toMap());
+    await _supabase
+        .from('usuarios')
+        .update(usuario.toMap())
+        .eq('id', usuario.id);
   }
 
   Future<void> signOut() async => await _supabase.auth.signOut();
@@ -111,7 +147,7 @@ class AuthRepository {
   Future<void> resetPasswordForEmail(String email) async {
     await _supabase.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'diavicon://nova-senha',
+      redirectTo: destinoNovaSenha,
     );
   }
 

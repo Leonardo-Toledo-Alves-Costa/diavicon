@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -61,7 +63,7 @@ class _AnaliseProvaCargaScreenState extends ConsumerState<AnaliseProvaCargaScree
         if (plantaUrl.toLowerCase().contains('.pdf')) {
           await _carregarPdf(plantaUrl);
         } else {
-          _plantaImagem = NetworkImage(plantaUrl);
+          _plantaImagem = StorageNetworkImage(plantaUrl);
         }
       }
     } catch (e) {
@@ -73,7 +75,7 @@ class _AnaliseProvaCargaScreenState extends ConsumerState<AnaliseProvaCargaScree
 
   Future<void> _carregarPdf(String url) async {
     try {
-      final req = await HttpClient().getUrl(Uri.parse(url));
+      final req = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(url)));
       final doc = await PdfDocument.openData(await consolidateHttpClientResponseBytes(await req.close()));
       final page = await doc.getPage(1);
       double w = page.width;

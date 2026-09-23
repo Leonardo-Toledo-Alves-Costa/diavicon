@@ -5,6 +5,8 @@
 list(APPEND FLUTTER_PLUGIN_LIST
   app_links
   file_selector_windows
+  flutter_secure_storage_windows
+  gal
   geolocator_windows
   pdfx
   url_launcher_windows

@@ -1,16 +1,18 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../model/planos_model.dart';
 import 'empresa_plano_atual_provider.dart';
 
 /// Uso de armazenamento da empresa, em MB, por categoria.
 ///
-/// Medir o tamanho exato em bytes de cada arquivo no Storage (ou de cada
-/// linha no Postgres) exigiria rastrear o tamanho de cada upload no momento
-/// em que ele acontece — hoje nenhum dos ~15 pontos de upload do app grava
-/// isso. Em vez de tentar reconstruir isso de forma frágil (casando URL por
-/// URL contra listagens de bucket), calculamos uma ESTIMATIVA a partir da
-/// contagem de linhas/fotos multiplicada por um tamanho médio por item.
-/// Fica claro na UI que é estimado, não uma medição exata.
+/// Fonte principal: RPC `uso_armazenamento_empresa` (migration
+/// 20260921100000_cota_armazenamento.sql). Ela soma o tamanho REAL de cada
+/// arquivo no Storage enviado por usuários da empresa (PDF = relatório, resto
+/// = foto) e estima os dados em 2 KB por projeto/estrutura/elemento/ponto. É a
+/// mesma conta que o servidor usa para bloquear criações quando o plano enche.
+///
+/// Se a RPC ainda não existir no banco, cai na estimativa antiga (contagem de
+/// linhas × tamanho médio), calculada aqui no app.
 class ArmazenamentoUso {
   final double dadosMb;
   final double fotosMb;
@@ -34,8 +36,33 @@ const double _kbPorRelatorio = 500;
 
 final armazenamentoUsoProvider = FutureProvider.autoDispose<ArmazenamentoUso>((ref) async {
   final supabase = Supabase.instance.client;
+  // Assinado antes de qualquer await (regra do Riverpod para `ref.watch`).
+  final planoFuture = ref.watch(empresaPlanoAtualProvider.future);
+
+  try {
+    final rows = await supabase.rpc('uso_armazenamento_empresa');
+    if (rows is List && rows.isNotEmpty) {
+      final r = Map<String, dynamic>.from(rows.first as Map);
+      double mb(String k) => (r[k] as num?)?.toDouble() ?? 0;
+      return ArmazenamentoUso(
+        dadosMb: mb('dados_mb'),
+        fotosMb: mb('fotos_mb'),
+        relatoriosMb: mb('relatorios_mb'),
+        limiteMb: (r['limite_mb'] as num?)?.toInt() ?? 0,
+      );
+    }
+  } catch (_) {
+    // RPC ainda não aplicada: segue para a estimativa abaixo.
+  }
+
+  return _estimativaLocal(planoFuture);
+});
+
+/// Estimativa antiga, usada só se a RPC não estiver disponível.
+Future<ArmazenamentoUso> _estimativaLocal(Future<PlanosModel> planoFuture) async {
+  final supabase = Supabase.instance.client;
   final userId = supabase.auth.currentUser?.id;
-  final plano = await ref.watch(empresaPlanoAtualProvider.future);
+  final plano = await planoFuture;
 
   if (userId == null) {
     return ArmazenamentoUso(dadosMb: 0, fotosMb: 0, relatoriosMb: 0, limiteMb: plano.armazenamentoMb);
@@ -109,12 +136,16 @@ final armazenamentoUsoProvider = FutureProvider.autoDispose<ArmazenamentoUso>((r
     relatoriosMb: (relatoriosCount * _kbPorRelatorio) / 1024,
     limiteMb: plano.armazenamentoMb,
   );
-});
+}
 
 /// Checa se a empresa ainda tem espaço no plano antes de uma nova criação
 /// (post do feed, serviço, etc.) que vá adicionar aproximadamente
 /// [tamanhoEstimadoMb] de armazenamento.
 Future<bool> podeAdicionarArquivo(WidgetRef ref, {double tamanhoEstimadoMb = 1}) async {
   final uso = await ref.read(armazenamentoUsoProvider.future);
-  return (uso.totalMb + tamanhoEstimadoMb) <= uso.limiteMb;
+  // Limite 0 = plano sem limite definido: não bloqueia (igual ao servidor).
+  if (uso.limiteMb <= 0) return true;
+  // O servidor recusa quando o uso já atingiu o limite; aqui, igual, e também
+  // quando a nova criação passaria do limite.
+  return (uso.totalMb + tamanhoEstimadoMb) < uso.limiteMb;
 }

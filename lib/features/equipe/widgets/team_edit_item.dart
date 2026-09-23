@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -70,7 +71,7 @@ class _TeamEditItemState extends State<TeamEditItem> {
                     backgroundColor: AppColors.greyVeryLight,
                     // 🔥 Aplica a imagem dinâmica aqui
                     backgroundImage: hasValidImage 
-                        ? NetworkImage(widget.imageUrl!) 
+                        ? StorageNetworkImage(widget.imageUrl!) 
                         : const AssetImage('assets/images/user.png') as ImageProvider,
                   ),
                   const SizedBox(width: 16),

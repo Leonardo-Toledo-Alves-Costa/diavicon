@@ -1,3 +1,4 @@
+import 'package:diavicon/core/services/storage_urls.dart';
 import 'dart:math'; 
 import 'dart:convert'; 
 import 'package:http/http.dart' as http; 
@@ -5,10 +6,12 @@ import 'package:flutter/services.dart' show rootBundle;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:image_cropper/image_cropper.dart';
+import '../../utils/curva_despassivacao.dart';
 import 'dart:ui' as ui; // Para manipular pixels e imagens nativamente
 import 'dart:typed_data'; // Para manipular os bytes da imagem
 
-import '../../models/carbonatacao_math.dart'; 
+import '../../models/carbonatacao_math.dart';
+import '../../../../../core/security/entrada_segura.dart'; 
 
 final carbonatacaoReportServiceProvider = Provider((ref) {
   return CarbonatacaoReportService(Supabase.instance.client);
@@ -57,6 +60,10 @@ class CarbonatacaoReportService {
   final SupabaseClient _supabase;
   CarbonatacaoReportService(this._supabase);
 
+  /// Texto vindo do banco (digitado por usuários) escapado para o HTML do
+  /// relatório — sem isso um nome com `<` ou aspas virava marcação no PDF.
+  static String _h(Object? v) => EntradaSegura.html(v?.toString() ?? '-');
+
   String _processarRepeat(String html, String tag, List<Map<String, String>> itens, {bool addPageBreak = false}) {
     // O .*? garante que ele ignore textos extras como "(um bloco por ponto)" na tag do HTML
     final regex = RegExp('<!-- REPEAT:$tag.*?-->(.*?)<!-- /REPEAT -->', dotAll: true);
@@ -85,7 +92,7 @@ class CarbonatacaoReportService {
       if (url.isEmpty || !url.startsWith('http')) return url;
       
       try {
-        final response = await http.get(Uri.parse(url));
+        final response = await StorageUrls.baixar(url);
         
         if (response.statusCode == 200) {
           // 1. Decodifica os bytes nativamente
@@ -177,9 +184,9 @@ class CarbonatacaoReportService {
     // Variáveis úteis da Estrutura
     int anoConcepcao = (estResp?['ano_concepcao'] as num?)?.toInt() ?? DateTime.now().year;
     int idade = max(1, DateTime.now().year - anoConcepcao);
-    String utilNome = estResp?['utilizacoes_estrutura']?['nome']?.toString() ?? '-';
-    String tipoNome = estResp?['tipos_estrutura']?['nome']?.toString() ?? '-';
-    String tipoLogia = estResp?['tipologias_estrutura']?['nome']?.toString() ?? '-';
+    String utilNome = _h(estResp?['utilizacoes_estrutura']?['nome']);
+    String tipoNome = _h(estResp?['tipos_estrutura']?['nome']);
+    String tipoLogia = _h(estResp?['tipologias_estrutura']?['nome']);
     String placeholderB64 = await ReportAssets.imageBase64('assets/images/project_placeholder1.png');
 
     // =======================================================================
@@ -188,19 +195,19 @@ class CarbonatacaoReportService {
     if (config['incluir_resumo'] == true) {
       String pageGeral = await rootBundle.loadString('assets/reports/carbonatacao/templates/ensaio_geral_template.html');
       
-      String utilNome = estResp?['utilizacoes_estrutura']?['nome']?.toString() ?? '-';
-      String tipoNome = estResp?['tipos_estrutura']?['nome']?.toString() ?? '-';
-      String tipoLogia = estResp?['tipologiaEstrutura']?['nome']?.toString() ?? '-';
+      String utilNome = _h(estResp?['utilizacoes_estrutura']?['nome']);
+      String tipoNome = _h(estResp?['tipos_estrutura']?['nome']);
+      String tipoLogia = _h(estResp?['tipologiaEstrutura']?['nome']);
 
-      pageGeral = pageGeral.replaceAll('{{projeto}}', projResp?['nome']?.toString() ?? '-');
-      pageGeral = pageGeral.replaceAll('{{estrutura}}', estResp?['nome']?.toString() ?? '-');
+      pageGeral = pageGeral.replaceAll('{{projeto}}', _h(projResp?['nome']));
+      pageGeral = pageGeral.replaceAll('{{estrutura}}', _h(estResp?['nome']));
       
-      pageGeral = pageGeral.replaceAll('{{caa}}', estResp?['caa']?.toString() ?? '-');
+      pageGeral = pageGeral.replaceAll('{{caa}}', _h(estResp?['caa']));
       pageGeral = pageGeral.replaceAll('{{utilizacao}}', utilNome);
       pageGeral = pageGeral.replaceAll('{{tipo}}', tipoNome);
       pageGeral = pageGeral.replaceAll('{{tipologiaEstrutural}}', tipoLogia);
-      pageGeral = pageGeral.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : locais.join(', '));
-      pageGeral = pageGeral.replaceAll('{{elementos}}', tipos.isEmpty ? 'Todos' : tipos.join(', '));
+      pageGeral = pageGeral.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : _h(locais.join(', ')));
+      pageGeral = pageGeral.replaceAll('{{elementos}}', tipos.isEmpty ? 'Todos' : _h(tipos.join(', ')));
       
       List<double> cobP = [];
       List<double> cobS = [];
@@ -263,27 +270,14 @@ class CarbonatacaoReportService {
 
       double tempoCalc = (vidaUtilResidual == 0) ? idade.toDouble() : tempoTotal;
       double tempoAnalisePb = tempoCalc * (tempoCalc < 10 ? 3 : 2);
-      int nSim = 1000;
-
-      List<double> kSim = CarbonatacaoMath.randomNormal(kMd, kDp, nSim);
-      List<double> cobSim = CarbonatacaoMath.randomNormal(mediaCob, dpCob, nSim);
-
-      List<double> tLabels = [];
-      List<double> probValues = [];
-
-      for (double t = 0; t <= tempoAnalisePb; t += (tempoAnalisePb / 100)) {
-        tLabels.add(t);
-        if (t == 0) {
-          probValues.add(0.0);
-          continue;
-        }
-        int falhas = 0;
-        for (int i = 0; i < nSim; i++) {
-          double x = kSim[i] * sqrt(t);
-          if (x > cobSim[i]) falhas++;
-        }
-        probValues.add((falhas / nSim) * 100);
-      }
+      // Monte Carlo: fonte única (CurvaDespassivacao) — mesma chave do
+      // relatório por modelo e do dashboard.
+      final curva = CurvaDespassivacao.calcular(
+        kMedia: kMd, kDesvio: kDp, cobMedia: mediaCob, cobDesvio: dpCob,
+        horizonte: tempoAnalisePb, chave: CurvaDespassivacao.chaveGeral,
+      );
+      List<double> tLabels = curva.tempos;
+      List<double> probValues = curva.probabilidades;
 
       String buscarTempoProb(double probAlvo) {
         for (int i = 0; i < probValues.length; i++) {
@@ -929,27 +923,27 @@ class CarbonatacaoReportService {
 
         // Mapeamento dos Dados deste ponto específico
         Map<String, String> pontoMapeado = {
-          'projeto': projResp?['nome']?.toString() ?? '-',
+          'projeto': _h(projResp?['nome']),
           'idade': idade.toString(),
-          'caa': estResp?['caa']?.toString() ?? '-',
-          'estrutura': estResp?['nome']?.toString() ?? '-',
+          'caa': _h(estResp?['caa']),
+          'estrutura': _h(estResp?['nome']),
           //'ambiente': 'Urbano', 
-          'tipo':  el['local']?.toString() ?? '-',
+          'tipo':  _h(el['local']),
           'ponto.id': p['id']?.toString() ?? '',
-          'ponto.local': el['local']?.toString() ?? '-',
-          'ponto.elemento': el['nome']?.toString() ?? '-',
-          'revestimento': el['revestimento']?.toString() ?? '-',
+          'ponto.local': _h(el['local']),
+          'ponto.elemento': _h(el['nome']),
+          'revestimento': _h(el['revestimento']),
           'ponto.planta_url': placeholderB64, 
-          'ponto.cob_principal': carb['cob_arm_p']?.toString() ?? '-',
-          'ponto.bitola_principal': carb['bit_arm_p']?.toString() ?? '-',
-          'ponto.cob_secundaria': carb['cob_arm_s']?.toString() ?? '-', 
-          'ponto.bitola_secundaria': carb['bit_arm_s']?.toString() ?? '-',
+          'ponto.cob_principal': _h(carb['cob_arm_p']),
+          'ponto.bitola_principal': _h(carb['bit_arm_p']),
+          'ponto.cob_secundaria': _h(carb['cob_arm_s']), 
+          'ponto.bitola_secundaria': _h(carb['bit_arm_s']),
           'ponto.carb_max': maxFr.toStringAsFixed(1),
           'ponto.carb_media': media.toStringAsFixed(1),
           'ponto.carb_min': minFr.toStringAsFixed(1),
           'ponto.carb_cvar': cvFr.toStringAsFixed(1),
           'ponto.coef_carb': kMedia.toStringAsFixed(2),
-          'ponto.risco': p['valor_resultado']?.toString() ?? '-',
+          'ponto.risco': _h(p['valor_resultado']),
           'ponto.img_avanco': base64FrenteCobInd.isNotEmpty ? '<img src="$base64FrenteCobInd" style="width: 100%; max-height: 200px; object-fit: contain;">' : '',
           'ponto.foto_quebra_url': fotoQuebra.isNotEmpty ? await _obterImagemBase64Redimensionada(fotoQuebra) : placeholderB64, 
           'ponto.foto_fenolftaleina_url': fotoFeno.isNotEmpty ? await _obterImagemBase64Redimensionada(fotoFeno) : placeholderB64,
@@ -996,15 +990,15 @@ class CarbonatacaoReportService {
         double kPonto = mediaFr / sqrt(idade);
 
         // 2. Extração de variáveis do banco
-        String nome = el['nome']?.toString() ?? 'Desconhecido';
-        String tipo = el['tipo']?.toString() ?? '-';
-        String local = el['local']?.toString() ?? '-';
-        String rev = el['revestimento']?.toString() ?? '-';
+        String nome = _h(el['nome'] ?? 'Desconhecido');
+        String tipo = _h(el['tipo']);
+        String local = _h(el['local']);
+        String rev = _h(el['revestimento']);
         
-        String cobP = carb['cob_arm_p']?.toString() ?? '-';
-        String bitP = carb['bit_arm_p']?.toString() ?? '-';
-        String cobS = carb['cob_arm_s']?.toString() ?? '-';
-        String bitS = carb['bit_arm_s']?.toString() ?? '-';
+        String cobP = _h(carb['cob_arm_p']);
+        String bitP = _h(carb['bit_arm_p']);
+        String cobS = _h(carb['cob_arm_s']);
+        String bitS = _h(carb['bit_arm_s']);
         String riscoCondicao = p['valor_resultado']?.toString() ?? 'Irrelevante';
 
         String bgColor = '#E0E0E0';
@@ -1034,7 +1028,7 @@ class CarbonatacaoReportService {
         }
 
         // Criando o elemento visual do Badge com HTML/CSS inline para o PDF
-        String badgeHtml = '<span style="background-color: $bgColor; color: $textColor; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; display: inline-block; text-align: center; white-space: nowrap;">$riscoCondicao</span>';
+        String badgeHtml = '<span style="background-color: $bgColor; color: $textColor; padding: 4px 10px; border-radius: 12px; font-size: 10px; font-weight: bold; display: inline-block; text-align: center; white-space: nowrap;">${_h(riscoCondicao)}</span>';
 
         // 3. Montando a linha HTML manualmente e acumulando
         linhasHtml += '''
@@ -1054,14 +1048,14 @@ class CarbonatacaoReportService {
       }
 
       // 4. Substituições literais no template HTML
-      pageTab = pageTab.replaceAll('{{projeto}}', projResp?['nome']?.toString() ?? '-');
+      pageTab = pageTab.replaceAll('{{projeto}}', _h(projResp?['nome']));
       pageTab = pageTab.replaceAll('{{exposicao}}', '$idade anos');
-      pageTab = pageTab.replaceAll('{{caa}}', estResp?['caa']?.toString() ?? '-');
-      pageTab = pageTab.replaceAll('{{estrutura}}', estResp?['nome']?.toString() ?? '-');
+      pageTab = pageTab.replaceAll('{{caa}}', _h(estResp?['caa']));
+      pageTab = pageTab.replaceAll('{{estrutura}}', _h(estResp?['nome']));
       pageTab = pageTab.replaceAll('{{ambiente}}', 'Urbano'); 
       pageTab = pageTab.replaceAll('{{tipo}}', tipoNome);
       pageTab = pageTab.replaceAll('{{idade}}', idade.toString());
-      pageTab = pageTab.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : locais.join(', '));
+      pageTab = pageTab.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : _h(locais.join(', ')));
       
       // Injeta todas as linhas montadas de uma só vez!
       pageTab = pageTab.replaceAll('{{linhas_tabela}}', linhasHtml);
@@ -1111,11 +1105,11 @@ class CarbonatacaoReportService {
         String base64Img = await _obterImagemBase64Redimensionada(rawUrl);
 
         // Resgatando dados para montar a descrição rica
-        String nomePonto = p['nome_ponto']?.toString() ?? 'S/N';
-        String nomeEl = el['nome']?.toString() ?? '-';
-        String tipoEl = el['tipo']?.toString() ?? '-';
-        String localEl = el['local']?.toString() ?? '-';
-        String legendaBase = foto['legenda']?.toString() ?? 'Registro fotográfico';
+        String nomePonto = _h(p['nome_ponto'] ?? 'S/N');
+        String nomeEl = _h(el['nome']);
+        String tipoEl = _h(el['tipo']);
+        String localEl = _h(el['local']);
+        String legendaBase = _h(foto['legenda'] ?? 'Registro fotográfico');
 
         // Mescla todas as informações na legenda permitindo quebra de linha (HTML)
         String legendaRica = '<b>Ponto $nomePonto</b> | $nomeEl ($tipoEl) - $localEl<br>$legendaBase';
@@ -1134,18 +1128,18 @@ class CarbonatacaoReportService {
         String pageGaleria = pageGaleriaTemplate;
 
         // Cabeçalho da Página
-        pageGaleria = pageGaleria.replaceAll('{{projeto}}', projResp?['nome']?.toString() ?? '-');
+        pageGaleria = pageGaleria.replaceAll('{{projeto}}', _h(projResp?['nome']));
         pageGaleria = pageGaleria.replaceAll('{{exposicao}}', '$idade anos');
-        pageGaleria = pageGaleria.replaceAll('{{caa}}', estResp?['caa']?.toString() ?? '-');
-        pageGaleria = pageGaleria.replaceAll('{{estrutura}}', estResp?['nome']?.toString() ?? '-');
+        pageGaleria = pageGaleria.replaceAll('{{caa}}', _h(estResp?['caa']));
+        pageGaleria = pageGaleria.replaceAll('{{estrutura}}', _h(estResp?['nome']));
         pageGaleria = pageGaleria.replaceAll('{{idade}}', idade.toString());
 
         // Como as fotos estão misturadas, os campos do topo ficam genéricos
         pageGaleria = pageGaleria.replaceAll('{{utilizacao}}', utilNome);
         pageGaleria = pageGaleria.replaceAll('{{tipo}}', tipoNome);
         pageGaleria = pageGaleria.replaceAll('{{tipologiaEstrutural}}', tipoLogia);
-        pageGaleria = pageGaleria.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : locais.join(', '));
-        pageGaleria = pageGaleria.replaceAll('{{elementos}}', tipos.isEmpty ? 'Todos' : tipos.join(', '));
+        pageGaleria = pageGaleria.replaceAll('{{local}}', locais.isEmpty ? 'Todos' : _h(locais.join(', ')));
+        pageGaleria = pageGaleria.replaceAll('{{elementos}}', tipos.isEmpty ? 'Todos' : _h(tipos.join(', ')));
 
 
         // Adiciona a logo

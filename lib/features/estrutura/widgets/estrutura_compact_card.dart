@@ -1,15 +1,25 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/badge_status.dart';
+import '../../projetos/models/projeto_model.dart';
 import '../models/estrutura_model.dart';
+import '../providers/estrutura_provider.dart';
 import 'estrutura_preview_body.dart';
 
-class EstruturaCompactCard extends StatelessWidget {
+/// Card de uma estrutura na visão "Monitoradas" da aba Estruturas. Tocar abre
+/// o preview, que leva aos projetos em que a estrutura está sendo trabalhada.
+class EstruturaCompactCard extends ConsumerWidget {
   final EstruturaModel estrutura;
 
   const EstruturaCompactCard({super.key, required this.estrutura});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final projetos = ref.watch(projetosPorEstruturaProvider(estrutura.id)).value;
+
     return GestureDetector(
       onTap: () {
         showDialog(
@@ -48,7 +58,7 @@ class EstruturaCompactCard extends StatelessWidget {
           children: [
             ClipOval(
               child: estrutura.imageUrl != null
-                  ? Image.network(estrutura.imageUrl!, height: 70, width: 70, fit: BoxFit.cover)
+                  ? ImagemStorage.network(estrutura.imageUrl!, height: 70, width: 70, fit: BoxFit.cover)
                   : Image.asset('assets/images/sem_estrutura.png', height: 70, width: 70, fit: BoxFit.cover),
             ),
             const SizedBox(width: 16),
@@ -70,19 +80,18 @@ class EstruturaCompactCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(estrutura.conjuntoNome ?? 'Sem setor vinculado', style: const TextStyle(fontSize: 11, color: AppColors.hintText)),
                   const SizedBox(height: 12),
-                  Row(
+                  // Os dois badges eram texto fixo ("Projetos concluídos" e
+                  // "Monitorado" em todo card, independente do dado). Agora
+                  // saem da estrutura e dos projetos vinculados a ela.
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12)),
-                        child: const Text('Projetos concluídos', style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.bold)),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12)),
-                        child: const Text('Monitorado', style: TextStyle(color: Colors.green, fontSize: 9, fontWeight: FontWeight.bold)),
-                      ),
+                      // Some enquanto carrega, em vez de piscar um estado
+                      // que pode estar errado.
+                      if (projetos != null) _badgeProjetos(projetos),
+                      if (estrutura.monitorada)
+                        _badge('Monitorada', _verdeFundo, _verdeTexto),
                     ],
                   ),
                 ],
@@ -93,4 +102,27 @@ class EstruturaCompactCard extends StatelessWidget {
       ),
     );
   }
+
+  static const _verdeFundo = Color(0xFFE8F5E9);
+  static const _verdeTexto = Colors.green;
+  static const _laranjaFundo = Color(0xFFFFF1E0);
+
+  /// "Sem projetos", "NN projetos ativos" ou "Projetos concluídos" — as
+  /// três situações do layout. Projeto cancelado não conta como ativo.
+  Widget _badgeProjetos(List<ProjetoModel> projetos) {
+    if (projetos.isEmpty) return _badge('Sem projetos', _verdeFundo, _verdeTexto);
+
+    final ativos = projetos.where((p) => p.statusBadge == BadgeStatus.emAndamento).length;
+    if (ativos > 0) {
+      final n = ativos.toString().padLeft(2, '0');
+      return _badge(ativos == 1 ? '$n projeto ativo' : '$n projetos ativos', _laranjaFundo, AppColors.primary);
+    }
+    return _badge('Projetos concluídos', _verdeFundo, _verdeTexto);
+  }
+
+  Widget _badge(String texto, Color fundo, Color cor) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(color: fundo, borderRadius: BorderRadius.circular(12)),
+        child: Text(texto, style: TextStyle(color: cor, fontSize: 9, fontWeight: FontWeight.bold)),
+      );
 }

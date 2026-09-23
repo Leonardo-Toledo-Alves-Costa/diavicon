@@ -1,3 +1,4 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/estrutura_model.dart';
 import 'dart:io';
@@ -80,15 +81,11 @@ class EstruturaRepository {
   /// FAZ O UPLOAD DA IMAGEM PARA O STORAGE E RETORNA A URL PÚBLICA
   Future<String?> uploadImagemEstrutura(File imageFile) async {
     try {
-      final fileExt = imageFile.path.split('.').last;
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-      final filePath = 'estruturas/$fileName';
-
       // CHAMA O SUPABASE DIRETAMENTE AQUI
       final supabase = Supabase.instance.client;
 
-      // Faz o upload da imagem
-      await supabase.storage.from('projetos').upload(filePath, imageFile);
+      // Faz o upload da imagem (tipo, nome e Content-Type decididos pelo app)
+      final filePath = await supabase.storage.from('projetos').enviarArquivoSeguro('estruturas', imageFile);
 
       // Pega o link público
       final publicUrl = supabase.storage.from('projetos').getPublicUrl(filePath);
@@ -158,5 +155,29 @@ class EstruturaRepository {
     } catch (e) {
       throw Exception('Falha ao excluir estrutura: $e');
     }
+  }
+
+  /// Pré-visualização pro sanfonado "o que mais será excluído junto" antes de
+  /// confirmar a exclusão da estrutura: elementos, locais, plantas e todos os
+  /// pontos de ensaio ligados a ela (ver ON DELETE CASCADE).
+  Future<Map<String, List<String>>> buscarResumoExclusao(String estruturaId) async {
+    final resultados = await Future.wait([
+      _client.from('elementos_estruturais').select('nome').eq('estrutura_id', estruturaId),
+      _client.from('estruturas_locais').select('nome').eq('estrutura_id', estruturaId),
+      _client.from('estruturas_plantas').select('titulo').eq('estrutura_id', estruturaId),
+      _client.from('pontos_ensaios_geral').select('nome_ponto, tipo_ensaio').eq('estrutura_id', estruturaId),
+    ]);
+
+    final categorias = <String, List<String>>{
+      'Elementos estruturais': (resultados[0] as List).map((r) => r['nome']?.toString() ?? 'Sem nome').toList(),
+      'Locais': (resultados[1] as List).map((r) => r['nome']?.toString() ?? 'Sem nome').toList(),
+      'Plantas': (resultados[2] as List).map((r) => r['titulo']?.toString() ?? 'Sem título').toList(),
+    };
+    for (final row in (resultados[3] as List)) {
+      final tipo = row['tipo_ensaio']?.toString() ?? 'Ensaio';
+      final nome = row['nome_ponto']?.toString() ?? 'Sem nome';
+      categorias.putIfAbsent('Pontos de $tipo', () => []).add(nome);
+    }
+    return categorias;
   }
 }

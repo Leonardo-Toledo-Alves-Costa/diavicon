@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/projetos/providers/clientes_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -203,7 +204,7 @@ class _BuscaClienteModalState extends ConsumerState<BuscaClienteModal> {
                 ],
                 image: DecorationImage(
                   image: (fotoUrl != null && fotoUrl.isNotEmpty)
-                      ? NetworkImage(fotoUrl) as ImageProvider
+                      ? StorageNetworkImage(fotoUrl) as ImageProvider
                       : const AssetImage('assets/images/empresa.png'),
                   fit: BoxFit.contain,
                 ),

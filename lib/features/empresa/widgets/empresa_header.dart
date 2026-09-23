@@ -1,6 +1,9 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/empresa/screens/editar_tabelas_screen.dart';
+import 'package:diavicon/routes/app_routes.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -100,7 +103,7 @@ class EmpresaHeader extends ConsumerWidget {
                               ),
                               data: (fotoUrl) {
                                 if (fotoUrl != null && fotoUrl.isNotEmpty) {
-                                  return Image.network(
+                                  return ImagemStorage.network(
                                     fotoUrl,
                                     fit: BoxFit.cover,
                                     errorBuilder: (_, _, _) => Image.asset(
@@ -135,7 +138,8 @@ class EmpresaHeader extends ConsumerWidget {
                             Icons.notifications_none,
                             color: Colors.white,
                           ),
-                          onPressed: () {},
+                          onPressed: () =>
+                              context.pushNamed(AppRouteNames.notifications),
                           padding: EdgeInsets.zero,
                           constraints: const BoxConstraints(),
                         ),
@@ -196,7 +200,7 @@ class EmpresaHeader extends ConsumerWidget {
                 radius: avatarRadius,
                 backgroundColor: Colors.white,
                 backgroundImage: empresa.fotoUrl != null
-                    ? NetworkImage(empresa.fotoUrl!)
+                    ? StorageNetworkImage(empresa.fotoUrl!)
                     : null,
                 child: empresa.fotoUrl == null
                     ? const Icon(

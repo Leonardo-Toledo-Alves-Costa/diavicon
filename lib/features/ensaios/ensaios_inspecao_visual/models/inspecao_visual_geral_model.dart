@@ -37,7 +37,7 @@ class InspecaoVisualGeralModel {
       totalRegistros: pontos.length,
       locaisAtendidos: locais,
       // Recebe o ícone e a data provenientes do inner join no Repository
-      iconePath: map['pontos_ensaios_geral']?['tipos_ensaio']?['icone_path'],
+      iconePath: (map['pontos_ensaios_geral']?['tipos_ensaio']?['icone_path'] as String?)?.trim(),
       criadoEm: map['pontos_ensaios_geral']?['criado_em'] != null 
           ? DateTime.tryParse(map['pontos_ensaios_geral']['criado_em']) 
           : null,

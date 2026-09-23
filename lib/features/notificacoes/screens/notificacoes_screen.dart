@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
@@ -213,7 +214,7 @@ class NotificacoesScreen extends ConsumerWidget {
               backgroundImage:
                   (dados['foto_url'] != null &&
                       dados['foto_url'].toString().startsWith('http'))
-                  ? NetworkImage(dados['foto_url'].toString())
+                  ? StorageNetworkImage(dados['foto_url'].toString())
                   : null,
               child:
                   (dados['foto_url'] == null ||

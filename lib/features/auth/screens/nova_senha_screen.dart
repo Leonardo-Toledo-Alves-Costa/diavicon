@@ -1,3 +1,4 @@
+import '../../../core/widgets/requisitos_senha.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -8,6 +9,7 @@ import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class NovaSenhaScreen extends ConsumerStatefulWidget {
   const NovaSenhaScreen({super.key});
@@ -23,6 +25,8 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
 
   bool _senhaVisible    = false;
   bool _confirmaVisible = false;
+  /// Depois da primeira tentativa, o que falta na senha fica em vermelho.
+  bool _tentouEnviar = false;
 
   @override
   void dispose() {
@@ -32,6 +36,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
   }
 
   Future<void> _atualizarSenha() async {
+    setState(() => _tentouEnviar = true);
     if (!_formKey.currentState!.validate()) return;
     try {
       await ref
@@ -50,7 +55,7 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: ${e.toString()}'),
+          content: Text(authErrorMessage(e, fallback: 'Não foi possível atualizar a senha.')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -100,6 +105,16 @@ class _NovaSenhaScreenState extends ConsumerState<NovaSenhaScreen> {
                       setState(() => _senhaVisible = !_senhaVisible),
                 ),
                 validator: ValidatorsCadastro.senha,
+              ),
+              ValueListenableBuilder<TextEditingValue>(
+                valueListenable: _senhaCtrl,
+                builder: (_, valor, _) => Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    ForcaSenha(senha: valor.text),
+                    RequisitosSenha(senha: valor.text, marcarFaltantes: _tentouEnviar),
+                  ],
+                ),
               ),
               const SizedBox(height: 16),
               CustomTextField(

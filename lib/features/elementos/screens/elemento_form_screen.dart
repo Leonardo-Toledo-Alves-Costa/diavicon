@@ -1,4 +1,6 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 import 'package:diavicon/core/widgets/custom_appbar.dart';
 import 'package:diavicon/features/elementos/widgets/nova_opcao_modal.dart';
@@ -103,8 +105,10 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     await Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) =>
-            PlanejamentoPlantasScreen(estruturaId: widget.estruturaId),
+        builder: (_) => PlanejamentoPlantasScreen(
+          estruturaId: widget.estruturaId,
+          projetoId: widget.projetoId,
+        ),
       ),
     );
 
@@ -206,6 +210,10 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
   }
 
   Future<void> _salvar() async {
+    if (_isSubmitting) return;
+    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
+    if (!_isEditing && !await verificarArmazenamento(context, ref)) return;
+    if (!mounted || _isSubmitting) return;
     if (_nomeController.text.trim().isEmpty) {
       DiaviconAlerts.show(
         context,
@@ -300,9 +308,7 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
 
       final empresaId = ref.read(loggedUserCompanyIdProvider).value;
       if (novoSistema != null && _tipoElemento != null && empresaId != null) {
-        final tipos = ref
-            .read(tiposElementoDropdownProvider(empresaId))
-            .value;
+        final tipos = ref.read(tiposElementoDropdownProvider(empresaId)).value;
         final aindaValido =
             tipos?.any(
               (t) => t.nome == _tipoElemento && t.sistemaId == novoSistema,
@@ -467,11 +473,14 @@ class _ElementoFormScreenState extends ConsumerState<ElementoFormScreen> {
     List<String> revestimentosFinais = List.from(_revestimentoOptions);
     List<String> locaisFinais = List.from(_localOptions);
 
-    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
-        .where(
-          (t) => _sistemaHabitacional == null || t.sistemaId == _sistemaHabitacional,
-        )
-        .map((t) => t.nome);
+    final tiposDoSistema =
+        (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+            .where(
+              (t) =>
+                  _sistemaHabitacional == null ||
+                  t.sistemaId == _sistemaHabitacional,
+            )
+            .map((t) => t.nome);
     tiposFinais = {...tiposFinais, ...tiposDoSistema}.toList();
 
     opcoesFormulario.whenData((opcoes) {
@@ -694,7 +703,7 @@ class _ElementoBanner extends StatelessWidget {
                   ? ResizeImage(FileImage(imageFile!), width: 800)
                         as ImageProvider
                   : (networkUrl != null
-                        ? NetworkImage(networkUrl!)
+                        ? StorageNetworkImage(networkUrl!)
                         : const AssetImage('assets/images/elemento_info.png')
                               as ImageProvider),
               fit: BoxFit.cover,
@@ -765,17 +774,15 @@ class _PlantaCardImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final url = imageUrl;
     if (url == null || url.isEmpty) return _fallback();
-    return Image.network(
+    return ImagemStorage.network(
       url,
       fit: BoxFit.cover,
       errorBuilder: (_, _, _) => _fallback(),
     );
   }
 
-  Widget _fallback() => Image.asset(
-    'assets/images/planta_elementos_info.png',
-    fit: BoxFit.cover,
-  );
+  Widget _fallback() =>
+      Image.asset('assets/images/planta_elementos_info.png', fit: BoxFit.cover);
 }
 
 enum ElementoInfoDropdownField {

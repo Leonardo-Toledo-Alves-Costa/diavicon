@@ -39,7 +39,7 @@ final analiseArrancamentoProvider = FutureProvider.family.autoDispose<List<Ponto
           ''')
           .eq('projeto_id', params.projetoId)
           .eq('elementos_estruturais.estrutura_id', params.estruturaId)
-          .ilike('tipo_ensaio', '%Arrancamento%'); 
+          .ilike('tipo_ensaio', '%Argamassa%'); // Só argamassa: '%Arrancamento%' trazia também os de placa cerâmica.
 
       if ((response as List).isEmpty) {
         return [];

@@ -1,9 +1,14 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
+import '../../../../core/widgets/autoria_badge.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../ensaios_prova_carga_dinamica/pcd_tipo_ensaio.dart';
+import '../../../../core/routing/route_observer.dart';
 import '../../../../core/widgets/compact_button.dart';
 import '../../../../core/widgets/compact_search_bar.dart';
 import '../../../../core/widgets/custom_appbar.dart';
@@ -11,10 +16,12 @@ import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../models/ensaios_routes_map.dart';
 // Providers e Modais
+import '../progresso/progresso_ensaios.dart';
 import '../providers/pontos_ensaio_provider.dart';
 import '../widgets/novo_ponto_ensaio_modal.dart';
 import 'central_relatorios_screen.dart';
 import '../../ensaios_prova_carga/widgets/novo_ensaio_prova_carga_modal.dart';
+import '../../ensaio_extracao_testemunho/widgets/novo_ensaio_extracao_modal.dart';
 
 class PontosEnsaioScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -36,26 +43,52 @@ class PontosEnsaioScreen extends ConsumerStatefulWidget {
   ConsumerState<PontosEnsaioScreen> createState() => _PontosEnsaioScreenState();
 }
 
-class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
+class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> with RouteAware {
   String _searchQuery = '';
   final String _filtroStatus = 'Todos';
-  
+
   // Controle de ordenação (False = Mais recentes primeiro)
-  bool _isAscending = false; 
+  bool _isAscending = false;
+  bool _verificandoEspaco = false;
+
+  void _recarregarLista() {
+    ref.invalidate(pontosEnsaioProvider((
+      projetoId: widget.projetoId,
+      estruturaId: widget.estruturaId,
+      tipoEnsaioId: widget.tipoEnsaioId,
+      elementoId: widget.elementoId,
+    )));
+    // A barra de progresso também precisa refletir pontos novos/excluídos.
+    ref.invalidate(progressoProjetoProvider(widget.projetoId));
+  }
 
   @override
   void initState() {
     super.initState();
     // Força o Riverpod a recarregar a query no Supabase sempre que a tela for montada/aberta
-    Future.microtask(() {
-      ref.invalidate(pontosEnsaioProvider((
-        projetoId: widget.projetoId,
-        estruturaId: widget.estruturaId,
-        tipoEnsaioId: widget.tipoEnsaioId,
-        elementoId: widget.elementoId,
-      )));
-    });
+    Future.microtask(_recarregarLista);
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final route = ModalRoute.of(context);
+    if (route is PageRoute) appRouteObserver.subscribe(this, route);
+  }
+
+  @override
+  void dispose() {
+    appRouteObserver.unsubscribe(this);
+    super.dispose();
+  }
+
+  // Chamado pelo RouteObserver quando a rota empurrada por cima desta (ex: a
+  // tela de coleta de um ponto de ensaio, aberta via Navigator.push a partir
+  // do NovoPontoEnsaioModal) é fechada e esta tela volta a ficar visível —
+  // sem isso, um ponto recém-salvo só aparecia depois de sair e reentrar no
+  // tipo de ensaio, porque `initState` não roda de novo num simples "voltar".
+  @override
+  void didPopNext() => _recarregarLista();
 
   Color _hexToColor(String hexString, Color fallback) {
     try {
@@ -75,12 +108,39 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
   ) {
     // A prova de carga estática não se vincula a um elemento estrutural
     // (usa Local + Planta), então tem seu próprio modal de criação.
+    // Prova de carga dinâmica: o ensaio é criado no computador.
+    if (ehProvaCargaDinamica(tipoEnsaioId: widget.tipoEnsaioId, nomeTipoEnsaio: tipoEnsaioNome)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('A prova de carga dinâmica é criada no aplicativo de computador.'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (tipoEnsaioNome.toLowerCase().contains('prova de carga')) {
       showModalBottomSheet(
         context: context,
         isScrollControlled: true,
         backgroundColor: Colors.transparent,
         builder: (context) => NovoEnsaioProvaCargaModal(
+          estruturaId: estruturaId,
+          projetoId: widget.projetoId,
+          tipoEnsaioId: widget.tipoEnsaioId,
+        ),
+      );
+      return;
+    }
+
+    // Extração e Rompimento de Testemunho: 1 ensaio por Local (não por
+    // elemento) — mesma ideia da prova de carga, com seu próprio modal.
+    if (tipoEnsaioNome.toLowerCase().contains('testemunho')) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => NovoEnsaioExtracaoModal(
           estruturaId: estruturaId,
           projetoId: widget.projetoId,
           tipoEnsaioId: widget.tipoEnsaioId,
@@ -215,16 +275,28 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
             onTap: () {
               final navigator = Navigator.of(context);
               navigator.pop(context);
+              // Ensaios com compositor "por modelo" próprio (mesmo padrão da
+              // Inspeção Visual — ver EnsaioRoutesMap.getRelatorioScreen)
+              // usam a tela deles; os demais caem na Central de Relatórios
+              // genérica de sempre.
+              final telaRelatorio = EnsaioRoutesMap.getRelatorioScreen(
+                tipoEnsaio: tipoEnsaioNomeUI,
+                projetoId: widget.projetoId,
+                estruturaId: widget.estruturaId,
+                projetoNome: projetoNomeUI,
+                estruturaNome: estruturaNomeUI,
+              );
               navigator.push(
                 MaterialPageRoute(
-                  builder: (context) => CentralRelatoriosScreen(
-                    projetoId: widget.projetoId,
-                    estruturaId: widget.estruturaId,
-                    tipoEnsaioId: widget.tipoEnsaioId,
-                    tipoEnsaioNome: tipoEnsaioNomeUI,
-                    projetoNome: projetoNomeUI,
-                    estruturaNome: estruturaNomeUI,
-                  ),
+                  builder: (context) => telaRelatorio ??
+                      CentralRelatoriosScreen(
+                        projetoId: widget.projetoId,
+                        estruturaId: widget.estruturaId,
+                        tipoEnsaioId: widget.tipoEnsaioId,
+                        tipoEnsaioNome: tipoEnsaioNomeUI,
+                        projetoNome: projetoNomeUI,
+                        estruturaNome: estruturaNomeUI,
+                      ),
                 ),
               );
             },
@@ -286,10 +358,14 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
             }
           });
 
-          final total = pontos.length;
-          final concluidos = pontos.where((p) => p.textoRisco.toLowerCase() != 'pendente').length;
-          final progresso = total > 0 ? concluidos / total : 0.0;
-          final progressoPercent = (progresso * 0).toInt();
+          // Progresso deste tipo de ensaio na estrutura: realizados ÷ pontos
+          // contratados para a empresa (regra em progresso_ensaios.dart).
+          final progressoTipo = ref
+              .watch(progressoProjetoProvider(widget.projetoId))
+              .value
+              ?.estrutura(widget.estruturaId)
+              .tipo(widget.tipoEnsaioId);
+          final progresso = progressoTipo?.fracao;
 
           return RefreshIndicator(
             color: AppColors.primary,
@@ -302,6 +378,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                 tipoEnsaioId: widget.tipoEnsaioId,
                 elementoId: widget.elementoId,
               )));
+              ref.invalidate(progressoProjetoProvider(widget.projetoId));
               // Aguarda o provedor terminar a requisição para esconder o loading
               try {
                 await ref.read(pontosEnsaioProvider((
@@ -381,7 +458,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              'Progresso no projeto',
+                              'Progresso na estrutura',
                               style: GoogleFonts.lato(
                                 fontSize: 15,
                                 fontWeight: FontWeight.w600,
@@ -397,7 +474,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                               child: ClipRRect(
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
-                                  value: 0,
+                                  value: progresso ?? 0,
                                   minHeight: 8,
                                   backgroundColor: const Color(0xFFFFE0B2),
                                   valueColor: const AlwaysStoppedAnimation<Color>(
@@ -408,7 +485,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                             ),
                             const SizedBox(width: 12),
                             Text(
-                              '$progressoPercent%',
+                              textoProgresso(progresso),
                               style: GoogleFonts.lato(
                                 fontSize: 12,
                                 fontWeight: FontWeight.bold,
@@ -417,6 +494,18 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                             ),
                           ],
                         ),
+                        if (progressoTipo != null) ...[
+                          const SizedBox(height: 6),
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Text(
+                              progressoTipo.contratados > 0
+                                  ? '${progressoTipo.realizados} de ${progressoTipo.contratados} pontos contratados realizados'
+                                  : 'Sem pontos contratados para a sua empresa neste ensaio',
+                              style: GoogleFonts.lato(fontSize: 12, color: const Color(0xFF686868)),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
@@ -455,11 +544,23 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                           CompactButton(
                             text: 'Novo',
                             width: 80,
-                            onPressed: () => _mostrarModalNovoEnsaio(
-                              context,
-                              widget.estruturaId,
-                              tipoEnsaioNomeUI,
-                            ),
+                            onPressed: () async {
+                              // Plano sem espaço: não abre um ponto novo (o servidor também recusa).
+                              if (_verificandoEspaco) return;
+                              _verificandoEspaco = true;
+                              final bool temEspaco;
+                              try {
+                                temEspaco = await verificarArmazenamento(context, ref);
+                              } finally {
+                                _verificandoEspaco = false;
+                              }
+                              if (!temEspaco || !context.mounted) return;
+                              _mostrarModalNovoEnsaio(
+                                context,
+                                widget.estruturaId,
+                                tipoEnsaioNomeUI,
+                              );
+                            },
                           ),
                         ],
                       ),
@@ -509,6 +610,21 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
 
                             return GestureDetector(
                               onTap: () async {
+                                // Ultrassonografia tem 3 telas distintas por modo
+                                // (Direto/Indireto/Mapeamento) — ao reabrir um ponto
+                                // já salvo, o modo (e o pulso ultrassônico) precisam
+                                // vir do banco (não dá pra supor 'Direta'/
+                                // 'Longitudinal' como quando o ponto é novo).
+                                String? tipoMedicaoUltrassom;
+                                String? pulsoUltrassomico;
+                                final tipoLower = tipoEnsaioNomeUI.toLowerCase();
+                                if (tipoLower.contains('ultrassom') || tipoLower.contains('ultrasson')) {
+                                  final modo = await EnsaioRoutesMap.resolverModoUltrassom(ponto.id);
+                                  tipoMedicaoUltrassom = modo.tipoMedicao;
+                                  pulsoUltrassomico = modo.pulsoUltrassonico;
+                                }
+
+                                if (!context.mounted) return;
                                 final Widget? telaFormulario =
                                     EnsaioRoutesMap.getFormularioScreen(
                                       tipoEnsaio: tipoEnsaioNomeUI,
@@ -520,6 +636,8 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                                       elementoId: ponto.elementoId,
                                       pontoGeralId: ponto.id,
                                       tipoEnsaioId: widget.tipoEnsaioId,
+                                      tipoMedicao: tipoMedicaoUltrassom,
+                                      pulsoUltrassonico: pulsoUltrassomico,
                                     );
 
                                 if (telaFormulario != null) {
@@ -570,14 +688,25 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                                         image: ponto.fotoElementoUrl.isNotEmpty &&
                                                 ponto.fotoElementoUrl != 'https://via.placeholder.com/150'
                                             ? DecorationImage(
-                                                image: NetworkImage(ponto.fotoElementoUrl),
+                                                image: StorageNetworkImage(ponto.fotoElementoUrl),
                                                 fit: BoxFit.cover,
                                               )
                                             : null,
                                       ),
+                                      // Sem foto do elemento (caso dos ensaios
+                                      // que não se ligam a um), o card mostra
+                                      // o ícone do próprio ensaio.
                                       child: (ponto.fotoElementoUrl.isEmpty ||
                                               ponto.fotoElementoUrl == 'https://via.placeholder.com/150')
-                                          ? const Icon(Icons.architecture, color: Colors.grey)
+                                          ? Padding(
+                                              padding: const EdgeInsets.all(12),
+                                              child: Image.asset(
+                                                widget.iconeEnsaio,
+                                                fit: BoxFit.contain,
+                                                errorBuilder: (_, _, _) =>
+                                                    const Icon(Icons.architecture, color: Colors.grey),
+                                              ),
+                                            )
                                           : null,
                                     ),
                                     const SizedBox(width: 16),
@@ -596,11 +725,7 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                                                   color: const Color(0xFF3E3E3D),
                                                 ),
                                               ),
-                                              CircleAvatar(
-                                                radius: 12,
-                                                backgroundColor: Colors.transparent,
-                                                backgroundImage: NetworkImage(ponto.avatarEmpresaUrl),
-                                              ),
+                                              AutoriaBadge(autor: ponto.autor),
                                             ],
                                           ),
                                           Row(
@@ -655,6 +780,18 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
                                               ),
                                             ],
                                           ),
+                                          if (ponto.modoUltrassom != null) ...[
+                                            const SizedBox(height: 6),
+                                            Row(
+                                              children: [
+                                                _buildBadgeUltrassom(_rotuloModoUltrassom(ponto.modoUltrassom!), Icons.settings_input_antenna_outlined),
+                                                if (ponto.pulsoUltrassonico != null && ponto.pulsoUltrassonico!.isNotEmpty) ...[
+                                                  const SizedBox(width: 6),
+                                                  _buildBadgeUltrassom(ponto.pulsoUltrassonico!, Icons.graphic_eq),
+                                                ],
+                                              ],
+                                            ),
+                                          ],
                                         ],
                                       ),
                                     ),
@@ -669,6 +806,34 @@ class _PontosEnsaioScreenState extends ConsumerState<PontosEnsaioScreen> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  String _rotuloModoUltrassom(String modo) {
+    switch (modo.toLowerCase()) {
+      case 'direto':
+        return 'Direto';
+      case 'indireto':
+        return 'Indireto';
+      case 'mapeamento':
+        return 'Mapeamento';
+      default:
+        return modo;
+    }
+  }
+
+  Widget _buildBadgeUltrassom(String texto, IconData icone) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(10)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icone, size: 11, color: AppColors.primary),
+          const SizedBox(width: 3),
+          Text(texto, style: GoogleFonts.lato(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary)),
+        ],
       ),
     );
   }

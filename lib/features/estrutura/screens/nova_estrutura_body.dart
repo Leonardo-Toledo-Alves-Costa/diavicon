@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,6 +33,7 @@ import '../../auth/providers/auth_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
 import '../../planos/planos_mensagens.dart';
 import '../../planos/providers/tokens_estrutura_provider.dart';
+import '../../gastos/providers/gastos_providers.dart' show ehAdminEmpresaProvider;
 
 class NovaEstruturaScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -244,6 +246,10 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
   }
 
   Future<void> _handleCriar() async {
+    if (_isLoading) return;
+    // Plano sem espaço: nenhuma criação nova (o servidor também recusa).
+    if (!await verificarArmazenamento(context, ref)) return;
+    if (!mounted || _isLoading) return;
     if (!_formKey.currentState!.validate()) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -403,6 +409,10 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
 
     //  ESCUTANDO OS 4 PROVIDERS DO SUPABASE 
     final conjuntosAsync = ref.watch(conjuntosEstruturaisProvider);
+    // Criar conjunto é coisa de administrador (o banco recusa os demais). O
+    // "+" fica desligado para quem não pode, com a explicação no ícone de
+    // ajuda, em vez de abrir a janela e falhar no Salvar.
+    final podeCriarConjunto = ref.watch(ehAdminEmpresaProvider);
     final utilizacoesAsync = ref.watch(utilizacoesEstruturaProvider);
     final tiposAsync = ref.watch(tiposEstruturaProvider);
     final tipologiasAsync = ref.watch(tipologiasEstruturaProvider);
@@ -498,6 +508,11 @@ class _NovaEstruturaScreenState extends ConsumerState<NovaEstruturaScreen> {
                   data: (lista) => CustomDropdownWithAdd<String>(
                     label: 'Conjunto Estrutural*',
                     value: _conjuntoSelecionado,
+                    isAddEnabled: podeCriarConjunto,
+                    tooltip: podeCriarConjunto
+                        ? null
+                        : 'Só administradores da empresa criam conjuntos estruturais. '
+                            'Peça a um administrador ou escolha um conjunto existente.',
                     validator: (value) => value == null ? 'Obrigatório' : null,
                     items: lista.map((item) => DropdownMenuItem(
                       value: item['id'].toString(), 

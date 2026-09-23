@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_empty_state.dart';
@@ -12,16 +13,18 @@ import 'package:diavicon/features/ensaios/ensaios_geral/widgets/nova_regiao_ensa
 
 class ListaRegioesEnsaioModal extends ConsumerWidget {
   final String estruturaId,
+      projetoId,
       plantaId,
       plantaUrl,
       empresaIdSelecionada,
       empresaNome;
   final String? empresaFotoUrl;
-  final String plantaLocal; 
+  final String plantaLocal;
 
   const ListaRegioesEnsaioModal({
     super.key,
     required this.estruturaId,
+    required this.projetoId,
     required this.plantaId,
     required this.plantaUrl,
     required this.empresaIdSelecionada,
@@ -34,6 +37,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final filtroRegioes = RegioesFiltro(
       plantaId: plantaId,
+      projetoId: projetoId,
       empresaId: empresaIdSelecionada,
     );
     final regioesAsync = ref.watch(regioesEnsaioProvider(filtroRegioes));
@@ -86,7 +90,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                   backgroundColor: Colors.white,
                   backgroundImage:
                       (empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty)
-                      ? NetworkImage(empresaFotoUrl!)
+                      ? StorageNetworkImage(empresaFotoUrl!)
                       : null,
                   child: (empresaFotoUrl == null || empresaFotoUrl!.isEmpty)
                       ? const Icon(Icons.business, color: AppColors.greyMedium)
@@ -163,6 +167,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                 backgroundColor: Colors.transparent,
                                 builder: (context) => NovaRegiaoEnsaioModal(
                                   estruturaId: estruturaId,
+                                  projetoId: projetoId,
                                   plantaId: plantaId,
                                   plantaUrl: plantaUrl,
                                   empresaId: empresaIdSelecionada,
@@ -197,6 +202,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                                     builder: (context) =>
                                         SelecionarLocalRegiaoModal(
                                           estruturaId: estruturaId,
+                                          projetoId: projetoId,
                                           plantaId: plantaId,
                                           empresaId: empresaIdSelecionada,
                                           arquivoUrl: plantaUrl,
@@ -362,6 +368,7 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                             backgroundColor: Colors.transparent,
                             builder: (context) => SelecionarLocalRegiaoModal(
                               estruturaId: estruturaId,
+                              projetoId: projetoId,
                               plantaId: plantaId,
                               empresaId: empresaIdSelecionada,
                               arquivoUrl: plantaUrl,
@@ -397,12 +404,13 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
                               backgroundColor: Colors.transparent,
                               builder: (context) => NovaRegiaoEnsaioModal(
                                 estruturaId: estruturaId,
+                                projetoId: projetoId,
                                 plantaId: plantaId,
                                 plantaUrl: plantaUrl,
                                 empresaId: empresaIdSelecionada,
                                 empresaNome: empresaNome,
                                 empresaFotoUrl: empresaFotoUrl,
-                                plantaLocal: plantaLocal, 
+                                plantaLocal: plantaLocal,
                                 posicaoX: mapX!,
                                 posicaoY: mapY!,
                                 larguraMarcacao: mapLargura!,
@@ -440,12 +448,13 @@ class ListaRegioesEnsaioModal extends ConsumerWidget {
 Future<void> showListaRegioesModal(
   BuildContext context, {
   required String estruturaId,
+  required String projetoId,
   required String plantaId,
   required String plantaUrl,
   required String empresaIdSelecionada,
   required String empresaNome,
   String? empresaFotoUrl,
-  required String plantaLocal, 
+  required String plantaLocal,
 }) {
   return showModalBottomSheet(
     context: context,
@@ -453,6 +462,7 @@ Future<void> showListaRegioesModal(
     backgroundColor: Colors.transparent,
     builder: (context) => ListaRegioesEnsaioModal(
       estruturaId: estruturaId,
+      projetoId: projetoId,
       plantaId: plantaId,
       plantaUrl: plantaUrl,
       empresaIdSelecionada: empresaIdSelecionada,

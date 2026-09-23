@@ -1,3 +1,4 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -227,8 +228,12 @@ class ProvaCargaRepository {
 
   Future<void> salvarImagemComposta({required String pontoGeralId, required File imagem}) async {
     try {
-      final path = 'ensaios/prova_carga/${pontoGeralId}_marcada_${DateTime.now().millisecondsSinceEpoch}.png';
-      await _supabase.storage.from('projetos').upload(path, imagem, fileOptions: const FileOptions(upsert: true));
+      final path = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+        'ensaios/prova_carga',
+        imagem,
+        prefixo: '${pontoGeralId}_marcada_',
+        fileOptions: const FileOptions(upsert: true),
+      );
       final url = _supabase.storage.from('projetos').getPublicUrl(path);
 
       await _supabase

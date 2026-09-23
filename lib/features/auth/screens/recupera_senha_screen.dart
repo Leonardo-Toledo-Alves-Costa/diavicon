@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/security/entrada_segura.dart';
 import '../../../core/utils/validators/validators_cadastro.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class RecuperaSenhaScreen extends ConsumerStatefulWidget {
   const RecuperaSenhaScreen({super.key});
@@ -34,9 +37,11 @@ class _RecuperaSenhaScreenState extends ConsumerState<RecuperaSenhaScreen> {
           .enviarLink(_emailCtrl.text.trim());
 
       if (!mounted) return;
+      // Mesma resposta exista ou não a conta — não revela quais e-mails
+      // estão cadastrados.
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Link enviado! Verifique seu e-mail.'),
+          content: Text('Se este e-mail estiver cadastrado, você receberá o link em instantes.'),
           backgroundColor: AppColors.primary,
         ),
       );
@@ -44,7 +49,7 @@ class _RecuperaSenhaScreenState extends ConsumerState<RecuperaSenhaScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Erro: ${e.toString()}'),
+          content: Text(authErrorMessage(e, fallback: 'Não foi possível enviar o link.')),
           backgroundColor: AppColors.error,
         ),
       );
@@ -83,12 +88,16 @@ class _RecuperaSenhaScreenState extends ConsumerState<RecuperaSenhaScreen> {
                 hint: 'joaosilva@email.com',
                 controller: _emailCtrl,
                 keyboardType: TextInputType.emailAddress,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(EntradaSegura.maxEmail),
+                  FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                ],
                 validator: ValidatorsCadastro.email,
               ),
               const Spacer(),
               CustomButton(
                 text: 'Recuperar senha',
-                onPressed: _enviarLink,
+                onPressed: isLoading ? null : _enviarLink,
                 isLoading: isLoading,
               ),
               const SizedBox(height: 24),

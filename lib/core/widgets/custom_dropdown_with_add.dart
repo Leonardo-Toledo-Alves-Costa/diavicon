@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
+import 'custom_dropdown.dart' show itensDropdownSemRepetidos, valorDropdownSeguro;
 
 class CustomDropdownWithAdd<T> extends StatelessWidget {
   final String label;
@@ -36,8 +37,10 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
     final isKeyboardOpen = MediaQuery.of(context).viewInsets.bottom > 0;
     final canAdd = onChanged != null && isAddEnabled && !isAdding;
 
-    final bool valueExists = value == null || items.any((item) => item.value == value);
-    final T? safeValue = valueExists ? value : null;
+    // Sem itens repetidos e sem valor fora da lista — os dois derrubam o
+    // DropdownButton (ver itensDropdownSemRepetidos).
+    final itensSeguros = itensDropdownSemRepetidos(items);
+    final T? safeValue = valorDropdownSeguro(value, itensSeguros);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +109,7 @@ class CustomDropdownWithAdd<T> extends StatelessWidget {
                   child: DropdownButtonFormField<T>(
                     isExpanded: true,
                     initialValue: safeValue,
-                    items: items,
+                    items: itensSeguros,
                     onChanged: onChanged,
                     validator: validator,
                     style: GoogleFonts.lato(

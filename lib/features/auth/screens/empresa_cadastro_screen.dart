@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
-import 'package:diavicon/routes/app_routes.dart';
+import 'package:diavicon/routes/app_router.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -16,6 +16,11 @@ import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
 import '../../../core/widgets/custom_text_button.dart';
 import '../../empresa/providers/empresa_provider.dart';
+import '../../planos/repositories/planos_repository.dart';
+import '../providers/auth_provider.dart';
+import '../utils/cadastro_draft_utils.dart';
+import '../utils/cadastro_draft_store.dart';
+import '../utils/auth_error_messages.dart';
 import '../../../core/utils/formatters/cnpj_formatter.dart';
 import '../../../core/utils/validators/cnpj_validator.dart';
 import '../../../core/utils/validators/validators_cadastro.dart';
@@ -89,6 +94,45 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   void initState() {
     super.initState();
     _cepController.addListener(_ouvinteCep);
+    _restaurarDadosPersistidos();
+  }
+
+  void _restaurarDadosPersistidos() {
+    final rawEmpresa = widget.dadosUsuario['empresa'];
+    final empresa = rawEmpresa is Map
+        ? Map<String, dynamic>.from(rawEmpresa)
+        : <String, dynamic>{};
+    String text(Map<String, dynamic> map, String key, [String fallback = '']) {
+      return map[key]?.toString() ?? fallback;
+    }
+
+    _cnpjController.text = text(empresa, 'cnpj');
+    _nomeFantasiaController.text = text(empresa, 'nome');
+    _nColaboradores = empresa['colaboradores']?.toString();
+    _cargoController.text = text(empresa, 'cargo');
+    _nivelSelecionado = empresa['nivel']?.toString();
+    // Set this before assigning the masked CEP so the listener does not launch
+    // a lookup and overwrite the restored address.
+    _cepBuscado = text(empresa, 'cep').replaceAll(RegExp(r'\D'), '').length == 8;
+    _cepController.text = text(empresa, 'cep');
+    _cidadeController.text = text(empresa, 'cidade');
+    _ruaController.text = text(empresa, 'rua');
+    _bairroController.text = text(empresa, 'bairro');
+    _numeroController.text = text(empresa, 'numero');
+    _complementoController.text = text(empresa, 'complemento');
+    _estadoController.text = text(empresa, 'estado');
+    _paisController.text = text(empresa, 'pais', 'Brasil');
+    _siteController.text = text(empresa, 'site');
+    _linkedinController.text = text(empresa, 'linkedin');
+    _instagramController.text = text(empresa, 'instagram');
+
+    // Prevent the CEP listener from replacing the restored address with an
+    // external lookup. If the image was copied to app support by the draft
+    // store, it remains selectable after an app restart.
+    final fotoPath = empresa['fotoPath']?.toString();
+    if (fotoPath != null && fotoPath.isNotEmpty && File(fotoPath).existsSync()) {
+      _fotoEmpresa = XFile(fotoPath);
+    }
   }
 
   @override
@@ -249,9 +293,20 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
   Future<void> _salvar() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (!CadastroDraftUtils.hasEmail(widget.dadosUsuario)) {
+      _mostrarAviso(
+        'A sessão do cadastro expirou. Volte ao início e tente novamente.',
+        Colors.red,
+      );
+      return;
+    }
+
     final dadosCompletos = {
       ...widget.dadosUsuario,
       'empresa': {
+        ...(widget.dadosUsuario['empresa'] is Map
+            ? Map<String, dynamic>.from(widget.dadosUsuario['empresa'] as Map)
+            : const <String, dynamic>{}),
         'cnpj': _cnpjController.text.trim(),
         'nome': _nomeFantasiaController.text.trim(),
         'colaboradores': _nColaboradores,
@@ -267,21 +322,49 @@ class _EmpresaCadastroScreenState extends ConsumerState<EmpresaCadastroScreen> {
         'pais': _paisController.text.trim(),
         'site': _siteController.text.trim(),
         'linkedin': _linkedinController.text.trim(),
-        'fotoPath': _fotoEmpresa?.path,
+        'instagram': _instagramController.text.trim(),
+        'fotoPath': _fotoEmpresa?.path ??
+            (widget.dadosUsuario['empresa'] is Map
+                ? (widget.dadosUsuario['empresa'] as Map)['fotoPath']
+                : null),
       },
     };
 
     try {
-      await ref
+      final draft = {...dadosCompletos, 'perfil_tipo': 'empresa'};
+      await CadastroDraftStore().save(draft);
+      ref.read(rascunhoCadastroProvider.notifier).state = draft;
+
+      final cadastroConcluido = await ref
           .read(empresaControllerProvider.notifier)
           .cadastrarEmpresa(dadosCompletos);
 
+      if (!cadastroConcluido) {
+        if (mounted) context.go('/confirmar-email');
+        return;
+      }
+
+      // A empresa começa no plano padrão; o plano pago escolhido vira um pedido
+      // para a equipe ativar. Falhar aqui não pode travar o cadastro — dá para
+      // pedir de novo na tela "Meu Plano".
+      final planoEscolhidoId = dadosCompletos['plano_escolhido_id'];
+      final planoEscolhidoValor = dadosCompletos['plano_escolhido_valor'];
+      if (planoEscolhidoId is String && planoEscolhidoId.isNotEmpty && planoEscolhidoValor is num && planoEscolhidoValor > 0) {
+        try {
+          await PlanosRepository().solicitarPlano(planoEscolhidoId);
+        } catch (e) {
+          debugPrint('Pedido de plano não registrado: $e');
+        }
+      }
+
       if (mounted) {
-        context.goNamed(AppRouteNames.companyWelcome, extra: dadosCompletos);
+        await CadastroDraftStore().clear();
+        ref.read(rascunhoCadastroProvider.notifier).state = {};
+        ref.read(routerProvider).go('/empresa/bemvinda', extra: dadosCompletos);
       }
     } catch (e) {
       if (mounted) {
-        _mostrarAviso('Erro ao salvar no banco: $e', Colors.red);
+        _mostrarAviso(authErrorMessage(e, fallback: 'Erro ao salvar no banco.'), Colors.red);
       }
     }
   }

@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/notificacoes/providers/notificacoes_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -57,7 +58,7 @@ class FeedHeader extends ConsumerWidget {
                           ),
                           data: (fotoUrl) {
                             if (fotoUrl != null && fotoUrl.isNotEmpty) {
-                              return Image.network(
+                              return ImagemStorage.network(
                                 fotoUrl,
                                 width: 42,
                                 height: 42,
@@ -83,7 +84,7 @@ class FeedHeader extends ConsumerWidget {
                     ),
                   ),
                   const Text(
-                    'Feed Educacional',
+                    'Feed',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 20,

@@ -1,27 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+import '../../../../core/models/autor_exibicao.dart';
+import '../../../../core/repositories/autores_repository.dart';
+import '../../../../core/widgets/autoria_badge.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
 import '../repositories/inspecao_visual_repository.dart';
 import 'visao_geral_inspecao_screen.dart';
+import '../widgets/iv_ui.dart';
 
-// Provider para buscar foto da empresa
-final fotoEmpresaProvider = FutureProvider.family.autoDispose<String?, String?>((ref, criadoPorId) async {
-  final supabase = Supabase.instance.client;
-  final userId = criadoPorId ?? supabase.auth.currentUser?.id;
-  if (userId == null) return null;
-
-  try {
-    final res = await supabase.from('usuarios').select('empresas(foto_url)').eq('id', userId).maybeSingle();
-    if (res != null && res['empresas'] != null) return res['empresas']['foto_url'] as String?;
-  } catch (e) {
-    debugPrint('Erro ao buscar foto da empresa: $e');
-  }
-  return null;
-});
+// Autoria da inspeção — mesmo mecanismo dos demais ensaios (ver
+// AutoriaBadge / autores_para_exibicao).
+//
+// Antes isto era um select direto em `usuarios` com dois defeitos: caía em
+// `auth.currentUser` quando a inspeção não tinha autor (mostrando o logo de
+// QUEM ESTAVA OLHANDO, não o da empresa que criou a inspeção), e mesmo com
+// autor a policy auth_users_select_own só deixa ler a própria linha, então
+// inspeções de colegas caíam no escudo genérico.
+//
+// Sem autor conhecido não há logo a mostrar: devolve null e o selo some, em
+// vez de inventar uma empresa.
+final autorInspecaoProvider = FutureProvider.family.autoDispose<AutorExibicao?, String?>(
+  (ref, criadoPorId) async {
+    if (criadoPorId == null || criadoPorId.isEmpty) return null;
+    final autores = await AutoresRepository(Supabase.instance.client).buscarPorIds([criadoPorId]);
+    return autores[criadoPorId];
+  },
+  retry: (_, _) => null,
+);
 
 // NOVO: Provider para buscar nomes dinamicamente pelos IDs
 final nomesProjetoEstruturaProvider = FutureProvider.family.autoDispose<Map<String, String>, ({String projetoId, String estruturaId})>((ref, params) async {
@@ -67,9 +76,9 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
 
   void _abrirModalNovaInspecao() {
     showDialog(
-      context: context, 
+      context: context,
       builder: (context) => ModalNovaInspecao(
-        projetoId: widget.projetoId, 
+        projetoId: widget.projetoId,
         estruturaId: widget.estruturaId
       )
     ).then((_) => ref.invalidate(listaInspecoesGeraisProvider));
@@ -78,13 +87,13 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
   @override
   Widget build(BuildContext context) {
     final asyncInspecoes = ref.watch(listaInspecoesGeraisProvider((
-      projetoId: widget.projetoId, 
+      projetoId: widget.projetoId,
       estruturaId: widget.estruturaId
     )));
 
     // Busca os nomes do BD
     final nomesAsync = ref.watch(nomesProjetoEstruturaProvider((
-      projetoId: widget.projetoId, 
+      projetoId: widget.projetoId,
       estruturaId: widget.estruturaId
     )));
 
@@ -92,7 +101,7 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
     final estruturaNomeUI = nomesAsync.value?['estruturaNome'] ?? widget.estruturaNome;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: kIvFundo,
       appBar: const CustomAppBar(
         title: 'Ensaio',
         showBackButton: true,
@@ -105,161 +114,224 @@ class _InspecaoVisualListaScreenState extends ConsumerState<InspecaoVisualListaS
           ],
         ),
       ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Container(
-            color: Colors.white, padding: const EdgeInsets.all(24),
-            child: Row(
+      body: asyncInspecoes.when(
+        loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
+        error: (err, _) => Center(
+          child: EstadoVazioIv(
+            icone: Icons.cloud_off_rounded,
+            titulo: 'Não foi possível carregar as inspeções',
+            texto: err.toString().replaceFirst('Exception: ', ''),
+            acao: OutlinedButton(onPressed: () => ref.invalidate(listaInspecoesGeraisProvider), child: const Text('Tentar de novo')),
+          ),
+        ),
+        data: (lista) {
+          final listaFiltrada = lista.where((insp) {
+            if (_filtro.isEmpty) return true;
+            return insp.nome.toLowerCase().contains(_filtro) ||
+                insp.locaisAtendidos.any((local) => local.toLowerCase().contains(_filtro));
+          }).toList();
+
+          listaFiltrada.sort((a, b) {
+            final dataA = a.criadoEm ?? DateTime.fromMillisecondsSinceEpoch(0);
+            final dataB = b.criadoEm ?? DateTime.fromMillisecondsSinceEpoch(0);
+            return _sortAscending ? dataA.compareTo(dataB) : dataB.compareTo(dataA);
+          });
+
+          final totalRegistros = lista.fold<int>(0, (t, i) => t + i.totalRegistros);
+
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => ref.refresh(listaInspecoesGeraisProvider((projetoId: widget.projetoId, estruturaId: widget.estruturaId)).future),
+            child: CorpoIv(
               children: [
-                SizedBox(
-                        width: 56,
-                        height: 56,
-                        child: Image.asset(
-                          widget.iconeEnsaio,
-                          fit: BoxFit.contain,
-                          errorBuilder: (_, _, _) => const Icon(
-                            Icons.science_outlined,
-                            color: AppColors.textDark,
-                            size: 36,
-                          ),
-                        ),
-                      ),
-                const SizedBox(width: 16),
-                Column(
+                Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Inspeção Visual', style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-                    Text(projetoNomeUI, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                    Text(estruturaNomeUI, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
+                    Container(
+                      width: 56,
+                      height: 56,
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(14), border: Border.all(color: kIvBorda)),
+                      child: Image.asset(
+                        widget.iconeEnsaio,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(Icons.image_search_outlined, color: kIvLaranjaTexto, size: 30),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: CabecalhoIv(
+                        trilha: [projetoNomeUI, estruturaNomeUI],
+                        titulo: 'Inspeção Visual',
+                        subtitulo: lista.isEmpty
+                            ? 'Nenhuma inspeção ainda'
+                            : '${lista.length} ${lista.length == 1 ? 'inspeção' : 'inspeções'} · $totalRegistros ${totalRegistros == 1 ? 'registro' : 'registros'}',
+                        acoes: [
+                          BotaoIv(rotulo: 'Nova inspeção', icone: Icons.add, primario: true, aoTocar: _abrirModalNovaInspecao),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
-              ],
-            ),
-          ),
-          
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text('Inspeções Realizadas', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-                ElevatedButton(onPressed: _abrirModalNovaInspecao, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFA726), padding: const EdgeInsets.symmetric(horizontal: 24), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0), child: const Text('Novo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
-              ],
-            ),
-          ),
-
-          // BARRA DE PESQUISA + ÍCONE DE ORDENAÇÃO
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _searchCtrl, 
-                    onChanged: (val) => setState(() => _filtro = val.toLowerCase()), 
-                    decoration: InputDecoration(
-                      hintText: 'Local', hintStyle: const TextStyle(color: Colors.grey, fontSize: 13), 
-                      prefixIcon: const Icon(Icons.search, color: Colors.grey), 
-                      filled: true, fillColor: Colors.white, 
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0), 
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.shade300)), 
-                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.shade300)), 
-                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: const BorderSide(color: Color(0xFFFFA726)))
-                    )
-                  ),
+                const SizedBox(height: 20),
+                Row(
+                  children: [
+                    Expanded(
+                      child: CampoBuscaIv(
+                        controller: _searchCtrl,
+                        dica: 'Buscar por nome ou local',
+                        aoMudar: (val) => setState(() => _filtro = val.toLowerCase()),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Tooltip(
+                      message: _sortAscending ? 'Mais antigas primeiro' : 'Mais recentes primeiro',
+                      child: OutlinedButton.icon(
+                        onPressed: () => setState(() => _sortAscending = !_sortAscending),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: kIvTinta,
+                          side: const BorderSide(color: kIvBorda),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, size: 18, color: kIvLaranjaTexto),
+                        label: Text(_sortAscending ? 'Antigas' : 'Recentes'),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                Container(
-                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.grey.shade300)),
-                  child: IconButton(
-                    onPressed: () => setState(() => _sortAscending = !_sortAscending),
-                    icon: Icon(_sortAscending ? Icons.arrow_upward : Icons.arrow_downward, color: const Color(0xFFFFA726)),
-                    tooltip: 'Ordenar por Data',
+                const SizedBox(height: 16),
+                if (lista.isEmpty)
+                  EstadoVazioIv(
+                    icone: Icons.image_search_outlined,
+                    titulo: 'Nenhuma inspeção visual nesta estrutura',
+                    texto: 'Crie uma inspeção (preliminar, rotineira ou especial) e registre os locais, elementos e anomalias.',
+                    acao: BotaoIv(rotulo: 'Nova inspeção', icone: Icons.add, primario: true, aoTocar: _abrirModalNovaInspecao),
+                  )
+                else if (listaFiltrada.isEmpty)
+                  const EstadoVazioIv(icone: Icons.search_off_rounded, titulo: 'Nenhuma inspeção encontrada')
+                else
+                  GradeIv(
+                    larguraMinima: 420,
+                    filhos: [
+                      for (final insp in listaFiltrada)
+                        _CartaoInspecao(
+                          nome: insp.nome,
+                          tipo: insp.tipo,
+                          registros: insp.totalRegistros,
+                          locais: insp.locaisAtendidos,
+                          criadoEm: insp.criadoEm,
+                          criadoPor: insp.criadoPor,
+                          aoTocar: () {
+                            Navigator.push(context, MaterialPageRoute(builder: (_) => VisaoGeralInspecaoScreen(
+                              inspecaoGeralId: insp.id,
+                              inspecaoGeralNome: insp.nome,
+                              descricaoInspecao: insp.descricao ?? '',
+                              projetoId: widget.projetoId,
+                              projetoNome: projetoNomeUI,
+                              estruturaId: widget.estruturaId,
+                              estruturaNome: estruturaNomeUI,
+                            ))).then((_) => ref.invalidate(listaInspecoesGeraisProvider));
+                          },
+                        ),
+                    ],
                   ),
-                ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
+          );
+        },
+      ),
+    );
+  }
+}
 
-          Expanded(
-            child: asyncInspecoes.when(
-              loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              error: (err, _) => Center(child: Text('Erro: $err', style: const TextStyle(color: Colors.red))),
-              data: (lista) {
-                var listaFiltrada = lista.where((insp) => _filtro.isEmpty || insp.locaisAtendidos.any((local) => local.toLowerCase().contains(_filtro))).toList();
-                
-                listaFiltrada.sort((a, b) {
-                  final dataA = a.criadoEm ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  final dataB = b.criadoEm ?? DateTime.fromMillisecondsSinceEpoch(0);
-                  return _sortAscending ? dataA.compareTo(dataB) : dataB.compareTo(dataA);
-                });
+class _CartaoInspecao extends StatelessWidget {
+  final String nome;
+  final String tipo;
+  final int registros;
+  final List<String> locais;
+  final DateTime? criadoEm;
+  final String? criadoPor;
+  final VoidCallback aoTocar;
 
-                if (listaFiltrada.isEmpty) return const Center(child: Text('Nenhuma inspeção encontrada.', style: TextStyle(color: Colors.grey)));
+  const _CartaoInspecao({
+    required this.nome,
+    required this.tipo,
+    required this.registros,
+    required this.locais,
+    required this.criadoEm,
+    required this.criadoPor,
+    required this.aoTocar,
+  });
 
-                return ListView.separated(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                  itemCount: listaFiltrada.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 16),
-                  itemBuilder: (context, index) {
-                    final insp = listaFiltrada[index];
-                    return GestureDetector(
-                      onTap: () {
-                        Navigator.push(context, MaterialPageRoute(builder: (_) => VisaoGeralInspecaoScreen(
-                          inspecaoGeralId: insp.id,
-                          inspecaoGeralNome: insp.nome,
-                          descricaoInspecao: insp.descricao ?? 'Sem descrição',
-                          projetoId: widget.projetoId,
-                          projetoNome: projetoNomeUI,
-                          estruturaId: widget.estruturaId,
-                          estruturaNome: estruturaNomeUI,
-                        )));
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4))]),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+  String _data(DateTime d) {
+    final l = d.toLocal();
+    return '${l.day.toString().padLeft(2, '0')}/${l.month.toString().padLeft(2, '0')}/${l.year}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: aoTocar,
+        child: Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(borderRadius: BorderRadius.circular(14), border: Border.all(color: kIvBorda)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(nome, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: kIvTinta)),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
                           children: [
-                            const SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(insp.nome, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-                                  const SizedBox(height: 4),
-                                  //Text('$projetoNomeUI • $estruturaNomeUI', style: GoogleFonts.lato(fontSize: 11, color: const Color(0xFFFFA726), fontWeight: FontWeight.bold)),
-                                  //const SizedBox(height: 4),
-                                  Text('${insp.tipo} - ${insp.totalRegistros} registros', style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
-                                  const SizedBox(height: 8),
-                                  Text(insp.locaisAtendidos.isEmpty ? 'Nenhum local registrado' : insp.locaisAtendidos.join(' | '), style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade400)),
-                                ],
-                              ),
-                            ),
-                            Consumer(
-                              builder: (context, ref, child) {
-                                final fotoAsync = ref.watch(fotoEmpresaProvider(insp.criadoPor));
-                                return CircleAvatar(
-                                  backgroundColor: Colors.grey.shade100, radius: 16,
-                                  backgroundImage: fotoAsync.when(
-                                    data: (url) => url != null && url.isNotEmpty ? NetworkImage(url) : const AssetImage('assets/images/escudo_diavicon.png') as ImageProvider,
-                                    loading: () => const AssetImage('assets/images/escudo_diavicon.png'),
-                                    error: (_, _) => const AssetImage('assets/images/escudo_diavicon.png'),
-                                  ),
-                                );
-                              },
-                            )
+                            EtiquetaIv(texto: tipo, icone: Icons.category_outlined, cor: kIvLaranjaTexto, fundo: const Color(0xFFFFF3E0)),
+                            EtiquetaIv(texto: registros == 1 ? '1 registro' : '$registros registros', icone: Icons.fact_check_outlined),
+                            if (criadoEm != null) EtiquetaIv(texto: _data(criadoEm!), icone: Icons.event_outlined),
                           ],
                         ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
+                      ],
+                    ),
+                  ),
+                  Consumer(
+                    builder: (context, ref, child) {
+                      final autor = ref.watch(autorInspecaoProvider(criadoPor)).value;
+                      return AutoriaBadge(autor: autor, raioEmpresa: 16);
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  const Icon(Icons.place_outlined, size: 16, color: kIvSuave),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      locais.isEmpty ? 'Nenhum local registrado' : locais.join(' · '),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13, color: kIvSuave),
+                    ),
+                  ),
+                  const Icon(Icons.chevron_right_rounded, color: kIvSuave),
+                ],
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -282,7 +354,29 @@ class _ModalNovaInspecaoState extends ConsumerState<ModalNovaInspecao> {
   bool _salvando = false;
 
   Future<void> _salvar() async {
-    if (_nomeCtrl.text.isEmpty || _tipoSelecionado == 'Selecione') return;
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _salvando ? null : _salvar`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer. Este
+    // método sempre faz um INSERT em `pontos_ensaios_geral` e
+    // `ponto_inspecao_visual_geral` (não há ramo de UPDATE — é sempre uma
+    // inspeção nova), então as duas chamadas criariam duas inspeções
+    // duplicadas. Setar `_salvando` aqui é síncrono (setState muda o campo
+    // na hora, só o rebuild é adiado), então a segunda chamada já vê
+    // `_salvando == true` e sai antes de inserir de novo.
+    if (_salvando) return;
+    // Antes saía em silêncio: sem nome ou sem tipo, "Salvar" não fazia nada
+    // e parecia que o app não criava a inspeção.
+    final faltando = [
+      if (_nomeCtrl.text.trim().isEmpty) 'o nome',
+      if (_tipoSelecionado == 'Selecione') 'o tipo de inspeção',
+    ];
+    if (faltando.isNotEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Preencha ${faltando.join(' e ')}.'), backgroundColor: Colors.orange),
+      );
+      return;
+    }
     setState(() => _salvando = true);
     try {
       await ref.read(inspecaoVisualRepoProvider).criarNovaInspecao(
@@ -294,7 +388,12 @@ class _ModalNovaInspecaoState extends ConsumerState<ModalNovaInspecao> {
       );
       if (mounted) Navigator.pop(context);
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString()), backgroundColor: Colors.red));
+      debugPrint('[InspecaoVisual] falha ao criar inspeção: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString().replaceFirst('Exception: ', '')), backgroundColor: Colors.red, duration: const Duration(seconds: 8)),
+        );
+      }
     } finally {
       if (mounted) setState(() => _salvando = false);
     }
@@ -302,27 +401,106 @@ class _ModalNovaInspecaoState extends ConsumerState<ModalNovaInspecao> {
 
   @override
   Widget build(BuildContext context) {
+    const tipos = [
+      ('Inspeção preliminar', 'Primeira vistoria, para conhecer a estrutura e planejar os ensaios.'),
+      ('Inspeção rotineira', 'Acompanhamento periódico do estado da estrutura.'),
+      ('Inspeção especial', 'Investigação detalhada de um problema ou evento específico.'),
+    ];
+    InputDecoration deco(String dica) => InputDecoration(
+          hintText: dica,
+          hintStyle: const TextStyle(color: kIvSuave, fontSize: 14),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kIvBorda)),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: kIvBorda)),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+        );
+    Widget rotulo(String t) => Padding(
+          padding: const EdgeInsets.only(bottom: 6),
+          child: Text(t, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: kIvTexto)),
+        );
+
     return Dialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), backgroundColor: Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Nova Inspeção Visual', style: GoogleFonts.lato(fontSize: 20, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), GestureDetector(onTap: () => Navigator.pop(context), child: const Icon(Icons.close, color: Colors.grey))]),
-            const SizedBox(height: 24),
-            Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Nome da Inspeção', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600))),
-            TextField(controller: _nomeCtrl, decoration: InputDecoration(hintText: 'Nome', hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFFFA726))))),
-            const SizedBox(height: 12),
-            Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Tipo de Inspeção', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600))),
-            Container(height: 48, padding: const EdgeInsets.symmetric(horizontal: 16), decoration: BoxDecoration(border: Border.all(color: Colors.grey.shade400), borderRadius: BorderRadius.circular(12)), child: DropdownButtonHideUnderline(child: DropdownButton<String>(isExpanded: true, value: _tipoSelecionado, items: ['Selecione', 'Inspeção preliminar', 'Inspeção rotineira', 'Inspeção especial'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(), onChanged: (val) => setState(() => _tipoSelecionado = val!)))),
-            const SizedBox(height: 12),
-            Padding(padding: const EdgeInsets.only(bottom: 6), child: Text('Objetivo da Inspeção', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade600))),
-            TextField(controller: _objetivoCtrl, maxLines: 3, decoration: InputDecoration(hintText: 'Descrição da Inspeção', hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.grey.shade400)), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: Color(0xFFFFA726))))),
-            const SizedBox(height: 20),
-            Center(child: ElevatedButton(onPressed: _salvando ? null : _salvar, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFA726), padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0), child: _salvando ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)) : const Text('Salvar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)))),
-            const SizedBox(height: 10),
-          ],
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: Colors.white,
+      insetPadding: const EdgeInsets.all(16),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('Nova inspeção visual', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: kIvTinta)),
+                  ),
+                  IconButton(tooltip: 'Fechar', onPressed: () => Navigator.pop(context), icon: const Icon(Icons.close, color: kIvSuave)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              rotulo('Nome da inspeção'),
+              TextField(controller: _nomeCtrl, textCapitalization: TextCapitalization.sentences, decoration: deco('Ex.: Inspeção da casa de máquinas')),
+              const SizedBox(height: 16),
+              rotulo('Tipo de inspeção'),
+              for (final (tipo, explicacao) in tipos)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Material(
+                    color: _tipoSelecionado == tipo ? const Color(0xFFFFF3E0) : Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => setState(() => _tipoSelecionado = tipo),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: _tipoSelecionado == tipo ? AppColors.primary : kIvBorda, width: _tipoSelecionado == tipo ? 1.5 : 1),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              _tipoSelecionado == tipo ? Icons.radio_button_checked : Icons.radio_button_unchecked,
+                              color: _tipoSelecionado == tipo ? kIvLaranjaTexto : kIvSuave,
+                              size: 20,
+                            ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(tipo, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: kIvTinta)),
+                                  Text(explicacao, style: const TextStyle(fontSize: 12, color: kIvSuave, height: 1.3)),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              const SizedBox(height: 8),
+              rotulo('Objetivo da inspeção'),
+              TextField(controller: _objetivoCtrl, maxLines: 3, textCapitalization: TextCapitalization.sentences, decoration: deco('O que se quer avaliar com esta inspeção?')),
+              const SizedBox(height: 20),
+              FilledButton(
+                onPressed: _salvando ? null : _salvar,
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: kIvTinta,
+                  disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.6),
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                child: _salvando
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: kIvTinta, strokeWidth: 2))
+                    : const Text('Criar inspeção', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+              ),
+            ],
+          ),
         ),
       ),
     );

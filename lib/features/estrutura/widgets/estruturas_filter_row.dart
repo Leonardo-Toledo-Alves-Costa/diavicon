@@ -11,7 +11,7 @@ class EstruturasFilterRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final conjuntoFiltroId = ref.watch(estruturaConjuntoFiltroProvider);
-    final isCompactView = ref.watch(estruturaIsCompactViewProvider);
+    final somenteMonitoradas = ref.watch(estruturaSomenteMonitoradasProvider);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -70,20 +70,22 @@ class EstruturasFilterRow extends ConsumerWidget {
           },
         ),
 
+        // Alterna entre todas as estruturas e somente as monitoradas. O
+        // rotulo mostra o modo ATIVO, nao o destino do toque.
         InkWell(
-          onTap: () => ref.read(estruturaIsCompactViewProvider.notifier).state = !isCompactView,
+          onTap: () => ref.read(estruturaSomenteMonitoradasProvider.notifier).state = !somenteMonitoradas,
           borderRadius: BorderRadius.circular(8),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8.0),
             child: Row(
               children: [
                 Text(
-                  isCompactView ? 'Monitorados' : 'Todos',
+                  somenteMonitoradas ? 'Monitoradas' : 'Todas',
                   style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 const SizedBox(width: 4),
                 Icon(
-                  isCompactView ? Icons.monitor_heart_outlined : Icons.format_list_bulleted,
+                  somenteMonitoradas ? Icons.monitor_heart_outlined : Icons.format_list_bulleted,
                   color: AppColors.primary,
                   size: 18,
                 ),

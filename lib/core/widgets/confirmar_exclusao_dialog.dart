@@ -6,10 +6,15 @@ import 'compact_button.dart';
 
 /// Exibe um modal padrão e elegante de confirmação de exclusão.
 /// Retorna [true] se o usuário clicar em "Excluir" e [false] (ou null) se cancelar.
+///
+/// [extraContent], quando informado, entra logo abaixo da [mensagem] — usado
+/// pelo sanfonado "O que mais será excluído junto" (ver
+/// `resumo_exclusao_accordion.dart`) nas exclusões de projeto/estrutura/elemento.
 Future<bool?> showConfirmarExclusaoDialog({
   required BuildContext context,
   String titulo = 'Confirmar Exclusão',
   required String mensagem,
+  Widget? extraContent,
 }) {
   return showDialog<bool>(
     context: context,
@@ -61,8 +66,12 @@ Future<bool?> showConfirmarExclusaoDialog({
                   height: 1.4, 
                 ),
               ),
+              if (extraContent != null) ...[
+                const SizedBox(height: 16),
+                extraContent,
+              ],
               const SizedBox(height: 32),
-              
+
               // Botões
               Row(
                 children: [

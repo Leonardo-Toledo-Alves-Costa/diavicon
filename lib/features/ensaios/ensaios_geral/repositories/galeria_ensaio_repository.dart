@@ -1,3 +1,4 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -25,16 +26,15 @@ class GaleriaEnsaioRepository {
 
   Future<String> _uploadFoto(File arquivo) async {
     try {
-      final ext = arquivo.path.split('.').last;
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = 'ensaios/galeria_geral/$fileName';
-
-      await _supabase.storage.from('projetos').upload(
-        path, 
+      // Tipo, nome e Content-Type decididos pelo app (ver upload_seguro.dart).
+      final path = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+        'ensaios/galeria_geral',
         arquivo,
         fileOptions: const FileOptions(upsert: true),
       );
       return _supabase.storage.from('projetos').getPublicUrl(path);
+    } on ArquivoInvalidoException {
+      rethrow;
     } on StorageException catch (e) {
       throw Exception('Erro de Storage: ${e.message}');
     } catch (e) {

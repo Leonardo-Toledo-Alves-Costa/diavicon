@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -30,7 +31,7 @@ class ElementoEstruturalCard extends StatelessWidget {
 
     // Fotos de elementos reais vêm como URL do Storage; mocks usam asset.
     if (imageUrl.startsWith('http')) {
-      return Image.network(
+      return ImagemStorage.network(
         imageUrl,
         width: 60,
         height: 60,

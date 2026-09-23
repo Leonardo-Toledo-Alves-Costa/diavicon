@@ -15,6 +15,8 @@ import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../dashboards_bi/models/dashboard_modelo_model.dart';
+import '../../dashboards_bi/screens/dashboard_screen.dart';
 import '../../elementos/models/elemento_model.dart';
 import '../../elementos/providers/elemento_provider.dart';
 import '../../elementos/screens/planejamento_plantas_screen.dart';
@@ -25,6 +27,9 @@ import '../widgets/elemento_estrutural_card.dart';
 import '../widgets/estrutura_home_header.dart';
 import '../widgets/progresso_projeto_card.dart';
 import 'estrutura_informacao_screen.dart';
+import '../../ensaios/ensaios_geral/repositories/relatorios_item_repository.dart';
+import '../../ensaios/ensaios_geral/screens/relatorios_item_screen.dart';
+import '../../ensaios/ensaios_geral/progresso/progresso_ensaios.dart';
 
 class EstruturaHomeScreen extends ConsumerStatefulWidget {
   final EstruturaModel estrutura;
@@ -52,9 +57,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
 
       final empresaId = ref.read(currentUserProvider)?.empresaId;
       if (novoSistema != null && _tipoFiltro != null && empresaId != null) {
-        final tipos = ref
-            .read(tiposElementoDropdownProvider(empresaId))
-            .value;
+        final tipos = ref.read(tiposElementoDropdownProvider(empresaId)).value;
         final aindaValido =
             tipos?.any(
               (t) => t.nome == _tipoFiltro && t.sistemaId == novoSistema,
@@ -306,11 +309,12 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
         ? null
         : ref.watch(tiposElementoDropdownProvider(empresaId));
 
-    final tiposDoSistema = (tiposElementoAsync?.value ?? const <CampoItemModel>[])
-        .where(
-          (t) => _sistemaFiltro == null || t.sistemaId == _sistemaFiltro,
-        )
-        .toList();
+    final tiposDoSistema =
+        (tiposElementoAsync?.value ?? const <CampoItemModel>[])
+            .where(
+              (t) => _sistemaFiltro == null || t.sistemaId == _sistemaFiltro,
+            )
+            .toList();
 
     Set<String>? tiposPermitidosPorSistema;
     if (_sistemaFiltro != null) {
@@ -366,6 +370,7 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                 MaterialPageRoute(
                   builder: (_) => PlanejamentoPlantasScreen(
                     estruturaId: widget.estrutura.id,
+                    projetoId: widget.projetoId,
                   ),
                 ),
               );
@@ -387,35 +392,42 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
               );
             },
           ),
-          Opacity(
-            opacity: 0.4,
-            child: DiaviconMenuItem(
-              icon: Icons.description_outlined,
-              label: 'Relatórios',
-              onTap: () {
-                DiaviconAlerts.show(
-                  context,
-                  'Em desenvolvimento',
-                  'Esta funcionalidade estará disponível em breve!',
-                  isAviso: true,
-                );
-              },
-            ),
+          DiaviconMenuItem(
+            icon: Icons.description_outlined,
+            label: 'Relatórios',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RelatoriosItemScreen(
+                    nivel: NivelRelatorios.estrutura,
+                    nomeItem: widget.estrutura.nome ?? 'Estrutura',
+                    estruturaId: widget.estrutura.id,
+                    projetoId: widget.projetoId,
+                  ),
+                ),
+              );
+            },
           ),
-          Opacity(
-            opacity: 0.4,
-            child: DiaviconMenuItem(
-              icon: Icons.pie_chart_outline,
-              label: 'Dashboard',
-              onTap: () {
-                DiaviconAlerts.show(
-                  context,
-                  'Em desenvolvimento',
-                  'Esta funcionalidade estará disponível em breve!',
-                  isAviso: true,
-                );
-              },
-            ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DashboardScreen(
+                    nivel: NivelAplicacaoBi.estruturaNoProjeto,
+                    projetoId: widget.projetoId,
+                    estruturaId: widget.estrutura.id,
+                    titulo: widget.estrutura.nome ?? 'Estrutura',
+                    ofereceMultiProjeto: widget.estrutura.monitorada,
+                  ),
+                ),
+              );
+            },
           ),
         ],
       ),
@@ -484,7 +496,19 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 15),
 
-                    const ProgressoProjetoCard(progresso: 0.90),
+                    Consumer(
+                      builder: (context, ref, _) {
+                        final async = ref.watch(progressoProjetoProvider(widget.projetoId));
+                        final e = async.value?.estrutura(widget.estrutura.id);
+                        return ProgressoProjetoCard(
+                          progresso: e?.fracao,
+                          carregando: async.isLoading && !async.hasValue,
+                          detalhe: e?.fracao == null
+                              ? null
+                              : '${e!.realizadosNaMeta} de ${e.contratados} pontos contratados realizados',
+                        );
+                      },
+                    ),
                     const SizedBox(height: 15),
 
                     Row(
@@ -550,7 +574,8 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                             onClear: () => _handleSistemaFiltroChanged(null),
                             onTap: () async {
                               final itens =
-                                  (sistemasAsync?.value ?? const <CampoItemModel>[])
+                                  (sistemasAsync?.value ??
+                                          const <CampoItemModel>[])
                                       .map((s) => (value: s.id, label: s.nome))
                                       .toList();
                               final resultado = await showItemFilterPickerSheet(
@@ -598,7 +623,11 @@ class _EstruturaHomeScreenState extends ConsumerState<EstruturaHomeScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    _buildElementosList(context, ref, tiposPermitidosPorSistema),
+                    _buildElementosList(
+                      context,
+                      ref,
+                      tiposPermitidosPorSistema,
+                    ),
                   ],
                 ),
               ),

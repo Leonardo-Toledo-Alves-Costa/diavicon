@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -9,6 +10,7 @@ import '../../planos/providers/armazenamento_provider.dart';
 import '../../planos/providers/empresa_plano_atual_provider.dart';
 import '../providers/painel_servicos_provider.dart';
 import 'servico_form_screen.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class PainelServicosScreen extends ConsumerWidget {
   final String empresaId;
@@ -30,15 +32,17 @@ class PainelServicosScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF5F5F5),
+      // Cabeçalho curto: três linhas empilhadas ocupavam quase toda a barra e
+      // ninguém lia nenhuma delas.
       appBar: const CustomAppBar(
-        title: 'Painel',
+        title: 'Serviços',
         showBackButton: true,
         showMenuButton: false,
         titleWidget: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
-            Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
-            Text('Serviços', style: TextStyle(fontSize: 14, color: Colors.white)),
+            Text('Painel', style: TextStyle(fontSize: 12, color: Colors.white70)),
+            Text('Serviços', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -67,7 +71,7 @@ class PainelServicosScreen extends ConsumerWidget {
           }
           if (!context.mounted) return;
           // Navega para a tela de formulário no modo CRIAÇÃO (servico = null)
-          Navigator.push(context, MaterialPageRoute(builder: (_) => ServicoFormScreen(empresaId: empresaId)));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.servicos, child: ServicoFormScreen(empresaId: empresaId))));
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -134,7 +138,7 @@ class PainelServicosScreen extends ConsumerWidget {
                         empresaFotoUrl: empresaFotoUrl,
                         onTap: () {
                           // Navega para edição passando o serviço existente
-                          Navigator.push(context, MaterialPageRoute(builder: (_) => ServicoFormScreen(empresaId: empresaId, servico: servico)));
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => GuardaModuloPlano(modulo: ModuloPlano.servicos, child: ServicoFormScreen(empresaId: empresaId, servico: servico))));
                         },
                       );
                     },
@@ -172,17 +176,14 @@ class _ServicoCard extends StatelessWidget {
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
                   child: servico.fotoPrincipal != null 
-                      ? Image.network(servico.fotoPrincipal!, height: 140, width: double.infinity, fit: BoxFit.cover)
+                      ? ImagemStorage.network(servico.fotoPrincipal!, height: 140, width: double.infinity, fit: BoxFit.cover)
                       : Container(height: 140, color: Colors.grey[300], child: const Icon(Icons.image, color: Colors.grey, size: 40)),
                 ),
                 if (servico.categoria != null)
                   Positioned(
-                    top: 12, left: 12,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                      decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12)),
-                      child: Text(servico.categoria!, style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 12, fontWeight: FontWeight.bold)),
-                    ),
+                    top: 12,
+                    left: 12,
+                    child: TagCategoriaServico(servico.categoria),
                   ),
               ],
             ),
@@ -196,7 +197,7 @@ class _ServicoCard extends StatelessWidget {
                       CircleAvatar(
                         radius: 12,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: empresaFotoUrl != null ? NetworkImage(empresaFotoUrl!) : null,
+                        backgroundImage: empresaFotoUrl != null ? StorageNetworkImage(empresaFotoUrl!) : null,
                       ),
                       const SizedBox(width: 8),
                       Text(empresaNome, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[700])),
@@ -234,6 +235,70 @@ class _ServicoCard extends StatelessWidget {
             )
           ],
         ),
+      ),
+    );
+  }
+}
+
+
+// ---------------------------------------------------------------------------
+// Tipo do item do catálogo: serviço, produto ou equipamento.
+//
+// Os três apareciam com a mesma tag verde e só o texto mudava — de longe
+// ficavam idênticos. Agora cada um tem a própria cor e o próprio ícone.
+// ---------------------------------------------------------------------------
+
+IconData iconeCategoriaServico(String? categoria) {
+  switch (categoria?.trim()) {
+    case 'Serviço':
+      return Icons.handyman_outlined;
+    case 'Produto':
+      return Icons.inventory_2_outlined;
+    case 'Equipamento':
+      return Icons.precision_manufacturing_outlined;
+    default:
+      return Icons.sell_outlined;
+  }
+}
+
+({Color fundo, Color frente}) coresCategoriaServico(String? categoria) {
+  switch (categoria?.trim()) {
+    case 'Serviço':
+      return (fundo: const Color(0xFFE3F0FB), frente: const Color(0xFF1565A0));
+    case 'Produto':
+      return (fundo: const Color(0xFFFDF0E0), frente: const Color(0xFFA85A00));
+    case 'Equipamento':
+      return (fundo: const Color(0xFFEDE7F6), frente: const Color(0xFF5E35B1));
+    default:
+      return (fundo: const Color(0xFFEDEAE4), frente: const Color(0xFF5B5C5E));
+  }
+}
+
+/// Tag colorida com o ícone do tipo.
+class TagCategoriaServico extends StatelessWidget {
+  final String? categoria;
+
+  const TagCategoriaServico(this.categoria, {super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final texto = categoria?.trim() ?? '';
+    if (texto.isEmpty) return const SizedBox.shrink();
+    final cores = coresCategoriaServico(texto);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(color: cores.fundo, borderRadius: BorderRadius.circular(12)),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(iconeCategoriaServico(texto), size: 14, color: cores.frente),
+          const SizedBox(width: 5),
+          Text(
+            texto,
+            style: TextStyle(color: cores.frente, fontSize: 12, fontWeight: FontWeight.bold),
+          ),
+        ],
       ),
     );
   }

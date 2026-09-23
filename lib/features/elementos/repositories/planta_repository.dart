@@ -1,3 +1,4 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/planta_model.dart';
@@ -13,13 +14,17 @@ class PlantaRepository {
     required String caminhoLocal,
     required String extensao,
   }) async {
-    final nomeArquivo = '${estruturaId}_${DateTime.now().millisecondsSinceEpoch}.$extensao';
-    final caminhoNoBucket = 'plantas/$nomeArquivo'; 
-    
-    // Usa o seu bucket "estruturas" que já existe e é público
-    await _client.storage
+    // Usa o seu bucket "estruturas" que já existe e é público.
+    // O tipo real (foto ou PDF) é lido do conteúdo; [extensao] só vale como
+    // informação do seletor e não entra mais no nome (ver upload_seguro.dart).
+    final caminhoNoBucket = await _client.storage
         .from('estruturas')
-        .upload(caminhoNoBucket, File(caminhoLocal));
+        .enviarArquivoSeguro(
+          'plantas',
+          File(caminhoLocal),
+          prefixo: '${estruturaId}_',
+          permitidas: UploadSeguro.extensoesImagemOuPdf,
+        );
 
     return _client.storage
         .from('estruturas')

@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:ui' as ui;
 
@@ -162,7 +164,7 @@ class _PontoEnsaioProvaCargaScreenState extends ConsumerState<PontoEnsaioProvaCa
     if (url.toLowerCase().contains('.pdf')) {
       setState(() => _isLoadingPlanta = true);
       try {
-        final req = await HttpClient().getUrl(Uri.parse(url));
+        final req = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(url)));
         final doc = await PdfDocument.openData(await consolidateHttpClientResponseBytes(await req.close()));
         final page = await doc.getPage(1);
         double w = page.width;
@@ -192,7 +194,7 @@ class _PontoEnsaioProvaCargaScreenState extends ConsumerState<PontoEnsaioProvaCa
         if (mounted) setState(() => _isLoadingPlanta = false);
       }
     } else {
-      setState(() => _plantaImagem = NetworkImage(url));
+      setState(() => _plantaImagem = StorageNetworkImage(url));
     }
   }
 
@@ -318,6 +320,17 @@ class _PontoEnsaioProvaCargaScreenState extends ConsumerState<PontoEnsaioProvaCa
   }
 
   Future<void> _salvarDados() async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _isLoading ? null : _salvarDados`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer,
+    // disparando dois UPDATEs/INSERTs concorrentes em `pontos_ensaios_geral`
+    // e `ponto_ensaio_prova_carga` (e suas leituras/pontos de medição
+    // vinculados) pro mesmo ponto. Setar `_isLoading` aqui é síncrono
+    // (setState muda o campo na hora, só o rebuild é adiado), então a
+    // segunda chamada já vê `_isLoading == true` e sai antes de salvar de
+    // novo.
+    if (_isLoading) return;
     if (_area == null) return;
     setState(() => _isLoading = true);
     try {

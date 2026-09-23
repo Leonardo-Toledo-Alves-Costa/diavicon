@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/projetos/controllers/empresas_projeto_controller.dart';
@@ -129,7 +130,7 @@ class _InviteColabCompanyBodyState
                       leading: CircleAvatar(
                         backgroundColor: AppColors.inputBorder,
                         backgroundImage: empresaEncontrada['foto_url'] != null
-                            ? NetworkImage(empresaEncontrada['foto_url'])
+                            ? StorageNetworkImage(empresaEncontrada['foto_url'])
                             : null,
                         child: empresaEncontrada['foto_url'] == null
                             ? const Icon(Icons.business, color: Colors.grey)

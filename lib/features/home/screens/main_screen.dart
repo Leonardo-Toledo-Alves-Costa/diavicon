@@ -52,6 +52,10 @@ class MainScreen extends ConsumerWidget {
           children: [
             Positioned.fill(
               child: Padding(
+                // Só barHeight: o CustomPaint só pinta o entalhe do "+" nos
+                // humpHeight px de cima na faixa central (a largura da
+                // curva) — reservar humpHeight também nas bordas deixava
+                // uma faixa morta (nem conteúdo, nem barra) ali.
                 padding: const EdgeInsets.only(bottom: barHeight),
                 child: child,
               ),
@@ -109,8 +113,8 @@ class MainScreen extends ConsumerWidget {
                       const SizedBox(width: spaceBetweenPairs),
                       _buildNavItem(
                         context,
-                        Icons.school_outlined,
-                        'Educação',
+                        Icons.public_outlined,
+                        'Feed',
                         AppRouteNames.education,
                         AppPaths.education,
                         location,
@@ -151,7 +155,7 @@ class MainScreen extends ConsumerWidget {
                           DiaviconAlerts.show(
                             context,
                             'Recurso do seu plano',
-                            'Seu plano atual não permite publicar no feed educacional. $kMensagemContatoVendas',
+                            'Seu plano atual não permite publicar no feed. $kMensagemContatoVendas',
                             isAviso: true,
                           );
                           return;

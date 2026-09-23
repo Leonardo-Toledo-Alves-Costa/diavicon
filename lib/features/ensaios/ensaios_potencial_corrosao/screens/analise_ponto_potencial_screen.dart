@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -114,6 +115,15 @@ class _AnalisePontoPotencialScreenState extends ConsumerState<AnalisePontoPotenc
   }
 
   Future<void> _salvarAnalise() async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _salvando ? null : _salvarAnalise`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer,
+    // disparando dois UPDATEs concorrentes em `ponto_ensaio_potencial` pra
+    // calibração/imagem final. Setar `_salvando` aqui é síncrono (setState
+    // muda o campo na hora, só o rebuild é adiado), então a segunda chamada
+    // já vê `_salvando == true` e sai antes de salvar de novo.
+    if (_salvando) return;
     if (_modelo == null) return;
     setState(() => _salvando = true);
     
@@ -401,7 +411,7 @@ class _AnalisePontoPotencialScreenState extends ConsumerState<AnalisePontoPotenc
                         key: _boundaryKey,
                         child: Stack(
                           children: [
-                            Image.network(_modelo!.imagemElemento!, width: _imageSize.width, height: _imageSize.height, fit: BoxFit.cover),
+                            ImagemStorage.network(_modelo!.imagemElemento!, width: _imageSize.width, height: _imageSize.height, fit: BoxFit.cover),
                             
                             Positioned.fill(
                               child: Transform(

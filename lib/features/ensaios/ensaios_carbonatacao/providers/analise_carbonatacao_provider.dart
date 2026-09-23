@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/analise_carbonatacao_model.dart';
+import '../utils/risco_carbonatacao.dart';
 
 final analiseCarbonatacaoProvider = FutureProvider.family.autoDispose<AnaliseCarbonatacaoModel, String>((ref, pontoGeralId) async {
   final supabase = Supabase.instance.client;
@@ -60,12 +61,19 @@ final analiseCarbonatacaoProvider = FutureProvider.family.autoDispose<AnaliseCar
     double cobP = (carbResp?['cob_arm_p'] as num?)?.toDouble() ?? 0.0;
     double cobS = (carbResp?['cob_arm_s'] as num?)?.toDouble() ?? 0.0;
     
-    // O Python define: "menor cobrimento, normalmente da armadura secundária"
-    double cobrimentoEfetivo = 0;
-    if (cobS > 0 && cobP > 0) {
-      cobrimentoEfetivo = min(cobS, cobP);
-    } else if (cobS > 0) cobrimentoEfetivo = cobS;
-    else cobrimentoEfetivo = cobP;
+    // Cobrimento, k, tempo e faixa de risco: fonte unica (RiscoCarbonatacao),
+    // a mesma usada pelo badge do dashboard. Resultado identico ao calculo
+    // que vivia aqui.
+    final avaliacao = RiscoCarbonatacao.avaliar(
+      frenteMedia: frentes.isEmpty ? 0 : frentes.reduce((a, b) => a + b) / frentes.length,
+      cobP: cobP,
+      cobS: cobS,
+      idade: idade,
+    );
+    final cobrimentoEfetivo = avaliacao.cobrimentoEfetivo;
+    final coefCarb = avaliacao.coefCarb;
+    final tempoCarbonatar = avaliacao.tempoCarbonatar;
+    final deltaCarb = avaliacao.deltaCarb;
 
     double mediaFrentes = frentes.isEmpty ? 0 : frentes.reduce((a, b) => a + b) / frentes.length;
     double maiorFrente = frentes.isEmpty ? 0 : frentes.reduce(max);
@@ -75,37 +83,17 @@ final analiseCarbonatacaoProvider = FutureProvider.family.autoDispose<AnaliseCar
     double desvioPadrao = sqrt(variancia);
     double coefVariacao = mediaFrentes == 0 ? 0 : (desvioPadrao / mediaFrentes) * 100;
 
-    // --- CÁLCULOS DO PYTHON (Gráfico 01)[cite: 12] ---
-    double coefCarb = mediaFrentes / sqrt(idade);
-    
-    double tempoCarbonatar = coefCarb > 0 ? pow(cobrimentoEfetivo / coefCarb, 2).toDouble() : 999.0;
-    double deltaCarb = tempoCarbonatar - idade;
-
-    String condicao;
-    double tempoCalc;
-    Color corRisco;
-
-if (deltaCarb <= 0) {
-      condicao = "Despassivado";
-      corRisco = const Color(0xFFFF4C4C); // Vermelho
-      tempoCalc = idade.toDouble();
-    } else if (deltaCarb < 5) {
-      condicao = "Risco Alto";
-      corRisco = const Color(0xFFFF8C00); // Laranja Escuro
-      tempoCalc = tempoCarbonatar;
-    } else if (deltaCarb < 15) {
-      condicao = "Risco Moderado";
-      corRisco = const Color(0xFFFFB74D); // Laranja Claro
-      tempoCalc = tempoCarbonatar;
-    } else if (deltaCarb < 30) {
-      condicao = "Risco Baixo";
-      corRisco = const Color(0xFFAED581); // Verde Claro
-      tempoCalc = tempoCarbonatar;
-    } else {
-      condicao = "Risco Irrelevante";
-      corRisco = const Color(0xFF81C784); // Verde Escuro
-      tempoCalc = tempoCarbonatar;
-    }
+    // ATENCAO: sem cobrimento informado, RiscoCarbonatacao devolve classe
+    // null (nao afirma nada por falta de dado). Esta tela SEMPRE mostrou
+    // "Despassivado" nesse caso — mantido de proposito pra nao mudar o
+    // comportamento da analise sem decisao explicita.
+    final posicao = avaliacao.classe?.posicao ?? 0;
+    const condicoes = ['Despassivado', 'Risco Alto', 'Risco Moderado', 'Risco Baixo', 'Risco Irrelevante'];
+    // Cores historicas desta tela, por gravidade.
+    const coresRisco = [Color(0xFFFF4C4C), Color(0xFFFF8C00), Color(0xFFFFB74D), Color(0xFFAED581), Color(0xFF81C784)];
+    final String condicao = condicoes[posicao];
+    final Color corRisco = coresRisco[posicao];
+    final double tempoCalc = posicao == 0 ? idade.toDouble() : tempoCarbonatar;
 
     // Fator do gráfico conforme python[cite: 12]
     double fator = tempoCalc < 10 ? 4 : 2;

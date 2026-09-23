@@ -1,26 +1,27 @@
 import 'package:diavicon/features/auth/models/endereco_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/utils/uuid_generator.dart';
 
 class EnderecoRepository {
-
   final SupabaseClient _supabase = Supabase.instance.client;
 
-  Future<Map<String, dynamic>?> salvarEndereco(Map<String, dynamic> dadosEndereco) async {
+  Future<Map<String, dynamic>?> salvarEndereco(
+    Map<String, dynamic> dadosEndereco,
+  ) async {
     try {
-      final enderecoData = await _supabase
-          .from('enderecos')
-          .insert({
-            'endereco': dadosEndereco['rua'],
-            'cidade': dadosEndereco['cidade'],
-            'estado': dadosEndereco['estado'],
-            'cep': dadosEndereco['cep'],
-            'bairro': dadosEndereco['bairro'],
-            'numero': dadosEndereco['numero'],
-            'complemento': dadosEndereco['complemento'],
-            'pais': 'Brasil',
-          })
-          .select()
-          .single();
+      final enderecoData = {
+        'id': UuidGenerator.v4(),
+        'endereco': dadosEndereco['rua'],
+        'cidade': dadosEndereco['cidade'],
+        'estado': dadosEndereco['estado'],
+        'cep': dadosEndereco['cep'],
+        'bairro': dadosEndereco['bairro'],
+        'numero': dadosEndereco['numero'],
+        'complemento': dadosEndereco['complemento'],
+        'pais': 'Brasil',
+      };
+
+      await _supabase.from('enderecos').insert(enderecoData);
 
       return enderecoData;
     } catch (e) {
@@ -29,7 +30,10 @@ class EnderecoRepository {
     }
   }
 
-  Future<Map<String, dynamic>?> atualizarEndereco(String enderecoId, Map<String, dynamic> dadosAtualizados) async {
+  Future<Map<String, dynamic>?> atualizarEndereco(
+    String enderecoId,
+    Map<String, dynamic> dadosAtualizados,
+  ) async {
     try {
       final enderecoData = await _supabase
           .from('enderecos')
@@ -68,5 +72,4 @@ class EnderecoRepository {
       return null;
     }
   }
-
 }

@@ -1,8 +1,10 @@
 # Segurança de Home e Projetos
 
 Este diretório contém a migration versionada
-`migrations/20260903120000_harden_home_projects_rls.sql`. Ela ainda **não foi
-aplicada no projeto remoto**.
+`migrations_manual/20260903120000_harden_home_projects_rls.sql`. Ela ainda
+**não foi aplicada no projeto remoto** — está em `migrations_manual/` (não em
+`migrations/`) justamente para não ser confundida com uma migration já
+aplicada via pipeline automático.
 
 ## Escopo implementado
 

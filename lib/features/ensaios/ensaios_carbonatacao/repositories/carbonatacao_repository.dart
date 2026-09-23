@@ -1,8 +1,10 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'dart:math'; // Necessário para os cálculos de raiz (sqrt) e potência (pow)
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ponto_carbonatacao_completo_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/repositories/ponto_geral_identidade.dart';
 
 final carbonatacaoRepositoryProvider = Provider<CarbonatacaoRepository>((ref) {
   return CarbonatacaoRepository(Supabase.instance.client);
@@ -15,16 +17,15 @@ class CarbonatacaoRepository {
   // Upload no Storage
   Future<String> _uploadFoto(File arquivo, String pasta) async {
     try {
-      final ext = arquivo.path.split('.').last;
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$ext';
-      final path = 'ensaios/$pasta/$fileName';
-
-      await _supabase.storage.from('projetos').upload(
-        path, 
+      // Tipo, nome e Content-Type decididos pelo app (ver upload_seguro.dart).
+      final path = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+        'ensaios/$pasta',
         arquivo,
         fileOptions: const FileOptions(upsert: true),
       );
       return _supabase.storage.from('projetos').getPublicUrl(path);
+    } on ArquivoInvalidoException {
+      rethrow;
     } on StorageException catch (e) {
       throw Exception('Erro de Storage (Verifique o Bucket "projetos"): ${e.message}');
     } catch (e) {
@@ -186,6 +187,8 @@ final String userId2 = userIdT;
       } else {
         pontoGeralId = dados.idGeral!;
         await _supabase.from('pontos_ensaios_geral').update(dadosGerais).eq('id', pontoGeralId);
+        // Ponto antigo sem estrutura/tipo? Completa ao salvar (ver ponto_geral_identidade.dart).
+        await completarIdentidadePontoGeral(_supabase, pontoGeralId: pontoGeralId, elementoId: elementoId, tipoEnsaioId: tipoEnsaioId);
       }
 
       final carbResp = await _supabase

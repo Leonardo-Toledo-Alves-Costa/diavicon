@@ -1,10 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/legacy.dart';
 import '../models/empresa_model.dart';
 import '../repositories/empresa_repository.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../auth/repositories/auth_operations_repository.dart';
 
 final empresaRepositoryProvider = Provider((ref) => EmpresaRepository());
 
@@ -12,37 +12,38 @@ final empresaRepositoryProvider = Provider((ref) => EmpresaRepository());
 final empresaAtualProvider = StateProvider<EmpresaModel?>((ref) => null);
 
 // O Controller que gerencia o estado de loading e a lógica de cadastro
-final empresaControllerProvider =
-    StateNotifierProvider<EmpresaController, bool>((ref) {
-      return EmpresaController(ref);
-    });
+final empresaControllerProvider = StateNotifierProvider<EmpresaController, bool>((ref) {
+  return EmpresaController(ref);
+});
 
 class EmpresaController extends StateNotifier<bool> {
   final Ref _ref;
 
   EmpresaController(this._ref) : super(false);
 
-  Future<void> cadastrarEmpresa(Map<String, dynamic> dados) async {
+  Future<bool> cadastrarEmpresa(Map<String, dynamic> dados) async {
     state = true;
-    var cadastroConcluido = false;
-    // Mantém somente as rotas de onboarding abertas até a tela de boas-vindas.
+    //ATIVA O ESCUDO DO ROTEADOR: O App_Router agora vai ignorar qualquer mudança
     _ref.read(bloqueioDeRotaProvider.notifier).state = true;
     try {
       //  PROTEÇÃO 1: Conversão segura (Safe Cast) dos dados de Autenticação.
       // Se a chave vier nula ou com nome diferente (ex: 'password' em vez de 'senha'),
       // o '.toString() ?? ''' impede o erro "Null is not a subtype of String".
       final emailSeguro = dados['email']?.toString() ?? '';
-      final senhaSegura =
-          (dados['senha'] ?? dados['password'])?.toString() ?? '';
+      final senhaSegura = (dados['senha'] ?? dados['password'])?.toString() ?? '';
 
       //  Cria o usuário (Auth + Tabela Usuarios)
-      await _ref
-          .read(authControllerProvider.notifier)
-          .registrar(email: emailSeguro, password: senhaSegura, dados: dados);
+      final cadastroConfirmado = await _ref.read(authControllerProvider.notifier).registrar(
+            email: emailSeguro,
+            password: senhaSegura,
+            dados: dados,
+          );
+      if (!cadastroConfirmado) return false;
 
       //  Recupera o ID do usuário recém-criado
       final usuario = _ref.read(currentUserProvider);
-      if (usuario == null) {
+      final usuarioId = usuario?.id ?? Supabase.instance.client.auth.currentUser?.id;
+      if (usuarioId == null) {
         throw Exception('Usuário não autenticado após registro.');
       }
 
@@ -50,25 +51,31 @@ class EmpresaController extends StateNotifier<bool> {
       //  PROTEÇÃO 2: Garante que os dados da empresa não venham nulos
       final empresaDados = (dados['empresa'] as Map<String, dynamic>?) ?? {};
       final repo = _ref.read(empresaRepositoryProvider);
-
+      
       final empresaId = await repo.salvarEmpresa(
         dadosEmpresa: {
           ...empresaDados,
+          'nome_pessoa': dados['nome'],
+          'sobrenome': dados['sobrenome'],
+          'telefone': dados['telefone'],
+          'perfil': dados['perfil'],
+          'escolaridade': dados['escolaridade'],
+          'formacao': dados['formacao'],
+          'foto_usuario_path': dados['fotoPath'],
           // Mantém a possibilidade de ser null, mas protege a tipagem
-          'plano_id': dados['plano_escolhido_id'],
           'tipo': dados['tipo']?.toString() ?? 'Profissional',
         },
-        userId: usuario.id,
+        dadosUsuario: dados,
+        userId: usuarioId,
       );
 
+      
       final authRepo = _ref.read(authRepositoryProvider);
-      final perfilAtualizado = await authRepo.getUsuarioPerfil(usuario.id);
+      final perfilAtualizado = await authRepo.getUsuarioPerfil(usuarioId);
 
       if (perfilAtualizado != null) {
         // Atualiza o currentUserProvider com o perfil completo (contendo o empresa_id)
-        _ref
-            .read(currentUserProvider.notifier)
-            .setUserIfSessionMatches(perfilAtualizado);
+        _ref.read(currentUserProvider.notifier).setUser(perfilAtualizado);
       }
 
       // 4. Atualiza o estado da empresa atual no provider específico
@@ -76,39 +83,42 @@ class EmpresaController extends StateNotifier<bool> {
       if (empresa != null) {
         _ref.read(empresaAtualProvider.notifier).state = empresa;
       }
-      cadastroConcluido = true;
+      return true;
+      
     } catch (e) {
-      debugPrint('Erro no fluxo de cadastro de empresa: $e');
+      print("🚨 ERRO NO FLUXO DE CADASTRO: $e");
       rethrow;
     } finally {
       state = false;
-      if (!cadastroConcluido) {
-        _ref.read(bloqueioDeRotaProvider.notifier).state = false;
-      }
+      _ref.read(bloqueioDeRotaProvider.notifier).state = false;
     }
   }
 
   Future<void> carregarEmpresaAtual(String empresaId) async {
     final repo = _ref.read(empresaRepositoryProvider);
     final empresa = await repo.getEmpresa(empresaId);
-    if (_ref.read(currentUserProvider)?.empresaId != empresaId) return;
     _ref.read(empresaAtualProvider.notifier).state = empresa;
   }
+  
 }
 
-final colaboradoresEmpresaProvider =
-    FutureProvider.family<List<Map<String, dynamic>>, String>((
-      ref,
-      empresaId,
-    ) async {
-      final supabase = Supabase.instance.client;
+final colaboradoresEmpresaProvider = FutureProvider.family<List<Map<String, dynamic>>, String>((ref, empresaId) async {
+  final empresaAtualId = ref.watch(currentUserProvider)?.empresaId;
+  if (empresaAtualId == null || empresaAtualId != empresaId) {
+    return [];
+  }
 
-      // Busca todos os usuários vinculados ao ID desta empresa
-      final response = await supabase
-          .from('usuarios')
-          .select()
-          .eq('empresa_id', empresaId)
-          .eq('ativo', true);
+  final data = await AuthOperationsRepository().execute(
+    'list_company_colleagues',
+    const {},
+  );
+  final colegas = data['colegas'];
+  if (colegas is! List) {
+    throw Exception('Resposta inválida ao carregar colaboradores.');
+  }
 
-      return List<Map<String, dynamic>>.from(response);
-    });
+  return colegas
+      .whereType<Map>()
+      .map((colaborador) => Map<String, dynamic>.from(colaborador))
+      .toList();
+});

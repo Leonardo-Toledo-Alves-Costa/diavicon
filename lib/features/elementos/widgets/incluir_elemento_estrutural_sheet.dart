@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/compact_search_bar.dart';
@@ -503,7 +504,7 @@ class _StructureAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: imageUrl != null && imageUrl!.isNotEmpty
-          ? Image.network(
+          ? ImagemStorage.network(
               imageUrl!,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const Icon(
@@ -754,7 +755,7 @@ class _ElementoAvatar extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: imageUrl != null
-          ? Image.network(
+          ? ImagemStorage.network(
               imageUrl!,
               fit: BoxFit.cover,
               errorBuilder: (_, _, _) => const Icon(

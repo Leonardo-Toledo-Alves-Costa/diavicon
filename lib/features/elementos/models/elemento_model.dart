@@ -27,6 +27,11 @@ class ElementoModel {
   final bool? ativo;
   final DateTime? criadoEm;
 
+  /// Autor do elemento. Nulo nos elementos criados antes da coluna existir
+  /// (ver 20260917230000_elementos_criado_por.sql) — e sempre preenchido pelo
+  /// banco a partir daí, nunca pelo app, por isso fica fora de `toMap`.
+  final String? criadoPor;
+
   final double? marcacaoLargura;
   final double? marcacaoAltura;
   final double? marcacaoRotacao;
@@ -58,6 +63,7 @@ class ElementoModel {
     this.observacoes,
     this.ativo,
     this.criadoEm,
+    this.criadoPor,
     this.marcacaoLargura,
     this.marcacaoAltura,
     this.marcacaoRotacao,
@@ -123,6 +129,7 @@ class ElementoModel {
       criadoEm: map['criado_em'] != null
           ? DateTime.parse(map['criado_em'].toString())
           : null,
+      criadoPor: map['criado_por']?.toString(),
       marcacaoLargura: map['marcacao_largura'] != null
           ? double.tryParse(map['marcacao_largura'].toString())
           : null,
@@ -166,6 +173,7 @@ class ElementoModel {
     String? observacoes,
     bool? ativo,
     DateTime? criadoEm,
+    String? criadoPor,
     double? marcacaoLargura,
     double? marcacaoAltura,
     double? marcacaoRotacao,
@@ -197,6 +205,7 @@ class ElementoModel {
       observacoes: observacoes ?? this.observacoes,
       ativo: ativo ?? this.ativo,
       criadoEm: criadoEm ?? this.criadoEm,
+      criadoPor: criadoPor ?? this.criadoPor,
       marcacaoLargura: marcacaoLargura ?? this.marcacaoLargura,
       marcacaoAltura: marcacaoAltura ?? this.marcacaoAltura,
       marcacaoRotacao: marcacaoRotacao ?? this.marcacaoRotacao,

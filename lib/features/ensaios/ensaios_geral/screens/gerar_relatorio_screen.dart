@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../models/report_factory.dart';
 import 'dart:io';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:diavicon/core/security/upload_seguro.dart';
 
 import '../../../../core/widgets/custom_appbar.dart';
 import '../providers/relatorio_ensaio_provider.dart';
@@ -170,10 +171,17 @@ class _GerarRelatorioScreenState extends ConsumerState<GerarRelatorioScreen> {
 
       // 2. Faz o Upload do PDF para o Supabase Storage
       final supabase = Supabase.instance.client;
-      final fileName = '${_nomeCtrl.text}.pdf';
-      final storagePath = 'relatorios/$fileName';
-      
-      await supabase.storage.from('projetos').upload(storagePath, pdfFile);
+      // Caminho só com ids e nome gerado pelo app: o nome digitado fica apenas
+      // no registro (nome_relatorio), nunca no Storage. .pdf no celular;
+      // .html no navegador (ver RelatorioFactory).
+      final ext = UploadSeguro.extensaoDe(pdfFile.path) == 'html' ? 'html' : 'pdf';
+      final storagePath = 'relatorios/ensaios/${widget.projetoId}/${UploadSeguro.nomeSeguro(ext)}';
+
+      await supabase.storage.from('projetos').upload(
+            storagePath,
+            pdfFile,
+            fileOptions: FileOptions(contentType: ext == 'html' ? 'text/html' : 'application/pdf'),
+          );
       final pdfUrl = supabase.storage.from('projetos').getPublicUrl(storagePath);
 
       // 3. Salva os metadados do relatório e o link do PDF na tabela 'relatorios'[cite: 29]

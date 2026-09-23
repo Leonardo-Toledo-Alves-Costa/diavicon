@@ -167,14 +167,23 @@ class EmpresasProjetoRepository {
     required String projectId,
     required String invitedCompanyId,
   }) async {
-    final result = await _supabase.rpc(
+    if (_supabase.auth.currentUser?.id == null) {
+      throw StateError('Sessão expirada. Faça login novamente.');
+    }
+
+    final invitationId = await _supabase.rpc(
       'invite_project_company',
       params: {
         'p_project_id': projectId,
         'p_invited_company_id': invitedCompanyId,
       },
     );
-    return result.toString();
+
+    if (invitationId == null) {
+      throw StateError('Não foi possível criar o convite.');
+    }
+
+    return invitationId.toString();
   }
 
   Future<void> respondToInvite({
@@ -182,14 +191,24 @@ class EmpresasProjetoRepository {
     required String notificationId,
     required bool accept,
   }) async {
+    final userId = _supabase.auth.currentUser?.id;
+    if (userId == null) {
+      throw StateError('Sessão expirada. Faça login novamente.');
+    }
+
     await _supabase.rpc(
-      'respond_to_project_company_invite',
+      'set_project_company_invite_status',
       params: {
-        'p_invitation_id': invitationId,
-        'p_notification_id': notificationId,
-        'p_accept': accept,
+        'p_convite_id': invitationId,
+        'p_status': accept ? 'aceito' : 'recusado',
       },
     );
+
+    await _supabase
+        .from('notificacoes')
+        .update({'lida': true})
+        .eq('id', notificationId)
+        .eq('usuario_id', userId);
   }
 
   Future<void> transferManagement({

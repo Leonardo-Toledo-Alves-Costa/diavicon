@@ -2,8 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 	<dict>
+		<key>NSCameraUsageDescription</key>
+		<string>A DIAVICON usa a câmera para fotografar elementos, ensaios, inspeções, RDO e comprovantes. As fotos recebem marca d'água com data, hora e coordenadas.</string>
 		<key>NSLocationWhenInUseUsageDescription</key>
-		<string>Precisamos da sua localização para iniciar o mapa no seu endereço atual.</string>
+		<string>A DIAVICON usa sua localização para centralizar o mapa, registrar a posição de estruturas e pontos de ensaio e gravar as coordenadas, a data e a hora na marca d'água das fotos de campo.</string>
+		<key>NSPhotoLibraryAddUsageDescription</key>
+		<string>Precisamos salvar na sua galeria as fotos tiradas pela câmera durante os registros.</string>
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>A DIAVICON acessa sua galeria para você escolher fotos para registros, ensaios, perfil e publicações.</string>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
 		<key>CFBundleDisplayName</key>
@@ -35,6 +41,14 @@
 					<string>diavicon</string>
 				</array>
 			</dict>
+			<dict>
+				<key>CFBundleTypeRole</key>
+				<string>Editor</string>
+				<key>CFBundleURLSchemes</key>
+				<array>
+					<string>com.googleusercontent.apps.138394999909-31bt8545tpt5p0dba1c3ht9hobfprhld</string>
+				</array>
+			</dict>
 		</array>
 		<key>LSRequiresIPhoneOS</key>
 		<true/>
@@ -59,17 +73,6 @@
 		<true/>
 		<key>UIApplicationSupportsIndirectInputEvents</key>
 		<true/>
-		<key>CFBundleURLTypes</key>
-		<array>
-			<dict>
-				<key>CFBundleTypeRole</key>
-				<string>Editor</string>
-				<key>CFBundleURLSchemes</key>
-				<array>
-					<string>com.googleusercontent.apps.138392116263-h4v2as6p7qg2r5tavfvvj2qbe3u268c3</string>
-				</array>
-			</dict>
-		</array>
 		<key>UIStatusBarHidden</key>
 		<false/>
 	</dict>

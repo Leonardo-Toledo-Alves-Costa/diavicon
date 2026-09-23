@@ -40,12 +40,15 @@ class StructuresSection extends ConsumerWidget {
             const SizedBox(width: 8),
             const Expanded(child: CompactSearchBar()),
             const SizedBox(width: 6),
+            // "Gerenciar", e não "Incluir": a mesma janela inclui e também
+            // tira estruturas do projeto.
             CompactButton(
-              text: 'Incluir',
+              text: 'Gerenciar',
+              icon: Icons.tune,
               onPressed: () {
                 showDiaviconModal(
                   context: context,
-                  title: 'Incluir Estrutura',
+                  title: 'Gerenciar Estruturas',
                   height: MediaQuery.of(context).size.height * 0.80,
                   isScrollable: false,
                   margin: const EdgeInsets.fromLTRB(18, 150, 18, 0),

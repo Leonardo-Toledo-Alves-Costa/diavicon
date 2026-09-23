@@ -1,3 +1,4 @@
+import 'package:diavicon/core/services/storage_urls.dart';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
@@ -37,7 +38,7 @@ class RelatorioFactory {
 
     // 👇 Conversão de HTML para PDF local usando o pacote Plus
     final arquivoPdf = await FlutterHtmlToPdf.convertFromHtmlContent(
-      content: htmlContent,
+      content: await StorageUrls.assinarUrlsNoTexto(htmlContent),
       configuration: PrintPdfConfiguration( 
       targetDirectory: dir.path, 
       targetName: nomeArquivoLimpo,

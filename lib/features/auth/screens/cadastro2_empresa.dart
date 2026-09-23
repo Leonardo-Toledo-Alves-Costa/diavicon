@@ -1,6 +1,7 @@
 import 'package:diavicon/core/constants/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/cadastro_freemium.dart';
 
 class Cadastro2Empresa extends StatefulWidget {
   final Map<String, dynamic> dadosUsuario;
@@ -227,7 +228,9 @@ class _Cadastro2EmpresaState extends State<Cadastro2Empresa> {
       'pontos': pontos,
     };
 
-    context.push('/empresa/planos', extra: dadosAtualizados);
+    // Sem a escolha de plano: a empresa começa no gratuito (ver
+    // cadastro_freemium.dart).
+    irParaCadastroDaEmpresa(context, dadosAtualizados);
   }
 
   @override

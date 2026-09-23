@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -26,7 +27,7 @@ class TeamMemberItem extends StatelessWidget {
             radius: 28,
             backgroundColor: AppColors.inputBorder,
             backgroundImage: isNetworkImage
-                ? NetworkImage(imagePath)
+                ? StorageNetworkImage(imagePath)
                 : AssetImage(imagePath) as ImageProvider,
           ),
           const SizedBox(height: 6),

@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io'; // 🚨 IMPORTANTE: Adicionado para ler a foto local
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,7 +17,7 @@ class SelecaoClienteModal extends ConsumerWidget {
       return const AssetImage('assets/images/empresa.png');
     }
     if (imageUrl.startsWith('http')) {
-      return NetworkImage(imageUrl);
+      return StorageNetworkImage(imageUrl);
     }
     return FileImage(File(imageUrl));
   }

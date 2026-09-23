@@ -15,11 +15,11 @@ final empresasVinculadasProjetoProvider = StreamProvider.autoDispose
           .watchLinkedCompanies(projectId);
     });
 
-final minhaEmpresaProvider = FutureProvider.autoDispose<Map<String, dynamic>?>((
-  ref,
-) {
-  return ref.watch(empresasProjetoRepositoryProvider).fetchCurrentCompany();
-});
+final minhaEmpresaProvider = FutureProvider.autoDispose<Map<String, dynamic>?>(
+  (ref) {
+    return ref.watch(empresasProjetoRepositoryProvider).fetchCurrentCompany();
+  },
+);
 
 final projetoEmpresasIntegrantesProvider = FutureProvider.autoDispose
     .family<List<Map<String, dynamic>>, String>((ref, projectId) {

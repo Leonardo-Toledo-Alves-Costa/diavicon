@@ -1,7 +1,9 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ponto_resistividade_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/repositories/ponto_geral_identidade.dart';
 
 final resistividadeRepositoryProvider = Provider((ref) => ResistividadeRepository());
 
@@ -58,20 +60,20 @@ class ResistividadeRepository {
           'valor_resultado': dados.resultado,       // 👈 Novo
           'cor_resultado': dados.resultadoCor,      // 👈 Novo
         }).eq('id', pontoGeralId);
+        // Ponto antigo sem estrutura/tipo? Completa ao salvar (ver ponto_geral_identidade.dart).
+        await completarIdentidadePontoGeral(_supabase, pontoGeralId: pontoGeralId, elementoId: elementoId, tipoEnsaioId: tipoEnsaioId);
       }
 
       // 2. Upload de Imagens (Tabela: galeria_ponto_ensaio_resistividade)
       // Referências: 1-Elemento, 2-Realizando, 3-Grid, 4-Grid c/ Pontos
       Future<String?> uploadFoto(File? foto, String ref, String pasta) async {
         if (foto == null) return null;
-        final extensao = foto.path.split('.').last;
-        final nomeArquivo = '${pontoGeralId}_ref${ref}_${DateTime.now().millisecondsSinceEpoch}.$extensao';
-        final path = 'ensaios/resistividade/$nomeArquivo';
-        
-        await _supabase.storage.from('projetos').upload(
-          path,
+        final path = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+          'ensaios/resistividade',
           foto,
-          fileOptions: const FileOptions(upsert: true),);
+          prefixo: '${pontoGeralId}_ref${ref}_',
+          fileOptions: const FileOptions(upsert: true),
+        );
         final url = _supabase.storage.from('projetos').getPublicUrl(path);
 
         // Remove a antiga se existir, e insere a nova

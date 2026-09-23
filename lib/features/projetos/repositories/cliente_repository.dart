@@ -1,5 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../../core/security/entrada_segura.dart';
+
 class ClienteRepository {
   ClienteRepository(this._supabase);
 
@@ -8,33 +10,35 @@ class ClienteRepository {
   Future<List<Map<String, dynamic>>> fetchClients(
     String managerCompanyId,
   ) async {
-    final response = await _supabase
-        .from('empresa_clientes')
-        .select('cliente_id, empresas!cliente_id(id, nome)')
-        .eq('gestora_id', managerCompanyId)
-        .eq('status_vinculo', 'ativo');
+    final response = await _supabase.rpc(
+      'list_company_clients',
+      params: {'p_manager_company_id': managerCompanyId},
+    );
 
-    final clients = (response as List).map((link) {
-      final company =
-          (link as Map<String, dynamic>)['empresas'] as Map<String, dynamic>;
-      return <String, dynamic>{'id': company['id'], 'nome': company['nome']};
-    }).toList();
+    final clients = (response as List)
+        .whereType<Map>()
+        .map((row) => <String, dynamic>{'id': row['id'], 'nome': row['nome']})
+        .toList();
 
     clients.insert(0, {'id': managerCompanyId, 'nome': 'Minha Empresa'});
     return clients;
   }
 
   Future<List<Map<String, dynamic>>> searchCompanies(String searchTerm) async {
-    final sanitized = searchTerm
+    final termo = EntradaSegura.semControle(searchTerm)
         .trim()
-        .replaceAll(RegExp(r'[,()%"]'), ' ')
         .replaceAll(RegExp(r'\s+'), ' ');
-    if (sanitized.isEmpty) return const [];
+    if (termo.isEmpty) return const [];
+    // Termo entre aspas e com curingas escapados: vírgulas, parênteses,
+    // aspas, % ou _ digitados não alteram o filtro do PostgREST.
+    final valor = EntradaSegura.valorFiltroPostgrest(
+      EntradaSegura.padraoContem(termo.length > 100 ? termo.substring(0, 100) : termo),
+    );
 
     final response = await _supabase
         .from('empresas')
         .select('id, nome, cnpj, foto_url, criado_em')
-        .or('nome.ilike.%$sanitized%,cnpj.ilike.%$sanitized%')
+        .or('nome.ilike.$valor,cnpj.ilike.$valor')
         .limit(20);
 
     return (response as List).cast<Map<String, dynamic>>();

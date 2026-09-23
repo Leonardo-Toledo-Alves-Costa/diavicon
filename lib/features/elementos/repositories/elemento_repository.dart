@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/foto_metadados.dart';
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -114,6 +116,20 @@ class ElementoRepository {
     await _client.from('elementos_estruturais').delete().eq('id', elementoId);
   }
 
+  /// Pré-visualização pro sanfonado "o que mais será excluído junto" antes de
+  /// confirmar a exclusão do elemento: todos os pontos de ensaio ligados a
+  /// ele (ver ON DELETE CASCADE em pontos_ensaios_geral.elemento_estrutural_id).
+  Future<Map<String, List<String>>> buscarResumoExclusao(String elementoId) async {
+    final res = await _client.from('pontos_ensaios_geral').select('nome_ponto, tipo_ensaio').eq('elemento_estrutural_id', elementoId);
+    final categorias = <String, List<String>>{};
+    for (final row in (res as List)) {
+      final tipo = row['tipo_ensaio']?.toString() ?? 'Ensaio';
+      final nome = row['nome_ponto']?.toString() ?? 'Sem nome';
+      categorias.putIfAbsent('Pontos de $tipo', () => []).add(nome);
+    }
+    return categorias;
+  }
+
   Future<void> definirInclusao(String elementoId, bool incluido) async {
     try {
       await _client
@@ -129,14 +145,13 @@ class ElementoRepository {
     required String elementoId,
     required String caminhoLocalFoto,
   }) async {
-    final nomeArquivo =
-        '$elementoId/${DateTime.now().millisecondsSinceEpoch}.jpg';
-
     final arquivoFisico = File(caminhoLocalFoto);
 
-    await _client.storage
+    // Pasta = id do elemento (as políticas do bucket dependem disso); nome,
+    // tipo e Content-Type decididos pelo app (ver upload_seguro.dart).
+    final nomeArquivo = await _client.storage
         .from('elementos-fotos')
-        .upload(nomeArquivo, arquivoFisico);
+        .enviarArquivoSeguro(elementoId, arquivoFisico);
 
     return _client.storage.from('elementos-fotos').getPublicUrl(nomeArquivo);
   }
@@ -149,7 +164,7 @@ class ElementoRepository {
 
     await _client.storage
         .from('elementos-fotos')
-        .uploadBinary(
+        .uploadBinarySemMetadados(
           caminhoStorage,
           bytes,
           fileOptions: const FileOptions(

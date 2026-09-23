@@ -9,7 +9,7 @@ final itensContratadosProvider = FutureProvider.family
 
     final tiposResp = await supabase
         .from('tipos_ensaio')
-        .select('id, nome, icone_path')
+        .select('id, nome, icone_path, area')
         .order('nome', ascending: true);
 
     final contratadosResp = await supabase

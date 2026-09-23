@@ -1,18 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/security/entrada_segura.dart';
+import '../../../core/security/limite_tentativas.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
-import '../../../routes/app_routes.dart';
 import '../providers/auth_provider.dart';
+import '../utils/auth_error_messages.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
-  const LoginScreen({super.key, this.redirectLocation});
-
-  final String? redirectLocation;
+  const LoginScreen({super.key});
 
   @override
   ConsumerState<LoginScreen> createState() => _LoginScreenState();
@@ -25,25 +28,55 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   bool _ocultarSenha = true;
   bool _lembrarMe = false;
 
+  // Espera após muitas tentativas erradas (contagem regressiva no botão).
+  DateTime? _liberadoEm;
+  Timer? _relogio;
+
+  Duration get _esperaRestante {
+    final ate = _liberadoEm;
+    if (ate == null) return Duration.zero;
+    final r = ate.difference(DateTime.now());
+    return r.isNegative ? Duration.zero : r;
+  }
+
   @override
   void dispose() {
+    _relogio?.cancel();
     _emailController.dispose();
     _senhaController.dispose();
     super.dispose();
   }
 
+  void _iniciarEspera(Duration espera) {
+    _relogio?.cancel();
+    setState(() => _liberadoEm = DateTime.now().add(espera));
+    _relogio = Timer.periodic(const Duration(seconds: 1), (t) {
+      if (!mounted) return t.cancel();
+      if (_esperaRestante == Duration.zero) {
+        t.cancel();
+        _liberadoEm = null;
+      }
+      setState(() {});
+    });
+  }
+
   Future<void> _fazerLogin() async {
+    if (_esperaRestante > Duration.zero) return;
     if (!_formKey.currentState!.validate()) return;
     try {
       await ref
           .read(authControllerProvider.notifier)
-          .login(_emailController.text.trim(), _senhaController.text);
-      if (mounted) context.go(widget.redirectLocation ?? AppPaths.projects);
+          .login(_emailController.text, _senhaController.text);
     } catch (e) {
+      if (e is TentativasExcedidasException) _iniciarEspera(e.espera);
       if (mounted) {
+        final message = authErrorMessage(
+          e,
+          fallback: 'Erro ao entrar. Verifique suas credenciais.',
+        );
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao entrar. Verifique suas credenciais.'),
+          SnackBar(
+            content: Text(message),
           ),
         );
       }
@@ -53,6 +86,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final isLoading = ref.watch(authControllerProvider);
+    final aviso = ref.watch(avisoAcessoProvider);
 
     return AuthLayout(
       logoHeight: 220,
@@ -75,11 +109,25 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
                 const SizedBox(height: 25),
 
+                if (aviso != null) ...[
+                  _FaixaAviso(aviso),
+                  const SizedBox(height: 20),
+                ],
+
                 CustomTextField(
                   label: 'Login',
                   hint: 'Seu email',
                   controller: _emailController,
-                  validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
+                  keyboardType: TextInputType.emailAddress,
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(EntradaSegura.maxEmail),
+                    FilteringTextInputFormatter.deny(RegExp(r'\s')),
+                  ],
+                  validator: (val) {
+                    if (val == null || val.trim().isEmpty) return 'Obrigatório';
+                    if (!EntradaSegura.emailValido(val)) return 'E-mail inválido';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 12),
 
@@ -96,6 +144,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     onPressed: () =>
                         setState(() => _ocultarSenha = !_ocultarSenha),
                   ),
+                  inputFormatters: [
+                    LengthLimitingTextInputFormatter(EntradaSegura.maxSenha),
+                  ],
                   validator: (val) => val!.isEmpty ? 'Obrigatório' : null,
                 ),
 
@@ -109,7 +160,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     TextButton(
                       onPressed: () {
-                        context.pushNamed(AppRouteNames.recoverPassword);
+                        context.push('/recuperar-senha');
                       },
                       child: const Text(
                         'Resgatar Senha',
@@ -125,9 +176,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 const SizedBox(height: 10),
 
                 CustomButton(
-                  text: 'Entrar  →',
+                  text: _esperaRestante > Duration.zero
+                      ? 'Aguarde ${formatarEspera(_esperaRestante)}'
+                      : 'Entrar  →',
                   isLoading: isLoading,
-                  onPressed: isLoading ? null : _fazerLogin,
+                  onPressed: isLoading || _esperaRestante > Duration.zero
+                      ? null
+                      : _fazerLogin,
                 ),
 
                 const SizedBox(height: 50),
@@ -151,41 +206,83 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 20),// ---> aqui é o inicio do cadastro
-
-                 Column(
-                   children: [
-                     const Text(
-                       'AINDA NÃO POSSUI UMA CONTA?',
-                       style: TextStyle(
-                         fontSize: 10,
-                         fontWeight: FontWeight.bold,
-                         color: Colors.grey,
-                         letterSpacing: 0.8,
-                         fontFamily: 'Lato',
-                       ),
-                     ),
-                      GestureDetector(
-                        onTap: () => context.push('/register'),
-                        child: const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            'CADASTRE-SE',
-                            style: TextStyle(
-                              color: AppColors.primary,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 15,
-                              fontFamily: 'Lato',
-                            ),
-                          ),
-                        ),
-                      ),
-                   ],
-                 ),
+                // ---> inicio do cadastro
+                //
+                // O "CADASTRE-SE" está desligado de propósito: por enquanto
+                // as contas são abertas pela equipe Diavicon, para não entrar
+                // gente sem qualificação. A tela de cadastro continua de pé
+                // (rota /register) — para voltar a oferecê-la aqui, basta
+                // descomentar o bloco abaixo e importar
+                // '../widgets/boas_vindas_cadastro.dart' (pop-up que separa
+                // empresa nova, empresa já cadastrada e área acadêmica).
+                //
+                // const SizedBox(height: 20),
+                // Column(
+                //   children: [
+                //     const Text(
+                //       'AINDA NÃO POSSUI UMA CONTA?',
+                //       style: TextStyle(
+                //         fontSize: 10,
+                //         fontWeight: FontWeight.bold,
+                //         color: Colors.grey,
+                //         letterSpacing: 0.8,
+                //         fontFamily: 'Lato',
+                //       ),
+                //     ),
+                //     GestureDetector(
+                //       onTap: () => abrirBoasVindasCadastro(context),
+                //       child: const Padding(
+                //         padding: EdgeInsets.symmetric(vertical: 4),
+                //         child: Text(
+                //           'CADASTRE-SE',
+                //           style: TextStyle(
+                //             color: AppColors.primary,
+                //             fontWeight: FontWeight.w900,
+                //             fontSize: 15,
+                //             fontFamily: 'Lato',
+                //           ),
+                //         ),
+                //       ),
+                //     ),
+                //   ],
+                // ),
               ],// ---> aqui é o fim do cadastro
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+
+/// Faixa que explica por que a sessão caiu (acesso suspenso, por exemplo).
+class _FaixaAviso extends StatelessWidget {
+  final String texto;
+
+  const _FaixaAviso(this.texto);
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDECEC),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFF3C6C6)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.lock_outline, size: 20, color: AppColors.error),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              texto,
+              style: const TextStyle(fontSize: 13, height: 1.4, color: AppColors.error),
+            ),
+          ),
+        ],
       ),
     );
   }

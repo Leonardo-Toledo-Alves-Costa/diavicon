@@ -5,6 +5,7 @@ import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
 import '../../../core/widgets/step_progress_bar.dart';
+import '../utils/cadastro_freemium.dart';
 
 /// Tela de seleção de serviços/atividades.
 /// Rota: /empresa/servicos
@@ -183,7 +184,9 @@ class _EmpresaServicosScreenState extends ConsumerState<EmpresaServicosScreen> {
       );
       return;
     }
-    context.go('/empresa/planos', extra: {
+    // Sem a escolha de plano: a empresa começa no gratuito (ver
+    // cadastro_freemium.dart).
+    irParaCadastroDaEmpresa(context, {
       ...dadosUsuario,
       'servicos': _selecionados.toList(),
     });

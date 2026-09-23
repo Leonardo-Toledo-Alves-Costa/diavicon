@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
@@ -13,7 +14,7 @@ class ProjectHeader extends StatelessWidget {
     return Stack(
       children: [
         projeto.imageUrl.startsWith('http')
-            ? Image.network(
+            ? ImagemStorage.network(
                 projeto.imageUrl,
                 height: 280,
                 width: double.infinity,

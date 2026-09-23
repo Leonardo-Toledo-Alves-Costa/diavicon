@@ -1,8 +1,11 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/features/estrutura/models/estrutura_model.dart';
 import 'package:diavicon/features/estrutura/screens/estrutura_home.dart';
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../ensaios/ensaios_geral/progresso/progresso_ensaios.dart';
 
 class StructureCard extends StatelessWidget {
   final EstruturaModel estrutura;
@@ -26,7 +29,7 @@ class StructureCard extends StatelessWidget {
       );
     }
 
-    return Image.network(
+    return ImagemStorage.network(
       estrutura.imageUrl!,
       height: 90,
       width: double.infinity,
@@ -140,14 +143,28 @@ class StructureCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
 
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: const LinearProgressIndicator(
-                      value: 0.0,
-                      minHeight: 5,
-                      backgroundColor: Color(0xFFEEEEEE),
-                      color: AppColors.primary,
-                    ),
+                  // Progresso da estrutura no projeto (realizados ÷ contratados
+                  // da empresa, por tipo de ensaio).
+                  Consumer(
+                    builder: (context, ref, _) {
+                      final fracao = ref
+                          .watch(progressoProjetoProvider(projetoId))
+                          .value
+                          ?.estrutura(estrutura.id)
+                          .fracao;
+                      return Tooltip(
+                        message: fracao == null ? 'Sem ensaios contratados' : 'Progresso: ${textoProgresso(fracao)}',
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(4),
+                          child: LinearProgressIndicator(
+                            value: fracao ?? 0,
+                            minHeight: 5,
+                            backgroundColor: const Color(0xFFEEEEEE),
+                            color: AppColors.primary,
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),

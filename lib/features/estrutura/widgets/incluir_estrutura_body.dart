@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/utils/diavicon_modal.dart';
 import 'package:diavicon/core/widgets/compact_button.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
@@ -102,7 +103,7 @@ class _IncluirEstruturaBodyState extends ConsumerState<IncluirEstruturaBody> {
                       ),
                       child: ClipOval(
                         child: widget.empresaLogoUrl != null && widget.empresaLogoUrl!.isNotEmpty
-                            ? Image.network(
+                            ? ImagemStorage.network(
                                 widget.empresaLogoUrl!,
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) => Image.asset(

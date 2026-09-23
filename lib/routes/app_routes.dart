@@ -5,6 +5,8 @@
 abstract final class AppRouteNames {
   static const welcome = 'welcome';
   static const login = 'login';
+  static const privacyPolicy = 'privacy-policy';
+  static const termsOfUse = 'terms-of-use';
 
   static const profiles = 'profiles';
   static const profileData = 'profile-data';
@@ -31,7 +33,11 @@ abstract final class AppRouteNames {
 
   static const recoverPassword = 'recover-password';
   static const newPassword = 'new-password';
+  static const confirmEmail = 'confirm-email';
+  static const inactiveAccount = 'inactive-account';
+  static const authUnavailable = 'auth-unavailable';
   static const completeRegistration = 'complete-registration';
+  static const registrationResume = 'registration-resume';
 
   static const projects = 'projects';
   static const projectDetail = 'project-detail';
@@ -52,6 +58,11 @@ abstract final class AppRouteNames {
 abstract final class AppPaths {
   static const welcome = '/';
   static const login = '/login';
+  static const privacyPolicy = '/privacidade';
+  static const termsOfUse = '/termos';
+
+  /// Páginas legais: abertas para qualquer um, logado ou não.
+  static bool isLegal(String path) => path == privacyPolicy || path == termsOfUse;
   static const redirectQueryParameter = 'redirect';
 
   static String loginWithRedirect(String location) => Uri(
@@ -109,7 +120,11 @@ abstract final class AppPaths {
 
   static const recoverPassword = '/recuperar-senha';
   static const newPassword = '/nova-senha';
+  static const confirmEmail = '/confirmar-email';
+  static const inactiveAccount = '/conta-inativa';
+  static const authUnavailable = '/auth-indisponivel';
   static const completeRegistration = '/completar-cadastro';
+  static const registrationResume = '$register/retomar';
 
   static const projects = '/projetos';
   static const projectIdParameter = 'projetoId';

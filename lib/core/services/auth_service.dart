@@ -1,5 +1,7 @@
+import 'links_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../features/auth/utils/destino_confirmacao_email.dart';
 
 class AuthService extends ChangeNotifier {
   final SupabaseClient _supabase = Supabase.instance.client;
@@ -35,6 +37,7 @@ class AuthService extends ChangeNotifier {
     await _supabase.auth.signUp(
       email: email,
       password: password,
+      emailRedirectTo: destinoConfirmacaoEmail(),
     );
   }
 
@@ -47,7 +50,7 @@ class AuthService extends ChangeNotifier {
   Future<void> resetPasswordForEmail(String email) async {
     await _supabase.auth.resetPasswordForEmail(
       email,
-      redirectTo: 'diavicon://nova-senha',
+      redirectTo: destinoNovaSenha,
     );
   }
 

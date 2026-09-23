@@ -1,6 +1,6 @@
+import 'package:diavicon/core/services/storage_urls.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:pdfx/pdfx.dart'; 
 import 'package:internet_file/internet_file.dart'; 
@@ -37,7 +37,7 @@ class _VisualizarPdfScreenState extends State<VisualizarPdfScreen> {
   Future<void> _inicializarPdf() async {
     try {
       _pdfController = PdfController(
-        document: PdfDocument.openData(InternetFile.get(widget.url)),
+        document: PdfDocument.openData(StorageUrls.assinar(widget.url).then((u) => InternetFile.get(u))),
       );
       if (mounted) {
         setState(() => _isLoading = false);
@@ -56,7 +56,7 @@ class _VisualizarPdfScreenState extends State<VisualizarPdfScreen> {
     setState(() => _isDownloading = true);
 
     try {
-      final response = await http.get(Uri.parse(widget.url));
+      final response = await StorageUrls.baixar(widget.url);
 
       if (response.statusCode == 200) {
         Directory? diretorio;

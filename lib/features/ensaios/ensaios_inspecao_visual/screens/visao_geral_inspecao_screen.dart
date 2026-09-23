@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/confirmar_exclusao_dialog.dart';
 import '../../../../core/widgets/custom_appbar.dart';
+import '../../../../core/widgets/diavicon_menu_item.dart';
+import '../../../../core/widgets/menu_drawer_app_bar.dart';
+import '../repositories/inspecao_visual_repository.dart';
 import '../utils/risco_gut_calculo.dart';
 import 'analise_geral_inspecao_screen.dart';
 import 'inspecao_visual_local_screen.dart';
 import 'registro_inspecao_screen.dart';
+import 'relatorio_inspecao_screen.dart';
+import '../widgets/iv_ui.dart';
 
 final visaoGeralProvider = FutureProvider.family.autoDispose<Map<String, dynamic>, String>((ref, inspecaoGeralId) async {
   final supabase = Supabase.instance.client;
@@ -76,112 +81,194 @@ class VisaoGeralInspecaoScreen extends ConsumerStatefulWidget {
 class _VisaoGeralInspecaoScreenState extends ConsumerState<VisaoGeralInspecaoScreen> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _filtro = '';
+  bool _ordenarPorGut = true;
+
+  Future<void> _excluirInspecao() async {
+    final navigator = Navigator.of(context);
+    navigator.pop(); // fecha o drawer antes do diálogo
+
+    int quantidade = ref.read(visaoGeralProvider(widget.inspecaoGeralId)).value?['total_registros'] as int? ?? 0;
+
+    final confirmar = await showConfirmarExclusaoDialog(
+      context: context,
+      titulo: 'Excluir inspeção',
+      mensagem: quantidade == 0
+          ? 'A inspeção "${widget.inspecaoGeralNome}" não tem registros. Deseja mesmo assim excluí-la?'
+          : 'Isso excluirá definitivamente a inspeção "${widget.inspecaoGeralNome}" e todos os $quantidade registro${quantidade == 1 ? '' : 's'} contidos nela (fotos, marcações e anomalias inclusas). Esta ação não poderá ser desfeita.',
+    );
+    if (confirmar != true || !mounted) return;
+
+    try {
+      await ref.read(inspecaoVisualRepoProvider).excluirInspecaoCompleta(widget.inspecaoGeralId);
+      ref.invalidate(listaInspecoesGeraisProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Inspeção excluída com sucesso!'), backgroundColor: Colors.green),
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Erro ao excluir inspeção: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final asyncDados = ref.watch(visaoGeralProvider(widget.inspecaoGeralId));
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
-      //appBar: const CustomAppBar(title: 'Inspeção Visual\nVisão Geral', showBackButton: true),
-      appBar: CustomAppBar(
+      backgroundColor: kIvFundo,
+      endDrawer: MenuDrawerAppBar(
+        title: 'Inspeção\nVisual',
+        items: [
+          DiaviconMenuItem(
+            icon: Icons.insights,
+            label: 'Análise Geral',
+            onTap: () {
+              Navigator.of(context).pop();
+              _abrirAnaliseGeral();
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.assessment_outlined,
+            label: 'Relatórios',
+            onTap: () {
+              Navigator.of(context).pop();
+              _abrirRelatorios();
+            },
+          ),
+          DiaviconMenuItem(
+            icon: Icons.delete_outline,
+            label: 'Excluir inspeção',
+            onTap: _excluirInspecao,
+          ),
+        ],
+      ),
+      appBar: const CustomAppBar(
         title: 'Painel',
         showBackButton: true,
-        showMenuButton: false,
-        titleWidget: const Column(
+        showMenuButton: true,
+        titleWidget: Column(
           children: [
-            //Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
             Text('Inspeção Visual', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
             Text('Visão geral', style: TextStyle(fontSize: 14, color: Colors.white)),
           ],
         ),
-        extraActions: [
-          IconButton(
-            icon: const Icon(Icons.insights, color: Colors.white),
-            tooltip: 'Análise Geral',
-            onPressed: () => Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => AnaliseGeralInspecaoScreen(
-                  projetoId: widget.projetoId,
-                  estruturaId: widget.estruturaId,
-                  inspecaoGeralId: widget.inspecaoGeralId,
-                  inspecaoGeralNome: widget.inspecaoGeralNome,
-                  projetoNome: widget.projetoNome,
-                  estruturaNome: widget.estruturaNome,
-                ),
-              ),
-            ),
-          ),
-        ],
       ),
-      
       body: asyncDados.when(
         loading: () => const Center(child: CircularProgressIndicator(color: AppColors.primary)),
-        error: (e, _) => Center(child: Text('Erro ao carregar dados: $e')),
+        error: (e, _) => Center(
+          child: EstadoVazioIv(
+            icone: Icons.cloud_off_rounded,
+            titulo: 'Não foi possível carregar a inspeção',
+            texto: '$e',
+            acao: TextButton.icon(
+              onPressed: () => ref.invalidate(visaoGeralProvider(widget.inspecaoGeralId)),
+              icon: const Icon(Icons.refresh),
+              label: const Text('Tentar novamente'),
+            ),
+          ),
+        ),
         data: (dados) {
           final locais = dados['locais'] as List<Map<String, dynamic>>;
           final locaisFiltrados = locais.where((l) => _filtro.isEmpty || l['nome'].toString().toLowerCase().contains(_filtro)).toList();
+          if (_ordenarPorGut) {
+            locaisFiltrados.sort((a, b) => (b['gut'] as double).compareTo(a['gut'] as double));
+          }
+          final maiorGut = locais.fold<double>(0, (m, l) => (l['gut'] as double) > m ? l['gut'] as double : m);
+          final gutTotal = dados['gut_total'] as double;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+          return RefreshIndicator(
+            color: AppColors.primary,
+            onRefresh: () => ref.refresh(visaoGeralProvider(widget.inspecaoGeralId).future),
+            child: CorpoIv(
               children: [
-                Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Expanded(child: Text(widget.inspecaoGeralNome, style: GoogleFonts.lato(fontSize: 22, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)))), const Icon(Icons.edit_square, color: Color(0xFF3E3E3D))]),
-                const SizedBox(height: 4),
-                Text(widget.projetoNome, style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600)),
-                Text(widget.estruturaNome, style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600)),
-                const SizedBox(height: 24),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildMiniCard('Registros', dados['total_registros'].toString().padLeft(2, '0')),
-                    _buildMiniCard('Locais', dados['total_locais'].toString().padLeft(2, '0')),
-                    _buildMiniCard('Elementos', dados['total_elementos'].toString().padLeft(2, '0')),
-                    _buildMiniCardGUT((dados['gut_total'] as double).toStringAsFixed(2)),
+                CabecalhoIv(
+                  trilha: [widget.projetoNome, widget.estruturaNome],
+                  titulo: widget.inspecaoGeralNome,
+                  subtitulo: 'Inspeção visual',
+                  acoes: [
+                    BotaoIv(rotulo: 'Análise geral', icone: Icons.insights, aoTocar: _abrirAnaliseGeral),
+                    BotaoIv(rotulo: 'Relatórios', icone: Icons.assessment_outlined, aoTocar: _abrirRelatorios),
+                    BotaoIv(rotulo: 'Novo registro', icone: Icons.add_a_photo_outlined, primario: true, aoTocar: _novoRegistro),
                   ],
                 ),
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.grey.shade200)),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Objetivo', style: GoogleFonts.lato(fontSize: 14, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), const SizedBox(height: 8), Text(widget.descricaoInspecao, style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600))]),
+                const SizedBox(height: 20),
+                IndicadoresIv(
+                  itens: [
+                    IndicadorIv(icone: Icons.fact_check_outlined, rotulo: 'Registros', valor: '${dados['total_registros']}'),
+                    IndicadorIv(icone: Icons.place_outlined, rotulo: 'Locais', valor: '${dados['total_locais']}'),
+                    IndicadorIv(icone: Icons.view_in_ar_outlined, rotulo: 'Elementos', valor: '${dados['total_elementos']}'),
+                    IndicadorIv.gut(gutTotal),
+                  ],
                 ),
-                const SizedBox(height: 32),
-                Text('Locais Inspecionados', style: GoogleFonts.lato(fontSize: 18, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))),
-                const SizedBox(height: 16),
+                if (widget.descricaoInspecao.trim().isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  SecaoIv(
+                    titulo: 'Objetivo',
+                    icone: Icons.flag_outlined,
+                    child: Text(widget.descricaoInspecao, style: const TextStyle(fontSize: 14, color: kIvTexto, height: 1.45)),
+                  ),
+                ],
+                const SizedBox(height: 28),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: _searchCtrl, onChanged: (val) => setState(() => _filtro = val.toLowerCase()), decoration: InputDecoration(hintText: 'Local', hintStyle: const TextStyle(color: Colors.grey, fontSize: 13), prefixIcon: const Icon(Icons.search, color: Colors.grey), filled: true, fillColor: Colors.white, contentPadding: const EdgeInsets.symmetric(vertical: 0), border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.shade300)), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide(color: Colors.grey.shade300))))),
-                    const SizedBox(width: 12),
-                    ElevatedButton(
-                      onPressed: () {
-                         Navigator.push(context, MaterialPageRoute(builder: (_) => RegistroInspecaoScreen(
-                           projetoId: widget.projetoId, estruturaId: widget.estruturaId, inspecaoGeralId: widget.inspecaoGeralId, localPreSelecionadoId: null
-                         ))).then((_) => ref.invalidate(visaoGeralProvider));
-                      },
-                      style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFFA726), padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)), elevation: 0),
-                      child: const Text('Novo', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                    const Expanded(
+                      child: Text('Locais inspecionados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: kIvTinta)),
+                    ),
+                    Text(
+                      locais.length == 1 ? '1 local' : '${locais.length} locais',
+                      style: const TextStyle(fontSize: 13, color: kIvSuave),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                if (locaisFiltrados.isEmpty) const Center(child: Padding(padding: EdgeInsets.all(24.0), child: Text('Nenhum registro encontrado.', style: TextStyle(color: Colors.grey)))),
-                ...locaisFiltrados.map((local) {
-                  return GestureDetector(
-                    onTap: () {
-                      Navigator.push(context, MaterialPageRoute(builder: (_) => InspecaoVisualLocalScreen(
-                        projetoId: widget.projetoId, estruturaId: widget.estruturaId, inspecaoGeralId: widget.inspecaoGeralId,
-                        projetoNome: widget.projetoNome, estruturaNome: widget.estruturaNome, inspecaoNome: widget.inspecaoGeralNome,
-                        localId: local['id'], localNome: local['nome'],
-                      ))).then((_) => ref.invalidate(visaoGeralProvider));
-                    },
-                    child: Container(
-                      margin: const EdgeInsets.only(bottom: 12), padding: const EdgeInsets.all(16), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 8, offset: const Offset(0, 4))]),
-                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(local['nome'], style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D))), const SizedBox(height: 4), Text('${local['registros']} registros', style: GoogleFonts.lato(fontSize: 14, color: Colors.grey.shade500)), const SizedBox(height: 4), Text('Pontuação G.U.T ${(local['gut'] as double).toStringAsFixed(2)}', style: GoogleFonts.lato(fontSize: 12, color: const Color(0xFFFFA726)))]),  //const Color(0xFFFFA726)
-                    ),
-                  );
-                }),
+                const SizedBox(height: 12),
+                LayoutBuilder(
+                  builder: (context, c) {
+                    final busca = CampoBuscaIv(
+                      controller: _searchCtrl,
+                      dica: 'Buscar local',
+                      aoMudar: (val) => setState(() => _filtro = val.toLowerCase()),
+                    );
+                    final ordem = PilulasIv<bool>(
+                      opcoes: const [(true, 'Maior G.U.T'), (false, 'Nome')],
+                      valor: _ordenarPorGut,
+                      aoMudar: (v) => setState(() => _ordenarPorGut = v),
+                    );
+                    if (c.maxWidth < 640) {
+                      return Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [busca, const SizedBox(height: 10), ordem]);
+                    }
+                    return Row(children: [Expanded(child: busca), const SizedBox(width: 16), ordem]);
+                  },
+                ),
+                const SizedBox(height: 16),
+                if (locais.isEmpty)
+                  EstadoVazioIv(
+                    icone: Icons.add_location_alt_outlined,
+                    titulo: 'Nenhum registro nesta inspeção',
+                    texto: 'Cada registro é feito em um local da estrutura, com fotos e anomalias.',
+                    acao: BotaoIv(rotulo: 'Fazer o primeiro registro', icone: Icons.add_a_photo_outlined, primario: true, aoTocar: _novoRegistro),
+                  )
+                else if (locaisFiltrados.isEmpty)
+                  const EstadoVazioIv(icone: Icons.search_off_rounded, titulo: 'Nenhum local encontrado')
+                else
+                  GradeIv(
+                    larguraMinima: 380,
+                    filhos: [
+                      for (final local in locaisFiltrados)
+                        CartaoLocalIv(
+                          nome: local['nome'].toString(),
+                          registros: local['registros'] as int,
+                          gut: local['gut'] as double,
+                          proporcaoGut: maiorGut <= 0 ? 0 : (local['gut'] as double) / maiorGut,
+                          aoTocar: () => _abrirLocal(local),
+                        ),
+                    ],
+                  ),
               ],
             ),
           );
@@ -190,6 +277,66 @@ class _VisaoGeralInspecaoScreenState extends ConsumerState<VisaoGeralInspecaoScr
     );
   }
 
-  Widget _buildMiniCard(String titulo, String valor) => Container(width: 75, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]), child: Column(children: [Text(titulo, style: GoogleFonts.lato(fontSize: 10, color: Colors.grey.shade600)), const SizedBox(height: 4), Text(valor, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)))]));
-  Widget _buildMiniCardGUT(String valor) => Container(width: 85, padding: const EdgeInsets.symmetric(vertical: 12), decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4, offset: const Offset(0, 2))]), child: Column(children: [Text('G.U.T', style: GoogleFonts.lato(fontSize: 10, color: Colors.grey.shade600)), const SizedBox(height: 4), Row(mainAxisAlignment: MainAxisAlignment.center, children: [const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 16), const SizedBox(width: 4), Text(valor, style: GoogleFonts.lato(fontSize: 16, fontWeight: FontWeight.bold, color: const Color(0xFF3E3E3D)))])]));
+  void _abrirAnaliseGeral() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => AnaliseGeralInspecaoScreen(
+          projetoId: widget.projetoId,
+          estruturaId: widget.estruturaId,
+          inspecaoGeralId: widget.inspecaoGeralId,
+          inspecaoGeralNome: widget.inspecaoGeralNome,
+          projetoNome: widget.projetoNome,
+          estruturaNome: widget.estruturaNome,
+        ),
+      ),
+    );
+  }
+
+  void _abrirRelatorios() {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => RelatorioInspecaoScreen(
+          projetoId: widget.projetoId,
+          estruturaId: widget.estruturaId,
+          inspecaoGeralId: widget.inspecaoGeralId,
+          inspecaoGeralNome: widget.inspecaoGeralNome,
+          projetoNome: widget.projetoNome,
+          estruturaNome: widget.estruturaNome,
+        ),
+      ),
+    );
+  }
+
+  void _novoRegistro() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => RegistroInspecaoScreen(
+          projetoId: widget.projetoId,
+          estruturaId: widget.estruturaId,
+          inspecaoGeralId: widget.inspecaoGeralId,
+          localPreSelecionadoId: null,
+        ),
+      ),
+    ).then((_) => ref.invalidate(visaoGeralProvider));
+  }
+
+  void _abrirLocal(Map<String, dynamic> local) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => InspecaoVisualLocalScreen(
+          projetoId: widget.projetoId,
+          estruturaId: widget.estruturaId,
+          inspecaoGeralId: widget.inspecaoGeralId,
+          projetoNome: widget.projetoNome,
+          estruturaNome: widget.estruturaNome,
+          inspecaoNome: widget.inspecaoGeralNome,
+          localId: local['id'],
+          localNome: local['nome'],
+        ),
+      ),
+    ).then((_) => ref.invalidate(visaoGeralProvider));
+  }
+
 }

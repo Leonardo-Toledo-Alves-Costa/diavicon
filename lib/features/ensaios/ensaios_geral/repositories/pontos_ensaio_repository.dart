@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/repositories/autores_repository.dart';
 import '../models/pontos_ensaio_model.dart';
 
 class PontosEnsaioRepository {
@@ -34,8 +35,12 @@ class PontosEnsaioRepository {
               tipo,
               local,
               fotos
+            ),
+            ponto_ensaio_ultrassom (
+              modo,
+              tipo_onda
             )
-          ''') // <-- 'criado_em' adicionado
+          ''') // <-- 'criado_em' adicionado; embed de ultrassom vem vazio pra qualquer outro ensaio
           .eq('projeto_id', projetoId)
           .eq('tipo_ensaio_id', tipoEnsaioId)
           .eq('estrutura_id', estruturaId);
@@ -50,26 +55,17 @@ class PontosEnsaioRepository {
       final List data = response as List;
       if (data.isEmpty) return [];
 
-      // 2. Coletar IDs dos autores para buscar a logo das empresas
-      final autoresIds = data
-          .map((row) => row['criado_por']?.toString())
-          .where((id) => id != null && id.isNotEmpty)
-          .toSet()
-          .toList();
-
-      Map<String, String> logosEmpresas = {};
-
-      if (autoresIds.isNotEmpty) {
-        final usuariosResp = await _supabase
-            .from('usuarios')
-            .select('id, empresas(foto_url)')
-            .inFilter('id', autoresIds);
-
-        for (var u in usuariosResp) {
-          final emp = u['empresas'] as Map<String, dynamic>?;
-          logosEmpresas[u['id'].toString()] = emp?['foto_url'] ?? '';
-        }
-      }
+      // 2. Resolver a autoria de todos os pontos numa tacada.
+      //
+      // Antes isso era um select direto em `usuarios` filtrando pelos autores,
+      // o que não funciona: a policy auth_users_select_own deixa cada usuário
+      // ler só a própria linha, então o logo só aparecia nos pontos criados
+      // pelo próprio observador. A RPC `autores_para_exibicao` devolve o logo
+      // de qualquer autor e, além dele, o nome/foto do autor quando quem
+      // consulta é da mesma empresa — ver
+      // 20260917230500_autores_para_exibicao.sql.
+      final autores = await AutoresRepository(_supabase)
+          .buscarPorIds(data.map((row) => row['criado_por']?.toString()));
 
       // 3. Montar a lista final
       return data.map((row) {
@@ -96,7 +92,15 @@ class PontosEnsaioRepository {
           dataCriacao = DateTime.tryParse(row['criado_em'].toString()) ?? DateTime.now();
         }
 
+        // `ponto_ensaio_ultrassom` é embutido como lista (FK reversa sem
+        // constraint de unicidade) — só terá item pra pontos de
+        // Ultrassonografia; qualquer outro ensaio vem com lista vazia.
+        final ultrassomEmbed = row['ponto_ensaio_ultrassom'] as List?;
+        final ultrassom = (ultrassomEmbed != null && ultrassomEmbed.isNotEmpty) ? ultrassomEmbed.first as Map<String, dynamic> : null;
+
         return PontoEnsaioModel(
+          modoUltrassom: ultrassom?['modo']?.toString(),
+          pulsoUltrassonico: ultrassom?['tipo_onda']?.toString(),
           id: row['id'].toString(),
           nome: row['nome_ponto'] ?? 'Ponto sem nome',
           elementoId: el?['id']?.toString() ?? '',
@@ -104,9 +108,7 @@ class PontosEnsaioRepository {
           tipoElemento: el?['tipo'] ?? '-',
           local: el?['local'] ?? 'Não informado',
           fotoElementoUrl: fotoElemento,
-          avatarEmpresaUrl: logosEmpresas[criadoPor] != null && logosEmpresas[criadoPor]!.isNotEmpty
-              ? logosEmpresas[criadoPor]!
-              : 'https://via.placeholder.com/150',
+          autor: autores[criadoPor],
           textoRisco: txtRisco.toUpperCase(),
           corFundoRisco: bgRisco,
           corTextoRisco: txtCorRisco,

@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
+import '../security/entrada_segura.dart';
 
 class CustomTextField extends StatelessWidget {
   final String label;
@@ -38,6 +39,23 @@ class CustomTextField extends StatelessWidget {
     this.onTap,
   });
 
+  /// Todo campo bloqueia caracteres de controle invisíveis e tem um limite de
+  /// tamanho (o da tela, se ela passar um; senão 500 numa linha / 10.000 em
+  /// várias). Os valores seguem para o banco como parâmetros — isso não é a
+  /// defesa contra injeção, é higiene de entrada (ver entrada_segura.dart).
+  List<TextInputFormatter> get _formatadores {
+    final proprios = inputFormatters ?? const <TextInputFormatter>[];
+    final temLimite = proprios.any((f) => f is LengthLimitingTextInputFormatter);
+    return [
+      FilteringTextInputFormatter.deny(EntradaSegura.padraoControle),
+      if (!temLimite)
+        LengthLimitingTextInputFormatter(
+          (maxLines ?? 2) == 1 ? EntradaSegura.maxTextoLinha : EntradaSegura.maxTextoLongo,
+        ),
+      ...proprios,
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEnabled = enabled ?? true;
@@ -68,7 +86,7 @@ class CustomTextField extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         TextFormField(
-          inputFormatters: inputFormatters,
+          inputFormatters: _formatadores,
           controller: controller,
           obscureText: obscureText,
           keyboardType: keyboardType,

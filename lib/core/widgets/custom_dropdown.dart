@@ -2,6 +2,21 @@ import 'package:flutter/material.dart';
 import '../constants/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+/// Remove itens com valor repetido (fica o primeiro). O DropdownButton do
+/// Flutter derruba a tela (assert "There should be exactly one item with
+/// [DropdownButton]'s value") quando dois itens têm o mesmo valor — e isso
+/// acontece com listas que juntam o padrão DIAVICON com o da empresa e usam
+/// o NOME como valor (ex.: "Industrial" nas duas).
+List<DropdownMenuItem<T>> itensDropdownSemRepetidos<T>(List<DropdownMenuItem<T>> itens) {
+  final vistos = <T?>{};
+  return [for (final item in itens) if (vistos.add(item.value)) item];
+}
+
+/// Valor que o dropdown consegue exibir: `null` se não estiver entre os itens
+/// (ex.: opção apagada do cadastro), em vez de derrubar a tela.
+T? valorDropdownSeguro<T>(T? valor, List<DropdownMenuItem<T>> itens) =>
+    valor != null && itens.any((i) => i.value == valor) ? valor : null;
+
 class CustomDropdown<T> extends StatelessWidget {
   final String label;
   final T? value;
@@ -26,6 +41,9 @@ class CustomDropdown<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final itensSeguros = itensDropdownSemRepetidos(items);
+    final valorSeguro = valorDropdownSeguro(value, itensSeguros);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -80,9 +98,9 @@ class CustomDropdown<T> extends StatelessWidget {
           const SizedBox(height: 8),
         ],
         DropdownButtonFormField<T>(
-          initialValue: value,
+          initialValue: valorSeguro,
           isExpanded: true,
-          items: items,
+          items: itensSeguros,
           onChanged: onChanged,
           validator: validator,
           style: GoogleFonts.lato(

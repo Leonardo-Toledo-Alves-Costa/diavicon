@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,7 +7,17 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/colaboradores_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../../equipe/screens/convidar_funcionario_screen.dart';
+import '../widgets/papeis_colaboradores_dialog.dart';
+
+/// Página de planos e preços no site da Diavicon.
+final _paginaDePlanos = Uri.parse('https://diavicon.com.br/home/plataforma/planos-e-precos/');
+
+Future<void> _abrirPaginaDePlanos() async {
+  await launchUrl(_paginaDePlanos, mode: LaunchMode.externalApplication);
+}
 
 class ColaboradoresEmpresaScreen extends ConsumerWidget {
   final String empresaId;
@@ -23,11 +34,20 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
 
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: const CustomAppBar(
+      appBar: CustomAppBar(
         title: 'Painel',
         showBackButton: true,
         showMenuButton: false,
-        titleWidget: Column(
+        // Explica gestor, admin, acesso ao painel e colaborador — é o que
+        // decide quais opções aparecem no menu de cada pessoa.
+        extraActions: [
+          IconButton(
+            tooltip: 'Entenda os papéis',
+            icon: const Icon(Icons.info_outline, color: Colors.white),
+            onPressed: () => mostrarPapeisColaboradores(context),
+          ),
+        ],
+        titleWidget: const Column(
           children: [
             Text('Empresa', style: TextStyle(fontSize: 12, color: Colors.white70)),
             Text('Painel', style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
@@ -42,7 +62,8 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
           final int usuariosConsumindoPlano = equipe.where((e) => e.status != 'inativo').length;
           
           final currentUserData = equipe.where((u) => u.id == currentUserId).firstOrNull;
-          final bool amIAdmin = currentUserData?.isAdmin == true || currentUserData?.isMaster == true;
+          final bool amIMaster = currentUserData?.isMaster == true;
+          final bool amIAdmin = currentUserData?.isAdmin == true || amIMaster;
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20),
@@ -76,7 +97,7 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
                               Navigator.push(
                                 context, 
                                 MaterialPageRoute(
-                                  builder: (_) => ConvidarFuncionarioScreen(projetoId: '') // Ajuste o projetoId se necessário
+                                  builder: (_) => const ConvidarFuncionarioScreen() // Convite de empresa, sem projeto
                                 )
                               );
                             },
@@ -113,7 +134,9 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
                     return _ColaboradorItem(
                       user: user,
                       amIAdmin: amIAdmin,
-                      onOptionsTap: () => _mostrarOpcoesColaborador(context, ref, empresaId, user),
+                      amIMaster: amIMaster,
+                      souEu: user.id == currentUserId,
+                      onOptionsTap: () => _mostrarOpcoesColaborador(context, ref, empresaId, user, amIMaster: amIMaster),
                     );
                   },
                 ),
@@ -125,12 +148,41 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
     );
   }
 
+  // Verde das mensagens de confirmação.
+  static const _verdeSucesso = Color(0xFF2E7D32);
+
+  /// Roda uma ação de colaborador e sempre responde na tela.
+  ///
+  /// Antes, suspender ou restaurar acesso era disparado sem `await`: a tela
+  /// não confirmava nada e um erro no servidor passava calado, parecendo que
+  /// o botão não fazia coisa nenhuma.
+  static Future<void> _comRetorno(
+    ScaffoldMessengerState messenger,
+    String sucesso,
+    Future<void> Function() acao,
+  ) async {
+    try {
+      await acao();
+      messenger.showSnackBar(SnackBar(content: Text(sucesso), backgroundColor: _verdeSucesso));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(
+        content: Text(e.toString().replaceFirst('Exception: ', '')),
+        backgroundColor: AppColors.error,
+      ));
+    }
+  }
+
   void _confirmarExclusao(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
         title: const Text('Excluir Colaborador', style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Text('Tem certeza que deseja excluir ${user.nome} definitivamente da sua empresa? Essa ação não pode ser desfeita.'),
+        content: Text(
+          'Excluir ${user.nome} apaga a conta e todo o acesso dela, e não dá para desfazer. '
+          'O e-mail volta a ficar livre para um novo convite.\n\n'
+          'Se a ideia é só tirar o acesso por um tempo, use "Suspender acesso".',
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         actions: [
           TextButton(
@@ -143,8 +195,13 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () {
+              final messenger = ScaffoldMessenger.of(context);
               Navigator.pop(context);
-              ref.read(equipeActionProvider.notifier).deletarColaborador(empresaId, user);
+              _comRetorno(
+                messenger,
+                '${user.nome} foi excluído da empresa.',
+                () => ref.read(equipeActionProvider.notifier).deletarColaborador(empresaId, user),
+              );
             },
             child: const Text('Excluir', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
           ),
@@ -153,11 +210,162 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
     );
   }
 
-  void _mostrarOpcoesColaborador(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user) {
+  void _confirmarTornarGestor(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Tornar Gestor da empresa', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          'Tem certeza que deseja tornar ${user.nome} Gestor da empresa? '
+          'Gestores têm acesso total ao Painel da empresa e podem tornar outros colaboradores Gestores também.',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(context);
+              _comRetorno(
+                messenger,
+                '${user.nome} agora é Gestor da empresa.',
+                () => ref.read(equipeActionProvider.notifier).tornarGestor(empresaId, user),
+              );
+            },
+            child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Níveis de cargo — os mesmos do cadastro da empresa
+  /// (empresa_cadastro_screen.dart).
+  static const _niveis = ['Júnior', 'Pleno', 'Sênior', 'Gerente', 'Diretor', 'CEO'];
+
+  /// Janela do Gestor para mudar cargo e nível de alguém.
+  void _editarCargoNivel(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user) {
+    final cargoCtrl = TextEditingController(text: user.cargo == 'Colaborador' ? '' : user.cargo);
+    // Um nível antigo fora da lista continua aparecendo como opção, para não
+    // sumir sem ninguém pedir.
+    final opcoes = [..._niveis, if (user.nivel != null && !_niveis.contains(user.nivel)) user.nivel!];
+    String? nivel = user.nivel;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialog) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Text('Cargo e nível de ${user.nome}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          content: SizedBox(
+            width: 380,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                TextField(
+                  controller: cargoCtrl,
+                  autofocus: true,
+                  maxLength: 80,
+                  textCapitalization: TextCapitalization.sentences,
+                  decoration: const InputDecoration(labelText: 'Cargo', hintText: 'Ex.: Engenheiro civil'),
+                ),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String?>(
+                  initialValue: nivel,
+                  decoration: const InputDecoration(labelText: 'Nível'),
+                  items: [
+                    const DropdownMenuItem<String?>(value: null, child: Text('Sem nível')),
+                    for (final n in opcoes) DropdownMenuItem<String?>(value: n, child: Text(n)),
+                  ],
+                  onChanged: (v) => setDialog(() => nivel = v),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              onPressed: () {
+                final messenger = ScaffoldMessenger.of(context);
+                final cargo = cargoCtrl.text;
+                Navigator.pop(ctx);
+                _comRetorno(
+                  messenger,
+                  'Cargo e nível de ${user.nome} atualizados.',
+                  () => ref.read(equipeActionProvider.notifier).editarCargo(empresaId, user, cargo: cargo, nivel: nivel),
+                );
+              },
+              child: const Text('Salvar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    ).whenComplete(cargoCtrl.dispose);
+  }
+
+  void _confirmarRemoverGestor(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        title: const Text('Remover papel de Gestor', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Text(
+          '${user.nome} deixa de ser Gestor da empresa e passa a ser um administrador comum: '
+          'perde a permissão de conceder gestão e de alterar outros Gestores.',
+        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () {
+              final messenger = ScaffoldMessenger.of(context);
+              Navigator.pop(context);
+              _comRetorno(
+                messenger,
+                '${user.nome} não é mais Gestor da empresa.',
+                () => ref.read(equipeActionProvider.notifier).removerGestor(empresaId, user),
+              );
+            },
+            child: const Text('Confirmar', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarOpcoesColaborador(BuildContext context, WidgetRef ref, String empresaId, ColaboradorModel user, {required bool amIMaster}) {
     final bool isInativo = user.status == 'inativo';
+    final bool podeVirarGestor = amIMaster && !isInativo && user.isAdmin && !user.isMaster;
 
     showModalBottomSheet(
       context: context,
+      // Branco de propósito: sem isto o tema pinta a folha com um tom
+      // alaranjado tirado da cor da marca.
+      backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         return SafeArea(
@@ -166,16 +374,77 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (!isInativo)
+                // Cargo e nível: só o Gestor edita.
+                if (amIMaster)
+                  ListTile(
+                    leading: const Icon(Icons.badge_outlined, color: Colors.black87),
+                    title: Text('Editar cargo e nível', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _editarCargoNivel(context, ref, empresaId, user);
+                    },
+                  ),
+
+                // O Gestor já é admin por definição: a opção não aparece para ele.
+                if (!isInativo && !user.isMaster)
                   ListTile(
                     leading: const Icon(Icons.admin_panel_settings_outlined, color: Colors.black87),
                     title: Text(user.isAdmin ? 'Remover admin' : 'Tornar admin', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
                     onTap: () {
+                      final messenger = ScaffoldMessenger.of(context);
                       Navigator.pop(ctx);
-                      ref.read(equipeActionProvider.notifier).alternarAdmin(empresaId, user);
+                      _comRetorno(
+                        messenger,
+                        user.isAdmin
+                            ? '${user.nome} não é mais admin.'
+                            : '${user.nome} agora é admin.',
+                        () => ref.read(equipeActionProvider.notifier).alternarAdmin(empresaId, user),
+                      );
                     },
                   ),
-                
+
+                // O Gestor enxerga o painel por definição.
+                if (!isInativo && !user.isMaster)
+                  ListTile(
+                    leading: Icon(user.podeVisualizarEmpresa ? Icons.visibility_off_outlined : Icons.visibility_outlined, color: Colors.black87),
+                    title: Text(
+                      user.podeVisualizarEmpresa ? 'Remover acesso ao painel' : 'Permitir visualizar painel',
+                      style: GoogleFonts.lato(fontWeight: FontWeight.w600),
+                    ),
+                    onTap: () {
+                      final messenger = ScaffoldMessenger.of(context);
+                      Navigator.pop(ctx);
+                      _comRetorno(
+                        messenger,
+                        user.podeVisualizarEmpresa
+                            ? '${user.nome} não vê mais o painel da empresa.'
+                            : '${user.nome} já pode ver o painel da empresa.',
+                        () => ref.read(equipeActionProvider.notifier).alternarVisualizacaoPainel(empresaId, user),
+                      );
+                    },
+                  ),
+
+                if (podeVirarGestor)
+                  ListTile(
+                    leading: Icon(Icons.workspace_premium_outlined, color: AppColors.primary),
+                    title: Text('Tornar Gestor da empresa', style: GoogleFonts.lato(fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _confirmarTornarGestor(context, ref, empresaId, user);
+                    },
+                  ),
+
+                // Só outro Gestor tira a gestão de alguém.
+                if (amIMaster && user.isMaster)
+                  ListTile(
+                    leading: const Icon(Icons.workspace_premium_outlined, color: Colors.black87),
+                    title: Text('Remover papel de Gestor', style: GoogleFonts.lato(fontWeight: FontWeight.w600)),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _confirmarRemoverGestor(context, ref, empresaId, user);
+                    },
+                  ),
+
                 ListTile(
                   leading: Icon(
                     isInativo ? Icons.person_add_outlined : Icons.person_remove_outlined, 
@@ -186,17 +455,24 @@ class ColaboradoresEmpresaScreen extends ConsumerWidget {
                     style: GoogleFonts.lato(color: isInativo ? Colors.green : Colors.orange.shade800, fontWeight: FontWeight.w600)
                   ),
                   onTap: () {
+                    final messenger = ScaffoldMessenger.of(context);
+                    final notifier = ref.read(equipeActionProvider.notifier);
                     Navigator.pop(ctx);
-                    if (isInativo) {
-                      ref.read(equipeActionProvider.notifier).reativarAcesso(empresaId, user);
-                    } else {
-                      ref.read(equipeActionProvider.notifier).removerAcesso(empresaId, user);
-                    }
+                    _comRetorno(
+                      messenger,
+                      isInativo
+                          ? '${user.nome} voltou a ter acesso.'
+                          : 'O acesso de ${user.nome} foi suspenso.',
+                      () => isInativo
+                          ? notifier.reativarAcesso(empresaId, user)
+                          : notifier.removerAcesso(empresaId, user),
+                    );
                   },
                 ),
 
-                // Nova opção: Excluir definitivamente se já estiver inativo
-                if (isInativo)
+                // Vale para ativo ou suspenso: quem administra confirma na
+                // janela seguinte.
+                if (!user.isMaster || amIMaster)
                   ListTile(
                     leading: const Icon(Icons.delete_outline, color: Colors.red),
                     title: Text('Excluir definitivamente', style: GoogleFonts.lato(color: Colors.red, fontWeight: FontWeight.w600)),
@@ -265,11 +541,15 @@ class _DashboardCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text('$cadastrados de ${permitidos == 0 ? 'ilimitados' : permitidos} permitidos no seu plano atual', style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600)),
                 const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () {
-                    // TODO: Ação para tela de Upgrade
-                  },
-                  child: Text('ver planos >', style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary)),
+                InkWell(
+                  onTap: _abrirPaginaDePlanos,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Text(
+                      'ver planos >',
+                      style: GoogleFonts.lato(fontSize: 13, fontWeight: FontWeight.bold, color: AppColors.primary),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -281,11 +561,23 @@ class _DashboardCard extends StatelessWidget {
 }
 
 class _ColaboradorItem extends StatelessWidget {
+  /// Quem olha é Gestor (pode mexer até em outro Gestor).
+  final bool amIMaster;
+
+  /// A linha é a do próprio usuário — ninguém altera o próprio acesso aqui.
+  final bool souEu;
+
   final ColaboradorModel user;
   final bool amIAdmin;
   final VoidCallback onOptionsTap;
 
-  const _ColaboradorItem({required this.user, required this.amIAdmin, required this.onOptionsTap});
+  const _ColaboradorItem({
+    required this.user,
+    required this.amIAdmin,
+    required this.amIMaster,
+    required this.souEu,
+    required this.onOptionsTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -300,7 +592,7 @@ class _ColaboradorItem extends StatelessWidget {
             CircleAvatar(
               radius: 24,
               backgroundColor: isInativo ? Colors.grey.shade300 : const Color(0xFFE0F2F1),
-              backgroundImage: user.fotoUrl != null ? NetworkImage(user.fotoUrl!) : null,
+              backgroundImage: user.fotoUrl != null ? StorageNetworkImage(user.fotoUrl!) : null,
               child: user.fotoUrl == null
                   ? Text(
                       user.nome.substring(0, user.nome.length >= 2 ? 2 : 1).toUpperCase(), 
@@ -331,12 +623,31 @@ class _ColaboradorItem extends StatelessWidget {
                       ),
                       if (user.isMaster) ...[
                         const SizedBox(width: 6),
-                        Icon(Icons.workspace_premium, color: isInativo ? Colors.grey : AppColors.primary, size: 16),
-                      ]
+                        Tooltip(
+                          message: 'Gestor da empresa',
+                          child: Icon(Icons.workspace_premium, color: isInativo ? Colors.grey : AppColors.primary, size: 16),
+                        ),
+                      ],
+                      // O Gestor enxerga o painel por definição; os demais só
+                      // quando receberam essa permissão.
+                      if (user.isMaster || user.podeVisualizarEmpresa) ...[
+                        const SizedBox(width: 6),
+                        Tooltip(
+                          message: 'Vê o painel da empresa',
+                          child: Icon(
+                            Icons.visibility_outlined,
+                            color: isInativo ? Colors.grey : const Color(0xFF00695C),
+                            size: 16,
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                   const SizedBox(height: 4),
-                  Text(user.cargo, style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600)),
+                  Text(
+                    user.nivel == null ? user.cargo : '${user.cargo} · ${user.nivel}',
+                    style: GoogleFonts.lato(fontSize: 13, color: Colors.grey.shade600),
+                  ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
@@ -358,7 +669,7 @@ class _ColaboradorItem extends StatelessWidget {
                 ],
               ),
             ),
-            if (!user.isMaster && amIAdmin)
+            if (amIAdmin && !souEu && (!user.isMaster || amIMaster))
               IconButton(icon: const Icon(Icons.more_vert, color: Colors.black54), onPressed: onOptionsTap),
           ],
         ),

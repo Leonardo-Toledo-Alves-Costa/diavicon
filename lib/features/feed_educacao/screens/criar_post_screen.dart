@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,7 @@ import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/constants/app_colors.dart';
 import '../providers/criar_post_provider.dart';
 import '../models/feed_post_model.dart';
+import 'package:diavicon/features/planos/acesso_plano.dart';
 
 class CriarPostScreen extends ConsumerStatefulWidget {
   final FeedPostModel? postParaEditar;
@@ -229,7 +231,7 @@ class _CriarPostScreenState extends ConsumerState<CriarPostScreen> {
                                     children: [
                                       Container(
                                         width: 90, margin: const EdgeInsets.only(right: 12, top: 8),
-                                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover)),
+                                        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8), image: DecorationImage(image: StorageNetworkImage(url), fit: BoxFit.cover)),
                                       ),
                                       Positioned(
                                         top: 0, right: 4,
@@ -280,9 +282,17 @@ class _CriarPostScreenState extends ConsumerState<CriarPostScreen> {
                             contentPadding: EdgeInsets.zero,
                             activeColor: const Color(0xFFE87B1D),
                             title: Text('Post Patrocinado', style: GoogleFonts.lato(fontWeight: FontWeight.bold, fontSize: 16, color: const Color(0xFF333333))),
-                            subtitle: const Text('Aumenta significativamente a chance de aparecer no topo do feed educacional.'),
+                            subtitle: Text(
+                              planoCarregado(ref)?.permite(ModuloPlano.patrocinarFeed) == false
+                                  ? 'Seu plano não inclui publicações patrocinadas.'
+                                  : 'Aumenta significativamente a chance de aparecer no topo do feed.',
+                            ),
                             value: _isPatrocinado,
-                            onChanged: (val) => setState(() => _isPatrocinado = val),
+                            // Ligar exige tokens de publicidade no plano; desligar é sempre livre.
+                            onChanged: (val) async {
+                              if (val && !await verificarModuloPlano(context, ref, ModuloPlano.patrocinarFeed)) return;
+                              if (mounted) setState(() => _isPatrocinado = val);
+                            },
                           ),
                           
                           const SizedBox(height: 32),

@@ -1,8 +1,10 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:diavicon/core/widgets/foto_ensaio.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
 import '../../../../core/widgets/diavicon_menu_item.dart';
@@ -19,6 +21,7 @@ import '../models/ponto_arrancamento_model.dart';
 import '../repositories/arrancamento_repository.dart';
 import '../../ensaios_geral/widgets/info_tooltip_dialog.dart';
 import '../widgets/modal_ponto_leitura_arrancamento.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class PontoEnsaioArrancamentoScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -218,7 +221,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
 
   Future<void> _capturarFoto(bool isRegiao) async {
     final picker = ImagePicker();
-    final source = await showModalBottomSheet<ImageSource>(
+    final source = origemFotoNoNavegador ?? await showModalBottomSheet<ImageSource>(
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
@@ -257,6 +260,21 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
   }
 
   Future<void> _salvarGeral({bool mostrarFeedback = true}) async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _isLoading ? null : () => _salvarGeral(...)`) a partir do
+    // PRÓXIMO rebuild/frame. Num toque duplo rápido, a segunda chamada ainda
+    // acha o botão habilitado e entra aqui de novo antes do rebuild
+    // acontecer. Como o repositório decide INSERT vs UPDATE em
+    // `pontos_ensaios_geral` e `ponto_ensaio_arrancamento` a partir de
+    // `_pontoGeralIdAtual`/`_arrancamentoIdAtual` (nulos pra um ponto novo),
+    // as duas chamadas cairiam no ramo de INSERT e duplicariam as linhas.
+    // Setar `_isLoading` aqui é síncrono (setState muda o campo na hora, só
+    // o rebuild é adiado), então a segunda chamada já vê `_isLoading ==
+    // true` e sai antes de inserir de novo. Este método também é chamado
+    // (com `mostrarFeedback: false`) de dentro do fluxo de salvar uma
+    // leitura — a trava evita reentrância nesse caminho também.
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
     try {
       final model = PontoArrancamentoModel(
@@ -738,7 +756,7 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
                                     height: 48,
                                     color: Colors.grey.shade200,
                                     child: leitura.imagemEnsaio != null
-                                        ? Image.network(leitura.imagemEnsaio!, fit: BoxFit.cover)
+                                        ? ImagemStorage.network(leitura.imagemEnsaio!, fit: BoxFit.cover)
                                         : const Icon(Icons.image, color: Colors.grey),
                                   ),
                                 ),
@@ -872,35 +890,24 @@ class _PontoEnsaioArrancamentoScreenState extends ConsumerState<PontoEnsaioArran
     if (localFile != null) {
       img = FileImage(localFile);
     } else if (url != null && url.isNotEmpty) {
-      img = NetworkImage(url);
+      img = StorageNetworkImage(url);
     }
 
     return Column(
       children: [
         Text(titulo, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade600)),
         const SizedBox(height: 6),
-        GestureDetector(
-          onTap: onTap,
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                height: 150,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(12),
-                  image: img != null ? DecorationImage(image: img, fit: BoxFit.cover) : null,
-                ),
-                child: img == null ? const Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 40) : null,
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.edit_square, size: 20, color: Color(0xFF3E3E3D)),
-              ),
-            ],
+        // Proporção fixa em vez de altura fixa: a foto não achata em tela larga.
+        // Tocar continua capturando/trocando a foto.
+        FotoEnsaio(
+          imagem: img,
+          raio: 12,
+          aoTocar: onTap,
+          vazio: const Center(child: Icon(Icons.camera_alt_outlined, color: Colors.grey, size: 40)),
+          acao: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.edit_square, size: 20, color: Color(0xFF3E3E3D)),
           ),
         ),
       ],

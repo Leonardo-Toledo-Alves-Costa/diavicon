@@ -6,7 +6,7 @@ import 'package:image_picker/image_picker.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
-import '../repositories/ponto_inspecao_repository.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class PontoInspecaoDetalheScreen extends ConsumerStatefulWidget {
   final String pontoId;
@@ -312,7 +312,8 @@ class _ModalNovaFotoState extends State<ModalNovaFoto> {
 
   Future<void> _tirarFoto() async {
     final picker = ImagePicker();
-    final file = await picker.pickImage(source: ImageSource.camera);
+    // No navegador não há câmera: abre os arquivos do computador.
+    final file = await picker.pickImage(source: origemFotoNoNavegador ?? ImageSource.camera);
     if (file != null) setState(() => _foto = File(file.path));
   }
 
@@ -343,7 +344,7 @@ class _ModalNovaFotoState extends State<ModalNovaFoto> {
                 children: [
                   Container(
                     height: 150, width: double.infinity,
-                    decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(16), image: _foto != null ? DecorationImage(image: FileImage(_foto!), fit: BoxFit.cover) : null),
+                    decoration: BoxDecoration(color: Colors.grey.shade200, borderRadius: BorderRadius.circular(16), image: _foto != null ? DecorationImage(image: ResizeImage(FileImage(_foto!), width: 1080), fit: BoxFit.cover) : null),
                     child: _foto == null ? const Icon(Icons.camera_alt, color: Colors.grey, size: 40) : null,
                   ),
                   if (_foto != null)

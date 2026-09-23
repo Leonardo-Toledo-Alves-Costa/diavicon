@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui' as ui;
@@ -9,6 +10,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mask_text_input_formatter/mask_text_input_formatter.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:diavicon/core/widgets/foto_ensaio.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../../../../core/constants/app_colors.dart';
@@ -23,6 +25,8 @@ import '../repositories/resistividade_repository.dart';
 
 import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 import 'analise_pontos_resistividade.dart';
+import '../utils/classificacao_resistividade.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class PontoEnsaioResistividadeScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -126,16 +130,15 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
     }
   }
 
-  // --- Função Condicional de Risco (Cores e Textos) ---
-  // Edite as faixas de valores (10, 50, 100...) conforme a norma técnica aplicável.
+  // --- Risco de corrosao: fonte unica (ClassificacaoResistividade). ---
+  // A copia antiga devolvia o mesmo hex laranja pra quase todas as classes,
+  // entao o marcador no mapa nao mudava de cor com o risco.
   Map<String, dynamic> _avaliarRisco(double media) {
-    if (media <= 0) return {'texto': 'Pendente', 'cor': Colors.grey.shade500, 'hex': '#BDBDBD'};
-    if (media <= 15) return {'texto': 'Muito Alto', 'cor': const ui.Color.fromARGB(255, 107, 12, 5), 'hex': '#F44336'};
-    if (media <= 20) return {'texto': 'Alto', 'cor': const ui.Color.fromARGB(255, 253, 17, 17), 'hex': '#FF9800'};
-    if (media <= 55) return {'texto': 'Moderado', 'cor': const Color(0xFFFF9800), 'hex': '#FF9800'};
-    if (media <= 80) return {'texto': 'Baixo', 'cor': const ui.Color.fromARGB(255, 42, 176, 47), 'hex': '#FF9800'};
-    if (media > 80) return {'texto': 'Desprezível', 'cor': const ui.Color.fromARGB(255, 47, 98, 49), 'hex': '#FF9800'};
-    return {'texto': 'Desprezível', 'cor': const ui.Color.fromARGB(255, 47, 98, 49), 'hex': '#4CAF50'};
+    final classe = ClassificacaoResistividade.risco.classificar(media);
+    if (classe == null) return {'texto': 'Pendente', 'cor': Colors.grey.shade500, 'hex': '#BDBDBD'};
+    final argb = classe.corTexto.toARGB32();
+    final hex = '#${(argb & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
+    return {'texto': classe.texto, 'cor': classe.corTexto, 'hex': hex};
   }
 
   // --- Helpers de Tempo para o Gráfico ---
@@ -203,7 +206,7 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
   }
 
   Future<void> _capturarFoto(int referencia) async {
-    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+    final ImageSource? source = origemFotoNoNavegador ?? await showModalBottomSheet<ImageSource>(
       context: context,
       builder: (context) => SafeArea(
         child: Column(
@@ -412,6 +415,19 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
   }
 
   Future<void> _salvarDados() async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _isLoading ? null : _salvarDados`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer. Como
+    // o repositório decide INSERT vs UPDATE em `pontos_ensaios_geral` a
+    // partir de `_pontoGeralIdAtual` (nulo pra um ponto novo), as duas
+    // chamadas cairiam no ramo de INSERT e duplicariam a linha (além de
+    // duplicar as leituras em `ponto_ensaio_resistividade_leitura`). Setar
+    // `_isLoading` aqui é síncrono (setState muda o campo na hora, só o
+    // rebuild é adiado), então a segunda chamada já vê `_isLoading == true`
+    // e sai antes de inserir de novo.
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
     try {
       File? fotoGridComPontos = await _gerarImagemGridComPontos();
@@ -774,12 +790,24 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
     );
   }
 
+  // Em tela larga a caixa de altura fixa virava uma faixa fina e cortada.
+  // A largura fica limitada; no celular (mais estreito que isso) nada muda,
+  // então os pontos já marcados em campo continuam no mesmo lugar.
   Widget _buildInteractiveGrid() {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: _buildInteractiveGridConteudo(),
+      ),
+    );
+  }
+
+  Widget _buildInteractiveGridConteudo() {
     ImageProvider? gridImage;
     if (_fotoGridLocal != null) {
       gridImage = FileImage(_fotoGridLocal!);
     } else if (_urlFotoGrid != null && _urlFotoGrid!.isNotEmpty) {
-      gridImage = NetworkImage(_urlFotoGrid!);
+      gridImage = StorageNetworkImage(_urlFotoGrid!);
     }
 
     if (gridImage == null) {
@@ -1128,7 +1156,7 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
     if (fotoLocal != null) {
       imageProvider = FileImage(fotoLocal);
     } else if (urlRemota != null && urlRemota.isNotEmpty) {
-      imageProvider = NetworkImage(urlRemota);
+      imageProvider = StorageNetworkImage(urlRemota);
     }
 
     return Column(
@@ -1136,27 +1164,17 @@ class _PontoEnsaioResistividadeScreenState extends ConsumerState<PontoEnsaioResi
       children: [
         Text(titulo, style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500)),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(16),
-                  image: imageProvider != null ? DecorationImage(image: imageProvider, fit: BoxFit.cover) : null,
-                ),
-                child: imageProvider == null ? const Center(child: Icon(Icons.camera_alt, color: Colors.grey)) : null,
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
-                child: const Icon(Icons.edit_square, size: 20, color: Color(0xFF3E3E3D)),
-              )
-            ],
+        // Proporção fixa em vez de altura fixa: a foto não achata em tela larga.
+        // Tocar continua capturando/trocando a foto.
+        FotoEnsaio(
+          imagem: imageProvider,
+          raio: 16,
+          aoTocar: onTap,
+          vazio: const Center(child: Icon(Icons.camera_alt, color: Colors.grey)),
+          acao: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(8)),
+            child: const Icon(Icons.edit_square, size: 20, color: Color(0xFF3E3E3D)),
           ),
         ),
       ],

@@ -1,8 +1,10 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/ponto_arrancamento_model.dart';
+import 'package:diavicon/features/ensaios/ensaios_geral/repositories/ponto_geral_identidade.dart';
 
 final arrancamentoRepositoryProvider = Provider<ArrancamentoRepository>((ref) {
   return ArrancamentoRepository(Supabase.instance.client);
@@ -15,12 +17,9 @@ class ArrancamentoRepository {
 
   Future<String?> uploadImagem(File file, String folder) async {
     try {
-      final fileExt = file.path.split('.').last;
-      final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
-      final fullPath = 'ensaios/$folder/$fileName';
-
-      await _supabase.storage.from('projetos').upload(
-        fullPath,
+      // Tipo, nome e Content-Type decididos pelo app (ver upload_seguro.dart).
+      final fullPath = await _supabase.storage.from('projetos').enviarArquivoSeguro(
+        'ensaios/$folder',
         file,
         fileOptions: const FileOptions(cacheControl: '3600', upsert: true),
       );
@@ -188,6 +187,8 @@ class ArrancamentoRepository {
           'valor_resultado': tagTexto,
           'cor_resultado': tagCor,
         }).eq('id', pontoGeralId);
+        // Ponto antigo sem estrutura/tipo? Completa ao salvar (ver ponto_geral_identidade.dart).
+        await completarIdentidadePontoGeral(_supabase, pontoGeralId: pontoGeralId, elementoId: elementoId, tipoEnsaioId: tipoEnsaioId);
       }
 
       // 2. Salva na tabela específica de Arrancamento

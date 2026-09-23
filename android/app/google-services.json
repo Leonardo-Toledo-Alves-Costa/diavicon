@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "543683753412",
+    "project_id": "diavicon-mvp-v01",
+    "storage_bucket": "diavicon-mvp-v01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:543683753412:android:73d2e5669d9d19e0ba6091",
+        "android_client_info": {
+          "package_name": "br.com.asimovjr.diavicon"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCPfZM9vsfwBQQ4C6YnTpSnJttYPVSmjc0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

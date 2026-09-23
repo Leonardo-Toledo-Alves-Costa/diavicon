@@ -43,7 +43,10 @@ class CadastroR2Screen extends StatelessWidget {
     final extra = {...dadosCadastro, 'perfil': perfilKey};
     switch (perfilKey) {
       case 'engenheiro':
-        context.push('/register/cliente/gate', extra: extra);
+        // Direto para os planos: o questionário prévio ("Vamos conhecer
+        // melhor os seus ativos") saiu do fluxo — as respostas não eram
+        // salvas em lugar nenhum.
+        context.push('/register/cliente/planos', extra: extra);
         break;
       case 'proprietario':
         context.push('/empresa/gate', extra: extra);

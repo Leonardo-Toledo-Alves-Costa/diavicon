@@ -15,7 +15,10 @@ class UsuarioModel {
   final String? instagram;
   final DateTime? criadoEm;
   final bool? isAdminEmpresa;
-  final String? enderecoId; // Adicionei o campo enderecoId 
+  final bool? isAdmin;
+  final bool? convitePendente;
+  final String? enderecoId; // Adicionei o campo enderecoId
+  final bool? podeVisualizarEmpresa;
 
   UsuarioModel({
     required this.id,
@@ -34,7 +37,10 @@ class UsuarioModel {
     this.instagram,
     this.criadoEm,
     this.isAdminEmpresa,
-    this.enderecoId, // Inicializei o campo enderecoId 
+    this.isAdmin,
+    this.convitePendente,
+    this.enderecoId, // Inicializei o campo enderecoId
+    this.podeVisualizarEmpresa,
   });
 
   factory UsuarioModel.fromMap(Map<String, dynamic> map) {
@@ -54,28 +60,28 @@ class UsuarioModel {
       linkedin: map['linkedin'],
       instagram: map['instagram'],
       criadoEm: map['criado_em'] != null ? DateTime.parse(map['criado_em']) : null,
-      isAdminEmpresa: map['is_admin_empresa'], 
+      isAdminEmpresa: map['is_admin_empresa'],
+      isAdmin: map['is_admin'],
+      convitePendente: map['convite_pendente'],
       enderecoId: map['endereco_id'],
+      podeVisualizarEmpresa: map['pode_visualizar_empresa'],
     );
   }
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id,
       'nome': nome,
       'sobrenome': sobrenome,
-      'email': email,
+      // 'email' fica de fora: o banco não aceita mais UPDATE direto nessa
+      // coluna (migração 20260921130000). E-mail muda pelo Supabase Auth.
       'celular': celular,
       'cargo': cargo,
-      'empresa_id': empresaId,
       'setor_id': setorId,
-      'ativo': ativo ?? false,
       'titulo_principal': tituloPrincipal,
       'escolaridade': escolaridade,
       'foto_url': fotoUrl,
       'linkedin': linkedin,
       'instagram': instagram,
-      'is_admin_empresa': isAdminEmpresa ?? false, 
       'endereco_id': enderecoId, // Adicionei o campo enderecoId
     };
   }

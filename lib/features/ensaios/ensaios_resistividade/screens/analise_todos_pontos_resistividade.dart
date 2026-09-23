@@ -11,6 +11,7 @@ import '../../../../core/widgets/diavicon_menu_item.dart';
 import '../../../../core/widgets/menu_drawer_app_bar.dart';
 import '../models/analise_resistividade_model.dart';
 import '../providers/analise_todos_resistividade_provider.dart';
+import '../utils/classificacao_resistividade.dart';
 
 // Modelos utilitários para os Gráficos
 class ChartDataResistividade {
@@ -212,17 +213,21 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
     
     // CV
     List<double> todasLeituras = pontos.expand((p) => p.leituras).toList();
-    double dpGlobal = sqrt(todasLeituras.map((x) => pow(x - mediaGlobal, 2)).reduce((a,b) => a+b) / todasLeituras.length);
+    // Sem leituras ainda (pontos só criados): desvio zero em vez de erro.
+    double dpGlobal = todasLeituras.isEmpty ? 0 : sqrt(todasLeituras.map((x) => pow(x - mediaGlobal, 2)).reduce((a,b) => a+b) / todasLeituras.length);
     double cvGlobal = mediaGlobal > 0 ? (dpGlobal / mediaGlobal) * 100 : 0;
     
-    String statusRisco = mediaGlobal < 15 ? 'Muito Alto' : mediaGlobal < 20 ? 'Alto' : mediaGlobal < 55 ? 'Moderado' : mediaGlobal < 80 ? 'Baixo' : 'Desprezível';
-    Color corRisco = statusRisco == 'Muito Alto' ? const Color(0xFFFF4C4C) : statusRisco == 'Alto' ? const Color(0xFFFF4C4C) : statusRisco == 'Moderado' ? Colors.orange : Colors.green;
-
-    String statusTaxa = mediaGlobal < 5 ? 'Muito Alto' : mediaGlobal < 10 ? 'Alto' : mediaGlobal < 20 ? 'Moderado' : 'Baixo';
-    Color corTaxa = statusTaxa == 'Muito Alto' ? const Color(0xFFFF4C4C) : statusTaxa == 'Alto' ? const Color(0xFFFF4C4C) : statusTaxa == 'Moderado' ? Colors.orange : Colors.green;
-
-    String statusPermissividade = mediaGlobal < 12 ? 'Muito Alto' : mediaGlobal < 21 ? 'Alto' : mediaGlobal < 37 ? 'Moderado' : mediaGlobal < 254 ? 'Baixo' : 'Desprezível';
-    Color corPermissividade = statusPermissividade == 'Muito Alto' ? const Color(0xFFFF4C4C) : statusPermissividade == 'Alto' ? const Color(0xFFFF4C4C) : statusPermissividade == 'Moderado' ? Colors.orange : Colors.green;
+    // Fonte unica (ClassificacaoResistividade) — esta tela tinha copia
+    // propria, com a permissividade deslocada um nivel.
+    final classeRisco = ClassificacaoResistividade.risco.classificar(mediaGlobal);
+    final classeTaxa = ClassificacaoResistividade.taxa.classificar(mediaGlobal);
+    final classePermissividade = ClassificacaoResistividade.permissividade.classificar(mediaGlobal);
+    String statusRisco = classeRisco?.texto ?? '-';
+    Color corRisco = classeRisco?.corTexto ?? Colors.grey;
+    String statusTaxa = classeTaxa?.texto ?? '-';
+    Color corTaxa = classeTaxa?.corTexto ?? Colors.grey;
+    String statusPermissividade = classePermissividade?.texto ?? '-';
+    Color corPermissividade = classePermissividade?.corTexto ?? Colors.grey;
  
     // Agrupar p/ gráfico de colunas
     Map<String, double> dadosAgrupados = {};
@@ -536,6 +541,8 @@ class _AnaliseResistividadeScreenState extends ConsumerState<AnaliseResistividad
   // ABA 3: ESTATÍSTICA (BoxPlot e Radio)
   // ==========================================
   Widget _buildAbaEstatisticas(List<AnaliseResistividadePonto> pontos) {
+    // Filtro sem nenhum ponto: o reduce abaixo lançaria erro (tela quebrada).
+    if (pontos.isEmpty) return const SizedBox();
     double maxGlobal = pontos.map((p) => p.leituras.isEmpty ? 0.0 : p.leituras.reduce(max)).reduce(max);
     Set<String> tiposUnicos = pontos.map((p) => p.tipoElemento).toSet();
     

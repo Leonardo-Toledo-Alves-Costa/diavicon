@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:math' as math;
 import 'dart:ui' as ui;
@@ -877,7 +879,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
       _isLoadingPdf = true;
     });
     try {
-      final req = await HttpClient().getUrl(Uri.parse(widget.arquivoUrl));
+      final req = await HttpClient().getUrl(Uri.parse(await StorageUrls.assinar(widget.arquivoUrl)));
       final res = await req.close();
       final bytes = await consolidateHttpClientResponseBytes(res);
       final doc = await PdfDocument.openData(bytes);
@@ -950,7 +952,7 @@ class _PlantaInterativaState extends ConsumerState<_PlantaInterativa> {
                     color: AppColors.greyMedium,
                   ),
               ] else
-                Image.network(
+                ImagemStorage.network(
                   widget.arquivoUrl,
                   frameBuilder:
                       (context, child, frame, wasSynchronouslyLoaded) {

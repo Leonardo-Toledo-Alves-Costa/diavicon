@@ -40,8 +40,18 @@ class MainBottomBarPainter extends CustomPainter {
       ..lineTo(0, size.height)
       ..close();
 
-    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.12), 12, false);
+    // Sombra sozinha é sutil demais pra marcar o relevo em algumas telas —
+    // some quando o dispositivo renderiza a sombra fraca, deixando a barra
+    // parecer um retângulo liso sem contorno. Um traço fino resolve isso
+    // independentemente da sombra.
+    final contorno = Paint()
+      ..color = Colors.black.withValues(alpha: 0.08)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2;
+
+    canvas.drawShadow(path, Colors.black.withValues(alpha: 0.18), 12, false);
     canvas.drawPath(path, paint);
+    canvas.drawPath(path, contorno);
   }
 
   @override

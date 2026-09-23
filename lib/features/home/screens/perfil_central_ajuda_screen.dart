@@ -1,9 +1,31 @@
 import 'package:diavicon/core/constants/app_colors.dart';
+import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:diavicon/features/app_shell/widgets/perfil_header.dart';
+import 'package:diavicon/features/legal/documentos_legais.dart';
+import 'package:diavicon/features/legal/screens/documento_legal_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
+import 'package:url_launcher/url_launcher.dart';
 
 class PerfilCentralAjuda extends StatelessWidget {
   const PerfilCentralAjuda({super.key});
+
+  void _abrirDocumento(BuildContext context, DocumentoLegal doc) {
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => DocumentoLegalScreen(documento: doc)));
+  }
+
+  Future<void> _suporte(BuildContext context) async {
+    final uri = Uri(scheme: 'mailto', path: DocumentosLegais.emailPrivacidade, query: 'subject=${Uri.encodeComponent('Suporte DIAVICON')}');
+    var abriu = false;
+    try {
+      abriu = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (abriu || !context.mounted) return;
+    await Clipboard.setData(const ClipboardData(text: DocumentosLegais.emailPrivacidade));
+    if (context.mounted) {
+      DiaviconAlerts.show(context, 'E-mail copiado', 'Escreva para ${DocumentosLegais.emailPrivacidade}.');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,26 +55,20 @@ class PerfilCentralAjuda extends StatelessWidget {
                       const Center(
                         child: Text(
                           'Central de ajuda',
-                          style: TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF3E3E3D),
-                            fontFamily: 'Lato',
-                          ),
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600, color: Color(0xFF3E3E3D), fontFamily: 'Lato'),
                         ),
                       ),
                       const SizedBox(height: 25),
-                      const _HelpItem(title: 'Versão'),
+                      _HelpItem(title: 'Política de privacidade', onTap: () => _abrirDocumento(context, DocumentoLegal.privacidade)),
                       const SizedBox(height: 25),
-                      _HelpItem(title: 'Política de privacidade', onTap: () {}),
+                      _HelpItem(title: 'Termos de uso', onTap: () => _abrirDocumento(context, DocumentoLegal.termos)),
                       const SizedBox(height: 25),
-                      _HelpItem(title: 'Licenças de terceiros', onTap: () {}),
+                      _HelpItem(
+                        title: 'Licenças de terceiros',
+                        onTap: () => showLicensePage(context: context, applicationName: 'DIAVICON'),
+                      ),
                       const SizedBox(height: 25),
-                      _HelpItem(title: 'Termos de uso', onTap: () {}),
-                      const SizedBox(height: 25),
-                      _HelpItem(title: 'Regras da plataforma', onTap: () {}),
-                      const SizedBox(height: 25),
-                      _HelpItem(title: 'Suporte', onTap: () {}),
+                      _HelpItem(title: 'Suporte e privacidade', subtitle: DocumentosLegais.emailPrivacidade, onTap: () => _suporte(context)),
                     ],
                   ),
                 ),
@@ -67,14 +83,13 @@ class PerfilCentralAjuda extends StatelessWidget {
 
 class _HelpItem extends StatelessWidget {
   final String title;
+  final String? subtitle;
   final VoidCallback? onTap;
 
-  const _HelpItem({required this.title, this.onTap});
+  const _HelpItem({required this.title, this.subtitle, this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final hasAction = onTap != null;
-
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -83,21 +98,16 @@ class _HelpItem extends StatelessWidget {
         child: Row(
           children: [
             Expanded(
-              child: Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF3E3E3D),
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(title, style: const TextStyle(fontSize: 16, color: Color(0xFF3E3E3D), fontWeight: FontWeight.bold)),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 2),
+                    child: Text(subtitle!, style: const TextStyle(fontSize: 13, color: Color(0xFF6B6B6B))),
+                  ),
+              ]),
             ),
-            if (hasAction)
-              const Icon(
-                Icons.open_in_new_outlined,
-                color: AppColors.primary,
-                size: 20,
-              ),
+            if (onTap != null) const Icon(Icons.open_in_new_outlined, color: AppColors.primary, size: 20),
           ],
         ),
       ),

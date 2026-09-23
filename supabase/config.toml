@@ -1,7 +1,7 @@
 
 [functions.convidar-funcionario]
 enabled = true
-verify_jwt = false
+verify_jwt = true
 import_map = "./functions/convidar-funcionario/deno.json"
 # Uncomment to specify a custom file path to the entrypoint.
 # Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
@@ -9,3 +9,45 @@ entrypoint = "./functions/convidar-funcionario/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/convidar-funcionario/*.html" ]
+
+[auth]
+additional_redirect_urls = ["diavicon://login-callback", "diavicon://nova-senha"]
+# Política de senha (vale para cadastro e troca). Igual à validação do app
+# em lib/core/utils/validators/validators_cadastro.dart.
+minimum_password_length = 8
+password_requirements = "letters_digits"
+
+# Limites de requisição do Auth, por IP, a cada 5 minutos (login/cadastro e
+# verificação de código). É o que barra força bruta
+# feita direto na API, sem passar pelo app. Ver SEGURANCA_LOGIN_E_ENTRADAS.md.
+[auth.rate_limit]
+sign_in_sign_ups = 30
+token_verifications = 30
+token_refresh = 150
+
+# CAPTCHA no login/cadastro/recuperação. NÃO habilitar antes de o app
+# enviar o captchaToken — senão todo login passa a falhar. Ver o passo 3 de
+# SEGURANCA_LOGIN_E_ENTRADAS.md.
+# [auth.captcha]
+# enabled = true
+# provider = "turnstile"
+# secret = "env(SUPABASE_AUTH_CAPTCHA_SECRET)"
+
+[auth.email]
+enable_confirmations = true
+# Troca de senha exige login recente (sessão roubada não troca a senha).
+secure_password_change = true
+# Intervalo mínimo entre e-mails para o mesmo endereço.
+max_frequency = "60s"
+
+
+# E-mail de confirmação de cadastro (texto em português, com a marca).
+# Depois de confirmar, o Supabase leva para a página email-confirmado.html do
+# web app — inclua o endereço dela em additional_redirect_urls acima e no
+# painel (Authentication > URL Configuration > Redirect URLs).
+[auth.email.template.confirmation]
+subject = "Confirme seu cadastro na Diavicon"
+content_path = "./supabase/templates/confirmar_cadastro.html"
+[functions.auth-operations]
+verify_jwt = true
+entrypoint = "./functions/auth-operations/index.ts"

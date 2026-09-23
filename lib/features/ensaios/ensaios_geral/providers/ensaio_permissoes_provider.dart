@@ -23,7 +23,7 @@ class EnsaioPermissoes {
 }
 
 /// Resolve as permissões de um ponto de ensaio a partir de quem o criou
-/// (`pontos_ensaios_geral.criado_por` -> `usuarios.empresa_id`) e da empresa
+/// (`pontos_ensaios_geral.empresa_autora_id`) e da empresa
 /// gestora do projeto (`projetos.empresa_gestora_id`), comparando com a
 /// empresa do usuário logado.
 ///
@@ -41,15 +41,12 @@ final ensaioPermissoesProvider = FutureProvider.family.autoDispose<EnsaioPermiss
     final minhaEmpresaId = meuUsuario?['empresa_id'] as String?;
     if (minhaEmpresaId == null) return EnsaioPermissoes.somenteVisualizar;
 
-    final ponto = await supabase.from('pontos_ensaios_geral').select('criado_por, projeto_id').eq('id', pontoGeralId).maybeSingle();
+    final ponto = await supabase.from('pontos_ensaios_geral').select('empresa_autora_id, projeto_id').eq('id', pontoGeralId).maybeSingle();
     if (ponto == null) return EnsaioPermissoes.somenteVisualizar;
 
-    String? empresaCriadoraId;
-    final criadoPor = ponto['criado_por'] as String?;
-    if (criadoPor != null) {
-      final criador = await supabase.from('usuarios').select('empresa_id').eq('id', criadoPor).maybeSingle();
-      empresaCriadoraId = criador?['empresa_id'] as String?;
-    }
+
+    final empresaCriadoraId = ponto['empresa_autora_id'] as String?;
+
 
     String? empresaGestoraId;
     final projetoId = ponto['projeto_id'] as String?;

@@ -1,9 +1,12 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
 
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/status_badge.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../ensaios/ensaios_geral/progresso/progresso_ensaios.dart';
 
 class ProjectCard extends StatelessWidget {
   final String title;
@@ -13,6 +16,9 @@ class ProjectCard extends StatelessWidget {
   final String imageUrl;
   final List<String> teamAvatars;
   final String? empresaFotoUrl;
+  // Com o id, o card calcula o progresso real (ensaios realizados ÷
+  // contratados da empresa); sem ele usa [progress].
+  final String? projetoId;
 
   const ProjectCard({
     super.key,
@@ -23,6 +29,7 @@ class ProjectCard extends StatelessWidget {
     required this.imageUrl,
     required this.teamAvatars,
     this.empresaFotoUrl,
+    this.projetoId,
   });
 
   @override
@@ -69,7 +76,7 @@ class ProjectCard extends StatelessWidget {
                   // AQUI ENTRA A LOGO DA EMPRESA GESTORA
                   child: ClipOval(
                     child: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty
-                        ? Image.network(
+                        ? ImagemStorage.network(
                             empresaFotoUrl!,
                             height: 32,
                             width: 32,
@@ -120,31 +127,14 @@ class ProjectCard extends StatelessWidget {
                 const SizedBox(height: 12),
 
                 // ── Barra de Progresso e Porcentagem (Linha Inferior) ──────
-                Row(
-                  children: [
-                    Expanded(
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(10),
-                        child: LinearProgressIndicator(
-                          value: progress,
-                          backgroundColor: Colors.grey.shade200,
-                          color: _getProgressColor(),
-                          minHeight: 8,
-                        ),
-                      ),
+                if (projetoId == null)
+                  _linhaProgresso(progress)
+                else
+                  Consumer(
+                    builder: (context, ref, _) => _linhaProgresso(
+                      ref.watch(progressoProjetoProvider(projetoId!)).value?.fracao ?? 0,
                     ),
-                    const SizedBox(width: 16),
-                    // O valor percentual na direita
-                    Text(
-                      '${(progress * 100).toInt()}%',
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textDark,
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
               ],
             ),
           ),
@@ -167,7 +157,7 @@ class ProjectCard extends StatelessWidget {
     const double imgHeight = 110;
 
     if (imageUrl.startsWith('http')) {
-      return Image.network(
+      return ImagemStorage.network(
         imageUrl,
         height: imgHeight,
         width: double.infinity,
@@ -231,6 +221,34 @@ class ProjectCard extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _linhaProgresso(double valor) {
+    return Row(
+      children: [
+        Expanded(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: valor,
+              backgroundColor: Colors.grey.shade200,
+              color: _getProgressColor(),
+              minHeight: 8,
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        // O valor percentual na direita
+        Text(
+          '${(valor * 100).floor()}%',
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w900,
+            color: AppColors.textDark,
+          ),
+        ),
+      ],
     );
   }
 
@@ -314,7 +332,7 @@ class ProjectCard extends StatelessWidget {
           radius: radius,
           backgroundColor: AppColors.greyVeryLight,
           backgroundImage: isNetwork
-              ? NetworkImage(imageUrl)
+              ? StorageNetworkImage(imageUrl)
               : const AssetImage('assets/images/user.png') as ImageProvider,
         ),
       ),

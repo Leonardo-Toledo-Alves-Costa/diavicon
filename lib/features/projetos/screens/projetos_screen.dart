@@ -103,6 +103,7 @@ class _ProjetosScreenState extends ConsumerState<ProjetosScreen> {
                                   child: ProjectCard(
                                     title: projeto.nome,
                                     progress: projeto.progresso,
+                                    projetoId: projeto.id,
                                     status: projeto.statusBadge,
                                     priority: projeto.prioridadeNome,
                                     imageUrl: projeto.imageUrl,

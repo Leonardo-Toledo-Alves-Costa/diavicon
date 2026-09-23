@@ -166,14 +166,14 @@ void main() {
           path: AppPaths.companyRegistration,
           auth: activeWithCompany,
         ),
-        AppPaths.projects,
+        isNull,
       );
       expect(
         appRouteRedirect(
           path: AppPaths.companyWelcome,
           auth: activeWithCompany,
         ),
-        AppPaths.projects,
+        isNull,
       );
     });
 

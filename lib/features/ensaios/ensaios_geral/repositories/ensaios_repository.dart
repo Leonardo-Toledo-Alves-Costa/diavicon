@@ -1,4 +1,5 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../models/area_ensaio.dart';
 import '../models/ensaio_resumo_model.dart';
 
 class EnsaiosRepository {
@@ -22,6 +23,7 @@ class EnsaiosRepository {
   /// desenho/marcação na planta — o quantitativo contratado é sempre
   /// armazenado em `ensaios_contratados`, nunca na região.
   Future<void> salvarEnsaioNaRegiao({
+    required String projetoId,
     required String estruturaId,
     required String empresaId,
     required String regiaoId,
@@ -38,6 +40,7 @@ class EnsaiosRepository {
         .from('ensaios_contratados')
         .select('id')
         .eq('regiao_id', regiaoId)
+        .eq('projeto_id', projetoId)
         .eq('tipo_ensaio_id', tipoEnsaioId)
         .maybeSingle();
 
@@ -48,6 +51,7 @@ class EnsaiosRepository {
           .eq('id', contratoExistente['id']);
     } else {
       await _supabase.from('ensaios_contratados').insert({
+        'projeto_id': projetoId,
         'estrutura_id': estruturaId,
         'empresa_id': empresaId,
         'tipo_ensaio_id': tipoEnsaioId,
@@ -65,7 +69,7 @@ class EnsaiosRepository {
       // 1. Busca os tipos de ensaio disponíveis
       final tiposResp = await _supabase
           .from('tipos_ensaio')
-          .select('id, nome, icone_path')
+          .select('id, nome, icone_path, area')
           .order('nome', ascending: true);
 
       if (tiposResp.isEmpty) return [];
@@ -74,7 +78,8 @@ class EnsaiosRepository {
       final contratadosResp = await _supabase
           .from('ensaios_contratados')
           .select('tipo_ensaio_id, quantidade')
-          .eq('estrutura_id', estruturaId);
+          .eq('estrutura_id', estruturaId)
+          .eq('projeto_id', projetoId);
 
       // 3. Busca pontos já realizados de forma segura[cite: 2]
       final realizadosValidadosResp = await _supabase
@@ -116,7 +121,7 @@ class EnsaiosRepository {
       for (var t in tiposResp) {
         final id = t['id']?.toString() ?? '';
         final nome = t['nome']?.toString() ?? 'Ensaio sem nome';
-        final iconePath = t['icone_path']?.toString();
+        final iconePath = t['icone_path']?.toString().trim();
 
         final contratadas = mapContratados[id] ?? 0;
 
@@ -140,6 +145,7 @@ class EnsaiosRepository {
                 : 'assets/images/ensaios/default.png',
             contratadas: contratadas,
             realizadas: realizadas,
+            area: AreaEnsaio.deBanco(t['area']),
           ),
         );
       }

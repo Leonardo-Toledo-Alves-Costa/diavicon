@@ -1,3 +1,4 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
 import 'dart:io';
 
 import 'package:diavicon/features/projetos/models/projeto_model.dart';
@@ -131,6 +132,16 @@ class ProjectRepository {
       throw StateError('Sessão expirada. Faça login novamente.');
     }
 
+    final actor = await _supabase
+        .from('usuarios')
+        .select('empresa_id')
+        .eq('id', userId)
+        .single();
+    final managerCompanyId = actor['empresa_id']?.toString();
+    if (managerCompanyId == null || managerCompanyId.isEmpty) {
+      throw StateError('Usuário sem empresa gestora vinculada.');
+    }
+
     _validateProjectDraft(
       nome: nome,
       empresaClienteId: empresaClienteId,
@@ -140,8 +151,6 @@ class ProjectRepository {
     );
 
     final uploadedPaths = <String>[];
-    var rpcStarted = false;
-
     try {
       _UploadedProjectImage? projectImage;
       _UploadedProjectImage? clientImage;
@@ -164,33 +173,26 @@ class ProjectRepository {
         uploadedPaths.add(clientImage.path);
       }
 
-      rpcStarted = true;
-      final result = await _supabase.rpc(
+      // Project creation, team membership, client link/invite and
+      // notifications must commit together. The RPC also performs the
+      // manager and client-admin checks under the caller's authenticated JWT.
+      final response = await _supabase.rpc(
         'create_project',
         params: {
           'p_name': nome.trim(),
           'p_client_company_id': isNovoCliente ? null : empresaClienteId,
-          'p_new_client_email': isNovoCliente ? emailNovoCliente?.trim() : null,
-          'p_new_client_name': isNovoCliente ? nomeNovoCliente?.trim() : null,
-          // The RPC receives trusted storage object paths and constructs the
-          // public URLs itself after checking storage.objects.
+          'p_new_client_email': isNovoCliente ? emailNovoCliente!.trim() : null,
+          'p_new_client_name': isNovoCliente ? nomeNovoCliente!.trim() : null,
           'p_image_url': projectImage?.path,
           'p_new_client_image_url': clientImage?.path,
         },
       );
-
-      final projectId = result?.toString();
-      if (projectId == null || projectId.isEmpty || projectId == 'null') {
-        throw StateError('O banco não retornou o identificador do projeto.');
+      if (response == null || response.toString().isEmpty) {
+        throw StateError('O servidor não retornou o projeto criado.');
       }
-      return projectId;
+      return response.toString();
     } catch (error) {
-      // A PostgREST error guarantees that the database transaction rolled
-      // back. Other errors after dispatch may be an ambiguous timeout after
-      // commit, so deleting the files could break a project that was created.
-      if (!rpcStarted || error is PostgrestException) {
-        await _removeUploadedFiles(uploadedPaths);
-      }
+      await _removeUploadedFiles(uploadedPaths);
       rethrow;
     }
   }
@@ -216,7 +218,6 @@ class ProjectRepository {
 
     _UploadedProjectImage? uploadedImage;
     String? previousImagePath;
-    var rpcStarted = false;
 
     try {
       if (novaImagem != null) {
@@ -242,8 +243,7 @@ class ProjectRepository {
         );
       }
 
-      rpcStarted = true;
-      final updatedProjectId = await _supabase.rpc(
+      final updated = await _supabase.rpc(
         'update_project',
         params: {
           'p_project_id': projetoId,
@@ -254,8 +254,7 @@ class ProjectRepository {
           'p_image_url': uploadedImage?.path,
         },
       );
-
-      if (updatedProjectId?.toString() != projetoId) {
+      if (updated == null || updated.toString().isEmpty) {
         throw StateError(
           'Projeto não encontrado ou usuário sem permissão para editá-lo.',
         );
@@ -266,8 +265,7 @@ class ProjectRepository {
         await _removeUploadedFiles([previousImagePath]);
       }
     } catch (error) {
-      if (uploadedImage != null &&
-          (!rpcStarted || error is PostgrestException)) {
+      if (uploadedImage != null) {
         await _removeUploadedFiles([uploadedImage.path]);
       }
       rethrow;
@@ -280,13 +278,23 @@ class ProjectRepository {
   /// direto — mas NÃO apaga as estruturas vinculadas em si (isso é uma ação
   /// separada e explícita, ver `EstruturaRepository.excluirEstrutura`).
   Future<void> deleteProject(String projectId) async {
-    final deletedProjectId = await _supabase.rpc(
-      'delete_project',
-      params: {'p_project_id': projectId},
-    );
-    if (deletedProjectId?.toString() != projectId) {
-      throw StateError('O projeto não foi excluído.');
+    await _supabase.rpc('delete_project', params: {'p_project_id': projectId});
+  }
+
+  /// Pré-visualização pro sanfonado "o que mais será excluído junto" antes de
+  /// confirmar a exclusão do projeto: não toca estrutura/elementos (só o
+  /// vínculo projeto_estruturas some), mas apaga todos os pontos de ensaio
+  /// ligados a ele — ver a migration de ON DELETE CASCADE em
+  /// pontos_ensaios_geral.projeto_id.
+  Future<Map<String, List<String>>> buscarResumoExclusao(String projectId) async {
+    final res = await _supabase.from('pontos_ensaios_geral').select('nome_ponto, tipo_ensaio').eq('projeto_id', projectId);
+    final categorias = <String, List<String>>{};
+    for (final row in (res as List)) {
+      final tipo = row['tipo_ensaio']?.toString() ?? 'Ensaio';
+      final nome = row['nome_ponto']?.toString() ?? 'Sem nome';
+      categorias.putIfAbsent('Pontos de $tipo', () => []).add(nome);
     }
+    return categorias;
   }
 
   List<ProjetoModel> _mapProjects(Object response, String companyId) {
@@ -301,15 +309,11 @@ class ProjectRepository {
     required String userId,
     required String directory,
   }) async {
-    final rawExtension = image.path.split('.').last.toLowerCase();
-    final extension = RegExp(r'^[a-z0-9]{2,5}$').hasMatch(rawExtension)
-        ? rawExtension
-        : 'jpg';
-    final timestamp = DateTime.now().microsecondsSinceEpoch;
-    final storagePath = 'users/$userId/$directory/$timestamp.$extension';
-
+    // Tipo, nome e Content-Type decididos pelo app (ver upload_seguro.dart).
+    // O caminho continua users/<uid>/<pasta>/<arquivo>, exigido pelas
+    // políticas do bucket e por _ownedProjectImagePath.
     final bucket = _supabase.storage.from('projetos');
-    await bucket.upload(storagePath, image);
+    final storagePath = await bucket.enviarArquivoSeguro('users/$userId/$directory', image);
     return _UploadedProjectImage(path: storagePath);
   }
 

@@ -13,6 +13,7 @@ import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../core/widgets/custom_dropdown.dart';
 import '../../../core/widgets/diavicon_alerts.dart';
+import '../../../core/widgets/resumo_exclusao_accordion.dart';
 
 import '../models/estrutura_model.dart';
 import '../widgets/proprietario_vinculo_section.dart';
@@ -25,6 +26,10 @@ import '../../planos/providers/tokens_estrutura_provider.dart';
 import '../../projetos/providers/projetos_provider.dart';
 import '../providers/estrutura_provider.dart';
 import '../providers/estruturas_dropdown_provider.dart';
+import '../../gastos/providers/gastos_providers.dart' show ehAdminEmpresaProvider;
+import '../../../core/widgets/custom_dropdown_with_add.dart';
+import '../widgets/novo_item_dropdown_modal.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 
 class EstruturaInformacaoScreen extends ConsumerStatefulWidget {
@@ -257,10 +262,19 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
   }
 
   Future<void> _excluirEstrutura() async {
+    Map<String, List<String>> resumo = const {};
+    try {
+      resumo = await ref.read(estruturaRepositoryProvider).buscarResumoExclusao(widget.estrutura.id);
+    } catch (_) {
+      // Segue sem o resumo se a busca falhar — não trava a exclusão em si.
+    }
+    if (!mounted) return;
+
     final confirmar = await showConfirmarExclusaoDialog(
       context: context,
       titulo: 'Excluir Estrutura',
       mensagem: 'Deseja realmente excluir "${widget.estrutura.nome}" e todos os elementos estruturais e ensaios vinculados a ela? Esta ação não poderá ser desfeita.',
+      extraContent: ResumoExclusaoAccordion(itensPorCategoria: resumo),
     );
     if (confirmar != true || !mounted) return;
 
@@ -440,7 +454,10 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
 
   // Helper para criar Itens do Dropdown e garantir que o valor selecionado sempre exista na lista
   List<DropdownMenuItem<String>> _buildDropdownItems(List<String> options, String? selectedValue) {
-    final List<String> safeOptions = List.from(options);
+    // Sem repetidos: a lista junta padrão DIAVICON + empresa e o valor é o
+    // nome, então "Industrial" nas duas virava dois itens iguais e o
+    // DropdownButton derrubava a tela.
+    final List<String> safeOptions = options.toSet().toList();
     
     // Se a opção que veio do banco não existir na lista atual (ex: foi deletada), adicionamos ela temporariamente
     if (selectedValue != null && selectedValue.isNotEmpty && !safeOptions.contains(selectedValue)) {
@@ -510,6 +527,37 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
         ],
       ),
     );
+  }
+
+  /// Cria um conjunto e já o deixa escolhido na estrutura.
+  ///
+  /// A lista desta tela trabalha com o NOME do conjunto (é ele que vai no
+  /// dropdown), e a janela de criação devolve o id — então o nome é lido de
+  /// volta do banco antes de selecionar.
+  Future<void> _criarConjunto() async {
+    final novoId = await showDialog<String>(
+      context: context,
+      builder: (_) => const NovoItemDropdownModal(
+        titulo: 'Conjunto Estrutural',
+        nomeTabela: 'conjuntos_estruturais',
+      ),
+    );
+    if (novoId == null || !mounted) return;
+
+    try {
+      final linha = await Supabase.instance.client
+          .from('conjuntos_estruturais')
+          .select('nome')
+          .eq('id', novoId)
+          .single();
+      ref.invalidate(conjuntosEstruturaisProvider);
+      if (!mounted) return;
+      setState(() => _conjuntoSelecionado = linha['nome']?.toString());
+      _checarSeSujou();
+    } catch (_) {
+      // O conjunto foi criado; só não deu para selecioná-lo sozinho.
+      ref.invalidate(conjuntosEstruturaisProvider);
+    }
   }
 
   @override
@@ -756,7 +804,9 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                             opacity: canEdit ? 1.0 : 0.6,
                             child: Column(
                               children: [
-                                CustomDropdown<String>(
+                                // Com "+" para criar um conjunto sem sair da tela — só para
+                                // administradores, como no cadastro da estrutura.
+                                CustomDropdownWithAdd<String>(
                                   label: 'Conjunto Estrutural',
                                   value: _conjuntoSelecionado,
                                   items: _buildDropdownItems(listaConjuntos, _conjuntoSelecionado),
@@ -764,6 +814,11 @@ class _EstruturaInformacaoScreenState extends ConsumerState<EstruturaInformacaoS
                                     if (val != null) setState(() => _conjuntoSelecionado = val);
                                     _checarSeSujou();
                                   },
+                                  isAddEnabled: ref.watch(ehAdminEmpresaProvider),
+                                  tooltip: ref.watch(ehAdminEmpresaProvider)
+                                      ? null
+                                      : 'Só administradores da empresa criam conjuntos estruturais.',
+                                  onAddPressed: _criarConjunto,
                                 ),
                                 SizedBox(height: _fieldSpacing),
                                 CustomDropdown<String>(

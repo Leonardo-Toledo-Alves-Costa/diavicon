@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,6 +7,7 @@ import 'package:diavicon/routes/app_routes.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/auth_layout.dart';
+import '../../planos/widgets/carrossel_boas_vindas_planos.dart';
 
 // 🔥 Importe os provedores para ter acesso à memória e ao usuário real
 import '../../auth/providers/auth_provider.dart';
@@ -52,7 +54,9 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
     const double bubbleOffsetX = -15.0;
     const double bubbleOffsetY = -80.0;
 
-    return AuthLayout(
+    // A empresa acabou de ser criada: abre o carrossel dos planos por cima.
+    return _AbreCarrosselUmaVez(
+      child: AuthLayout(
       child: Container(
         margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
@@ -236,15 +240,44 @@ class EmpresaBemVindaScreen extends ConsumerWidget {
           ],
         ),
       ),
+      ),
     );
   }
 
   ImageProvider? _getImagemPerfil(String? path) {
     if (path == null || path.isEmpty) return null;
     if (path.startsWith('http')) {
-      return NetworkImage(path);
+      return StorageNetworkImage(path);
     } else {
       return FileImage(File(path));
     }
   }
+}
+
+/// Abre o carrossel de boas-vindas dos planos uma vez, logo que a tela de
+/// boas-vindas aparece (ela só é aberta depois de criar a empresa). Não
+/// repete se a tela for reconstruída na mesma sessão.
+class _AbreCarrosselUmaVez extends StatefulWidget {
+  final Widget child;
+  const _AbreCarrosselUmaVez({required this.child});
+
+  static bool _jaMostrado = false;
+
+  @override
+  State<_AbreCarrosselUmaVez> createState() => _AbreCarrosselUmaVezState();
+}
+
+class _AbreCarrosselUmaVezState extends State<_AbreCarrosselUmaVez> {
+  @override
+  void initState() {
+    super.initState();
+    if (_AbreCarrosselUmaVez._jaMostrado) return;
+    _AbreCarrosselUmaVez._jaMostrado = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) mostrarCarrosselBoasVindasPlanos(context);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

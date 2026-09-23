@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/widgets/diavicon_alerts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -6,20 +7,28 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; 
 
 import '../../../core/constants/app_colors.dart';
+import '../../../core/models/autor_exibicao.dart';
+import '../../../core/widgets/autoria_badge.dart';
 import '../../../core/widgets/compact_button.dart';
 import '../../../core/widgets/confirmar_exclusao_dialog.dart';
 import '../../../core/widgets/custom_appbar.dart';
 import '../../../core/widgets/diavicon_menu_item.dart';
 import '../../../core/widgets/menu_drawer_app_bar.dart';
+import '../../../core/widgets/resumo_exclusao_accordion.dart';
 import '../../auth/providers/auth_provider.dart';
+import '../../dashboards_bi/models/dashboard_modelo_model.dart';
+import '../../dashboards_bi/screens/dashboard_screen.dart';
 import '../../ensaios/ensaios_geral/providers/ensaios_provider.dart';
 import '../../ensaios/ensaios_geral/screens/pontos_ensaio_screen.dart';
 import '../../ensaios/ensaios_geral/widgets/novo_ponto_ensaio_modal.dart';
 import '../../ensaios/ensaios_geral/widgets/selecionar_tipo_ensaio_modal.dart';
+import '../../ensaios/ensaios_inspecao_visual/screens/inspecao_visual_lista_screen.dart';
 import '../../projetos/providers/projetos_provider.dart';
 import '../models/elemento_model.dart';
 import '../providers/elemento_provider.dart';
 import 'elemento_form_screen.dart';
+import '../../ensaios/ensaios_geral/repositories/relatorios_item_repository.dart';
+import '../../ensaios/ensaios_geral/screens/relatorios_item_screen.dart';
 
 // =========================================================================
 // PROVIDER DE PROGRESSO (Mapeamento de Realizados vs Contratados por Região)
@@ -211,6 +220,31 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
     );
 
     if (ensaioEscolhido != null && mounted) {
+      final nomeEnsaioLower = (ensaioEscolhido['nome']?.toString() ?? '').toLowerCase();
+      final ehInspecaoVisual = nomeEnsaioLower.contains('inspeção visual') || nomeEnsaioLower.contains('inspecao visual');
+
+      // Inspeção Visual não é escopada por elemento (é por estrutura/local,
+      // igual ao fluxo de estrutura_ensaios_screen.dart) — o modal
+      // NovoPontoEnsaioModal exige um elemento selecionado e não tem rota
+      // pra esse ensaio em EnsaioRoutesMap, então cai num "não
+      // implementado". Direciona direto pra tela de Inspeção Visual.
+      if (ehInspecaoVisual) {
+        if (widget.projetoId == null || widget.estruturaId == null) return;
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => InspecaoVisualListaScreen(
+              projetoId: widget.projetoId!,
+              projetoNome: '',
+              estruturaNome: '',
+              estruturaId: widget.estruturaId!,
+              iconeEnsaio: ensaioEscolhido['icone']?.toString() ?? '',
+            ),
+          ),
+        );
+        return;
+      }
+
       final realTipoId = await ref.read(
         buscarIdTipoEnsaioProvider(ensaioEscolhido['nome']).future,
       );
@@ -334,10 +368,19 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
   Future<void> _excluirElemento() async {
     if (widget.elementoId == null) return;
 
+    Map<String, List<String>> resumo = const {};
+    try {
+      resumo = await ref.read(elementoRepositoryProvider).buscarResumoExclusao(widget.elementoId!);
+    } catch (_) {
+      // Segue sem o resumo se a busca falhar — não trava a exclusão em si.
+    }
+    if (!mounted) return;
+
     final confirmar = await showConfirmarExclusaoDialog(
       context: context,
       titulo: 'Excluir Elemento',
       mensagem: 'Deseja realmente excluir "${_tituloAtual ?? 'este elemento'}" e todos os ensaios vinculados a ele? Esta ação não poderá ser desfeita.',
+      extraContent: ResumoExclusaoAccordion(itensPorCategoria: resumo),
     );
     if (confirmar != true || !mounted) return;
 
@@ -383,35 +426,51 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
               }
             },
           ),
-          Opacity(
-            opacity: 0.4,
-            child: DiaviconMenuItem(
-              icon: Icons.layers_outlined,
-              label: 'Relatórios',
-              onTap: () {
-                DiaviconAlerts.show(
-                  context,
-                  'Em desenvolvimento',
-                  'Esta funcionalidade estará disponível em breve!',
-                  isAviso: true,
-                );
-              },
-            ),
+          DiaviconMenuItem(
+            icon: Icons.layers_outlined,
+            label: 'Relatórios',
+            onTap: () {
+              if (widget.elementoId == null) {
+                DiaviconAlerts.show(context, 'Indisponível', 'Salve o elemento antes de ver os relatórios.', isAviso: true);
+                return;
+              }
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => RelatoriosItemScreen(
+                    nivel: NivelRelatorios.elemento,
+                    nomeItem: _tituloAtual ?? 'Elemento',
+                    projetoId: widget.projetoId,
+                    estruturaId: widget.estruturaId,
+                    elementoId: widget.elementoId,
+                  ),
+                ),
+              );
+            },
           ),
-          Opacity(
-            opacity: 0.4,
-            child: DiaviconMenuItem(
-              icon: Icons.pie_chart_outline,
-              label: 'Dashboard',
-              onTap: () {
-                DiaviconAlerts.show(
-                  context,
-                  'Em desenvolvimento',
-                  'Esta funcionalidade estará disponível em breve!',
-                  isAviso: true,
-                );
-              },
-            ),
+          DiaviconMenuItem(
+            icon: Icons.pie_chart_outline,
+            label: 'Dashboard',
+            onTap: () {
+              if (widget.elementoId == null) {
+                DiaviconAlerts.show(context, 'Indisponível', 'Salve o elemento antes de acessar o dashboard.', isAviso: true);
+                return;
+              }
+              Navigator.pop(context);
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DashboardScreen(
+                    nivel: NivelAplicacaoBi.elementoNoProjeto,
+                    projetoId: widget.projetoId,
+                    estruturaId: widget.estruturaId,
+                    elementoId: widget.elementoId,
+                    titulo: widget.titulo ?? 'Elemento',
+                  ),
+                ),
+              );
+            },
           ),
           if (widget.projetoId != null && widget.elementoId != null)
             Consumer(
@@ -487,6 +546,9 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                       titulo: _tituloAtual,
                       tipo: _tipoAtual,
                       local: _localAtual,
+                      autor: widget.elementoId == null
+                          ? null
+                          : ref.watch(autoriaElementoProvider(widget.elementoId!)).value,
                     ),
                     const SizedBox(height: 18),
                     
@@ -553,7 +615,7 @@ class _ElementosHomeScreenState extends ConsumerState<ElementosHomeScreen> {
                                 ensaiosAgrupados[tipoId] = {
                                   'id': tipoId,
                                   'nome': tipoEnsaio['nome'] ?? 'Ensaio Desconhecido',
-                                  'icone': tipoEnsaio['icone_path'] ?? 'assets/images/ensaios/carbonatacao.png',
+                                  'icone': (tipoEnsaio['icone_path'] as String?)?.trim() ?? 'assets/images/ensaios/carbonatacao.png',
                                   'quantidade': 0,
                                 };
                               }
@@ -630,7 +692,7 @@ class _ElementoHero extends StatelessWidget {
     final String? urlLocal = imageUrl;
 
     if (urlLocal != null && urlLocal.isNotEmpty) {
-      return Image.network(
+      return ImagemStorage.network(
         urlLocal,
         width: double.infinity,
         height: heroHeight,
@@ -662,25 +724,42 @@ class _ElementoHero extends StatelessWidget {
 }
 
 class _ElementoHeader extends StatelessWidget {
-  const _ElementoHeader({this.titulo, this.tipo, this.local});
+  const _ElementoHeader({this.titulo, this.tipo, this.local, this.autor});
 
   final String? titulo;
   final String? tipo;
   final String? local;
+
+  /// Rastreio de quem registrou o elemento. Nulo (selo some) nos elementos
+  /// anteriores à coluna `criado_por`.
+  final AutorExibicao? autor;
 
   @override
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          titulo ?? 'V102',
-          style: GoogleFonts.lato(
-            color: const Color(0xFF4A4A4A),
-            fontSize: 26,
-            fontWeight: FontWeight.w900,
-            height: 1.05,
-          ),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              child: Text(
+                titulo ?? 'V102',
+                style: GoogleFonts.lato(
+                  color: const Color(0xFF4A4A4A),
+                  fontSize: 26,
+                  fontWeight: FontWeight.w900,
+                  height: 1.05,
+                ),
+              ),
+            ),
+            // Alinha o selo com a primeira linha do título, que é bem mais
+            // alta que ele.
+            Padding(
+              padding: const EdgeInsets.only(top: 4, left: 8),
+              child: AutoriaBadge(autor: autor, raioEmpresa: 14),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         Text(

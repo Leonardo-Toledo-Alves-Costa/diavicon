@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/area_ensaio.dart';
 import '../models/ensaio_resumo_model.dart';
 
 class ResumoEnsaiosParams {
@@ -35,14 +36,16 @@ final tiposEnsaioProvider =
     FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
   final response = await Supabase.instance.client
       .from('tipos_ensaio')
-      .select('id, nome, icone_path')
+      .select('id, nome, icone_path, area')
       .order('nome', ascending: true);
 
   return (response as List).map((item) {
     return {
       'id': item['id'],
       'nome': item['nome'],
-      'icone': item['icone_path'] ?? 'assets/images/ensaios/default.png',
+      'icone': (item['icone_path'] as String?)?.trim() ?? 'assets/images/ensaios/default.png',
+      // Concreto · Metálicas · Laboratório (abas do "Adicionar Ensaio").
+      'area': AreaEnsaio.deBanco(item['area']),
     };
   }).toList();
 });
@@ -58,7 +61,7 @@ final resumoEnsaiosProvider = FutureProvider.family
         // 1. Busca todos os tipos de ensaio disponíveis no sistema
         final tiposResp = await supabase
             .from('tipos_ensaio')
-            .select('id, nome, icone_path')
+            .select('id, nome, icone_path, area')
             .order('nome', ascending: true);
 
         if ((tiposResp as List).isEmpty) return [];

@@ -1,3 +1,5 @@
+import 'package:diavicon/core/security/upload_seguro.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:convert';
 import 'dart:io';
 
@@ -42,15 +44,15 @@ class StorageService {
   StorageService(this._supabase);
 
   Future<String?> uploadFotoPerfil(String usuarioId, File foto) async {
-    final extensao = foto.path.split('.').last;
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final caminhoStorage = 'perfis/$usuarioId-$timestamp.$extensao';
-
-    await _supabase.storage
+    // perfis/<uid>_<uuid>.<ext>: a policy do bucket `avatars` exige o uid
+    // seguido de '_' no início do nome. Tipo, nome e Content-Type decididos
+    // pelo app (ver upload_seguro.dart).
+    final caminhoStorage = await _supabase.storage
         .from('avatars')
-        .upload(
-          caminhoStorage,
+        .enviarArquivoSeguro(
+          'perfis',
           foto,
+          prefixo: '${usuarioId}_',
           fileOptions: const FileOptions(upsert: true),
         );
 
@@ -748,7 +750,7 @@ class _AvatarPicker extends StatelessWidget {
     if (foto != null) {
       imageProvider = FileImage(File(foto!.path));
     } else if (fotoUrlAtual != null && fotoUrlAtual!.isNotEmpty) {
-      imageProvider = NetworkImage(fotoUrlAtual!);
+      imageProvider = StorageNetworkImage(fotoUrlAtual!);
     }
 
     return GestureDetector(

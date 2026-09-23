@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'dart:io';
 import 'dart:math';
 
@@ -7,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:diavicon/core/widgets/foto_ensaio.dart';
 
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/custom_appbar.dart';
@@ -18,6 +20,7 @@ import '../../ensaios_geral/screens/galeria_ensaio_screen.dart';
 import '../models/ponto_carbonatacao_completo_model.dart';
 import '../repositories/carbonatacao_repository.dart';
 import 'analise_pontos_ensaios_carbonatacao_screen.dart';
+import '../../../../core/web/escolher_foto.dart';
 
 class PontoEnsaioCarbonatacaoScreen extends ConsumerStatefulWidget {
   final String projetoId;
@@ -227,7 +230,7 @@ class _PontoEnsaioCarbonatacaoScreenState
   }
 
   Future<void> _capturarFoto(int referencia) async {
-    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+    final ImageSource? source = origemFotoNoNavegador ?? await showModalBottomSheet<ImageSource>(
       context: context,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
@@ -398,6 +401,19 @@ class _PontoEnsaioCarbonatacaoScreenState
 
   // --- Função que engatilha o Repositório Inteligente (Cria/Edita) ---
   Future<void> _salvarDados() async {
+    // Trava síncrona de reentrância — o botão só fica desabilitado
+    // (`onPressed: _isLoading ? null : _salvarDados`) a partir do PRÓXIMO
+    // rebuild/frame. Num toque duplo rápido, a segunda chamada ainda acha o
+    // botão habilitado e entra aqui de novo antes do rebuild acontecer. Como
+    // o repositório decide INSERT vs UPDATE em `pontos_ensaios_geral` e
+    // `ponto_ensaio_carb` a partir de `_pontoGeralIdAtual`/
+    // `_carbIdExistente` (nulos pra um ponto novo), as duas chamadas
+    // cairiam no ramo de INSERT e duplicariam as linhas. Setar `_isLoading`
+    // aqui é síncrono (setState muda o campo na hora, só o rebuild é
+    // adiado), então a segunda chamada já vê `_isLoading == true` e sai
+    // antes de inserir de novo.
+    if (_isLoading) return;
+
     setState(() => _isLoading = true);
 
     try {
@@ -1060,7 +1076,7 @@ class _PontoEnsaioCarbonatacaoScreenState
     if (fotoLocal != null) {
       imageProvider = FileImage(fotoLocal);
     } else if (urlRemota != null && urlRemota.isNotEmpty) {
-      imageProvider = NetworkImage(urlRemota);
+      imageProvider = StorageNetworkImage(urlRemota);
     }
 
     return Column(
@@ -1071,40 +1087,26 @@ class _PontoEnsaioCarbonatacaoScreenState
           style: GoogleFonts.lato(fontSize: 12, color: Colors.grey.shade500),
         ),
         const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Container(
-                height: 140,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade200,
-                  borderRadius: BorderRadius.circular(16),
-                  image: imageProvider != null
-                      ? DecorationImage(image: imageProvider, fit: BoxFit.cover)
-                      : null,
-                ),
-                child: imageProvider == null
-                    ? const Center(
-                        child: Icon(Icons.camera_alt, color: Colors.grey),
-                      )
-                    : null,
-              ),
-              Container(
-                margin: const EdgeInsets.all(8),
-                padding: const EdgeInsets.all(6),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.edit_square,
-                  size: 20,
-                  color: Color(0xFF3E3E3D),
-                ),
-              ),
-            ],
+        // Proporção fixa em vez de altura fixa: a foto não achata em tela larga.
+        // Tocar continua capturando/trocando a foto.
+        FotoEnsaio(
+          imagem: imageProvider,
+          raio: 16,
+          aoTocar: onTap,
+          vazio: const Center(
+            child: Icon(Icons.camera_alt, color: Colors.grey),
+          ),
+          acao: Container(
+            padding: const EdgeInsets.all(6),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(
+              Icons.edit_square,
+              size: 20,
+              color: Color(0xFF3E3E3D),
+            ),
           ),
         ),
       ],

@@ -1,3 +1,5 @@
+import 'package:diavicon/core/services/storage_urls.dart';
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -302,7 +304,7 @@ class FeedPostCard extends ConsumerWidget {
     }
     try {
       await launchUrl(
-        Uri.parse(parsedUrl),
+        Uri.parse(await StorageUrls.assinar(parsedUrl)),
         mode: LaunchMode.externalApplication,
       );
     } catch (e) {
@@ -343,7 +345,7 @@ class FeedPostCard extends ConsumerWidget {
               CircleAvatar(
                 backgroundColor: const Color(0xFFE87B1D),
                 backgroundImage: post.empresaFoto != null
-                    ? NetworkImage(post.empresaFoto!)
+                    ? StorageNetworkImage(post.empresaFoto!)
                     : null,
                 child: post.empresaFoto == null
                     ? Text(
@@ -585,7 +587,7 @@ class _ComentariosBottomSheetState
                             radius: 16,
                             backgroundColor: Colors.grey.shade300,
                             backgroundImage: c['usuarios']?['foto_url'] != null
-                                ? NetworkImage(c['usuarios']['foto_url'])
+                                ? StorageNetworkImage(c['usuarios']['foto_url'])
                                 : null,
                             child: c['usuarios']?['foto_url'] == null
                                 ? const Icon(
@@ -843,7 +845,7 @@ class _FotosGrid extends StatelessWidget {
     decoration: BoxDecoration(
       color: Colors.grey.shade200,
       borderRadius: BorderRadius.circular(8),
-      image: DecorationImage(image: NetworkImage(url), fit: BoxFit.cover),
+      image: DecorationImage(image: StorageNetworkImage(url), fit: BoxFit.cover),
     ),
   );
 }
@@ -890,7 +892,7 @@ class _FullScreenGalleryState extends State<FullScreenGallery> {
         itemCount: widget.fotos.length,
         itemBuilder: (context, index) {
           return InteractiveViewer(
-            child: Image.network(widget.fotos[index], fit: BoxFit.contain),
+            child: ImagemStorage.network(widget.fotos[index], fit: BoxFit.contain),
           );
         },
       ),

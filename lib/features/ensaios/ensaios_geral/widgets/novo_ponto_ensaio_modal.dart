@@ -31,11 +31,23 @@ class NovoPontoEnsaioModal extends ConsumerStatefulWidget {
 
 class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
   final TextEditingController _nomeController = TextEditingController();
-  
+
   // Controle de estado para os dropdowns em cascata
   String? _selectedLocal;
   String? _selectedTipoElemento;
   String? _selectedElementoId;
+
+  // Campos exclusivos de Ultrassonografia, mostrados só quando `_isUltrassom`.
+  String _tipoMedicao = 'Direta';
+  String _pulsoUltrassonico = 'Longitudinal';
+
+  // "ultrassom" não é substring de "ultrassonografia" (o nome real cadastrado
+  // em tipos_ensaio.nome) — eles divergem no 9º caractere ('m' vs 'n') —,
+  // então checa os dois prefixos pra cobrir qualquer variação do nome.
+  bool get _isUltrassom {
+    final nome = widget.tipoEnsaioNome.toLowerCase();
+    return nome.contains('ultrassom') || nome.contains('ultrasson');
+  }
 
   @override
   void dispose() {
@@ -81,6 +93,9 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
       elementoId: _selectedElementoId!,
       pontoGeralId: '', // Ponto novo = ID Vazio
       tipoEnsaioId: widget.tipoEnsaioId,
+      // Só relevantes pra Ultrassonografia — ignorados pelos demais ensaios.
+      tipoMedicao: _isUltrassom ? _tipoMedicao : null,
+      pulsoUltrassonico: _isUltrassom ? _pulsoUltrassonico : null,
     );
 
     if (telaFormulario != null) {
@@ -366,6 +381,25 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
                         ),
                       ],
                     ),
+                    if (_isUltrassom) ...[
+                      const SizedBox(height: 16),
+                      Text('Tipo de medição', style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888))),
+                      const SizedBox(height: 6),
+                      _buildDropdownSimples(
+                        value: _tipoMedicao,
+                        opcoes: const ['Direta', 'Indireta', 'Mapeamento'],
+                        onChanged: (val) => setState(() => _tipoMedicao = val!),
+                      ),
+                      const SizedBox(height: 16),
+                      Text('Pulso ultrassônico', style: GoogleFonts.lato(fontSize: 14, color: const Color(0xFF888888))),
+                      const SizedBox(height: 6),
+                      _buildDropdownSimples(
+                        value: _pulsoUltrassonico,
+                        opcoes: const ['Longitudinal', 'Transversal'],
+                        onChanged: (val) => setState(() => _pulsoUltrassonico = val!),
+                      ),
+                    ],
+
                     const SizedBox(height: 32),
 
                     Center(
@@ -387,6 +421,22 @@ class _NovoPontoEnsaioModalState extends ConsumerState<NovoPontoEnsaioModal> {
               },
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDropdownSimples({required String value, required List<String> opcoes, required void Function(String?) onChanged}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      decoration: BoxDecoration(border: Border.all(color: const Color(0xFFD9D9D9)), borderRadius: BorderRadius.circular(8)),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          isExpanded: true,
+          value: value,
+          icon: const Icon(Icons.keyboard_arrow_down, color: Color(0xFF686868)),
+          items: opcoes.map((o) => DropdownMenuItem(value: o, child: Text(o, style: const TextStyle(color: Color(0xFF3E3E3D))))).toList(),
+          onChanged: onChanged,
         ),
       ),
     );

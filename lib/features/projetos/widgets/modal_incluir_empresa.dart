@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:diavicon/core/utils/formatters/cnpj_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -198,7 +199,7 @@ class _ModalIncluirEmpresaState extends ConsumerState<ModalIncluirEmpresa> {
                                     ?.toString()
                                     .startsWith('http') ==
                                 true
-                            ? NetworkImage(_empresaEncontrada!['foto_url'])
+                            ? StorageNetworkImage(_empresaEncontrada!['foto_url'])
                             : null,
                         child:
                             _empresaEncontrada!['foto_url']

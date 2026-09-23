@@ -2,7 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../core/constants/app_colors.dart';
-import '../providers/equipe_provider.dart'; 
+import '../controllers/equipe_controller.dart';
+import '../providers/equipe_provider.dart';
 import 'team_edit_item.dart';
 import '../screens/convidar_funcionario_screen.dart';
 
@@ -251,7 +252,7 @@ class EditTeamBody extends ConsumerWidget {
                               padding: EdgeInsets.symmetric(vertical: 20),
                               child: Center(
                                 child: Text(
-                                  'Nenhum colaborador vinculado a este projeto.',
+                                  'Nenhum colaborador disponível.',
                                   style: TextStyle(color: AppColors.hintText),
                                 ),
                               ),
@@ -269,8 +270,9 @@ class EditTeamBody extends ConsumerWidget {
                                 final bool isAtivo = item['ativo'] ?? false;
                                 final bool isUserGestor = item['is_gestor'] ?? false;
                                 final bool isMe = usuario['id'] == currentUserId;
-                                // Trava a edição se o usuário da lista for o Admin da empresa
-                                final bool isAdmin = item['is_admin_empresa'] == true;
+                                // O RPC retorna somente o indicador mínimo necessário
+                                // para manter o administrador principal obrigatório.
+                                final bool isAdmin = item['membro_obrigatorio'] == true;
                                 final bool podeEditar = isViewerGestor && !isMe && !isAdmin;
 
                                 return TeamEditItem(

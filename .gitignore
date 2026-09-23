@@ -44,3 +44,6 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Mapas de ofuscação do APK (gerar_apk.ps1): guardar, nunca publicar.
+/simbolos/

@@ -1,3 +1,5 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
+import '../../../core/widgets/aviso_topo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -22,20 +24,44 @@ class ServicoDetalheScreen extends ConsumerWidget {
     this.empresaEstado,
   });
 
+  /// Completa o endereço quando quem cadastrou digitou só o domínio.
+  ///
+  /// "www.exemplo.com.br" e "exemplo.com.br/catalogo.pdf" são endereços
+  /// válidos aos olhos de quem escreveu, mas sem `https://` o sistema não
+  /// sabe o que fazer com eles — e a tela respondia que o link não existia.
+  static Uri? _enderecoCompleto(String bruto) {
+    final texto = bruto.trim();
+    if (texto.isEmpty) return null;
+    final comEsquema = texto.contains('://') ? texto : 'https://$texto';
+    final uri = Uri.tryParse(comEsquema);
+    if (uri == null || uri.host.isEmpty) return null;
+    // Só endereços web: bloqueia javascript:, data:, file: e afins.
+    if (uri.scheme != 'https' && uri.scheme != 'http') return null;
+    return uri;
+  }
+
   Future<void> _abrirAnexo(BuildContext context, String url) async {
-    try {
-      final uri = Uri.parse(url);
-      final success = await launchUrl(uri, mode: LaunchMode.externalApplication);
-      if (!success && context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Não foi possível abrir o link do anexo.'), backgroundColor: Colors.orange),
+    final uri = _enderecoCompleto(url);
+    if (uri == null) {
+      if (context.mounted) {
+        mostrarAviso(
+          context,
+          'O link cadastrado neste item não é um endereço válido. '
+          'Peça para quem cadastrou corrigir no painel da empresa.',
+          tipo: TipoAviso.erro,
         );
+      }
+      return;
+    }
+
+    try {
+      final abriu = await launchUrl(uri, mode: LaunchMode.externalApplication);
+      if (!abriu && context.mounted) {
+        mostrarAviso(context, 'Nenhum aplicativo conseguiu abrir este link.', tipo: TipoAviso.erro);
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('O link informado é inválido.'), backgroundColor: Colors.red),
-        );
+        mostrarAviso(context, 'Não foi possível abrir o link: $e', tipo: TipoAviso.erro);
       }
     }
   }
@@ -51,11 +77,16 @@ class ServicoDetalheScreen extends ConsumerWidget {
       backgroundColor: const Color(0xFFF5F5F5),
       extendBodyBehindAppBar: true, 
       
+      // Mesmo tamanho do cabeçalho da empresa: 'Serviço' vinha em 14 e
+      // apagado, parecendo legenda em vez de título da tela.
       appBar: const CustomAppBar(
-        title: 'Empresa',
+        title: 'Serviço',
         showBackButton: true,
         showMenuButton: false,
-        titleWidget: Text('Serviço', style: TextStyle(fontSize: 14, color: Colors.white70)),
+        titleWidget: Text(
+          'Serviço',
+          style: TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold),
+        ),
       ),
       body: SingleChildScrollView(
         child: Column(
@@ -64,7 +95,7 @@ class ServicoDetalheScreen extends ConsumerWidget {
             const SizedBox(height: 75),
             // 1. FOTO DE CAPA
             if (servico.fotoPrincipal != null && servico.fotoPrincipal!.isNotEmpty)
-              Image.network(
+              ImagemStorage.network(
                 servico.fotoPrincipal!,
                 height: 220,
                 width: double.infinity,
@@ -93,7 +124,7 @@ class ServicoDetalheScreen extends ConsumerWidget {
                       CircleAvatar(
                         radius: 16,
                         backgroundColor: Colors.grey[200],
-                        backgroundImage: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty ? NetworkImage(empresaFotoUrl!) : null,
+                        backgroundImage: empresaFotoUrl != null && empresaFotoUrl!.isNotEmpty ? StorageNetworkImage(empresaFotoUrl!) : null,
                         child: (empresaFotoUrl == null || empresaFotoUrl!.isEmpty) ? const Icon(Icons.business, size: 16, color: Colors.grey) : null,
                       ),
                       const SizedBox(width: 10),
@@ -222,7 +253,7 @@ class ServicoDetalheScreen extends ConsumerWidget {
                                         InteractiveViewer(
                                           minScale: 0.5,
                                           maxScale: 4.0,
-                                          child: Image.network(imageUrl, fit: BoxFit.contain),
+                                          child: ImagemStorage.network(imageUrl, fit: BoxFit.contain),
                                         ),
                                         // Botão de fechar no canto superior direito
                                         Positioned(
@@ -244,7 +275,7 @@ class ServicoDetalheScreen extends ConsumerWidget {
                                 decoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(12),
                                   image: DecorationImage(
-                                    image: NetworkImage(imageUrl),
+                                    image: StorageNetworkImage(imageUrl),
                                     fit: BoxFit.cover,
                                   ),
                                 ),

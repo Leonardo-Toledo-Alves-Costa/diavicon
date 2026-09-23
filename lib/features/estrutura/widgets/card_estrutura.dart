@@ -1,3 +1,4 @@
+import 'package:diavicon/core/widgets/imagem_storage.dart';
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
 
@@ -31,7 +32,7 @@ class CardEstrutura extends StatelessWidget {
     }
 
     if (imageUrl!.startsWith('http')) {
-      return Image.network(
+      return ImagemStorage.network(
         imageUrl!, width: 56, height: 56, fit: BoxFit.cover,
         errorBuilder: (_, _, _) => Image.asset(defaultAsset, width: 56, height: 56, fit: BoxFit.cover),
       );

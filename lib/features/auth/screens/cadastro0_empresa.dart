@@ -3,6 +3,7 @@ import 'package:diavicon/core/widgets/auth_layout.dart';
 import 'package:diavicon/core/widgets/custom_text_button.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import '../utils/cadastro_freemium.dart';
 
 class Cadastro0Empresa extends StatelessWidget {
   final Map<String, dynamic> dadosCadastro;
@@ -71,7 +72,10 @@ class Cadastro0Empresa extends StatelessWidget {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    context.go('/empresa/onboarding', extra: dadosCadastro);
+                    // Direto para "Cadastre sua empresa", no plano gratuito:
+                    // sem o questionário de serviços (as respostas não eram
+                    // salvas) e sem a escolha de plano (o servidor ignora).
+                    irParaCadastroDaEmpresa(context, dadosCadastro);
                   },
                   child: Row(
                     children: [

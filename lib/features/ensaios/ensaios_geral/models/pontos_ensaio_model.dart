@@ -1,3 +1,5 @@
+import '../../../../core/models/autor_exibicao.dart';
+
 class PontoEnsaioModel {
   final String id;
   final String nome;
@@ -9,13 +11,25 @@ class PontoEnsaioModel {
 
   // Dados Visuais
   final String fotoElementoUrl;
-  final String avatarEmpresaUrl;
+
+  /// Quem registrou o ponto: logo da empresa e, pra quem é da mesma empresa
+  /// do autor, também o nome e a foto dele. Nulo quando o autor é
+  /// desconhecido ou a consulta de autoria falhou — o selo some e o card
+  /// segue normal.
+  final AutorExibicao? autor;
 
   // Dados de Risco / Resultados (Dinâmicos)
   final String textoRisco;
   final String corFundoRisco;
   final String corTextoRisco;
   final DateTime criadoEm; // <-- NOVO CAMPO
+
+  // Só preenchidos pra pontos de Ultrassonografia (join com
+  // `ponto_ensaio_ultrassom`) — indicam o método de coleta usado
+  // ('direto'/'indireto'/'mapeamento') e o pulso ('Longitudinal'/
+  // 'Transversal'), pra exibir um badge no card sem precisar abrir o ponto.
+  final String? modoUltrassom;
+  final String? pulsoUltrassonico;
 
   PontoEnsaioModel({
     required this.id,
@@ -26,12 +40,13 @@ class PontoEnsaioModel {
     required this.tipoEnsaioId,
     required this.local,
     required this.fotoElementoUrl,
-    required this.avatarEmpresaUrl,
+    this.autor,
     required this.textoRisco,
     required this.corFundoRisco,
     required this.corTextoRisco,
     required this.criadoEm, // <-- NOVO CAMPO NO CONSTRUTOR
-    
+    this.modoUltrassom,
+    this.pulsoUltrassonico,
   });
 
   factory PontoEnsaioModel.fromJson(Map<String, dynamic> json) {
@@ -54,8 +69,8 @@ class PontoEnsaioModel {
       fotoElementoUrl: fotoUrl,
       tipoEnsaioId: json['tipo_ensaio_id']?.toString() ?? '',
       
-      // Se houver um join com a empresa criadora, mapeie aqui. Caso contrário, use um placeholder.
-      avatarEmpresaUrl: json['avatar_empresa'] ?? 'https://via.placeholder.com/150',
+      // Autoria é resolvida à parte, em lote, pelo repositório (uma RPC pra
+      // todos os pontos da lista) — não vem neste json.
 
       // 👇 AQUI A MÁGICA ACONTECE: Lendo as novas colunas do banco
       textoRisco: json['valor_resultado'] ?? 'Pendente',
